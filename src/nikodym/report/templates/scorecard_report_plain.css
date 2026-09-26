@@ -48,6 +48,8 @@ pre{white-space:pre-wrap;word-break:break-word;background:#f4f4f4;border:1px sol
 table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
 th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;vertical-align:top}
 th{background:#eee;font-weight:700}
+td code{overflow-wrap:anywhere}
+@media screen{.data-exports,.exec-metrics-slot{overflow-x:auto}}
 .table-block{overflow-x:auto;margin:12px 0}
 .truncated{font-size:12px;color:#8a5a00;font-weight:700}
 .chart-slot{border:1px dashed #1f4e79;background:#f4f4f4;min-height:160px;margin:12px 0;padding:10px;display:flex;align-items:flex-end}

@@ -74,7 +74,7 @@ from nikodym.validation.results import VALIDATION_STATUS_LABELS
 # pasa de la regla general a `@media print`, porque en pantalla partía las cifras carácter por
 # carácter. Medido: sustituyendo en el HTML nuevo el CSS nuevo por el anterior, el digest vuelve a
 # ser exactamente el golden anterior `3f0720b6…`; el CSS es lo único que se movió.
-GOLDEN_HTML_SHA256 = "8da29d80199b576b5ea873c92c54c1394ab43698ca7f1235af6ac1b5d93ef190"
+GOLDEN_HTML_SHA256 = "76a360eab9359eea3460a53985d7b0ff8471f0772fd0045f92e844f6cc0b9563"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
@@ -469,15 +469,15 @@ def test_el_tema_nikodym_incrusta_roboto_y_el_tema_plain_no() -> None:
     assert "font-family:Arial" in plain
 
 
-def _reglas_css(css: str, media: str = "") -> list[tuple[str, str, str]]:
-    """``(media, selector, cuerpo)`` de cada regla de estilo, con la media que la envuelve.
+def _reglas_css(css: str, medias: tuple[str, ...] = ()) -> list[tuple[tuple[str, ...], str, str]]:
+    """``(medias, selector, cuerpo)`` de cada regla de estilo, con las ``@media`` que la envuelven.
 
     Un parser mínimo por llaves, suficiente para las dos hojas del informe: los comentarios se
-    quitan, un ``@media`` se recorre por dentro y las demás reglas arroba (``@font-face``,
-    ``@page`` con sus cajas de margen) se saltan enteras.
+    quitan, un ``@media`` se recorre por dentro (anidado, acumula sus consultas) y las demás reglas
+    arroba (``@font-face``, ``@page`` con sus cajas de margen) se saltan enteras.
     """
     texto = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
-    reglas: list[tuple[str, str, str]] = []
+    reglas: list[tuple[tuple[str, ...], str, str]] = []
     posicion = 0
     while True:
         apertura = texto.find("{", posicion)
@@ -490,10 +490,72 @@ def _reglas_css(css: str, media: str = "") -> list[tuple[str, str, str]]:
             cierre += 1
         cuerpo = texto[apertura + 1 : cierre - 1]
         if preludio.startswith("@media"):
-            reglas.extend(_reglas_css(cuerpo, preludio))
+            consulta = preludio.removeprefix("@media").strip()
+            reglas.extend(_reglas_css(cuerpo, (*medias, consulta)))
         elif not preludio.startswith("@"):
-            reglas.append((media, preludio, cuerpo))
+            reglas.append((medias, preludio, cuerpo))
         posicion = cierre
+
+
+def _aplica_en(medias: tuple[str, ...], medio: str) -> bool:
+    """Si una regla envuelta en ``medias`` puede aplicar al medio ``screen`` o ``print``.
+
+    Interpreta el tipo de medio de cada consulta —``not``, ``only``, listas con coma— y trata las
+    condiciones de ancho como posibles (conservador: una regla de pantalla angosta **sí** aplica en
+    pantalla). Buscar la subcadena ``print`` clasificaba ``@media not print`` como papel.
+    """
+
+    def consulta_aplica(consulta: str) -> bool:
+        partes = consulta.lower().split()
+        negada = bool(partes) and partes[0] == "not"
+        if partes and partes[0] in ("not", "only"):
+            partes = partes[1:]
+        tipo = partes[0] if partes and not partes[0].startswith("(") else "all"
+        return (tipo in ("all", medio)) != negada
+
+    return all(any(consulta_aplica(c) for c in m.split(",")) for m in medias)
+
+
+_PARTE_EN_CUALQUIER_PUNTO = re.compile(r"overflow-wrap:\s*anywhere|word-break:\s*break-all")
+#: El sujeto del selector —su último compuesto— es una celda o un encabezado de tabla.
+_SUJETO_CELDA = re.compile(r"(^|[\s>+~])(td|th)((\.|:)[\w-]+)*$")
+
+
+def _celdas_que_se_parten(css: str, medio: str) -> set[str]:
+    """Selectores de celda cuyo texto puede partirse en cualquier punto en ``medio``."""
+    return {
+        parte.strip()
+        for medias, selector, cuerpo in _reglas_css(css)
+        if _aplica_en(medias, medio) and _PARTE_EN_CUALQUIER_PUNTO.search(cuerpo)
+        for parte in selector.split(",")
+        if _SUJETO_CELDA.search(parte.strip())
+    }
+
+
+@pytest.mark.parametrize(
+    ("css", "en_pantalla", "en_papel"),
+    [
+        (
+            "@media print { tbody td, thead th { overflow-wrap: anywhere; } }",
+            set(),
+            {"tbody td", "thead th"},
+        ),
+        ("@media not print { tbody td { overflow-wrap: anywhere; } }", {"tbody td"}, set()),
+        ("tbody td { overflow-wrap: anywhere; }", {"tbody td"}, {"tbody td"}),
+        ("@media screen, print { th.num { word-break: break-all; } }", {"th.num"}, {"th.num"}),
+        ("@media (max-width: 720px) { td { overflow-wrap: anywhere; } }", {"td"}, {"td"}),
+        ("@media only print { td { overflow-wrap: anywhere; } }", set(), {"td"}),
+        ("td code { overflow-wrap: anywhere; }", set(), set()),
+        ("@media print { @media not print { td { overflow-wrap: anywhere; } } }", set(), set()),
+    ],
+)
+def test_el_oraculo_de_celdas_distingue_pantalla_y_papel(
+    css: str, en_pantalla: set[str], en_papel: set[str]
+) -> None:
+    """El oráculo del test de abajo, probado contra hojas que violan el contrato: pasada 1 de Codex
+    sobre el código, `@media not print` —que aplica en pantalla y no en el PDF— pasaba por papel."""
+    assert _celdas_que_se_parten(css, "screen") == en_pantalla
+    assert _celdas_que_se_parten(css, "print") == en_papel
 
 
 @pytest.mark.parametrize("hoja", ["scorecard_report.css", "scorecard_report_plain.css"])
@@ -501,31 +563,17 @@ def test_en_pantalla_una_cifra_no_se_parte_y_en_el_pdf_la_celda_si(hoja: str) ->
     """D-INF-3 (captura de Cami, 2026-09-26): con ``overflow-wrap: anywhere`` en las celdas, el
     navegador angostaba una columna hasta un carácter y ``0.094802`` salía en seis renglones —874
     celdas numéricas partidas en 23 tablas del informe del SBA a 938 px, medidas con los
-    rectángulos de línea de su texto—. En pantalla ninguna regla de ``td``/``th`` fuera de
-    ``@media print`` puede permitir partir en cualquier punto; una tabla que no cabe se desplaza
-    dentro de su caja. En el PDF, donde no hay desplazamiento, la celda y el encabezado sí se
-    parten, o una columna estrecha invadiría la vecina."""
+    rectángulos de línea de su texto—. En pantalla ninguna regla de ``td``/``th`` puede permitir
+    partir en cualquier punto; una tabla que no cabe se desplaza dentro de su caja. En el PDF,
+    donde no hay desplazamiento, la celda y el encabezado sí se parten, o una columna estrecha
+    invadiría la vecina. Un ``<code>`` dentro de una celda (un nombre de archivo) sí se parte: no
+    es una cifra."""
     from importlib import resources
 
     css = resources.files("nikodym.report.templates").joinpath(hoja).read_text(encoding="utf-8")
-    reglas = _reglas_css(css)
-    assert len(reglas) > 20  # el parser recorrió la hoja, no una lista vacía que pasa sola
-    celda = re.compile(r"(^|[\s,>+~])(td|th)\b")
-    parte_en_cualquier_punto = re.compile(r"overflow-wrap:\s*anywhere|word-break:\s*break-all")
-    en_pantalla = [
-        (media, selector)
-        for media, selector, cuerpo in reglas
-        if "print" not in media
-        and celda.search(selector)
-        and parte_en_cualquier_punto.search(cuerpo)
-    ]
-    assert en_pantalla == []
-    en_papel = {
-        parte.strip()
-        for media, selector, cuerpo in reglas
-        if "print" in media and parte_en_cualquier_punto.search(cuerpo)
-        for parte in selector.split(",")
-    }
+    assert len(_reglas_css(css)) > 20  # el parser recorrió la hoja, no una lista vacía
+    assert _celdas_que_se_parten(css, "screen") == set()
+    en_papel = _celdas_que_se_parten(css, "print")
     assert any(re.search(r"\btd\b", s) for s in en_papel), en_papel
     assert any(re.search(r"\bth\b", s) for s in en_papel), en_papel
 

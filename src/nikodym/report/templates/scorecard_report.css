@@ -783,6 +783,21 @@ tbody td {
      (`@media print`), donde no hay desplazamiento. */
 }
 
+/* Un identificador o un nombre de archivo en una celda (`<code>`) sí se parte en cualquier punto:
+   no es una cifra, y entero empujaría la página en una pantalla angosta. */
+td code {
+  overflow-wrap: anywhere;
+}
+
+/* Las tablas que no van en un `.table-block` (adjuntos, métricas ejecutivas) también se desplazan
+   dentro de su bloque en pantalla, en vez de ensanchar la página. */
+@media screen {
+  .data-exports,
+  .exec-metrics-slot {
+    overflow-x: auto;
+  }
+}
+
 td.num,
 th.num {
   text-align: right;

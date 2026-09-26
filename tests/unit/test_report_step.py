@@ -100,7 +100,7 @@ ROOT_SEED = 20_240_629
 # exactamente `4ead6d61…`, y fuera del bloque `<style>` los dos HTML son idénticos.
 # Recalculado el 2026-09-26 (D-INF-3): `overflow-wrap: anywhere` de las celdas pasa a `@media
 # print`. Medido: con la hoja anterior restituida, este mismo Study vuelve a dar `f9ab90b0…`.
-GOLDEN_STEP_HTML_SHA256 = "0f2550a13262b315d1396119519789dd78c2d6523ac17c083be869a12b0d4e82"
+GOLDEN_STEP_HTML_SHA256 = "20c7a69ae8635ba9242be0f07242f858a380f5884552fb48d708fc3a8f57ef60"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
