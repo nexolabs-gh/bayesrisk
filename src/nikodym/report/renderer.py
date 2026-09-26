@@ -26,6 +26,7 @@ import hashlib
 import json
 import logging
 import math
+import numbers
 import os
 import re
 import warnings
@@ -44,6 +45,13 @@ from nikodym.report._manifest import (
     REPORT_TEMPLATE_VERSION,
     REPORT_TITLE,
     html_report_id,
+)
+from nikodym.report.cifras import (
+    cifra,
+    conteo,
+    es_columna_de_conteo,
+    es_columna_de_pvalor,
+    pvalor,
 )
 from nikodym.report.config import (
     AiNarrationConfig,
@@ -976,23 +984,27 @@ def _table_view(
     # operación, y formatear el millón de celdas para mostrar doscientas costaba 5,9 s medidos
     # (cierre 1 de D-SC). El total y la marca de truncado siguen contando la tabla entera.
     records = cast(list[Mapping[Any, Any]], table.head(max_rows).to_dict(orient="records"))
-    visible_rows = [
-        tuple(
-            _display_scalar(
-                _public_cell(record.get(column), labels_by_column.get(str(column))),
-                key_path=(key, str(column)),
-            )
+    celdas = [
+        {
+            column: _public_cell(record.get(column), labels_by_column.get(str(column)))
             for column in columns
-        )
+        }
         for record in _rotulos_de_tramo(
             key, [_public_record(key, fila) for fila in records], bin_labels or {}
         )
+    ]
+    visible_rows = [
+        tuple(_display_scalar(celda[column], key_path=(key, str(column))) for column in columns)
+        for celda in celdas
     ]
     return {
         "key": key,
         "title": table_title(key, internal_grouping=internal_grouping),
         "html_id": _element_id("table", key),
         "columns": [str(column) for column in columns],
+        # Qué columnas se alinean a la derecha (D-INF-2): las que, ya con sus rótulos públicos,
+        # sólo traen números.
+        "numeric": _numeric_columns(celdas, columns),
         "rows": visible_rows,
         "total_rows": total_rows,
         "shown_rows": len(visible_rows),
@@ -1230,14 +1242,12 @@ def _display_json_value(value: Any, *, key_path: tuple[str, ...]) -> JSONValue:
         return "[tabla referenciada]"
     if isinstance(value, bool) or value is None:
         return value
-    if isinstance(value, int) and not isinstance(value, bool):
-        return value
-    if isinstance(value, Decimal):
+    if isinstance(value, numbers.Integral):
+        return int(value)
+    if isinstance(value, Decimal | numbers.Real):
         # Los motores de provisiones publican sus cifras contables en Decimal. Sin esta rama, el
         # Anexo de parámetros imprimiría {"unsupported_type": "Decimal"} donde va la provisión.
-        return _format_float(float(value), key_path=key_path)
-    if isinstance(value, float):
-        return _format_float(value, key_path=key_path)
+        return _format_number(value, key_path=key_path)
     if isinstance(value, str):
         return value
     return {"unsupported_type": type(value).__name__}
@@ -1250,26 +1260,22 @@ def _display_json_value(value: Any, *, key_path: tuple[str, ...]) -> JSONValue:
 # engaña— ni altera los enums de la API de results ni el `data_hash`: es sólo presentación.
 _EMPTY_CELL: Final[str] = "—"
 
-# Corte por encima del cual un float deja de mostrarse con seis decimales (ver `_format_float`).
-# Mil separa, en este dominio, los indicadores de riesgo —todos por debajo— de las cifras de plata.
-_LARGE_MAGNITUDE: Final[float] = 1_000.0
-
 
 def _display_scalar(value: Any, *, key_path: tuple[str, ...]) -> str:
     if value is None:
         return _EMPTY_CELL
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, int) and not isinstance(value, bool):
-        return str(value)
-    if isinstance(value, float):
-        return _format_float(value, key_path=key_path)
-    if isinstance(value, Decimal):
-        # Simétrico a `_display_json_value`: los motores de provisiones publican sus cifras en
-        # `Decimal` y `str(Decimal)` vuelca la mantisa completa —hasta 52 dígitos— en la celda
-        # (`pd_group` = 0.005229006159768768519885545424566154074707324884202). Se formatea con la
-        # misma regla que un float: sólo presentación, la cifra contable no se altera.
-        return _format_float(float(value), key_path=key_path)
+    if _es_booleano(value):
+        # Copy público: «sí»/«no», como los resúmenes por etapa (D-INF-2). En los bloques JSON del
+        # anexo de parámetros sigue siendo `true`/`false`: ahí es sintaxis.
+        return "sí" if value else "no"
+    if isinstance(value, numbers.Integral):
+        columna = key_path[-1] if key_path else ""
+        return conteo(int(value)) if es_columna_de_conteo(columna) else str(int(value))
+    if isinstance(value, Decimal | numbers.Real):
+        # Los motores de provisiones publican sus cifras en `Decimal`; se formatea el Decimal mismo,
+        # no su float: `Decimal("0.24999999999999999999")` en float es 0.25 (D-INF-1). Sólo
+        # presentación: la cifra contable no se altera.
+        return _format_number(value, key_path=key_path)
     if isinstance(value, BaseModel):
         return _display_value(value.model_dump(mode="python"), key_path=key_path)
     if isinstance(value, Mapping | Sequence) and not isinstance(value, str | bytes | bytearray):
@@ -1282,38 +1288,48 @@ def _display_scalar(value: Any, *, key_path: tuple[str, ...]) -> str:
     return _EMPTY_CELL if text == "none" else text
 
 
-def _format_float(value: float, *, key_path: tuple[str, ...]) -> str:
-    if value == 0.0:
-        value = 0.0
-    if not math.isfinite(value):
-        if math.isnan(value):
-            return _EMPTY_CELL
-        return "inf" if value > 0 else "-inf"
-    if abs(value) >= _LARGE_MAGNITUDE:
-        # Las cifras de plata (exposición, provisión, pérdida esperada) son floats grandes, y con la
-        # regla de 6 decimales la celda volcaba `697376973.922913`: doce dígitos de precisión falsa
-        # para un monto que la prosa muestra como $697.376.974. Se corta por MAGNITUD, no por nombre
-        # de columna, para barrer la clase entera —cualquier monto futuro, se llame como se llame—
-        # y no una lista de claves que hay que recordar ampliar. Por encima de mil, seis decimales
-        # no aportan información en ningún indicador de riesgo: los ratios (AUC, KS, PSI, IV, PD,
-        # LGD, tasas) viven todos muy por debajo del corte y conservan su precisión intacta.
-        # Se mantiene el punto decimal y NO se agrupan miles: estas tablas son volcado técnico de
-        # `results`, pensado para copiarse a una herramienta de análisis (CHANGELOG 1.4.0).
-        return f"{value:.2f}"
-    key = ".".join(key_path).lower()
-    if _is_percent_key(key):
-        return f"{value:.4f}"
-    if _is_six_decimal_key(key):
-        return f"{value:.6f}"
-    return f"{value:.6f}"
+def _es_booleano(value: Any) -> bool:
+    """Un booleano de Python o de numpy (``np.bool_`` no hereda de ``bool``), sin importar numpy."""
+    return isinstance(value, bool) or getattr(getattr(value, "dtype", None), "kind", "") == "b"
 
 
-def _is_percent_key(key: str) -> bool:
-    return any(token in key for token in ("pct", "percent", "porcentaje", "tasa", "rate"))
+def _format_number(value: Decimal | numbers.Real, *, key_path: tuple[str, ...]) -> str:
+    """Un número real del informe en es-CL, con la regla del cero final (D-INF-1, `cifras`).
+
+    Hasta 2026-09 las tablas conservaban el punto decimal y seis decimales fijos como «volcado
+    técnico» para copiar a una herramienta de análisis (CHANGELOG 1.4.0). Las cifras crudas tienen
+    hoy caminos mejores —`results.json`, `export_excel()`, las tablas de la puerta guiada—, y el
+    informe es copy público que se lee junto a una prosa que ya decía `23,80 %` y `30.316`.
+    """
+    columna = key_path[-1] if key_path else ""
+    numero = value if isinstance(value, Decimal) else float(value)
+    if es_columna_de_pvalor(columna):
+        return pvalor(numero)
+    return cifra(numero)
 
 
-def _is_six_decimal_key(key: str) -> bool:
-    return any(token in key for token in ("pd", "psi", "csi", "auc", "ks", "gini"))
+def _numeric_columns(records: Sequence[Mapping[Any, Any]], columns: Sequence[Any]) -> list[bool]:
+    """Qué columnas son numéricas: todos sus valores presentes son números (no booleanos).
+
+    Se alinean a la derecha con cifras tabulares (D-INF-2). Una columna sin ningún valor presente
+    no es numérica: no hay nada que alinear.
+    """
+    salida: list[bool] = []
+    for column in columns:
+        valores = [record.get(column) for record in records]
+        presentes = [
+            valor
+            for valor in valores
+            if valor is not None and not (isinstance(valor, float) and math.isnan(valor))
+        ]
+        salida.append(
+            bool(presentes)
+            and all(
+                isinstance(valor, Decimal | numbers.Number) and not _es_booleano(valor)
+                for valor in presentes
+            )
+        )
+    return salida
 
 
 def _canonical_value(value: Any) -> JSONValue:

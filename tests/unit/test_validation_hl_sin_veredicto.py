@@ -174,7 +174,7 @@ def _encabezados_html(html: str) -> list[str]:
         r'<table[^>]*data-table-key="validation\.calibration"[^>]*>(.*?)</table>', html, re.S
     )
     assert tabla is not None, "el documento no trae la tabla validation.calibration"
-    return re.findall(r"<th>(.*?)</th>", tabla.group(1))
+    return re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla.group(1))
 
 
 def _seccion(html: str, seccion: str) -> str:
@@ -452,8 +452,7 @@ def test_el_html_conserva_las_trece_columnas_y_no_pinta_ninguna_causa() -> None:
     assert tuple(_encabezados_html(html)) == _COLUMNAS_PINTADAS
     cuerpo = _cuerpo_html(html)
     for columna in _COLUMNAS_DE_AUDITORIA:
-        assert f"<th>{columna}</th>" not in html
-        assert f"<td>{columna}</td>" not in html
+        assert not re.search(rf"<t[hd](?:\s[^>]*)?>{columna}</t[hd]>", html)
     for causa in _CAUSAS:
         assert causa not in cuerpo, causa
     # El anexo de auditoría sí las conserva: ahí el identificador es el dato.

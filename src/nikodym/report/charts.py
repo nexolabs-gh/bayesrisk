@@ -18,8 +18,11 @@ producen gráficos.
 from __future__ import annotations
 
 import html
+import itertools
+import math
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast
 
+from nikodym.report.cifras import cifra, corte
 from nikodym.report.exceptions import (
     ReportDependencyError,
     ReportInputError,
@@ -113,15 +116,61 @@ def _new_figure(figsize: tuple[float, float], dpi: int) -> Any:
     return figure
 
 
+def _marcas_del_eje(valores: list[float], decimales: int) -> list[str]:
+    """Las marcas de un eje en es-CL, todas con los mismos decimales.
+
+    Los que pide el paso entre marcas, y nunca menos que ``decimales`` (D-INF-1, §1.3).
+
+    Antes el eje se escribía con ``decimales`` fijos y un forest de coeficientes de ``3e-09``
+    rotulaba ``0,00`` todas sus marcas. El ruido de coma flotante del localizador
+    (``0.30000000000000004``, o ``2.8e-17`` donde va el cero) se limpia **relativo al paso**, no con
+    un redondeo absoluto, que volvía a dejar en cero un eje de ``3e-13``. Si el paso es menor que
+    una millonésima, las marcas van en notación científica. Una marca en cero sale sin signo.
+    """
+    finitos = sorted({v for v in valores if math.isfinite(v)})
+    pasos = [b - a for a, b in itertools.pairwise(finitos) if b > a]
+    paso = min(pasos) if pasos else 0.0
+    tolerancia = paso * 1e-6 if paso else 1e-12
+    if paso and paso < 1e-6:
+        exp_paso = math.floor(math.log10(paso))
+        salida = []
+        for valor in valores:
+            if not math.isfinite(valor) or abs(valor) <= tolerancia:
+                salida.append("0" if math.isfinite(valor) else str(valor))
+                continue
+            cifras_mantisa = max(1, math.floor(math.log10(abs(valor))) - exp_paso)
+            mantisa, exponente = f"{valor:.{cifras_mantisa}e}".split("e")
+            salida.append(f"{mantisa.replace('.', ',')}e{exponente}")
+        return salida
+    necesarios = decimales
+    while necesarios < 15 and any(abs(round(v, necesarios) - v) > tolerancia for v in finitos):
+        necesarios += 1
+    salida = []
+    for valor in valores:
+        if not math.isfinite(valor):
+            salida.append(str(valor))
+            continue
+        limpio = 0.0 if abs(valor) <= tolerancia else round(valor, necesarios)
+        entero, _, fraccion = f"{abs(limpio):.{necesarios}f}".partition(".")
+        if abs(limpio) >= 1000:
+            entero = f"{int(entero):,}".replace(",", ".")
+        signo = "-" if limpio < 0 else ""
+        salida.append(f"{signo}{entero},{fraccion}" if fraccion else f"{signo}{entero}")
+    return salida
+
+
 def _numeric_formatter(decimals: int) -> Any:
-    """``FuncFormatter`` con ``decimals`` fijos y sin ``-0.0`` (independiente del locale)."""
-    from matplotlib.ticker import FuncFormatter
+    """Formatter de matplotlib con las marcas de :func:`_marcas_del_eje`, sin locale."""
+    from matplotlib.ticker import Formatter
 
-    def _format(value: float, _pos: Any) -> str:
-        cleaned = 0.0 if abs(value) < 1e-12 else value
-        return f"{cleaned:.{decimals}f}"
+    class _FormatoEje(Formatter):
+        def format_ticks(self, values: Any) -> list[str]:
+            return _marcas_del_eje([float(v) for v in values], decimals)
 
-    return FuncFormatter(_format)
+        def __call__(self, x: float, pos: Any = None) -> str:
+            return _marcas_del_eje([float(x)], decimals)[0]
+
+    return _FormatoEje()
 
 
 def _render(figure: Any, title: str, fmt: ChartFormat) -> str | bytes:
@@ -401,14 +450,14 @@ def render_reliability_chart(
 
 
 def _reliability_label(name: str, item: dict[str, Any]) -> str:
-    """Etiqueta de leyenda con Brier/ECE si están presentes (formato fijo, sin locale)."""
+    """Etiqueta de leyenda con Brier/ECE si están presentes, con la regla única del informe."""
     parts = [name]
     brier = item.get("brier")
     ece = item.get("ece")
     if brier is not None:
-        parts.append(f"Brier={_as_float(brier):.3f}")
+        parts.append(f"Brier={cifra(_as_float(brier))}")
     if ece is not None:
-        parts.append(f"ECE={_as_float(ece):.3f}")
+        parts.append(f"ECE={cifra(_as_float(ece))}")
     if len(parts) == 1:
         return name
     return f"{parts[0]} ({', '.join(parts[1:])})"
@@ -593,14 +642,15 @@ def render_stability_chart(
         linestyle="--",
         color=_STABLE_LINE_COLOR,
         linewidth=1.0,
-        label=f"Revisión: {stable_threshold:.2f} ≤ índice < {review_threshold:.2f}",
+        # Los umbrales del config, exactos: un corte 0,125 escrito «0,12» sería otra política.
+        label=f"Revisión: {corte(stable_threshold)} ≤ índice < {corte(review_threshold)}",
     )
     axes.axvline(
         review_threshold,
         linestyle="--",
         color=_REVIEW_LINE_COLOR,
         linewidth=1.0,
-        label=f"Redesarrollo: índice ≥ {review_threshold:.2f}",
+        label=f"Redesarrollo: índice ≥ {corte(review_threshold)}",
     )
 
     axes.set_yticks(list(range(n_bars)))

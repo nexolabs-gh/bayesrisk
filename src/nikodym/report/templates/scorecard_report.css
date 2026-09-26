@@ -87,7 +87,10 @@ a:hover {
 .doc-shell {
   display: grid;
   grid-template-columns: 264px minmax(0, 1fr) 236px;
-  max-width: 1360px;
+  /* 1.920 px: en una pantalla de 2.560 la columna de contenido pasa de 756 a ~1.316 px y nueve de
+     las diez tablas que se desplazaban caben. Sin tope, las tarjetas de tres columnas de la
+     portada se separarían más de lo que se leen en un monitor ultra ancho. */
+  max-width: 1920px;
   margin: 0 auto;
   align-items: start;
   background: var(--paper);
@@ -738,6 +741,9 @@ dt {
 dd {
   margin: 0;
   min-width: 0;
+  /* Una ruta de archivo no tiene dónde partirse y empujaba la página a 825 px en un teléfono de
+     375: el valor de una lista puede partirse en cualquier punto, como un `<code>` en una celda. */
+  overflow-wrap: anywhere;
 }
 
 pre {
@@ -795,6 +801,18 @@ td code {
   .data-exports,
   .exec-metrics-slot {
     overflow-x: auto;
+  }
+
+  /* En pantalla una tabla toma el ancho de su contenido, no el de la columna: con 1.316 px, una
+     tabla de tres columnas estirada al 100 % se lee peor. En papel sigue al 100 %, la regla
+     general, con su `table-layout: fixed`. */
+  table {
+    width: auto;
+  }
+
+  td.num,
+  th.num {
+    white-space: nowrap;
   }
 }
 
@@ -1002,6 +1020,25 @@ figcaption {
 }
 
 /* ─────────────────────────── responsive (pantalla angosta) ─────────────────────────── */
+
+/* El índice de la derecha («En esta página») repite 13 capítulos que el de la izquierda ya lista:
+   bajo 1.600 px sus 236 px valen más para las tablas. Sólo en pantalla: en papel no hay índices. */
+@media screen and (max-width: 1599px) {
+  .doc-shell {
+    grid-template-columns: 264px minmax(0, 1fr);
+  }
+  .doc-rail {
+    display: none;
+  }
+}
+
+/* En un teléfono, la clave arriba y el valor debajo: en dos columnas el valor quedaba en 59 px.
+   Sólo en pantalla: el PDF conserva sus listas en dos columnas. */
+@media screen and (max-width: 720px) {
+  dl {
+    grid-template-columns: 1fr;
+  }
+}
 
 @media (max-width: 1080px) {
   .doc-shell {

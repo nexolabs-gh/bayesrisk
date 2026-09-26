@@ -167,14 +167,14 @@ def _tabla_html(html: str, key: str) -> str:
 
 
 def _celdas(tabla: str) -> list[str]:
-    return re.findall(r"<td>(.*?)</td>", tabla, re.S)
+    return re.findall(r"<td(?:\s[^>]*)?>(.*?)</td>", tabla, re.S)
 
 
 def test_la_tabla_de_calibracion_del_html_pinta_palabras_y_conserva_los_trece_encabezados() -> None:
     result = _resultado()
     html = HtmlReportRenderer(_cfg()).render(_bundle(result))
     tabla = _tabla_html(html, "validation.calibration")
-    assert re.findall(r"<th>(.*?)</th>", tabla) == list(_COLUMNAS_CALIBRACION)
+    assert re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla) == list(_COLUMNAS_CALIBRACION)
     celdas = _celdas(tabla)
     assert "Hosmer-Lemeshow" in celdas
     assert "Puntaje de Brier" in celdas

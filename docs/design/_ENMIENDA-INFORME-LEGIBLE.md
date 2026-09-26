@@ -6,7 +6,7 @@
 | **Decisiones** | **D-INF-1…4** y dos **elevaciones** que no entran (§6) |
 | **Módulos** | `nikodym.report` (`renderer`, `charts`, `docx`, `prose`, `templates/`) |
 | **Fase** | F1 |
-| **Estado** | **Propuesta** (S22, 2026-09-26). Cami eligió «enmienda corta y código ahora» con aprobación antes de programar. Ante la pregunta de aprobación respondió **«resuelve lo de la foto primero»**: el primer punto de D-INF-3 (una cifra no se parte en pantalla) **está implementado** (§11); D-INF-1, D-INF-2, el resto de D-INF-3 y D-INF-4 siguen esperando su aprobación. La recaptura de la demo tiene su OK: **«Sí, junto con la 1.20.0»** |
+| **Estado** | **APROBADA por Cami el 2026-09-26** (S22, interactivo). Primero pidió **«resuelve lo de la foto primero»**: el primer punto de D-INF-3 se implementó y se integró solo (§11; `main` `b778ec5`, CI 18/18). Con eso en `main`, aprobó el resto: **«Sí, todo lo que falta (Recomendado)»**, con la regla del cero final. La release 1.20.0 sale cuando todo esté integrado, y con ella la recaptura de la demo (**«Sí, junto con la 1.20.0»**) |
 | **Depende de** | D-REP-1…8 (el HTML es la representación canónica), D-MON-5 (la convención numérica cuelga del idioma), D-CPY-4 (p-valores «< 0,001») |
 | **Revierte** | La excepción de `1.4.0`: *«las tablas de detalle y los ejes de los gráficos conservan el punto a propósito: son volcado técnico»* (CHANGELOG 1.4.0, comentario en `renderer._format_float`) |
 | **Release** | Ningún número, `config_hash`, `data_hash` ni artefacto cambia; sólo el render ⇒ entra en la **1.20.0** como «Corregido» |

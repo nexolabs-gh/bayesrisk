@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 from nikodym.core.markers import strip_declared_codes
 from nikodym.methodology import build_ifrs9_methodology_card, methodology_paragraphs
+from nikodym.report.cifras import cifra, corte
 from nikodym.report.document import DOMAIN_TITLES, internal_grouping_label
 
 # Las cuatro palabras de las bandas del PSI y la identidad de la magnitud ganadora del resumen A1
@@ -231,7 +232,7 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
                     ExecutiveMetric(
                         label=label,
                         scope=_partition_label(partition_id),
-                        value=_num(values.get(key), decimals=4),
+                        value=_cifra(values.get(key)),
                         band=band,
                     )
                 )
@@ -258,7 +259,7 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
                 ExecutiveMetric(
                     label=label,
                     scope=_comparison_label(comparison_id),
-                    value=_num(max_psi.get(comparison_id), decimals=4),
+                    value=_cifra(max_psi.get(comparison_id)),
                     band=BAND_LABELS.get(str(bands.get(comparison_id, "")), _NOT_AVAILABLE),
                 )
             )
@@ -267,8 +268,8 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
         if stable is not None and review is not None:
             notes.append(
                 f"Las bandas de PSI usan los umbrales configurados: estable por debajo de "
-                f"{_num(stable, decimals=2)}, revisión desde {_num(stable, decimals=2)} y "
-                f"redesarrollo desde {_num(review, decimals=2)}."
+                f"{_cut(stable)}, revisión desde {_cut(stable)} y "
+                f"redesarrollo desde {_cut(review)}."
             )
 
     validation = _card(bundle, "validation") if "validation" in bundle.results else None
@@ -748,12 +749,12 @@ def _methodology_selection(bundle: ReportInputBundle) -> tuple[str, ...]:
     min_iv = _float(thresholds.get("min_iv")) if thresholds else _float(params.get("min_iv"))
     max_iv = _float(thresholds.get("max_iv")) if thresholds else _float(params.get("max_iv"))
     if min_iv is not None:
-        frase = f"Se descartaron las variables con IV inferior a {_num(min_iv, decimals=2)}"
+        frase = f"Se descartaron las variables con IV inferior a {_cut(min_iv)}"
         if max_iv is not None:
             accion = _text(thresholds.get("max_iv_action")) or _text(params.get("max_iv_action"))
             verbo = "se excluyeron" if accion == "exclude" else "se marcaron para revisión"
             frase += (
-                f"; las de IV igual o superior a {_num(max_iv, decimals=2)} {verbo}, porque un "
+                f"; las de IV igual o superior a {_cut(max_iv)} {verbo}, porque un "
                 "poder predictivo tan alto suele indicar fuga de información más que señal legítima"
             )
         paragraphs.append(f"{frase}.")
@@ -768,13 +769,13 @@ def _methodology_selection(bundle: ReportInputBundle) -> tuple[str, ...]:
             metodo = f" ({method})" if method else ""
             frases.append(
                 f"se eliminó la redundancia entre pares de variables con correlación"
-                f"{metodo} sobre {_num(threshold, decimals=2)}"
+                f"{metodo} sobre {_cut(threshold)}"
             )
     if _bool(vif.get("enabled")):
         threshold = _float(vif.get("threshold"))
         if threshold is not None:
             frases.append(
-                f"se acotó la multicolinealidad exigiendo un VIF bajo {_num(threshold, decimals=1)}"
+                f"se acotó la multicolinealidad exigiendo un VIF bajo {_cut(threshold, minimo=1)}"
             )
     if frases:
         paragraphs.append(f"{_capitalizar(_enumerar(frases))}.")
@@ -792,8 +793,8 @@ def _methodology_selection(bundle: ReportInputBundle) -> tuple[str, ...]:
             )
             paragraphs.append(
                 f"La estabilidad temporal de cada variable candidata se evaluó como estable por "
-                f"debajo de {_num(stable, decimals=2)}, en revisión desde "
-                f"{_num(stable, decimals=2)} y a rediseñar desde {_num(review, decimals=2)}, "
+                f"debajo de {_cut(stable)}, en revisión desde "
+                f"{_cut(stable)} y a rediseñar desde {_cut(review)}, "
                 f"{consecuencia}."
             )
 
@@ -825,7 +826,7 @@ def _methodology_model(bundle: ReportInputBundle) -> tuple[str, ...]:
             f"{_ENGINE_LABELS.get(engine, engine)} sobre las variables transformadas a WoE"
         )
         if alpha is not None:
-            frase += f", con un nivel de significancia de {_num(alpha, decimals=2)}"
+            frase += f", con un nivel de significancia de {_cut(alpha)}"
         paragraphs.append(f"{frase}.")
 
     stepwise = _mapping(params.get("stepwise"))
@@ -842,10 +843,7 @@ def _methodology_model(bundle: ReportInputBundle) -> tuple[str, ...]:
             if criterion is not None:
                 detalle.append(f"criterio «{criterion}»")
             if entry is not None and exit_value is not None:
-                detalle.append(
-                    f"p-valor de entrada {_num(entry, decimals=2)} y de salida "
-                    f"{_num(exit_value, decimals=2)}"
-                )
+                detalle.append(f"p-valor de entrada {_cut(entry)} y de salida {_cut(exit_value)}")
             if detalle:
                 frase += f" ({_enumerar(tuple(detalle))})"
         paragraphs.append(f"La construcción del modelo usó {frase}.")
@@ -1413,8 +1411,9 @@ def _traffic_light_cuts_prose(bundle: ReportInputBundle) -> tuple[str, ...]:
         f"{_cut(red)} y {_cut(green)}, y en rojo por debajo de {_cut(red)}. Los cortes son un "
         "parámetro de la política de validación de la institución —el motor trae "
         f"{default_green} y {default_red} por defecto— y no un umbral fijado por norma. Los "
-        "p-valores de la tabla se muestran redondeados a seis decimales; el color de cada grado "
-        "se decidió sobre el valor exacto.",
+        "p-valores de la tabla se muestran con tres decimales, «< 0,001» bajo ese corte y con los "
+        "decimales que hagan falta para no confundirse con un corte; el color de cada grado se "
+        "decidió sobre el valor exacto.",
     )
 
 
@@ -3047,7 +3046,7 @@ def _num(value: Any, *, decimals: int = 4) -> str:
     return f"{numeric:.{decimals}f}".replace(".", ",")
 
 
-def _cut(value: Any) -> str:
+def _cut(value: Any, *, minimo: int = 2) -> str:
     """Formatea un corte de p-valor con TODOS sus dígitos: ``0,05``, ``0,10``, ``0,05004``.
 
     La config admite cualquier ``0 < rojo < verde < 1``; redondear aquí describiría una política
@@ -3060,9 +3059,21 @@ def _cut(value: Any) -> str:
     numeric = _float(value)
     if numeric is None:
         return _NOT_AVAILABLE
-    texto = format(Decimal(repr(numeric)), "f")
-    entero, _, decimales = texto.partition(".")
-    return f"{entero},{decimales.ljust(2, '0')}"
+    if isinstance(value, Decimal):
+        return corte(value, minimo=minimo)  # el Decimal mismo, no su float (D-INF-1)
+    return corte(numeric, minimo=minimo)
+
+
+def _cifra(value: Any) -> str:
+    """Una métrica junto a su banda, con la regla única del informe (D-INF-1).
+
+    Un redondeo nunca se hace pasar por un corte: ``0.24996`` no se escribe ``0,2500`` junto a un
+    corte de ``0,25``.
+    """
+    numeric = _float(value)
+    if numeric is None:
+        return _NOT_AVAILABLE
+    return cifra(value if isinstance(value, Decimal) else numeric)
 
 
 def _pct(value: Any, *, decimals: int = 2) -> str:

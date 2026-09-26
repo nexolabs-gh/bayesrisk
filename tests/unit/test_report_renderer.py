@@ -74,7 +74,11 @@ from nikodym.validation.results import VALIDATION_STATUS_LABELS
 # pasa de la regla general a `@media print`, porque en pantalla partía las cifras carácter por
 # carácter. Medido: sustituyendo en el HTML nuevo el CSS nuevo por el anterior, el digest vuelve a
 # ser exactamente el golden anterior `3f0720b6…`; el CSS es lo único que se movió.
-GOLDEN_HTML_SHA256 = "76a360eab9359eea3460a53985d7b0ff8471f0772fd0045f92e844f6cc0b9563"
+# Recalculado el 2026-09-26 (D-INF-1…4, aprobadas): cifras es-CL con la regla del cero final,
+# «sí»/«no», la clase `num` en las columnas numéricas y el CSS del ancho y del celular. Medido con
+# `diff` fuera de `<style>` y de los SVG contra el render de `HEAD`: cambian sólo las cifras
+# (`0.743210` → `0,7432`, `0.040000` → `0,040` en un p-valor), `false` → `no` y los `class="num"`.
+GOLDEN_HTML_SHA256 = "48137c8fa86c464000551ad301002c53ddb3f9152060d057b5e71055799a4287"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
@@ -143,7 +147,7 @@ def test_html_golden_deterministico_y_orden_canonico() -> None:
     assert "config_hash=cfg123456789abcdef" in first
     assert "data_hash=data123456789abcdef" in first
     assert "git_sha=abc123" in first
-    assert "0.743210" in first
+    assert "0,7432" in first  # es-CL (D-INF-1)
     assert "-0.0" not in first
 
     # Las secciones del documento salen en el orden canónico aunque el bundle llegue desordenado.
@@ -151,16 +155,22 @@ def test_html_golden_deterministico_y_orden_canonico() -> None:
     assert positions == sorted(positions)
 
     performance_table = _table_fragment(first, "table-performance-performance_table")
-    decile_markers = [f"<td>{decile}</td>" for decile in range(12, 2, -1)]
+    decile_markers = [f'<td class="num">{decile}</td>' for decile in range(12, 2, -1)]
     decile_positions = [performance_table.index(marker) for marker in decile_markers]
     assert decile_positions == sorted(decile_positions)
-    assert "<td>11</td>" in performance_table
-    assert "<td>2</td>" not in performance_table
-    assert "<td>1</td>" not in performance_table
+    assert '<td class="num">11</td>' in performance_table
+    assert '<td class="num">2</td>' not in performance_table
+    assert '<td class="num">1</td>' not in performance_table
 
     coefficients_table = _table_fragment(first, "table-model-coefficients")
+    # `beta` y `p_value` son numéricas: su encabezado lleva la clase `num` (D-INF-2).
     column_positions = [
-        coefficients_table.index(f"<th>{column}</th>") for column in ("feature", "beta", "p_value")
+        coefficients_table.index(marca)
+        for marca in (
+            "<th>feature</th>",
+            '<th class="num">beta</th>',
+            '<th class="num">p_value</th>',
+        )
     ]
     assert column_positions == sorted(column_positions)
 
@@ -265,7 +275,7 @@ def test_document_view_renderiza_validacion_formal_y_control_negativo() -> None:
     # D-VAL-17: la cuarta palabra es una banda neutra, nunca verde.
     assert renderer_module._band_class(VALIDATION_STATUS_LABELS["not_evaluable"]) == "band-none"
     section = next(item for item in view["sections"] if item["id"] == "validation.discrimination")
-    assert section["tables"][0]["rows"][0][3:6] == ("0.810000", "0.620000", "0.480000")
+    assert section["tables"][0]["rows"][0][3:6] == ("0,8100", "0,6200", "0,4800")
     assert section["placeholder"] is None
 
     negative = renderer_module.build_document_view(base, config=ReportConfig())
@@ -299,7 +309,7 @@ def test_documento_tiene_indice_metricas_ejecutivas_y_titulos_legibles() -> None
     # El slot ejecutivo ya no está vacío: trae las métricas clave y su banda.
     assert '<div class="exec-metrics-slot"></div>' not in html
     assert '<table class="exec-metrics">' in html
-    assert "0.7432" in html  # AUC de la card de performance
+    assert "0,7432" in html  # AUC de la card de performance
     assert "Sin alertas" in html
     assert "No se configuraron umbrales de discriminación" in html
 
@@ -806,38 +816,40 @@ def test_constructores_helpers_y_reexports_livianos_por_subprocess() -> None:
     # sino como el mismo em-dash que `None`.
     assert renderer_module._display_scalar(float("nan"), key_path=("x",)) == "—"
     assert renderer_module._display_scalar("none", key_path=("action",)) == "—"
-    # Las provisiones publican en `Decimal`: la celda se formatea como un float, no como la
-    # mantisa completa (52 dígitos) que devolvería `str(Decimal)`.
+    # Las provisiones publican en `Decimal`: la celda se formatea con la regla del informe, no
+    # como la mantisa completa (52 dígitos) que devolvería `str(Decimal)`.
     assert (
         renderer_module._display_scalar(
             Decimal("0.0052290061597687685198855454245661540747073248842022"),
             key_path=("pd_group",),
         )
-        == "0.005229"
+        == "0,0052"
     )
     # Las cifras de plata (exposición, provisión) son floats grandes: con seis decimales la celda
-    # volcaba `697376973.922913`, doce dígitos de precisión falsa. Por encima de mil van a dos.
+    # volcaba `697376973.922913`, doce dígitos de precisión falsa. Por encima de mil van a dos, con
+    # miles agrupados (D-INF-1).
     assert (
         renderer_module._display_scalar(697376973.9229126, key_path=("total_exposure",))
-        == "697376973.92"
+        == "697.376.973,92"
     )
     # El corte es por MAGNITUD, no por nombre de columna: también aplica a un `Decimal` contable...
     assert (
         renderer_module._display_scalar(Decimal("4338485154.07"), key_path=("provision_amount",))
-        == "4338485154.07"
+        == "4.338.485.154,07"
     )
     # ...y no toca los indicadores de riesgo, que viven muy por debajo del corte.
-    assert renderer_module._display_scalar(0.7123458941, key_path=("auc",)) == "0.712346"
-    assert renderer_module._display_scalar(999.9999999, key_path=("x",)) == "1000.000000"
-    assert renderer_module._display_scalar(1000.0, key_path=("x",)) == "1000.00"
+    assert renderer_module._display_scalar(0.7123458941, key_path=("auc",)) == "0,7123"
+    # La regla del cero final: 999,9999999 no se escribe «1.000,00», que sería un número exacto.
+    assert renderer_module._display_scalar(999.9999999, key_path=("x",)) == "999,9999999"
+    assert renderer_module._display_scalar(1000.0, key_path=("x",)) == "1.000,00"
     # Colección vacía = «ninguno», no `[]`/`{}` crudos.
     assert renderer_module._display_scalar([], key_path=("warning_codes",)) == "—"
     assert renderer_module._display_scalar({}, key_path=("x",)) == "—"
-    assert renderer_module._format_float(float("nan"), key_path=("x",)) == "—"
-    assert renderer_module._display_scalar(True, key_path=("x",)) == "true"
+    assert renderer_module._format_number(float("nan"), key_path=("x",)) == "—"
+    assert renderer_module._display_scalar(True, key_path=("x",)) == "sí"
     assert renderer_module._display_scalar(7, key_path=("x",)) == "7"
     assert renderer_module._display_scalar({"b": 2, "a": -0.0}, key_path=("x",)) == (
-        '{\n  "a": "0.000000",\n  "b": 2\n}'
+        '{\n  "a": "0,0000",\n  "b": 2\n}'
     )
     assert renderer_module._display_value({"z", "a"}, key_path=("set",)) == ('[\n  "a",\n  "z"\n]')
     assert renderer_module._display_scalar(MiniFigure(figure_id="m", title="T"), key_path=("m",))
@@ -848,10 +860,10 @@ def test_constructores_helpers_y_reexports_livianos_por_subprocess() -> None:
     assert renderer_module._display_json_value(
         {"nested": {"x": 1.2}},
         key_path=("root",),
-    ) == {"nested": {"x": "1.200000"}}
+    ) == {"nested": {"x": "1,2000"}}
     assert renderer_module._display_json_value([1, -0.0], key_path=("list",)) == [
         1,
-        "0.000000",
+        "0,0000",
     ]
     assert renderer_module._display_json_value({"b", "a"}, key_path=("set",)) == ["a", "b"]
     assert renderer_module._display_json_value(
@@ -867,14 +879,12 @@ def test_constructores_helpers_y_reexports_livianos_por_subprocess() -> None:
     assert renderer_module._display_json_value(object(), key_path=("obj",)) == {
         "unsupported_type": "object"
     }
-    assert renderer_module._table_view("x.frame", FrameLike(), max_rows=10)["rows"] == [
-        ("0.000000",)
-    ]
-    assert renderer_module._format_float(float("nan"), key_path=("x",)) == "—"
+    assert renderer_module._table_view("x.frame", FrameLike(), max_rows=10)["rows"] == [("0,0000",)]
+    assert renderer_module._format_number(float("nan"), key_path=("x",)) == "—"
     # inf/-inf se conservan crudos a propósito: un infinito es un valor anómalo real que debe saltar
     # a la vista del validador, no ocultarse como celda vacía.
-    assert renderer_module._format_float(float("inf"), key_path=("x",)) == "inf"
-    assert renderer_module._format_float(float("-inf"), key_path=("x",)) == "-inf"
+    assert renderer_module._format_number(float("inf"), key_path=("x",)) == "inf"
+    assert renderer_module._format_number(float("-inf"), key_path=("x",)) == "-inf"
     assert renderer_module._stable_json({"b": -0.0, "a": object()}) == (
         '{"a":{"unsupported_type":"object"},"b":0.0}'
     )

@@ -152,7 +152,7 @@ def _encabezados_html(html: str) -> list[str]:
         r'<table[^>]*data-table-key="validation\.calibration"[^>]*>(.*?)</table>', html, re.S
     )
     assert tabla is not None, "el documento no trae la tabla validation.calibration"
-    return re.findall(r"<th>(.*?)</th>", tabla.group(1))
+    return re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla.group(1))
 
 
 def _seccion_calibracion(html: str) -> str:
@@ -182,7 +182,7 @@ def test_la_prosa_nombra_los_dos_cortes_leidos_de_la_card_cuando_corrio_el_contr
     # Pasada 3 de Codex: la tabla redondea el p-valor a seis decimales y el color se decidió sobre
     # el valor exacto; con cortes de más decimales un p-valor pegado al corte parecería
     # contradecir el color. El límite se declara, no se esconde.
-    assert "redondeados a seis decimales" in seccion
+    assert "con tres decimales, «&lt; 0,001» bajo ese corte" in seccion  # D-INF-1
     assert "sobre el valor exacto" in seccion
 
 
@@ -241,8 +241,7 @@ def test_el_html_conserva_las_trece_columnas_de_la_tabla_de_calibracion(contrast
     html = _html(result)
     assert tuple(_encabezados_html(html)) == _COLUMNAS_PINTADAS
     for columna in _COLUMNAS_DE_AUDITORIA:
-        assert f"<th>{columna}</th>" not in html
-        assert f"<td>{columna}</td>" not in html
+        assert not re.search(rf"<t[hd](?:\s[^>]*)?>{columna}</t[hd]>", html)
 
 
 @pytest.mark.skipif(not _HAS_DOCX, reason="requiere el extra docx (python-docx)")

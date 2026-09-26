@@ -396,7 +396,12 @@ def _section(
         _caption(word, chart["title"], points=points)
     for table in section["tables"]:
         _caption(word, table["title"], points=points, bold=True)
-        escritas = _table(word, tuple(table["columns"]), [tuple(row) for row in table["rows"]])
+        escritas = _table(
+            word,
+            tuple(table["columns"]),
+            [tuple(row) for row in table["rows"]],
+            numeric=tuple(table.get("numeric") or ()),
+        )
         # La leyenda dice lo que el Word trae DE VERDAD: su cinturón puede cortar por debajo de
         # lo que la vista canónica permitió, y decir «mostrando 1000» con 500 filas ocultaba
         # evidencia (pasada 16 de la revisión adversarial).
@@ -481,12 +486,24 @@ def _narration(word: Any, narration: Mapping[str, Any]) -> None:
 # ─────────────────────────── primitivas de Word ───────────────────────────
 
 
-def _table(word: Any, columns: Sequence[str], rows: Sequence[Sequence[str]]) -> int:
+def _table(
+    word: Any,
+    columns: Sequence[str],
+    rows: Sequence[Sequence[str]],
+    *,
+    numeric: Sequence[bool] = (),
+) -> int:
     """Tabla NATIVA de Word (no una imagen): editable, copiable y con encabezado en negrita.
 
     Devuelve cuántas filas de datos escribió: el cinturón :data:`_MAX_DOCX_TABLE_ROWS` puede
     dejar fuera filas que la vista canónica sí permitía, y la leyenda tiene que contarlas.
+
+    Las columnas que ``numeric`` marca se alinean a la derecha, encabezado incluido, como en el
+    HTML (D-INF-2).
     """
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    derecha = {indice for indice, es in enumerate(numeric) if es}
     visible = list(rows)[:_MAX_DOCX_TABLE_ROWS]
     table = word.add_table(rows=1, cols=len(columns))
     table.style = _TABLE_STYLE
@@ -496,10 +513,14 @@ def _table(word: Any, columns: Sequence[str], rows: Sequence[Sequence[str]]) -> 
         for paragraph in cell.paragraphs:
             for run in paragraph.runs:
                 run.bold = True
+            if index in derecha:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     for row in visible:
         cells = table.add_row().cells
         for index, value in enumerate(row):
             cells[index].text = str(value)
+            if index in derecha:
+                cells[index].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
     return len(visible)
 
 
