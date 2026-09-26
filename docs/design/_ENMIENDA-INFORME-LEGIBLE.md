@@ -30,6 +30,7 @@ corrida de la pantalla (`config_hash` `08cf3076…`) abierto en el navegador int
 | Celdas `true`/`false` | **214** |
 | Columnas numéricas alineadas a la derecha | **0** (la regla `td.num` existe en el CSS y nadie la emite) |
 | p-valores en tabla | `0.000000` en los 9 coeficientes; `0.000096` en Hosmer-Lemeshow |
+| **Cifras partidas carácter por carácter** (captura de Cami, 2026-09-26) | **874 celdas numéricas en 23 tablas** a 938 px; **765 en 21 tablas** a 1.440 px, y las mismas 765 a 2.560 px |
 | Pantalla de 2.560 px | la caja del documento se queda en **1.360 px** y la columna de contenido en **756 px**; 10 de las 45 tablas no caben y se desplazan dentro de su caja (la más ancha pide 1.700 px) |
 | Celular de 375 px | la página mide **825 px** de ancho: se desplaza entera hacia el lado |
 
@@ -37,6 +38,15 @@ corrida de la pantalla (`config_hash` `08cf3076…`) abierto en el navegador int
 promete el CSS—, sino las dos listas del resumen de la corrida (`dl.summary-files` y
 `dl.summary-states`): su rejilla `minmax(150px, 260px) 1fr` deja la columna del valor en 59 px y
 una ruta de archivo, que no tiene dónde partirse, la empuja hasta 388 px.
+
+**Las cifras partidas son el defecto más visible, y la primera medición no lo vio.** Contaba tablas
+que se desbordaban, no tablas **aplastadas**. `tbody td { overflow-wrap: anywhere }` —puesto para
+que una celda larga no empuje la tabla fuera de la hoja del PDF— también rige en pantalla, y ahí
+le permite al navegador achicar una columna hasta el ancho de un carácter: el ancho mínimo de una
+celda que puede partirse en cualquier punto es una letra. Con un encabezado corto (`iv`, `js`),
+la columna queda del ancho del encabezado y `0.094802` se escribe en seis renglones. Ocurre en
+toda pantalla, porque la caja no pasa de 1.360 px. **El PDF no lo sufre**: renderizado el de la
+demo, sus tablas anchas van en hoja apaisada con `white-space: nowrap` y ninguna cifra está partida.
 
 **La regla de 2026-07-20 tenía una razón que ya no se sostiene.** El punto decimal se conservó para
 que las tablas se pudieran copiar a una herramienta de análisis. Hoy esas cifras crudas tienen tres
@@ -181,8 +191,15 @@ el color de cada grado se decidió sobre el valor exacto.
   cifras tabulares: en el HTML y el PDF con la clase `num` que el CSS ya define, y en el Word con la
   alineación del párrafo de la celda. El encabezado se alinea con su columna.
 
-## 3. D-INF-3 — En una pantalla grande, el informe usa el ancho
+## 3. D-INF-3 — En pantalla, una cifra no se parte y el informe usa el ancho
 
+- 🔴 **Una cifra nunca se parte, y una palabra sólo entre palabras.** En `@media screen`, las
+  celdas y los encabezados vuelven a `overflow-wrap: normal` y las columnas numéricas (D-INF-2)
+  llevan `white-space: nowrap`. Una tabla que no cabe se desplaza **dentro de su caja**, que es lo
+  que el CSS ya prometía. El PDF conserva su `overflow-wrap: anywhere` (en el papel no hay
+  desplazamiento) y su hoja apaisada. Simulado sobre el informe del SBA a 938 px: **0 celdas
+  numéricas partidas** (hoy 874), la página sin desplazamiento lateral, y los textos largos
+  («Sin alertas», «Fuera de tiempo (OOT)») en dos renglones, entre palabras.
 - La caja del documento pasa de `max-width: 1360px` a **`1920px`**. En 2.560 px la columna de
   contenido crece de 756 px a ~1.316 px.
 - El índice de la derecha («En esta página») aparece desde **1.600 px** y no desde 1.080 px. Sus 13
@@ -267,15 +284,17 @@ de la demo: seguirán con el formato anterior hasta una recaptura, que pide un O
 - **Página ejecutiva**: con un PSI `0.24996` y umbrales configurados `0.125`/`0.25`, la cifra, la
   banda y la nota se leen juntas en el HTML y en el Word: `0,24996`, la banda de revisión, `0,125` y `0,25`;
   con los umbrales por defecto la nota no cambia.
-- **Ancho**, medido en el navegador interno sobre el informe del SBA en 375, 768, 1.440, 1.920 y
-  2.560 px: ancho desplazable = viewport, tablas que se desplazan dentro de su caja antes y
-  después. Se guarda como evidencia; el CSS no tiene prueba unitaria que valga como oráculo.
+- **Ancho**, medido en el navegador interno sobre el informe del SBA en 375, 768, 938, 1.440, 1.920
+  y 2.560 px: **cero celdas numéricas en más de un renglón** (medido con los rectángulos de línea
+  de su texto, no con la altura de la fila), ancho desplazable = viewport, y tablas que se
+  desplazan dentro de su caja, antes y después. Se guarda como evidencia; el CSS no tiene prueba unitaria que valga como oráculo.
 - **Controles negativos**: (a) devolver `.6f` en `_format_float` pone rojo el censo de puntos
   decimales; (b) quitar la regla de dos cifras significativas pone rojo el caso `0.000015`;
   (c) agrupar todos los enteros pone rojo el año de `tramo`; (d) quitar el `dl` a una columna deja
   el celular en 825 px, medido; (e) quitar la regla del cero final pone rojo el PSI `0.24996`;
   (f) volver a pasar el `Decimal` por `float` pone rojo `Decimal("0.24999999999999999999")`;
-  (g) redondear las marcas a doce decimales fijos pone rojo el eje de `3e-13`.
+  (g) redondear las marcas a doce decimales fijos pone rojo el eje de `3e-13`; (h) devolver
+  `overflow-wrap: anywhere` a las celdas en pantalla vuelve a partir las 874 cifras, medido.
 - **PDF**: el del SBA antes y después, con su número de páginas y las tablas apaisadas revisadas
   una a una en el render.
 - Suite completa sin `-W ignore`, `mypy`, `ruff`, y el HTML, el PDF y el Word del SBA abiertos.
@@ -285,7 +304,8 @@ de la demo: seguirán con el formato anterior hasta una recaptura, que pide un O
 Tope declarado: **dos pasadas**, porque es una enmienda de presentación acotada.
 
 **Tope alcanzado sin `approve`.** Las dos pasadas encontraron defectos reales, y las correcciones
-de la pasada 2 quedan **sin revisar por Codex**. Se eleva así a Cami y la implementación abre con
+de la pasada 2 —y el primer punto de D-INF-3, que nació de la captura de Cami después del tope—
+quedan **sin revisar por Codex**. Se eleva así a Cami y la implementación abre con
 una pasada de Codex sobre el código antes de integrar, como en D-CPY.
 
 | Pasada | Hallazgo | Qué cambió |
