@@ -46,11 +46,13 @@ copy público: una persona lo lee, y lo lee junto a una prosa que ya dice `23,80
 
 ---
 
-## 1. D-INF-1 — Todo número que el informe imprime va en es-CL, y ninguno cruza un corte
+## 1. D-INF-1 — Todo número que el informe imprime va en es-CL, y ninguno se hace pasar por un corte
 
 Una sola función de formato, compartida por las tablas, las listas de clave y valor, los bloques del
-anexo de parámetros, el linaje y los gráficos. Sus decimales base son los de los resúmenes por
-etapa (D-FLU), no una regla nueva:
+anexo de parámetros, el linaje, los gráficos y las cifras de la página ejecutiva (§1.4). Sus decimales base son los de los resúmenes por
+etapa (D-FLU), no una regla nueva. La única superficie del informe que no pasa por ella es el
+**resumen de la corrida**, que reproduce palabra por palabra los resúmenes por etapa de la puerta
+guiada (una sola fuente, D-FLU) y sigue su regla; se eleva en §6-3.
 
 | Valor | Base | Ejemplo |
 |---|---|---|
@@ -70,7 +72,17 @@ etapa (D-FLU), no una regla nueva:
 
 🔴 Sobre esa base manda una regla más: **si la cifra redondeada termina en cero y no es el valor
 exacto, se agregan decimales hasta que el último no sea cero**; como máximo, se llega a la
-representación exacta (la más corta que reproduce el float, `repr`, como `prose._cut`).
+representación exacta.
+
+**Qué es «el exacto».** La regla opera en decimal, nunca en binario: el exacto de un `float` es
+`Decimal(repr(x))` —la representación más corta que lo reproduce, la misma de `prose._cut`—, y el
+de un `Decimal` es **el propio `Decimal`, sin pasar por `float`**. Hoy `_display_scalar` y
+`_display_json_value` convierten el `Decimal` de las provisiones a `float` antes de formatear, y
+`Decimal("0.24999999999999999999")` se vuelve `0.25`: la regla lo daría por exacto y escribiría
+`0,2500`. Con la ruta decimal se escribe `0,24999999999999999999`, y un `Decimal("1E-400")`, que en
+`float` es cero, sale `1,0e-400`. El redondeo es al par más cercano (`ROUND_HALF_EVEN`) sobre ese
+decimal, para `float` y `Decimal` por igual. **Termina siempre**: el exacto tiene una cantidad
+finita de decimales, y al llegar a ella la cifra es el exacto.
 
 | Exacto | Con la base | Con la regla |
 |---|---|---|
@@ -88,8 +100,9 @@ defecto de `validation`, `stability`, `selection` y `binning` tienen una o dos c
 (`0,01`, `0,02`, `0,05`, `0,10`, `0,25`, `0,50`, `0,75`; medido en sus `config.py`): las cifras de
 cuatro decimales respetan cualquier corte de hasta tres, y los p-valores de tres decimales,
 cualquiera de hasta dos. Un corte institucional con tantos decimales como la cifra mostrada
-(`0,125` frente a un p-valor `0,1251`, que se escribiría `0,125`) sigue pudiendo coincidir: por eso la prosa conserva que *el color de cada grado se decidió sobre el valor exacto*,
-y el veredicto de cada fila sigue escrito en su propia columna.
+(`0,125` frente a un p-valor `0,1251`, que se escribiría `0,125`) sigue pudiendo coincidir: por
+eso la prosa conserva que *el color de cada grado se decidió sobre el valor exacto*, y el
+veredicto de cada fila sigue escrito en su propia columna.
 
 **Por qué no por tabla.** La alternativa era conocer, celda por celda, contra qué corte se compara
 cada cifra (el PSI con sus umbrales de la misma fila, el p-valor con los cortes del semáforo que
@@ -126,13 +139,34 @@ Hoy `charts._numeric_formatter` escribe los ejes con dos o tres decimales fijos 
 leyendas redondean con `f"{x:.3f}"` (`Brier=`, `ECE=`) o `f"{x:.2f}"` («Revisión: 0.10 ≤ índice <
 0.25», «Redesarrollo: índice ≥ 0.25»). Cambiar sólo el separador dejaría dos defectos:
 
-- **Un eje de coeficientes de `3e-09` se rotularía `0,00`** en todas sus marcas. Las marcas del eje
-  pasan a escribirse con los decimales base del eje y, si la marca no es exacta con ellos, con los
-  que necesite (tras limpiar el ruido de coma flotante del localizador con un redondeo a 12
-  decimales), con la misma notación científica bajo una millonésima.
+- **Un eje de coeficientes de `3e-09` se rotularía `0,00`** en todas sus marcas. Las marcas de un
+  eje se escriben **todas con los mismos decimales**, los que pide el **paso entre marcas** y nunca
+  menos que los base del eje: un paso de `0,05` pide dos, uno de `5e-10` pide diez. Si el paso es
+  menor que una millonésima, las marcas van en la notación científica de §1. El ruido de coma
+  flotante del localizador (`0.30000000000000004`, o `2.8e-17` donde va el cero) se limpia
+  **relativo al paso**, no con un redondeo absoluto: redondear a doce decimales fijos convertía en
+  cero todas las marcas de un eje de `3e-13`. Una marca que queda en cero sale sin signo.
 - **`Brier=0.0004` se leería `0,000`, y un corte configurado `0,125` se leería `0,12`.** Brier y
   ECE pasan por la función de §1 (`0,00040`); los umbrales de las leyendas se escriben **exactos**,
   como `prose._cut` escribe los cortes en la prosa (`0,125`, `0,10`, `0,25`).
+
+### 1.4 La prosa del informe que escribe un corte o una métrica junto a su banda
+
+La página ejecutiva (`prose.executive_view`, que el HTML, el PDF y el Word pintan igual) escribe
+AUC, KS, Gini y el PSI con `_num(..., decimals=4)` junto a su banda, y la nota de umbrales con
+`_num(..., decimals=2)`: un PSI `0.24996` sale `0,2500` con la banda de revisión, y un umbral
+configurado `0.125`, `0,12`. Dos cambios:
+
+- Las cifras de la página ejecutiva pasan por la función de §1, con la regla del cero final.
+- **Toda frase del informe que escribe un corte del config lo escribe exacto**, con `prose._cut`,
+  la regla que ya usan los cortes del semáforo de calibración: la nota de umbrales de la página
+  ejecutiva y las frases de metodología que citan el IV mínimo y máximo, el umbral de
+  correlación, los cortes del PSI, el nivel de significancia y los p-valores de entrada y salida
+  del stepwise. Con los valores por defecto el texto no cambia: `_cut` escribe `0,10`, `0,25`,
+  `0,05` y `0,02` igual que `_num(..., decimals=2)`.
+
+El resto de la prosa —conteos, porcentajes, montos, el VIF máximo— no cambia: no compara una
+cifra con un corte.
 
 **La prosa que describe la tabla se corrige.** `prose.py` dice hoy *«Los p-valores de la tabla se
 muestran redondeados a seis decimales»*; pasa a decir que se muestran con tres decimales, `< 0,001`
@@ -207,6 +241,10 @@ interno; se vuelve a medir sobre el código, §7):
    intercepto con `_num(..., decimals=4)`; un valor diminuto negativo sale con signo. Es la regla
    de D-INF-1 aplicada a la prosa, que es otra superficie; se anota para la próxima enmienda de
    copy.
+3. **Los resúmenes por etapa escriben la métrica junto a su banda con decimales fijos**
+   (`_num`, `_pct`), en la puerta guiada, en la pantalla y en el resumen de la corrida del
+   informe. La regla del cero final cabe ahí igual que en §1.4, pero cambia la puerta guiada; va
+   con la enmienda de la pantalla del punto 1.
 
 **La demo.** `web/src/fixtures/demo/report-f1.html` y `report-ifrs9.html` son informes versionados
 de la demo: seguirán con el formato anterior hasta una recaptura, que pide un OK propio de Cami.
@@ -223,14 +261,21 @@ de la demo: seguirán con el formato anterior hasta una recaptura, que pide un O
   agrega a un valor exacto.
 - **Gráficos**: el SVG de estabilidad dice `Revisión: 0,10 ≤ índice < 0,25` y, con un corte
   configurado `0.125`, `0,125`; un forest de coeficientes de `3e-09` no rotula ninguna marca
-  `0,00`; `Brier=0.0004` se escribe `0,00040`.
+  `0,00`, ni uno de `3e-13`; `Brier=0.0004` se escribe `0,00040`.
+- **`Decimal`**: `Decimal("0.24999999999999999999")` → `0,24999999999999999999`;
+  `Decimal("1E-400")` → `1,0e-400`; un monto `Decimal("4338485154.07")` → `4.338.485.154,07`.
+- **Página ejecutiva**: con un PSI `0.24996` y umbrales configurados `0.125`/`0.25`, la cifra, la
+  banda y la nota se leen juntas en el HTML y en el Word: `0,24996`, la banda de revisión, `0,125` y `0,25`;
+  con los umbrales por defecto la nota no cambia.
 - **Ancho**, medido en el navegador interno sobre el informe del SBA en 375, 768, 1.440, 1.920 y
   2.560 px: ancho desplazable = viewport, tablas que se desplazan dentro de su caja antes y
   después. Se guarda como evidencia; el CSS no tiene prueba unitaria que valga como oráculo.
 - **Controles negativos**: (a) devolver `.6f` en `_format_float` pone rojo el censo de puntos
   decimales; (b) quitar la regla de dos cifras significativas pone rojo el caso `0.000015`;
   (c) agrupar todos los enteros pone rojo el año de `tramo`; (d) quitar el `dl` a una columna deja
-  el celular en 825 px, medido; (e) quitar la regla del cero final pone rojo el PSI `0.24996`.
+  el celular en 825 px, medido; (e) quitar la regla del cero final pone rojo el PSI `0.24996`;
+  (f) volver a pasar el `Decimal` por `float` pone rojo `Decimal("0.24999999999999999999")`;
+  (g) redondear las marcas a doce decimales fijos pone rojo el eje de `3e-13`.
 - **PDF**: el del SBA antes y después, con su número de páginas y las tablas apaisadas revisadas
   una a una en el render.
 - Suite completa sin `-W ignore`, `mypy`, `ruff`, y el HTML, el PDF y el Word del SBA abiertos.
@@ -239,9 +284,14 @@ de la demo: seguirán con el formato anterior hasta una recaptura, que pide un O
 
 Tope declarado: **dos pasadas**, porque es una enmienda de presentación acotada.
 
+**Tope alcanzado sin `approve`.** Las dos pasadas encontraron defectos reales, y las correcciones
+de la pasada 2 quedan **sin revisar por Codex**. Se eleva así a Cami y la implementación abre con
+una pasada de Codex sobre el código antes de integrar, como en D-CPY.
+
 | Pasada | Hallazgo | Qué cambió |
 |---|---|---|
 | 1 | (a) **alto**: redondear puede contradecir el semáforo —un PSI `0.24996` se leería `0,2500` frente a su corte `0,25`— y un corte institucional `0.05004` del anexo se leería `0,0500`. (b) **alto**: cambiar sólo el separador de los gráficos deja un eje de `3e-09` rotulado `0,00`, `Brier=0.0004` como `0,000` (usa `.3f`, no `.2f` como decía el texto) y un corte `0,125` en la leyenda como `0,12`. (c) **medio**: `width: 100%` es una regla general que `@media print` no redeclara; poner `width: auto` fuera de pantalla alcanzaría al PDF | (a) §1.1: la regla del cero final, con su garantía y su límite escritos. (b) §1.3: marcas del eje con los decimales que necesiten, Brier/ECE por la función de §1 y umbrales de leyenda exactos. (c) §3: `width: auto` sólo en `@media screen`, y el PDF se compara página a página. Los tres, con casos en §7 |
+| 2 | (a) **alto**: la página ejecutiva escribe el PSI con `_num(..., decimals=4)` junto a su banda y los umbrales con `_num(..., decimals=2)`: `0.24996` sale `0,2500` con la banda de revisión y un umbral `0.125`, `0,12`. (b) **alto**: `_display_scalar` pasa el `Decimal` por `float`; `Decimal("0.24999999999999999999")` se vuelve `0.25` y la regla lo daría por exacto. (c) **medio**: redondear las marcas a doce decimales fijos vuelve a rotular cero un eje de `3e-13` | (a) §1.4: la página ejecutiva por la función de §1 y todo corte del config escrito exacto con `_cut`; el resumen de la corrida, que reproduce los resúmenes por etapa, queda declarado y elevado (§6-3). (b) §1.1: la regla opera en decimal; el `Decimal` no pasa por `float`. (c) §1.3: decimales por el paso entre marcas y limpieza relativa al paso. Con casos y controles negativos en §7 |
 
 ## 13. Simplicidad (SDD-31) — obligatoria
 
