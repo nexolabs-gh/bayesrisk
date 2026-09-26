@@ -35,6 +35,13 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 
 ### Corregido
 
+- **En el informe HTML, una cifra ya no se parte carácter por carácter.** Las celdas podían
+  partirse en cualquier punto, y el navegador angostaba una columna hasta el ancho de una letra:
+  bajo un encabezado corto (`iv`, `js`), `0.094802` salía en seis renglones. En el informe de una
+  corrida real eran 874 celdas en 23 tablas, y 765 aun en una pantalla de 2.560 px. Ahora, en
+  pantalla, una celda se parte sólo entre palabras y una tabla que no cabe se desplaza dentro de
+  su caja. En el PDF no cambia nada: ahí, sin desplazamiento posible, la celda sigue partiéndose
+  para no invadir la vecina.
 - **Las tablas de `sc.results[...]` y `sc.bins(...)` se ven como las lee una persona.** En el
   notebook y en la consola salían crudas —`0.547746`, `None`, `NaN`, punto decimal— al lado de un
   resumen que decía `0,548`. Ahora son un `DataFrame` con los números intactos para calcular que

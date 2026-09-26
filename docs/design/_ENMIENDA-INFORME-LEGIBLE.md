@@ -6,7 +6,7 @@
 | **Decisiones** | **D-INF-1…4** y dos **elevaciones** que no entran (§6) |
 | **Módulos** | `nikodym.report` (`renderer`, `charts`, `docx`, `prose`, `templates/`) |
 | **Fase** | F1 |
-| **Estado** | **Propuesta** (S22, 2026-09-26). Cami eligió «enmienda corta y código ahora» con aprobación antes de programar |
+| **Estado** | **Propuesta** (S22, 2026-09-26). Cami eligió «enmienda corta y código ahora» con aprobación antes de programar. Ante la pregunta de aprobación respondió **«resuelve lo de la foto primero»**: el primer punto de D-INF-3 (una cifra no se parte en pantalla) **está implementado** (§11); D-INF-1, D-INF-2, el resto de D-INF-3 y D-INF-4 siguen esperando su aprobación. La recaptura de la demo tiene su OK: **«Sí, junto con la 1.20.0»** |
 | **Depende de** | D-REP-1…8 (el HTML es la representación canónica), D-MON-5 (la convención numérica cuelga del idioma), D-CPY-4 (p-valores «< 0,001») |
 | **Revierte** | La excepción de `1.4.0`: *«las tablas de detalle y los ejes de los gráficos conservan el punto a propósito: son volcado técnico»* (CHANGELOG 1.4.0, comentario en `renderer._format_float`) |
 | **Release** | Ningún número, `config_hash`, `data_hash` ni artefacto cambia; sólo el render ⇒ entra en la **1.20.0** como «Corregido» |
@@ -312,6 +312,31 @@ una pasada de Codex sobre el código antes de integrar, como en D-CPY.
 |---|---|---|
 | 1 | (a) **alto**: redondear puede contradecir el semáforo —un PSI `0.24996` se leería `0,2500` frente a su corte `0,25`— y un corte institucional `0.05004` del anexo se leería `0,0500`. (b) **alto**: cambiar sólo el separador de los gráficos deja un eje de `3e-09` rotulado `0,00`, `Brier=0.0004` como `0,000` (usa `.3f`, no `.2f` como decía el texto) y un corte `0,125` en la leyenda como `0,12`. (c) **medio**: `width: 100%` es una regla general que `@media print` no redeclara; poner `width: auto` fuera de pantalla alcanzaría al PDF | (a) §1.1: la regla del cero final, con su garantía y su límite escritos. (b) §1.3: marcas del eje con los decimales que necesiten, Brier/ECE por la función de §1 y umbrales de leyenda exactos. (c) §3: `width: auto` sólo en `@media screen`, y el PDF se compara página a página. Los tres, con casos en §7 |
 | 2 | (a) **alto**: la página ejecutiva escribe el PSI con `_num(..., decimals=4)` junto a su banda y los umbrales con `_num(..., decimals=2)`: `0.24996` sale `0,2500` con la banda de revisión y un umbral `0.125`, `0,12`. (b) **alto**: `_display_scalar` pasa el `Decimal` por `float`; `Decimal("0.24999999999999999999")` se vuelve `0.25` y la regla lo daría por exacto. (c) **medio**: redondear las marcas a doce decimales fijos vuelve a rotular cero un eje de `3e-13` | (a) §1.4: la página ejecutiva por la función de §1 y todo corte del config escrito exacto con `_cut`; el resumen de la corrida, que reproduce los resúmenes por etapa, queda declarado y elevado (§6-3). (b) §1.1: la regla opera en decimal; el `Decimal` no pasa por `float`. (c) §1.3: decimales por el paso entre marcas y limpieza relativa al paso. Con casos y controles negativos en §7 |
+
+## 11. Implementado por pedido de Cami: una cifra no se parte en pantalla
+
+Cami respondió a la aprobación con una captura —una tabla del informe del SBA con `0,0948` escrito
+en cinco renglones— y **«resuelve lo de la foto primero»**. Se implementó sólo eso, en CSS, sin
+adelantar ninguna otra decisión de esta enmienda:
+
+- `overflow-wrap: anywhere` sale de la regla general de `tbody td` y queda en `@media print`, junto
+  a la de `thead th` (tema `nikodym`); en el tema `plain`, igual. En pantalla una celda se parte
+  sólo entre palabras y una tabla que no cabe se desplaza dentro de su caja; en el PDF, donde no
+  hay desplazamiento, la celda y el encabezado siguen partiéndose.
+- **Medido en el artefacto** (el HTML del SBA con el CSS nuevo, abierto en el navegador interno;
+  se obtiene sustituyendo en el HTML sólo la hoja, porque el golden prueba que el CSS es lo único
+  que se mueve): **0 celdas numéricas en más de un renglón** a 375, 938, 1.440 y 2.560 px, frente
+  a 874 (938 px) y 765 (1.440 y 2.560 px) antes. Tablas que se desplazan dentro de su caja: 26 a
+  938 px, 12 a 1.440 y 2.560 px.
+- **Gate**: `test_en_pantalla_una_cifra_no_se_parte_y_en_el_pdf_la_celda_si`, para los dos temas,
+  con un parser mínimo de la hoja. **Controles negativos**: devolver `overflow-wrap: anywhere` a
+  `tbody td` fuera de `print` → rojo (`[('', 'tbody td')]`) y el golden también; quitarlo de las
+  reglas de papel del tema `plain` → rojo. Revertidos con copia y sha256.
+- **Golden del HTML** recalculado (`8da29d80…`): sustituyendo en el HTML nuevo la hoja nueva por la
+  anterior, el digest vuelve exactamente a `3f0720b6…`.
+- **Lo que queda igual y ya estaba**: a 938 px la página sigue midiendo 1.097 px de ancho, también
+  en el informe original. No son las tablas: son las rutas de archivo del resumen de la corrida,
+  el defecto de D-INF-4, que espera su aprobación.
 
 ## 13. Simplicidad (SDD-31) — obligatoria
 

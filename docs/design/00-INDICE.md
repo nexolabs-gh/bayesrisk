@@ -1098,6 +1098,15 @@ por módulo bajo SDD-31, la primera
 > `point_overrides` que casan también con el rótulo legible, p-valores «< 0,001», coma decimal en
 > el sitio y la brecha media agregada de Hosmer-Lemeshow. Eleva tres hallazgos que no son copy.
 
+> **Enmienda corta del informe legible (2026-09-26; **propuesta**, con el primer punto de D-INF-3
+> implementado por pedido de Cami: «resuelve lo de la foto primero»).**
+> [`_ENMIENDA-INFORME-LEGIBLE.md`](_ENMIENDA-INFORME-LEGIBLE.md), D-INF-1…4, enmienda a
+> [`26-report.md`](26-report.md): cifras es-CL en tablas, anexos y gráficos con la regla del cero
+> final (un redondeo nunca se hace pasar por un corte), columnas numéricas a la derecha, una cifra
+> que nunca se parte en pantalla (**implementado**: 874 celdas partidas → 0), una caja de 1.920 px
+> en pantallas grandes y un celular sin desplazamiento lateral. Revierte la excepción de `1.4.0`
+> («las tablas conservan el punto: volcado técnico»). Dos pasadas de Codex, tope alcanzado.
+
 ## Tandas de producción
 
 | Tanda | SDDs | Foco | Pre-requisito |

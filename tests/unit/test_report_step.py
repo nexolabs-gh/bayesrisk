@@ -98,7 +98,9 @@ ROOT_SEED = 20_240_629
 # Recalculado el mismo día (capa C2): el tema `nikodym` incrusta Roboto 400/700 en el CSS y la
 # pila `--sans` empieza por Roboto. Medido: con el CSS del commit anterior este mismo Study da
 # exactamente `4ead6d61…`, y fuera del bloque `<style>` los dos HTML son idénticos.
-GOLDEN_STEP_HTML_SHA256 = "f9ab90b08091d66e63dea6730d64fc13587d292dd6d6c0db2c319d9ec8c479d1"
+# Recalculado el 2026-09-26 (D-INF-3): `overflow-wrap: anywhere` de las celdas pasa a `@media
+# print`. Medido: con la hoja anterior restituida, este mismo Study vuelve a dar `f9ab90b0…`.
+GOLDEN_STEP_HTML_SHA256 = "0f2550a13262b315d1396119519789dd78c2d6523ac17c083be869a12b0d4e82"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 

@@ -70,7 +70,11 @@ from nikodym.validation.results import VALIDATION_STATUS_LABELS
 # da exactamente el golden anterior `f2c48380…`, y fuera del bloque `<style>` los dos HTML son
 # idénticos; el CSS es lo único que se movió. (La página ejecutiva de C1 no toca este golden: el
 # bundle sintético no trae corrida y el capítulo no se emite.)
-GOLDEN_HTML_SHA256 = "3f0720b68b0fe5a78b55f8dc40c91a3256b20ca8f22150819dac06ec48b3edd8"
+# Recalculado el 2026-09-26 (D-INF-3, la captura de Cami): `overflow-wrap: anywhere` de las celdas
+# pasa de la regla general a `@media print`, porque en pantalla partía las cifras carácter por
+# carácter. Medido: sustituyendo en el HTML nuevo el CSS nuevo por el anterior, el digest vuelve a
+# ser exactamente el golden anterior `3f0720b6…`; el CSS es lo único que se movió.
+GOLDEN_HTML_SHA256 = "8da29d80199b576b5ea873c92c54c1394ab43698ca7f1235af6ac1b5d93ef190"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
@@ -463,6 +467,67 @@ def test_el_tema_nikodym_incrusta_roboto_y_el_tema_plain_no() -> None:
     plain = HtmlReportRenderer(HtmlRenderConfig(theme="plain")).render(_bundle())
     assert "@font-face" not in plain and "Roboto" not in plain
     assert "font-family:Arial" in plain
+
+
+def _reglas_css(css: str, media: str = "") -> list[tuple[str, str, str]]:
+    """``(media, selector, cuerpo)`` de cada regla de estilo, con la media que la envuelve.
+
+    Un parser mínimo por llaves, suficiente para las dos hojas del informe: los comentarios se
+    quitan, un ``@media`` se recorre por dentro y las demás reglas arroba (``@font-face``,
+    ``@page`` con sus cajas de margen) se saltan enteras.
+    """
+    texto = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+    reglas: list[tuple[str, str, str]] = []
+    posicion = 0
+    while True:
+        apertura = texto.find("{", posicion)
+        if apertura == -1:
+            return reglas
+        preludio = texto[posicion:apertura].strip()
+        profundidad, cierre = 1, apertura + 1
+        while profundidad:
+            profundidad += {"{": 1, "}": -1}.get(texto[cierre], 0)
+            cierre += 1
+        cuerpo = texto[apertura + 1 : cierre - 1]
+        if preludio.startswith("@media"):
+            reglas.extend(_reglas_css(cuerpo, preludio))
+        elif not preludio.startswith("@"):
+            reglas.append((media, preludio, cuerpo))
+        posicion = cierre
+
+
+@pytest.mark.parametrize("hoja", ["scorecard_report.css", "scorecard_report_plain.css"])
+def test_en_pantalla_una_cifra_no_se_parte_y_en_el_pdf_la_celda_si(hoja: str) -> None:
+    """D-INF-3 (captura de Cami, 2026-09-26): con ``overflow-wrap: anywhere`` en las celdas, el
+    navegador angostaba una columna hasta un carácter y ``0.094802`` salía en seis renglones —874
+    celdas numéricas partidas en 23 tablas del informe del SBA a 938 px, medidas con los
+    rectángulos de línea de su texto—. En pantalla ninguna regla de ``td``/``th`` fuera de
+    ``@media print`` puede permitir partir en cualquier punto; una tabla que no cabe se desplaza
+    dentro de su caja. En el PDF, donde no hay desplazamiento, la celda y el encabezado sí se
+    parten, o una columna estrecha invadiría la vecina."""
+    from importlib import resources
+
+    css = resources.files("nikodym.report.templates").joinpath(hoja).read_text(encoding="utf-8")
+    reglas = _reglas_css(css)
+    assert len(reglas) > 20  # el parser recorrió la hoja, no una lista vacía que pasa sola
+    celda = re.compile(r"(^|[\s,>+~])(td|th)\b")
+    parte_en_cualquier_punto = re.compile(r"overflow-wrap:\s*anywhere|word-break:\s*break-all")
+    en_pantalla = [
+        (media, selector)
+        for media, selector, cuerpo in reglas
+        if "print" not in media
+        and celda.search(selector)
+        and parte_en_cualquier_punto.search(cuerpo)
+    ]
+    assert en_pantalla == []
+    en_papel = {
+        parte.strip()
+        for media, selector, cuerpo in reglas
+        if "print" in media and parte_en_cualquier_punto.search(cuerpo)
+        for parte in selector.split(",")
+    }
+    assert any(re.search(r"\btd\b", s) for s in en_papel), en_papel
+    assert any(re.search(r"\bth\b", s) for s in en_papel), en_papel
 
 
 def test_las_fuentes_se_leen_con_un_segmento_por_joinpath(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -776,8 +776,11 @@ tbody td {
   padding: 7px 12px;
   text-align: left;
   vertical-align: top;
-  /* Una celda larga se parte en vez de empujar la tabla fuera de la caja: en el PDF no hay scroll. */
-  overflow-wrap: anywhere;
+  /* En pantalla una celda se parte sólo entre palabras, y una cifra nunca. Con `overflow-wrap:
+     anywhere` el navegador podía angostar una columna hasta el ancho de un carácter: bajo un
+     encabezado corto (`iv`, `js`), `0.094802` salía en seis renglones. Una tabla que no cabe se
+     desplaza dentro de su `.table-block`; partir en cualquier punto queda sólo para el papel
+     (`@media print`), donde no hay desplazamiento. */
 }
 
 td.num,
@@ -927,11 +930,14 @@ figcaption {
     border: 1px solid var(--line);
   }
 
-  /* El encabezado se parte igual que la celda. Con `table-layout: fixed` el ancho de columna no
-     cede, así que un nombre largo (`total_exposure_amount`, 21 caracteres) desbordaba su celda e
-     invadía la vecina: en el PDF se leía «total_exposure_amounttotal_provision_amount», tres
-     encabezados encimados. `tbody td` ya se partía; a `thead th` le faltaba la misma regla. */
-  thead th {
+  /* En papel no hay desplazamiento: una celda larga se parte en cualquier punto antes que empujar la
+     tabla fuera de la hoja. El encabezado se parte igual que la celda. Con `table-layout: fixed` el
+     ancho de columna no cede, así que un nombre largo (`total_exposure_amount`, 21 caracteres)
+     desbordaba su celda e invadía la vecina: en el PDF se leía
+     «total_exposure_amounttotal_provision_amount», tres encabezados encimados. Sólo aquí: en
+     pantalla la misma regla partía las cifras carácter por carácter (ver `tbody td`). */
+  thead th,
+  tbody td {
     overflow-wrap: anywhere;
   }
 
