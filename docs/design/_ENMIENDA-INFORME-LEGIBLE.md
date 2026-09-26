@@ -334,6 +334,15 @@ adelantar ninguna otra decisión de esta enmienda:
   reglas de papel del tema `plain` → rojo. Revertidos con copia y sha256.
 - **Golden del HTML** recalculado (`8da29d80…`): sustituyendo en el HTML nuevo la hoja nueva por la
   anterior, el digest vuelve exactamente a `3f0720b6…`.
+- **Codex sobre el código, dos pasadas.** La 1 encontró dos defectos reales: la tabla de
+  adjuntos —fuera de `.table-block`, con nombres de archivo sin espacios en `<code>`— podía
+  ensanchar la página, y el oráculo del test clasificaba `@media not print` como papel. Se
+  corrigió con `td code { overflow-wrap: anywhere }` (un nombre de archivo no es una cifra),
+  `@media screen { .data-exports, .exec-metrics-slot { overflow-x: auto } }` en los dos temas, y
+  un intérprete de la media query (`not`, `only`, listas, anidadas) probado con ocho hojas que
+  violan o cumplen el contrato. Medido con un adjunto de nombre largo inyectado: el bloque cabe a
+  375, 938, 1.440 y 2.560 px. La pasada 2: **approve**, sin hallazgos.
+- **Suite completa** sobre `9cbdfb2`: 7.281 passed, 18 skipped, 0 rojos.
 - **Lo que queda igual y ya estaba**: a 938 px la página sigue midiendo 1.097 px de ancho, también
   en el informe original. No son las tablas: son las rutas de archivo del resumen de la corrida,
   el defecto de D-INF-4, que espera su aprobación.
