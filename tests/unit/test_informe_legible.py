@@ -340,3 +340,21 @@ def test_el_config_del_anexo_c_se_escribe_exacto_y_no_como_p_valor_observado() -
     }
     for corte_del_config in ("entry_p_value", "exit_p_value", "max_pvalue", "p_value_threshold"):
         assert not es_columna_de_pvalor(corte_del_config), corte_del_config
+
+
+def test_un_corte_repetido_en_una_card_se_lee_igual_que_en_el_config() -> None:
+    """Pasada 3 de Codex sobre el código: los `thresholds` de las cards se redondeaban junto al
+    `effective_config` exacto, y el Anexo C mostraba dos valores para el mismo corte."""
+    card = renderer_module._display_json_value(
+        {"thresholds": {"entry_p_value": 0.12541}, "ks_cutoff_score": 0.210709123},
+        key_path=("model",),
+    )
+    config = renderer_module._display_json_value(
+        {"stepwise": {"entry_p_value": 0.12541}}, key_path=("effective_config",)
+    )
+    assert card["thresholds"]["entry_p_value"] == config["stepwise"]["entry_p_value"] == "0,12541"
+    # `ks_cutoff_score` contiene «cut» pero es un resultado: sigue la regla de las cifras.
+    assert card["ks_cutoff_score"] == "0,2107"
+    # En una tabla, los umbrales se leen como en la prosa.
+    assert renderer_module._display_scalar(0.1, key_path=("t", "stable_threshold")) == "0,10"
+    assert renderer_module._display_scalar(0.05, key_path=("t", "alpha")) == "0,05"

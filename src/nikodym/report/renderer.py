@@ -1298,8 +1298,31 @@ def _es_booleano(value: Any) -> bool:
     return isinstance(value, bool) or getattr(getattr(value, "dtype", None), "kind", "") == "b"
 
 
-#: Clave con que el builder publica el config efectivo de cada dominio en el Anexo C.
-_CONFIG_EFECTIVO: Final = "effective_config"
+#: Segmentos de ruta que contienen cortes del config: el config efectivo que el builder publica
+#: en el Anexo C y los cortes que las cards repiten (`thresholds` de model, selection y
+#: performance; `traffic_light_cuts` de validation).
+_SEGMENTOS_DE_CORTE: Final = frozenset({"effective_config", "thresholds", "traffic_light_cuts"})
+#: Nombres de un corte del config, por sí solos (sin distinguir mayúsculas).
+_NOMBRES_DE_CORTE: Final = frozenset({"threshold", "alpha", "entry_p_value", "exit_p_value"})
+
+
+def _es_corte_del_config(key_path: tuple[str, ...]) -> bool:
+    """Si el número es un corte del config —por su procedencia en la ruta—, no un resultado.
+
+    Un corte se escribe exacto: redondeado describiría otra política. Por procedencia y no por
+    subcadena: `ks_cutoff_score` contiene «cut» y es un resultado (pasada 3 de Codex sobre el
+    código, que encontró los `thresholds` de las cards redondeados junto al `effective_config`
+    exacto: el mismo corte con dos valores en el Anexo C).
+    """
+    for segmento in key_path:
+        clave = segmento.strip().lower()
+        if (
+            clave in _SEGMENTOS_DE_CORTE
+            or clave in _NOMBRES_DE_CORTE
+            or clave.endswith(("_threshold", "_alpha", "_cat_cutoff"))
+        ):
+            return True
+    return False
 
 
 def _format_number(value: Decimal | numbers.Real, *, key_path: tuple[str, ...]) -> str:
@@ -1312,11 +1335,11 @@ def _format_number(value: Decimal | numbers.Real, *, key_path: tuple[str, ...]) 
     """
     columna = key_path[-1] if key_path else ""
     numero = value if isinstance(value, Decimal) else float(value)
-    if _CONFIG_EFECTIVO in key_path and math.isfinite(numero):
-        # El config efectivo del Anexo C es la política que se ejecutó: se escribe exacto, como
-        # un corte. Por la regla de las cifras observadas, un `entry_p_value` de 0.0005 salía
-        # «< 0,001» y uno de 0.1254 salía «0,125» (pasada 2 de Codex sobre el código).
-        return corte(numero, minimo=1)
+    if _es_corte_del_config(key_path) and math.isfinite(numero):
+        # Un corte del config es la política que se ejecutó: se escribe exacto. Por la regla de
+        # las cifras observadas, un `entry_p_value` de 0.0005 salía «< 0,001» y uno de 0.1254
+        # salía «0,125» (pasada 2 de Codex sobre el código).
+        return corte(numero)  # mínimo dos decimales, como `prose._cut`: «0,10»
     if es_columna_de_pvalor(columna):
         return pvalor(numero)
     return cifra(numero)
