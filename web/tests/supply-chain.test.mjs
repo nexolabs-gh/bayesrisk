@@ -58,7 +58,7 @@ function signature(bytes) {
 }
 
 function withTempDirectory(callback) {
-  const directory = mkdtempSync(path.join(tmpdir(), "nikodym-supply-test-"))
+  const directory = mkdtempSync(path.join(tmpdir(), "bayesrisk-supply-test-"))
   try {
     callback(directory)
   } finally {
@@ -95,7 +95,7 @@ test("transform rechaza fixture oculto o módulo absoluto externo aunque sea tre
   ]) {
     assert.throws(() => plugin.transform("", id), /Fixture demo/)
   }
-  assert.throws(() => plugin.transform("", "/outside/nikodym-module.js"), /fuera del repositorio/)
+  assert.throws(() => plugin.transform("", "/outside/bayesrisk-module.js"), /fuera del repositorio/)
 })
 
 test("atribuye imports CSS que Tailwind resuelve fuera de transform", () => {
@@ -107,13 +107,13 @@ test("atribuye imports CSS que Tailwind resuelve fuera de transform", () => {
 
 test("notices versionados coinciden byte a byte con procedencia", () => {
   const provenance = JSON.parse(readFileSync("dist/evidence/frontend-provenance.json", "utf8"))
-  const notices = readFileSync("../src/nikodym/ui/static/THIRD_PARTY_NOTICES.frontend.txt")
+  const notices = readFileSync("../src/bayesrisk/ui/static/THIRD_PARTY_NOTICES.frontend.txt")
   assert.deepEqual(Buffer.from(buildNotices(provenance.packages)), notices)
 })
 
 test("packageEvidence conserva LICENSE, NOTICE, COPYRIGHT y referencias declaradas", () => {
   const parent = path.resolve("node_modules")
-  const packageRoot = mkdtempSync(path.join(parent, ".nikodym-license-fixture-"))
+  const packageRoot = mkdtempSync(path.join(parent, ".bayesrisk-license-fixture-"))
   try {
     writeFileSync(
       path.join(packageRoot, "package.json"),
@@ -223,10 +223,10 @@ test("packageEvidence conserva LICENSE, NOTICE, COPYRIGHT y referencias declarad
 
 test("HTML distingue navegación deliberada, loopback y requests automáticos externos", () => {
   for (const html of [
-    '<a title="1 > 0" href="https://docs.nikodym.cl">Docs</a>',
-    '<area href="https://docs.nikodym.cl/map">',
-    '<link rel=canonical href=https://docs.nikodym.cl>',
-    '<script>const docs="https://docs.nikodym.cl"</script>',
+    '<a title="1 > 0" href="https://docs.bayesadvisory.cl">Docs</a>',
+    '<area href="https://docs.bayesadvisory.cl/map">',
+    '<link rel=canonical href=https://docs.bayesadvisory.cl>',
+    '<script>const docs="https://docs.bayesadvisory.cl"</script>',
     '<script type=application/json>{"example":"fetch(\\"https://evil.test\\")"}</script>',
     '<script type=application/ld+json>{"url":"https://docs.test"}</script>',
     '<script type=text/plain>fetch("https://evil.test")</script>',
@@ -717,7 +717,7 @@ test("un / suelto no oculta los atributos siguientes del tag", () => {
     "<br/>",
     '<img src="/local.png" />',
     '<img src="/local.png"/>',
-    "<link rel=canonical href=https://docs.nikodym.cl />",
+    "<link rel=canonical href=https://docs.bayesadvisory.cl />",
     '<div style="color:red" / >',
   ]) {
     assert.doesNotThrow(() => assertNoAutomaticExternalRequests(html), html)
@@ -787,7 +787,7 @@ test("manifest estructurado enumera fixtures anidados y exige ventana central", 
     writeFileSync(path.join(directory, "nested", "fixture.bin"), bytes)
     const manifest = {
       schema_version: 2,
-      sentinel: "NIKODYM_DEMO_FIXTURE_ONLY",
+      sentinel: "BAYESRISK_DEMO_FIXTURE_ONLY",
       files: { "nested/fixture.bin": signature(bytes) },
     }
     assert.doesNotThrow(() => validateFixtureManifest(manifest, directory))
@@ -812,7 +812,7 @@ test("scanner detecta JSON inline, centro binario, base64 y sentinel", () => {
     writeFileSync(path.join(directory, "fixture.bin"), binary)
     const manifest = {
       schema_version: 2,
-      sentinel: "NIKODYM_DEMO_FIXTURE_ONLY",
+      sentinel: "BAYESRISK_DEMO_FIXTURE_ONLY",
       files: {
         "fixture.json": signature(json),
         "fixture.bin": signature(binary),
@@ -825,7 +825,7 @@ test("scanner detecta JSON inline, centro binario, base64 y sentinel", () => {
         signature(binary).windows[1].offset + signature(binary).windows[1].length,
       ),
       Buffer.from(signature(binary).windows[1].base64),
-      Buffer.from("prefix-NIKODYM_DEMO_FIXTURE_ONLY-suffix"),
+      Buffer.from("prefix-BAYESRISK_DEMO_FIXTURE_ONLY-suffix"),
     ]
     cases.forEach((content, index) => {
       const output = path.join(directory, `output-${index}.js`)
@@ -989,7 +989,7 @@ test("MPL build-only pasa solo fuera de prod y procedencia", () => {
 // ── Origen absoluto embebido en el bundle (enmienda B2.2, E-B2.2-9) ──────────────────────────
 
 test("assertNoEmbeddedBackendOrigin caza un backend absoluto dentro del JS", (t) => {
-  const dir = mkdtempSync(path.join(tmpdir(), "nikodym-origin-"))
+  const dir = mkdtempSync(path.join(tmpdir(), "bayesrisk-origin-"))
   t.after(() => rmSync(dir, { recursive: true, force: true }))
   const archivo = path.join(dir, "index-abc.js")
 
@@ -1011,17 +1011,17 @@ test("assertNoEmbeddedBackendOrigin caza un backend absoluto dentro del JS", (t)
 })
 
 test("assertNoEmbeddedBackendOrigin acepta el bundle same-origin", (t) => {
-  const dir = mkdtempSync(path.join(tmpdir(), "nikodym-origin-ok-"))
+  const dir = mkdtempSync(path.join(tmpdir(), "bayesrisk-origin-ok-"))
   t.after(() => rmSync(dir, { recursive: true, force: true }))
   const archivo = path.join(dir, "index-abc.js")
 
   // Rutas relativas y un enlace externo en texto (documentación, no un backend) no son hallazgo.
-  writeFileSync(archivo, 'const API_BASE="";fetch(`${API_BASE}/api/schema`);const doc="https://docs.nikodym.cl"')
+  writeFileSync(archivo, 'const API_BASE="";fetch(`${API_BASE}/api/schema`);const doc="https://docs.bayesadvisory.cl"')
   assert.doesNotThrow(() => assertNoEmbeddedBackendOrigin([archivo], dir))
 })
 
 test("assertMeasuredProseReachedBundle caza copy fijo y exige el copy efectivo", (t) => {
-  const dir = mkdtempSync(path.join(tmpdir(), "nikodym-prose-bundle-"))
+  const dir = mkdtempSync(path.join(tmpdir(), "bayesrisk-prose-bundle-"))
   t.after(() => rmSync(dir, { recursive: true, force: true }))
   const archivo = path.join(dir, "index-abc.js")
 

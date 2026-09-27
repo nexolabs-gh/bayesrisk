@@ -15,20 +15,20 @@ import pytest
 from lifelines.datasets import load_rossi
 from pandas.testing import assert_frame_equal
 
-import nikodym.survival.cox_aft as ca_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import MissingDependencyError, NotFittedError
-from nikodym.survival import AFTSurvivalModel as ExportedAFTSurvivalModel
-from nikodym.survival import CoxPHSurvivalModel as ExportedCoxPHSurvivalModel
-from nikodym.survival.base import BaseSurvivalModel
-from nikodym.survival.config import (
+import bayesrisk.survival.cox_aft as ca_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import MissingDependencyError, NotFittedError
+from bayesrisk.survival import AFTSurvivalModel as ExportedAFTSurvivalModel
+from bayesrisk.survival import CoxPHSurvivalModel as ExportedCoxPHSurvivalModel
+from bayesrisk.survival.base import BaseSurvivalModel
+from bayesrisk.survival.config import (
     CoxAftConfig,
     SurvivalConfig,
     SurvivalInputConfig,
     SurvivalTimeGridConfig,
 )
-from nikodym.survival.cox_aft import AFTSurvivalModel, CoxPHSurvivalModel
-from nikodym.survival.exceptions import (
+from bayesrisk.survival.cox_aft import AFTSurvivalModel, CoxPHSurvivalModel
+from bayesrisk.survival.exceptions import (
     SurvivalConfigError,
     SurvivalFitError,
     SurvivalInputError,
@@ -684,11 +684,11 @@ def test_missing_dependency_import_guards_y_exports_livianos(
             raise ModuleNotFoundError("No module named 'lifelines'", name="lifelines")
         return real_import(name)
 
-    monkeypatch.setattr("nikodym.survival.cox_aft.importlib.import_module", blocked_import)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[survival\]"):
+    monkeypatch.setattr("bayesrisk.survival.cox_aft.importlib.import_module", blocked_import)
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[survival\]"):
         ca_module._import_lifelines_components()
     monkeypatch.setattr(
-        "nikodym.survival.cox_aft.importlib.import_module",
+        "bayesrisk.survival.cox_aft.importlib.import_module",
         lambda name: (
             (_ for _ in ()).throw(ModuleNotFoundError("No module named 'pandas'", name="pandas"))
             if name == "pandas"
@@ -698,7 +698,7 @@ def test_missing_dependency_import_guards_y_exports_livianos(
     with pytest.raises(MissingDependencyError, match="pandas"):
         ca_module._import_pandas()
     monkeypatch.setattr(
-        "nikodym.survival.cox_aft.importlib.import_module",
+        "bayesrisk.survival.cox_aft.importlib.import_module",
         lambda name: (
             (_ for _ in ()).throw(ModuleNotFoundError("No module named 'numpy'", name="numpy"))
             if name == "numpy"
@@ -709,13 +709,13 @@ def test_missing_dependency_import_guards_y_exports_livianos(
         ca_module._import_numpy()
 
     code = (
-        "import nikodym.survival, nikodym.survival.cox_aft, sys;"
+        "import bayesrisk.survival, bayesrisk.survival.cox_aft, sys;"
         "blocked=[m for m in ('lifelines','sksurv') if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'CoxPHSurvivalModel' in nikodym.survival.__all__;"
-        "assert 'AFTSurvivalModel' in nikodym.survival.__all__;"
-        "assert 'CoxPHSurvivalModel' in nikodym.survival.cox_aft.__all__;"
-        "assert 'AFTSurvivalModel' in nikodym.survival.cox_aft.__all__"
+        "assert 'CoxPHSurvivalModel' in bayesrisk.survival.__all__;"
+        "assert 'AFTSurvivalModel' in bayesrisk.survival.__all__;"
+        "assert 'CoxPHSurvivalModel' in bayesrisk.survival.cox_aft.__all__;"
+        "assert 'AFTSurvivalModel' in bayesrisk.survival.cox_aft.__all__"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
     assert ExportedCoxPHSurvivalModel is CoxPHSurvivalModel

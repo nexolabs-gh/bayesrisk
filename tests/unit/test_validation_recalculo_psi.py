@@ -1,7 +1,7 @@
 """El recálculo del PSI de ``validation`` (D-VAL-16, capa C de VALIDACION-COTEJADA).
 
 Con ``consume_stability=False`` el paso recalcula el PSI con **el mismo ensamblador y el mismo
-evaluador** que la etapa de estabilidad (``nikodym.stability.step.compute_stability``), declara en
+evaluador** que la etapa de estabilidad (``bayesrisk.stability.step.compute_stability``), declara en
 ``requires`` exactamente lo que va a leer —por el patrón D-REQ: la sección ``stability`` lo declara,
 el núcleo lo transporta, el paso lo lee del DTO— y la tabla dice ``source="recomputed"``. Hasta la
 capa C ningún camino del ``Study`` llegaba al fallback y apagar el toggle abortaba la corrida.
@@ -27,19 +27,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig, RunConfig
-from nikodym.core.dataset_check import check_dataset
-from nikodym.core.exceptions import ArtifactNotFoundError, ConfigError
-from nikodym.core.steps import METODO_REQUISITOS_RECALCULO, ContextoDeResolucion
-from nikodym.core.study import Study
-from nikodym.scorecard.results import ScorecardCardSection
-from nikodym.stability.config import StabilityConfig, receta_minima_de_recalculo
-from nikodym.stability.exceptions import StabilityDataError
-from nikodym.validation.config import StabilityValidationConfig, ValidationConfig
-from nikodym.validation.results import StabilityRecompute
-from nikodym.validation.step import ValidationStep
+import bayesrisk
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig, RunConfig
+from bayesrisk.core.dataset_check import check_dataset
+from bayesrisk.core.exceptions import ArtifactNotFoundError, ConfigError
+from bayesrisk.core.steps import METODO_REQUISITOS_RECALCULO, ContextoDeResolucion
+from bayesrisk.core.study import Study
+from bayesrisk.scorecard.results import ScorecardCardSection
+from bayesrisk.stability.config import StabilityConfig, receta_minima_de_recalculo
+from bayesrisk.stability.exceptions import StabilityDataError
+from bayesrisk.validation.config import StabilityValidationConfig, ValidationConfig
+from bayesrisk.validation.results import StabilityRecompute
+from bayesrisk.validation.step import ValidationStep
 
 # ─────────────────────────── fixtures: los artefactos de un scorecard ───────────────────────────
 
@@ -160,7 +160,7 @@ def _stability_config(**overrides: Any) -> StabilityConfig:
 
 
 def _study(
-    config: NikodymConfig,
+    config: BayesRiskConfig,
     artifacts: dict[tuple[str, str], Any],
     *,
     sink: InMemoryAuditSink | None = None,
@@ -195,7 +195,7 @@ def test_sin_paso_stability_el_toggle_apagado_recalcula_y_la_tabla_lo_dice() -> 
     """(1): antes abortaba con el ``ValidationDataError`` del fallback («exige el frame»)."""
     sink = InMemoryAuditSink()
     study = _study(
-        NikodymConfig(validation=_validation_config(), run=RunConfig(steps=["validation"])),
+        BayesRiskConfig(validation=_validation_config(), run=RunConfig(steps=["validation"])),
         {**_artefactos_base(), _DATA: _data_frame(with_period=False)},
         sink=sink,
     )
@@ -234,13 +234,15 @@ def test_sin_paso_stability_el_toggle_apagado_recalcula_y_la_tabla_lo_dice() -> 
 
 def test_con_el_toggle_encendido_nada_cambia_y_el_trail_no_registra_recalculo() -> None:
     """Control: el consumo sigue exigiendo el artefacto y la card dice ``stability_artifact``."""
-    from nikodym.stability.step import compute_stability
+    from bayesrisk.stability.step import compute_stability
 
     base = {**_artefactos_base(), _DATA: _data_frame()}
-    calc = compute_stability(_study(NikodymConfig(), base), _stability_config(temporal_axis="none"))
+    calc = compute_stability(
+        _study(BayesRiskConfig(), base), _stability_config(temporal_axis="none")
+    )
     sink = InMemoryAuditSink()
     study = _study(
-        NikodymConfig(
+        BayesRiskConfig(
             validation=_validation_config(consume_stability=True),
             run=RunConfig(steps=["validation"]),
         ),
@@ -284,7 +286,7 @@ def test_recomputed_es_identico_al_artefacto_del_paso_fila_a_fila(
     if csi_source == "woe_bins":
         artifacts[_BINS] = _bin_frame()
     study = _study(
-        NikodymConfig(
+        BayesRiskConfig(
             stability=stability_cfg,
             validation=_validation_config(),
             run=RunConfig(steps=["stability", "validation"]),
@@ -320,7 +322,7 @@ def test_recomputed_es_identico_al_artefacto_del_paso_fila_a_fila(
 
 def test_run_step_sin_seccion_corre_la_receta_minima() -> None:
     study = _study(
-        NikodymConfig(validation=_validation_config()),
+        BayesRiskConfig(validation=_validation_config()),
         {**_artefactos_base(), _DATA: _data_frame(with_period=False)},
     )
     result = study.run_step("validation")
@@ -332,14 +334,14 @@ def test_run_step_con_eje_temporal_declarado_y_sin_data_frame_falla_al_entrar_si
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """(2b): el error es el de prerequisito con la clave exacta; el evaluador no llega a correr."""
-    import nikodym.stability.step as stability_step
+    import bayesrisk.stability.step as stability_step
 
     def _no_debe_correr(*_args: Any, **_kwargs: Any) -> Any:
         raise AssertionError("compute_stability corrió con un requires ausente")
 
     monkeypatch.setattr(stability_step, "compute_stability", _no_debe_correr)
     study = _study(
-        NikodymConfig(stability=_stability_config(), validation=_validation_config()),
+        BayesRiskConfig(stability=_stability_config(), validation=_validation_config()),
         _artefactos_base(),
     )
     with pytest.raises(ArtifactNotFoundError, match=r"\('data', 'frame'\)"):
@@ -349,14 +351,14 @@ def test_run_step_con_eje_temporal_declarado_y_sin_data_frame_falla_al_entrar_si
 def test_run_step_con_woe_bins_declarado_y_sin_bin_frame_falla_al_entrar_sin_calcular(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import nikodym.stability.step as stability_step
+    import bayesrisk.stability.step as stability_step
 
     def _no_debe_correr(*_args: Any, **_kwargs: Any) -> Any:
         raise AssertionError("compute_stability corrió con un requires ausente")
 
     monkeypatch.setattr(stability_step, "compute_stability", _no_debe_correr)
     study = _study(
-        NikodymConfig(
+        BayesRiskConfig(
             stability=_stability_config(temporal_axis="none", csi_source="woe_bins"),
             validation=_validation_config(),
         ),
@@ -369,7 +371,7 @@ def test_run_step_con_woe_bins_declarado_y_sin_bin_frame_falla_al_entrar_sin_cal
 # ═══════════════ (3) requires construidos por Study._resolve_steps, no a mano ═══════════════
 
 
-def _requires_resueltos(config: NikodymConfig) -> tuple[tuple[str, str], ...]:
+def _requires_resueltos(config: BayesRiskConfig) -> tuple[tuple[str, str], ...]:
     """Lo que el resolver del núcleo declara para ``validation`` en ESTA invocación."""
     study = Study(config)
     pasos = study._resolve_steps(config.run.steps)
@@ -381,7 +383,7 @@ def _requires_resueltos(config: NikodymConfig) -> tuple[tuple[str, str], ...]:
 def test_requires_con_la_seccion_declarada_nombra_lo_que_el_recalculo_lee() -> None:
     """(3): eje temporal por defecto → ``data.frame``; nunca ``stability.stability_metrics``."""
     requires = _requires_resueltos(
-        NikodymConfig(
+        BayesRiskConfig(
             stability=_stability_config(),
             validation=_validation_config(),
             run=RunConfig(steps=["validation"]),
@@ -393,7 +395,7 @@ def test_requires_con_la_seccion_declarada_nombra_lo_que_el_recalculo_lee() -> N
 
 def test_requires_con_eje_none_no_nombra_data_frame_y_con_woe_bins_nombra_bin_frame() -> None:
     sin_eje = _requires_resueltos(
-        NikodymConfig(
+        BayesRiskConfig(
             stability=_stability_config(temporal_axis="none"),
             validation=_validation_config(),
             run=RunConfig(steps=["validation"]),
@@ -401,7 +403,7 @@ def test_requires_con_eje_none_no_nombra_data_frame_y_con_woe_bins_nombra_bin_fr
     )
     assert sin_eje == (_SCORE, _CALIBRATED)
     con_bins = _requires_resueltos(
-        NikodymConfig(
+        BayesRiskConfig(
             stability=_stability_config(csi_source="woe_bins"),
             validation=_validation_config(),
             run=RunConfig(steps=["validation"]),
@@ -412,7 +414,7 @@ def test_requires_con_eje_none_no_nombra_data_frame_y_con_woe_bins_nombra_bin_fr
 
 def test_requires_sin_seccion_declarada_nombra_solo_la_receta_minima() -> None:
     requires = _requires_resueltos(
-        NikodymConfig(validation=_validation_config(), run=RunConfig(steps=["validation"]))
+        BayesRiskConfig(validation=_validation_config(), run=RunConfig(steps=["validation"]))
     )
     assert requires == (_SCORE, _CALIBRATED)
     assert requires == receta_minima_de_recalculo().requisitos_de_recalculo_declarados()
@@ -421,7 +423,7 @@ def test_requires_sin_seccion_declarada_nombra_solo_la_receta_minima() -> None:
 def test_los_requires_no_dependen_de_que_stability_corra_sino_de_que_este_declarada() -> None:
     """La sección declarada fuera de ``run.steps`` manda igual: ``execute`` la va a leer."""
     requires = _requires_resueltos(
-        NikodymConfig(
+        BayesRiskConfig(
             stability=_stability_config(csi_source="woe_bins"),
             validation=_validation_config(),
             run=RunConfig(steps=["validation"]),
@@ -434,7 +436,7 @@ def test_la_receta_minima_corre_sin_columna_temporal_y_con_direccion_contraria_a
     """(3): los dos casos que antes abortaban tarde; el trail dice que no hubo eje."""
     sink = InMemoryAuditSink()
     study = _study(
-        NikodymConfig(validation=_validation_config(), run=RunConfig(steps=["validation"])),
+        BayesRiskConfig(validation=_validation_config(), run=RunConfig(steps=["validation"])),
         {
             **_artefactos_base(),
             _DATA: _data_frame(with_period=False),
@@ -454,10 +456,10 @@ def test_la_receta_minima_corre_sin_columna_temporal_y_con_direccion_contraria_a
 def test_la_direccion_de_la_ficha_es_la_que_usa_la_receta_minima() -> None:
     """Con el default (``higher_is_lower_risk``) la guarda del ensamblador habría detenido la
     corrida ante una ficha contraria: llegar a ``done`` prueba que la receta tomó la de la ficha."""
-    from nikodym.validation import step as step_module
+    from bayesrisk.validation import step as step_module
 
     study = _study(
-        NikodymConfig(validation=_validation_config()),
+        BayesRiskConfig(validation=_validation_config()),
         {**_artefactos_base(), _CARD: _ficha("higher_is_higher_risk")},
     )
     cfg, receta = step_module._stability_config_from_study(
@@ -467,8 +469,8 @@ def test_la_direccion_de_la_ficha_es_la_que_usa_la_receta_minima() -> None:
     assert cfg.score_direction == "higher_is_higher_risk"
     assert cfg.temporal_axis == "none" and cfg.csi_source == "score_points"
     # Sin ficha, el default; y con una ficha `Mapping` (puerta pública) también se lee.
-    assert step_module._direccion_de_la_ficha(_study(NikodymConfig(), {})) is None
-    con_dict = _study(NikodymConfig(), {_CARD: {"score_direction": "higher_is_higher_risk"}})
+    assert step_module._direccion_de_la_ficha(_study(BayesRiskConfig(), {})) is None
+    con_dict = _study(BayesRiskConfig(), {_CARD: {"score_direction": "higher_is_higher_risk"}})
     assert step_module._direccion_de_la_ficha(con_dict) == "higher_is_higher_risk"
 
 
@@ -476,10 +478,10 @@ def test_la_direccion_de_la_ficha_es_la_que_usa_la_receta_minima() -> None:
 def test_por_la_puerta_publica_la_ficha_inyectada_no_es_inerte_y_su_direccion_se_usa(
     con_seccion: bool,
 ) -> None:
-    """(3): ``nikodym.run(..., artifacts=...)`` con score y ficha y sin paso ``scorecard``, en las
+    """(3): ``bayesrisk.run(..., artifacts=...)`` con score y ficha y sin paso ``scorecard``, en las
     dos ramas. Control negativo declarado: quitar ``("scorecard","card")`` de ``optional_requires``
     la vuelve inerte y este test se pone rojo."""
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         stability=_stability_config(temporal_axis="none", score_direction="higher_is_higher_risk")
         if con_seccion
         else None,
@@ -490,10 +492,10 @@ def test_por_la_puerta_publica_la_ficha_inyectada_no_es_inerte_y_su_direccion_se
         **_artefactos_base(),
         _CARD: _ficha("higher_is_higher_risk"),
     }
-    chequeo = nikodym.check_pipeline(config, artifacts=artifacts)
+    chequeo = bayesrisk.check_pipeline(config, artifacts=artifacts)
     assert chequeo.executable, chequeo.message
     assert _CARD not in chequeo.inert_artifacts
-    study = nikodym.run(config, artifacts=artifacts)
+    study = bayesrisk.run(config, artifacts=artifacts)
     assert study.run_context.status == "done", study.run_context.error
     assert _CARD not in study.inert_injected_artifacts
     result = study.artifacts.get("validation", "result")
@@ -504,7 +506,7 @@ def test_una_ficha_dict_con_direccion_opuesta_a_la_seccion_declarada_es_config_e
     """La guarda lee la ficha con ``campo_de_card``: un ``Mapping`` inyectado no la elude.
     Control negativo declarado: volver a ``getattr`` en ``_require_direccion_coherente`` deja pasar
     la contradicción y este test se pone rojo."""
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         stability=_stability_config(temporal_axis="none", score_direction="higher_is_lower_risk"),
         validation=_validation_config(),
         run=RunConfig(steps=["validation"]),
@@ -513,27 +515,27 @@ def test_una_ficha_dict_con_direccion_opuesta_a_la_seccion_declarada_es_config_e
         **_artefactos_base(),
         _CARD: {"score_direction": "higher_is_higher_risk"},
     }
-    study = nikodym.run(config, artifacts=artifacts)
+    study = bayesrisk.run(config, artifacts=artifacts)
     assert study.run_context.status == "failed"
     assert study.run_context.error is not None
     assert study.run_context.error.type == "ConfigError"
     assert "contraria" in study.run_context.error.message
     # Y el paso de estabilidad, que comparte la guarda, también la detiene con la ficha `dict`.
-    with_step = NikodymConfig(
+    with_step = BayesRiskConfig(
         stability=_stability_config(temporal_axis="none", score_direction="higher_is_lower_risk"),
         run=RunConfig(steps=["stability"]),
     )
-    fallida = nikodym.run(with_step, artifacts=artifacts)
+    fallida = bayesrisk.run(with_step, artifacts=artifacts)
     assert fallida.run_context.status == "failed"
     assert fallida.run_context.error is not None
     assert fallida.run_context.error.type == "ConfigError"
 
 
-def _config_scorecard_completo(**stability_overrides: Any) -> NikodymConfig:
+def _config_scorecard_completo(**stability_overrides: Any) -> BayesRiskConfig:
     """Un config con ``scorecard`` declarado: el preflight conoce así la dirección del score."""
-    from nikodym.scorecard.config import ScorecardConfig
+    from bayesrisk.scorecard.config import ScorecardConfig
 
-    return NikodymConfig(
+    return BayesRiskConfig(
         scorecard=ScorecardConfig(),
         stability=_stability_config(**stability_overrides),
         validation=_validation_config(),
@@ -571,21 +573,21 @@ def test_check_pipeline_acusa_una_seccion_stability_declarada_e_invalida_sin_eje
     None
 ):
     """(3) end-to-end: el estado ``None`` del DTO. La sección llega opaca —un proceso que no
-    importó ``nikodym.stability``— e inválida; el resolver la coacciona, falla, la transporta como
+    importó ``bayesrisk.stability``— e inválida; el resolver la coacciona, falla, la transporta como
     ``None`` y la fábrica contextual se detiene con ``ConfigError`` nombrando ``stability``. Se
     corre en un intérprete fresco porque en éste la sección ya llega tipada y el propio
-    ``NikodymConfig`` la rechazaría antes."""
+    ``BayesRiskConfig`` la rechazaría antes."""
     code = textwrap.dedent(
         """
         import sys
         import pandas as pd
-        import nikodym
-        from nikodym.core.config import NikodymConfig, RunConfig
-        from nikodym.validation.config import StabilityValidationConfig, ValidationConfig
-        import nikodym.validation.step as step_module
+        import bayesrisk
+        from bayesrisk.core.config import BayesRiskConfig, RunConfig
+        from bayesrisk.validation.config import StabilityValidationConfig, ValidationConfig
+        import bayesrisk.validation.step as step_module
 
-        assert "nikodym.stability" not in sys.modules
-        config = NikodymConfig(
+        assert "bayesrisk.stability" not in sys.modules
+        config = BayesRiskConfig(
             stability={"psi_stable_threshold": 0.30, "psi_review_threshold": 0.10},
             validation=ValidationConfig(
                 families=("stability",),
@@ -603,13 +605,13 @@ def test_check_pipeline_acusa_una_seccion_stability_declarada_e_invalida_sin_eje
             {"partition": ["desarrollo"] * 3 + ["holdout"] * 3, "pd_calibrated": [0.1] * 6},
             index=idx,
         )
-        chequeo = nikodym.check_pipeline(
+        chequeo = bayesrisk.check_pipeline(
             config, artifacts=[("scorecard", "score"), ("calibration", "calibrated_pd_frame")]
         )
         assert not chequeo.executable, chequeo
         assert "stability" in (chequeo.message or ""), chequeo.message
         assert "recálculo" in (chequeo.message or ""), chequeo.message
-        study = nikodym.run(
+        study = bayesrisk.run(
             config,
             artifacts={
                 ("scorecard", "score"): score,
@@ -672,13 +674,13 @@ def test_el_nucleo_llena_el_tercer_campo_sobre_las_secciones_declaradas() -> Non
     """``Study._contexto_de_resolucion``: la sección declarada aporta su tupla; ausente, nada; y un
     implementador que sólo mira ``dominios_activos`` no cambia (el DTO es aditivo)."""
     con = Study(
-        NikodymConfig(
+        BayesRiskConfig(
             stability=_stability_config(csi_source="woe_bins"), validation=_validation_config()
         )
     )._contexto_de_resolucion(frozenset({"validation"}))
     assert dict(con.requisitos_de_recalculo) == {"stability": (_SCORE, _CALIBRATED, _DATA, _BINS)}
     assert con.dominios_activos == frozenset({"validation"})
-    sin = Study(NikodymConfig(validation=_validation_config()))._contexto_de_resolucion(
+    sin = Study(BayesRiskConfig(validation=_validation_config()))._contexto_de_resolucion(
         frozenset({"validation"})
     )
     assert "stability" not in sin.requisitos_de_recalculo
@@ -689,7 +691,7 @@ def test_el_nucleo_llena_el_tercer_campo_sobre_las_secciones_declaradas() -> Non
 def test_el_score_que_ya_trae_la_columna_temporal_corre_con_data_frame_y_no_sin_el() -> None:
     """El límite declarado de CT-1 (§3.2): ``requires`` exige ``data.frame`` con eje temporal
     aunque el ensamblador habría podido leer la columna del score. Positivo y negativo."""
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         stability=_stability_config(),
         validation=_validation_config(),
         run=RunConfig(steps=["validation"]),
@@ -728,12 +730,12 @@ def test_check_pipeline_acusa_el_requires_ausente_con_la_clave_exacta(
 ) -> None:
     """(4): antes, el primero moría en el evaluador hablando de un frame que nadie podía dar y los
     otros dos dentro del ensamblador (``StabilityDataError``), tras correr los pasos previos."""
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         stability=stability_cfg,
         validation=_validation_config(),
         run=RunConfig(steps=["validation"]),
     )
-    chequeo = nikodym.check_pipeline(config, artifacts=list(artifacts))
+    chequeo = bayesrisk.check_pipeline(config, artifacts=list(artifacts))
     assert not chequeo.executable
     assert f"'{clave[1]}'" in (chequeo.message or "") and f"'{clave[0]}'" in (chequeo.message or "")
     study = _study(config, artifacts)
@@ -760,9 +762,9 @@ def test_la_receta_minima_de_la_card_es_cerrada_y_con_su_invariante() -> None:
 
 def test_el_evaluador_rechaza_una_procedencia_que_la_config_no_autorizo() -> None:
     """Sin tercer estado implícito (§3.2-4): consumir con el toggle apagado, o al revés, no vale."""
-    from nikodym.validation.evaluator import ValidationEvaluator
-    from nikodym.validation.exceptions import ValidationConfigError, ValidationDataError
-    from nikodym.validation.stability import evaluate_stability
+    from bayesrisk.validation.evaluator import ValidationEvaluator
+    from bayesrisk.validation.exceptions import ValidationConfigError, ValidationDataError
+    from bayesrisk.validation.stability import evaluate_stability
 
     metrics = pd.DataFrame(
         {
@@ -792,7 +794,7 @@ def test_el_evaluador_rechaza_una_procedencia_que_la_config_no_autorizo() -> Non
 
 def test_la_card_y_la_tabla_dicen_la_misma_procedencia() -> None:
     """``ValidationResult`` reconcilia ``source`` ↔ ``stability_source`` ↔ la receta."""
-    from nikodym.validation.evaluator import ValidationEvaluator
+    from bayesrisk.validation.evaluator import ValidationEvaluator
 
     metrics = pd.DataFrame(
         {
@@ -809,7 +811,7 @@ def test_la_card_y_la_tabla_dicen_la_misma_procedencia() -> None:
     base = result.model_dump()
 
     def _rehidrata(**cambios: Any) -> None:
-        from nikodym.validation.results import ValidationResult
+        from bayesrisk.validation.results import ValidationResult
 
         payload = dict(base)
         card = dict(payload["card"])
@@ -844,11 +846,11 @@ def _html_de(result: Any) -> str:
     import re
     from datetime import UTC, datetime
 
-    from nikodym.core.lineage import LineageBundle
-    from nikodym.report.builder import ReportBuilder
-    from nikodym.report.config import ReportConfig
-    from nikodym.report.renderer import HtmlReportRenderer
-    from nikodym.report.results import ReportInputBundle
+    from bayesrisk.core.lineage import LineageBundle
+    from bayesrisk.report.builder import ReportBuilder
+    from bayesrisk.report.config import ReportConfig
+    from bayesrisk.report.renderer import HtmlReportRenderer
+    from bayesrisk.report.results import ReportInputBundle
 
     lineage = LineageBundle(
         git_sha="abc123",
@@ -857,7 +859,7 @@ def _html_de(result: Any) -> str:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "1.16.0"},
+        library_versions={"bayesrisk": "1.16.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 9, 15, 12, 0, tzinfo=UTC),
         schema_version="1.0.0",
@@ -881,7 +883,7 @@ def _html_de(result: Any) -> str:
 
 
 def _resultado_con_procedencia(source: str, receta: StabilityRecompute | None) -> Any:
-    from nikodym.validation.evaluator import ValidationEvaluator
+    from bayesrisk.validation.evaluator import ValidationEvaluator
 
     metrics = pd.DataFrame(
         {
@@ -943,15 +945,15 @@ def test_limite_declarado_la_seccion_fuera_de_run_steps_no_se_preflightea_y_exec
     ``data.frame`` y el recálculo falla al resolver la columna temporal, con el mensaje del motor
     de estabilidad y **antes** de validar el esquema o calcular un solo PSI. Se pinta aquí para que
     un cambio del preflight lo acuse."""
-    import nikodym.stability.evaluator as stability_evaluator
+    import bayesrisk.stability.evaluator as stability_evaluator
 
     def _no_debe_llegar(*_args: Any, **_kwargs: Any) -> Any:
         raise AssertionError("el evaluador llegó a validar el esquema sin columna temporal")
 
     monkeypatch.setattr(stability_evaluator, "_validate_schema", _no_debe_llegar)
-    from nikodym.scorecard.config import ScorecardConfig
+    from bayesrisk.scorecard.config import ScorecardConfig
 
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         scorecard=ScorecardConfig(),
         stability=_stability_config(),  # eje temporal por defecto (`period`)
         validation=_validation_config(),

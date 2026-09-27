@@ -25,15 +25,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym
-from nikodym.core.tramos import (
+import bayesrisk
+from bayesrisk.core.tramos import (
     filas_que_casan,
     formatear_borde,
     rotulo_de_rango,
     rotulo_de_tramo,
     rotulos_por_fila,
 )
-from nikodym.guided.summaries import (
+from bayesrisk.guided.summaries import (
     _celda,
     _overrides_sin_casar,
     _partition_label,
@@ -41,11 +41,11 @@ from nikodym.guided.summaries import (
     _pruebas_decisivas,
     _tabla_muestras,
 )
-from nikodym.report.builder import ReportBuilder
-from nikodym.report.config import ReportConfig
-from nikodym.report.renderer import _table_view
-from nikodym.scorecard.config import PointOverrideConfig
-from nikodym.ui.serializers import _bin_labels
+from bayesrisk.report.builder import ReportBuilder
+from bayesrisk.report.config import ReportConfig
+from bayesrisk.report.renderer import _table_view
+from bayesrisk.scorecard.config import PointOverrideConfig
+from bayesrisk.ui.serializers import _bin_labels
 
 
 class _Almacen:
@@ -293,7 +293,7 @@ pytest.importorskip("optbinning")
 
 
 @pytest.fixture(scope="module")
-def _corrida(tmp_path_factory: pytest.TempPathFactory) -> nikodym.Scorecard:
+def _corrida(tmp_path_factory: pytest.TempPathFactory) -> bayesrisk.Scorecard:
     with pytest.MonkeyPatch.context() as parche:
         parche.setenv("PYTHONHASHSEED", "0")
         raiz = tmp_path_factory.mktemp("copy")
@@ -313,7 +313,7 @@ def _corrida(tmp_path_factory: pytest.TempPathFactory) -> nikodym.Scorecard:
         )
         ruta = raiz / "cartera.parquet"
         datos.to_parquet(ruta)
-        sc = nikodym.Scorecard(
+        sc = bayesrisk.Scorecard(
             ruta,
             target="bad_flag",
             id="loan_id",
@@ -327,7 +327,7 @@ def _corrida(tmp_path_factory: pytest.TempPathFactory) -> nikodym.Scorecard:
 
 
 def test_los_bordes_efectivos_son_los_cortes_ajustados_a_precision_completa(
-    _corrida: nikodym.Scorecard,
+    _corrida: bayesrisk.Scorecard,
 ) -> None:
     st = _corrida.study
     assert st.run_context.status == "done", st.run_context.error
@@ -339,7 +339,7 @@ def test_los_bordes_efectivos_son_los_cortes_ajustados_a_precision_completa(
     assert "segmento" not in set(bordes["variable"])
 
 
-def test_sc_bins_escribe_el_rango_con_los_bordes_efectivos(_corrida: nikodym.Scorecard) -> None:
+def test_sc_bins_escribe_el_rango_con_los_bordes_efectivos(_corrida: bayesrisk.Scorecard) -> None:
     st = _corrida.study
     cortes = [
         float(c)
@@ -352,7 +352,7 @@ def test_sc_bins_escribe_el_rango_con_los_bordes_efectivos(_corrida: nikodym.Sco
 
 
 def test_la_tabla_de_la_tarjeta_muestra_el_rotulo_y_el_artefacto_no_cambia(
-    _corrida: nikodym.Scorecard,
+    _corrida: bayesrisk.Scorecard,
 ) -> None:
     st = _corrida.study
     tarjeta = st.artifacts.get("scorecard", "scorecard")
@@ -366,7 +366,7 @@ def test_la_tabla_de_la_tarjeta_muestra_el_rotulo_y_el_artefacto_no_cambia(
     assert regulares.str.startswith("[").all()
 
 
-def _ajuste(sc: nikodym.Scorecard, feature: str, bin_label: str) -> Any:
+def _ajuste(sc: bayesrisk.Scorecard, feature: str, bin_label: str) -> Any:
     ajuste = PointOverrideConfig(feature=feature, bin_label=bin_label, points=7, reason="comité")
     return sc.config.model_copy(
         update={"scorecard": sc.config.scorecard.model_copy(update={"point_overrides": (ajuste,)})}
@@ -374,11 +374,11 @@ def _ajuste(sc: nikodym.Scorecard, feature: str, bin_label: str) -> Any:
 
 
 def test_un_ajuste_con_el_rotulo_legible_se_aplica(
-    _corrida: nikodym.Scorecard, tmp_path: Path
+    _corrida: bayesrisk.Scorecard, tmp_path: Path
 ) -> None:
     tabla = _corrida.summary("scorecard").table
     legible = str(tabla.loc[tabla["Variable"].eq("segmento"), "Tramo"].iloc[0])
-    st = nikodym.run(_ajuste(_corrida, "segmento", legible), run_dir=tmp_path / "legible")
+    st = bayesrisk.run(_ajuste(_corrida, "segmento", legible), run_dir=tmp_path / "legible")
     assert st.run_context.status == "done", st.run_context.error
     tarjeta = st.artifacts.get("scorecard", "scorecard")
     fila = tarjeta.loc[tarjeta["feature"].eq("segmento")].iloc[0]
@@ -387,11 +387,11 @@ def test_un_ajuste_con_el_rotulo_legible_se_aplica(
 
 
 def test_un_ajuste_con_la_etiqueta_del_motor_se_aplica_igual_que_antes(
-    _corrida: nikodym.Scorecard, tmp_path: Path
+    _corrida: bayesrisk.Scorecard, tmp_path: Path
 ) -> None:
     tarjeta = _corrida.study.artifacts.get("scorecard", "scorecard")
     cruda = str(tarjeta.loc[tarjeta["feature"].eq("tasa"), "bin_label"].iloc[0])
-    st = nikodym.run(_ajuste(_corrida, "tasa", cruda), run_dir=tmp_path / "cruda")
+    st = bayesrisk.run(_ajuste(_corrida, "tasa", cruda), run_dir=tmp_path / "cruda")
     assert st.run_context.status == "done", st.run_context.error
     nueva = st.artifacts.get("scorecard", "scorecard")
     fila = nueva.loc[nueva["feature"].eq("tasa") & nueva["bin_label"].eq(cruda)].iloc[0]
@@ -399,10 +399,10 @@ def test_un_ajuste_con_la_etiqueta_del_motor_se_aplica_igual_que_antes(
 
 
 def test_un_ajuste_que_no_calza_se_declara_en_el_trail_y_en_el_resumen(
-    _corrida: nikodym.Scorecard, tmp_path: Path
+    _corrida: bayesrisk.Scorecard, tmp_path: Path
 ) -> None:
     config = _ajuste(_corrida, "tasa", "no existe")
-    st = nikodym.run(config, run_dir=tmp_path / "sin_casar")
+    st = bayesrisk.run(config, run_dir=tmp_path / "sin_casar")
     assert st.run_context.status == "done", st.run_context.error
     trail = tmp_path / "sin_casar" / "audit_trail.jsonl"
     eventos = [json.loads(linea) for linea in trail.read_text(encoding="utf-8").splitlines()]
@@ -419,7 +419,7 @@ def test_un_ajuste_que_no_calza_se_declara_en_el_trail_y_en_el_resumen(
     )
 
 
-def test_el_informe_y_la_pantalla_leen_el_mismo_rotulo(_corrida: nikodym.Scorecard) -> None:
+def test_el_informe_y_la_pantalla_leen_el_mismo_rotulo(_corrida: bayesrisk.Scorecard) -> None:
     st = _corrida.study
     bundle = ReportBuilder(ReportConfig()).collect(st)
     vista = _table_view(
@@ -448,9 +448,9 @@ def test_el_informe_y_la_pantalla_leen_el_mismo_rotulo(_corrida: nikodym.Scoreca
 def test_el_escalador_aplica_un_ajuste_viejo_solo_donde_casaba_antes() -> None:
     """Revisión adversarial del código, pasada 1, de punta a punta en el escalador: el ajuste
     «Missing» de un config viejo no alcanza a la categoría literal «Missing»."""
-    from nikodym.core.audit import InMemoryAuditSink
-    from nikodym.scorecard.config import ScorecardConfig
-    from nikodym.scorecard.scaler import PointsScaler
+    from bayesrisk.core.audit import InMemoryAuditSink
+    from bayesrisk.scorecard.config import ScorecardConfig
+    from bayesrisk.scorecard.scaler import PointsScaler
 
     tabla = pd.DataFrame(
         {
@@ -492,9 +492,9 @@ def test_con_dos_ajustes_para_el_mismo_tramo_gana_el_de_la_etiqueta_del_motor(
     """Revisión adversarial del código, pasada 2: un config con un ajuste por la etiqueta del motor
     y otro por el rótulo legible del MISMO tramo aplicaba el primero de la lista; antes de D-CPY-3
     el legible se ignoraba. Gana el del motor en los dos órdenes y el otro se declara sin casar."""
-    from nikodym.core.audit import InMemoryAuditSink
-    from nikodym.scorecard.config import ScorecardConfig
-    from nikodym.scorecard.scaler import PointsScaler
+    from bayesrisk.core.audit import InMemoryAuditSink
+    from bayesrisk.scorecard.config import ScorecardConfig
+    from bayesrisk.scorecard.scaler import PointsScaler
 
     tabla = pd.DataFrame(
         {

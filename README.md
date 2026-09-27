@@ -1,7 +1,7 @@
-# Nikodym RiskLib
+# bayesrisk
 
-[![PyPI](https://img.shields.io/pypi/v/nikodym.svg)](https://pypi.org/project/nikodym/)
-[![Python](https://img.shields.io/pypi/pyversions/nikodym.svg)](https://pypi.org/project/nikodym/)
+[![PyPI](https://img.shields.io/pypi/v/bayesrisk.svg)](https://pypi.org/project/bayesrisk/)
+[![Python](https://img.shields.io/pypi/pyversions/bayesrisk.svg)](https://pypi.org/project/bayesrisk/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/nexolabs-gh/nikodym/blob/main/LICENSE)
 [![CI](https://github.com/nexolabs-gh/nikodym/actions/workflows/ci.yml/badge.svg)](https://github.com/nexolabs-gh/nikodym/actions/workflows/ci.yml)
 
@@ -10,30 +10,34 @@ backends ML, survival), **LGD y EAD**, **validación de modelos**, provisiones *
 forward-looking y stress testing, con **informe reproducible** y su lineage. Todo en un motor
 **reproducible por construcción**, con lineage en cada corrida y una gobernanza —audit-trail y
 ficha del modelo (*model card*)— que se enciende con una declaración de propósito.
-Paquete: `nikodym`.
+Paquete: `bayesrisk`.
+
+> **Antes se llamaba `nikodym`.** Desde la 2.0.0 la librería se llama **bayesrisk**, con los
+> mismos resultados bit a bit que nikodym 1.20.0. Migrar es cambiar una línea —`import
+> bayesrisk`—: ver [Migrar desde nikodym](https://docs.bayesadvisory.cl/migrar-desde-nikodym/).
 
 Los estándares comunes —Basilea, IFRS 9— van en el motor. La **normativa local de cada
 jurisdicción se aterriza encima**, y hay un caso de referencia implementado que muestra cómo:
-[Aterrizar una norma local](https://docs.nikodym.cl/norma-local/).
+[Aterrizar una norma local](https://docs.bayesadvisory.cl/norma-local/).
 
-> **Estado: 1.x (estable).** El pipeline de validación de scorecard (F1) es **API estable
-> (SemVer 1.x)**: no rompe hasta un 2.0. Las superficies que aún crecen —modelado ML, provisiones,
+> **Estado: 2.x (estable).** El pipeline de validación de scorecard (F1) es **API estable
+> (SemVer 2.x)**: no rompe hasta un 3.0. Las superficies que aún crecen —modelado ML, provisiones,
 > forward-looking, y los contratos transversales de resultados/métricas/orquestación—
-> siguen marcadas como **experimentales** (fuera de la garantía SemVer 1.x).
+> siguen marcadas como **experimentales** (fuera de la garantía SemVer 2.x).
 
 ## Qué hace
 
 Los seis dominios **calculan** hoy: son motores deterministas, sin *stubs*, con más de 500 tests
 sobre los tres que no tienen interfaz (más de 4.900 en la suite completa). Lo que los separa no es
 "hecho / no hecho", sino **superficie** (¿tiene UI, preset y capítulo en el informe, o hay que
-escribir el config en Python?) y **garantía de API** (¿congelada bajo SemVer 1.x, o experimental?).
-El único comando del paquete es `nikodym-ui`, que levanta la interfaz: no hay CLI que corra estos
+escribir el config en Python?) y **garantía de API** (¿congelada bajo SemVer 2.x, o experimental?).
+El único comando del paquete es `bayesrisk-ui`, que levanta la interfaz: no hay CLI que corra estos
 dominios.
 
 | Dominio | Superficie | Garantía |
 |---|---|---|
-| **Scorecard (F1)** — binning/WoE monotónico (optbinning), selección (IV/VIF), regresión logística, scorecard escalado (PDO/offset), calibración, desempeño (AUC/KS/Gini) y estabilidad (PSI/CSI) | UI, preset e informe | **estable** (SemVer 1.x) |
-| **Provisiones** — **IFRS 9/ECL** y **método interno** (exposición por la tasa de pérdida del grupo, descompuesta en PD · LGD o provista directamente; jurisdiccionalmente neutro); la orquestación compara dos fuentes y aplica la regla declarada. La norma local se monta encima: [caso de referencia](https://docs.nikodym.cl/norma-local/) | UI, preset e informe | experimental |
+| **Scorecard (F1)** — binning/WoE monotónico (optbinning), selección (IV/VIF), regresión logística, scorecard escalado (PDO/offset), calibración, desempeño (AUC/KS/Gini) y estabilidad (PSI/CSI) | UI, preset e informe | **estable** (SemVer 2.x) |
+| **Provisiones** — **IFRS 9/ECL** y **método interno** (exposición por la tasa de pérdida del grupo, descompuesta en PD · LGD o provista directamente; jurisdiccionalmente neutro); la orquestación compara dos fuentes y aplica la regla declarada. La norma local se monta encima: [caso de referencia](https://docs.bayesadvisory.cl/norma-local/) | UI, preset e informe | experimental |
 | **Stress testing** — escenarios adversos, shocks macro en escala logit, sensibilidad y *reverse stress* por bisección | Python | experimental |
 | **Markov** — matrices de transición (cohorte/duración), Chapman-Kolmogorov, Aalen-Johansen, *term-structure* de PD | Python | experimental |
 | **Forward-looking** — ARIMA/auto-ARIMA, VAR/VECM, Ljung-Box y modelos satélite macro → PD/LGD | Python | experimental |
@@ -42,7 +46,7 @@ dominios.
 - **Backends ML (F2)**: XGBoost, LightGBM, CatBoost y tuning (Optuna) como *extras* selectivos,
   con explicabilidad (SHAP) opcional.
 - **No hace** (por si lo estás buscando): *roll rates*, curvas de cosecha/*vintage*, ni una CLI que
-  ejecute pipelines desde la terminal — el comando `nikodym-ui` levanta la interfaz, no corre nada.
+  ejecute pipelines desde la terminal — el comando `bayesrisk-ui` levanta la interfaz, no corre nada.
 - **Informe de validación, no un log**: cada corrida produce un documento con portada, resumen
   ejecutivo, metodología (redactada con los parámetros que realmente se usaron), resultados,
   conclusiones y anexos técnicos. Sale en HTML y PDF, y también como **base editable** (`.qmd` de
@@ -56,7 +60,7 @@ dominios.
 
 ## Tus datos no salen de tu infraestructura
 
-Nikodym es una librería, no un servicio: se instala con `pip` y corre donde tú la ejecutes —tu
+bayesrisk es una librería, no un servicio: se instala con `pip` y corre donde tú la ejecutes —tu
 notebook, tu servidor, tu clúster, dentro de tu red—. Para una institución financiera esto suele
 importar más que cualquier métrica:
 
@@ -64,7 +68,7 @@ importar más que cualquier métrica:
 - **Sin llamadas de red en el cálculo.** El pipeline no abre conexiones por sí solo: las cifras se
   computan en tu proceso, con tus datos, y los artefactos se escriben en el `workdir` que declaras.
 - **Sin dependencias de un servicio nuestro.** No hay una API que tenga que estar arriba para que
-  el motor funcione, ni licencia que validar contra un servidor. Si Nexo Labs desaparece mañana, tu
+  el motor funcione, ni licencia que validar contra un servidor. Si Bayes Advisory desaparece mañana, tu
   corrida de pasado mañana sigue dando el mismo resultado.
 - **Las dos salidas posibles son tuyas y opcionales**: la narración por IA (apagada por defecto, con
   tu clave y tu proveedor; la prosa del informe es determinista y no la escribe la IA) y el registro
@@ -76,25 +80,25 @@ Y como es Apache-2.0, puedes auditar el código, forkearlo y adaptarlo sin pedir
 ## Instalación
 
 ```bash
-pip install nikodym                 # núcleo base (config, Study, lineage)
-pip install 'nikodym[scoring]'      # MVP scorecard (optbinning + statsmodels + sklearn>=1.6)
-pip install 'nikodym[ui]'           # interfaz gráfica local, lista para correr (ver más abajo)
-pip install 'nikodym[all]'          # todo lo redistribuible (sin copyleft)
+pip install bayesrisk                 # núcleo base (config, Study, lineage)
+pip install 'bayesrisk[scoring]'      # MVP scorecard (optbinning + statsmodels + sklearn>=1.6)
+pip install 'bayesrisk[ui]'           # interfaz gráfica local, lista para correr (ver más abajo)
+pip install 'bayesrisk[all]'          # todo lo redistribuible (sin copyleft)
 ```
 
-Requiere Python ≥ 3.11. El núcleo base es liviano: `import nikodym` **no** arrastra el stack ML;
+Requiere Python ≥ 3.11. El núcleo base es liviano: `import bayesrisk` **no** arrastra el stack ML;
 los backends pesados viven tras *extras* opcionales con import perezoso.
 
 ### El informe en PDF necesita librerías del sistema
 
-El informe sale en **HTML** con la instalación base, y en **Word** (`.docx`) con `nikodym[all]`. El
+El informe sale en **HTML** con la instalación base, y en **Word** (`.docx`) con `bayesrisk[all]`. El
 **PDF** es el único formato con un requisito extra, y conviene saberlo antes de necesitarlo:
 
 ```bash
-pip install 'nikodym[pdf]'          # NO está incluido en [all] — ver nota de licencia abajo
+pip install 'bayesrisk[pdf]'          # NO está incluido en [all] — ver nota de licencia abajo
 ```
 
-`nikodym[pdf]` instala WeasyPrint, pero WeasyPrint **no es Python puro**: carga Pango (≥ 1.44),
+`bayesrisk[pdf]` instala WeasyPrint, pero WeasyPrint **no es Python puro**: carga Pango (≥ 1.44),
 HarfBuzz y libffi desde el sistema operativo, y `pip` no puede instalarlas. Hay que agregarlas por
 fuera ([documentación oficial de WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation)):
 
@@ -119,11 +123,11 @@ pipeline de producción que promete PDF), pon `report.pdf.fail_if_unavailable = 
 
 ## Quickstart
 
-La forma más corta es la **puerta guiada** `nikodym.Scorecard` (estable bajo SemVer 1.x): datos,
+La forma más corta es la **puerta guiada** `bayesrisk.Scorecard` (estable bajo SemVer 2.x): datos,
 qué es «malo», identificador, eje temporal y muestra fuera de tiempo, y
 `run()` corre y cuenta cada etapa; está en «Tu primer scorecard en 15 líneas» de la documentación.
-Debajo, la puerta completa: el experimento es un `NikodymConfig` declarativo;
-`nikodym.run(config, run_dir=...)` lo ejecuta de
+Debajo, la puerta completa: el experimento es un `BayesRiskConfig` declarativo;
+`bayesrisk.run(config, run_dir=...)` lo ejecuta de
 extremo a extremo (binning → selección → modelo → scorecard → calibración → desempeño →
 estabilidad), deja la evidencia de la corrida en `run_dir` y devuelve un `Study` reproducible.
 Este ejemplo usa el **preset estándar F1** sobre un dataset sintético de consumo, así corre sin
@@ -134,25 +138,25 @@ rellenar ningún campo:
 from pathlib import Path
 from tempfile import mkdtemp
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.ui.datasets import materialize
-from nikodym.ui.presets import standard_preset
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.ui.datasets import materialize
+from bayesrisk.ui.presets import standard_preset
 
 # 1. Materializa el dataset sintético de consumo (determinista) en un workdir temporal.
-workdir = Path(mkdtemp(prefix="nikodym-quickstart-"))
+workdir = Path(mkdtemp(prefix="bayesrisk-quickstart-"))
 preset = standard_preset()
 data_path = materialize(preset["dataset_id"], workdir=workdir)
 
 # 2. Toma el config F1 curado y apúntalo al archivo de datos recién materializado.
 cfg_dict = preset["config"]
 cfg_dict["data"]["load"]["source"] = str(data_path)
-config = NikodymConfig.model_validate(cfg_dict)
+config = BayesRiskConfig.model_validate(cfg_dict)
 
 # 3. Ejecuta la corrida completa y verifica el estado ANTES de leer resultados. `run_dir` es
 #    donde queda su evidencia: el audit-trail que el preset trae encendido y, si declaras la
 #    sección `governance`, la ficha del modelo.
-study = nikodym.run(config, run_dir=workdir / "corrida")
+study = bayesrisk.run(config, run_dir=workdir / "corrida")
 assert study.run_context.status == "done"
 
 # 4. Accede a los resultados namespaced por dominio/clave.
@@ -162,25 +166,25 @@ print(metrics)
 ```
 <!-- quickstart:end -->
 
-`nikodym.run` es *fail-loud pero no explosivo*: ante un fallo devuelve el `Study` **parcial** con
+`bayesrisk.run` es *fail-loud pero no explosivo*: ante un fallo devuelve el `Study` **parcial** con
 `study.run_context.status == "failed"`, y el diagnóstico —tipo del error, mensaje del motor y paso
 que falló— queda en `study.run_context.error`, sin configurar nada. El consumidor por código
 **debe** chequear `study.run_context.status` antes de usar los resultados.
 
 ## La misma corrida, sin escribir código
 
-Nikodym trae una interfaz gráfica local. Son dos comandos:
+bayesrisk trae una interfaz gráfica local. Son dos comandos:
 
 ```bash
-pip install 'nikodym[ui]'
-nikodym-ui
+pip install 'bayesrisk[ui]'
+bayesrisk-ui
 ```
 
 El segundo levanta la interfaz en `http://127.0.0.1:8000` y abre el navegador. Desde ahí eliges un
 dataset —uno de ejemplo o el tuyo, en CSV, Excel o Parquet—, ajustas la configuración en un
 formulario, ejecutas y descargas el informe.
 
-**No es una demo aparte: es el mismo motor y el mismo `NikodymConfig`.** Lo que armas en el
+**No es una demo aparte: es el mismo motor y el mismo `BayesRiskConfig`.** Lo que armas en el
 formulario se puede exportar a YAML y correr por código, y produce el mismo `config_hash`. Puedes
 empezar por la interfaz y terminar en un script, o al revés.
 
@@ -191,9 +195,9 @@ bloqueo: puedes ejecutar igual.
 Tres opciones, todas locales:
 
 ```bash
-nikodym-ui --port 8123      # otro puerto (por defecto 8000)
-nikodym-ui --workdir ./runs # dónde guardar corridas y datasets (por defecto .nikodym_ui)
-nikodym-ui --no-open        # no abrir el navegador
+bayesrisk-ui --port 8123      # otro puerto (por defecto 8000)
+bayesrisk-ui --workdir ./runs # dónde guardar corridas y datasets (por defecto .bayesrisk_ui)
+bayesrisk-ui --no-open        # no abrir el navegador
 ```
 
 > **Escucha sólo en `127.0.0.1` y no hay forma de cambiarlo**: no existe un `--host`. Tus datos no
@@ -203,8 +207,8 @@ nikodym-ui --no-open        # no abrir el navegador
 > **`[ui]` trae todo lo que el formulario puede ejecutar**, no sólo el servidor: el motor del
 > scorecard y el de supervivencia entran con él. Son ~700 MB en disco, y es deliberado — un extra
 > llamado `ui` que instala la interfaz pero no lo que la interfaz dispara promete algo que no
-> cumple. Quedan fuera el PDF (`nikodym[pdf]`), por licencia, y el backend de lectura `polars`
-> (`nikodym[polars]`), que es una opción de rendimiento: el resultado no cambia, y si lo eliges sin
+> cumple. Quedan fuera el PDF (`bayesrisk[pdf]`), por licencia, y el backend de lectura `polars`
+> (`bayesrisk[polars]`), que es una opción de rendimiento: el resultado no cambia, y si lo eliges sin
 > tenerlo instalado la corrida te lo dice con el comando exacto.
 
 ## Limitaciones que debes conocer antes de usarlo en serio
@@ -222,7 +226,7 @@ aquí se dicen igual de claro.
 >
 > Las marcas viajan en la columna `warning_codes` del resultado. El catálogo completo —qué significa
 > cada código y qué hacer con él— está en
-> [Avisos declarados](https://docs.nikodym.cl/avisos-declarados/).
+> [Avisos declarados](https://docs.bayesadvisory.cl/avisos-declarados/).
 
 - **Los parámetros del caso de referencia no son oficiales, y el caso está congelado.** El motor
   que aterriza la norma chilena (CMF, Cap. B-1) existe como **ejemplo de método**, no como
@@ -235,7 +239,7 @@ aquí se dicen igual de claro.
   [`docs/normativa_cmf_parametros.md`](docs/normativa_cmf_parametros.md) §3. Quedan dos brechas
   abiertas, y el motor las declara: aforos y *haircuts* de garantías financieras, y las tablas
   del RAN 21-10. El alcance, las fechas por matriz y el estado de cada fuente están en
-  [Aterrizar una norma local](https://docs.nikodym.cl/norma-local/).
+  [Aterrizar una norma local](https://docs.bayesadvisory.cl/norma-local/).
 - **Las causales de incumplimiento que el motor no puede inferir, las declara el banco.** De las
   tres del numeral B-1 3.2, solo la mora ≥ 90 días sale de los datos; el refinanciamiento para
   dejar vigente una operación morosa y la reestructuración forzosa hay que **entregarlas en la
@@ -246,7 +250,7 @@ aquí se dicen igual de claro.
   motor no lo aplana en silencio: cada fila afectada lo declara en sus avisos, y el config
   **rechaza** `exposure_profile_col` en vez de fingir que lo usa.
 - **Experimental no es "beta marketinera"**: todo lo que no sea el pipeline de scorecard puede
-  cambiar de firma dentro de la 1.x, y no está *battle-tested* en producción.
+  cambiar de firma dentro de la 2.x, y no está *battle-tested* en producción.
 
 ## Principios de diseño
 
@@ -267,9 +271,9 @@ aquí se dicen igual de claro.
 
 ## Documentación
 
-Guía completa (conceptos, referencia de `run`/`Study`/`NikodymConfig`) en
-[docs.nikodym.cl](https://docs.nikodym.cl). La demo del scorecard —una corrida real, paso a paso—
-en [demo.nikodym.cl](https://demo.nikodym.cl). El `CHANGELOG.md` registra los cambios por versión.
+Guía completa (conceptos, referencia de `run`/`Study`/`BayesRiskConfig`) en
+[docs.bayesadvisory.cl](https://docs.bayesadvisory.cl). La demo del scorecard —una corrida real, paso a paso—
+en [demo.bayesadvisory.cl](https://demo.bayesadvisory.cl). El `CHANGELOG.md` registra los cambios por versión.
 
 ## Desarrollo
 
@@ -284,7 +288,7 @@ uv run pytest                        # suite de tests
 
 ## Quién lo construye
 
-Nikodym RiskLib lo construye **Nexo Labs**, una consultora chilena de riesgo y analítica de datos.
+bayesrisk lo construye **Bayes Advisory**, una consultora chilena de riesgo y analítica de datos.
 El motor es Apache-2.0 y no tiene edición comercial, *tier* de pago ni funciones reservadas: lo que
 hay en `src/` es todo lo que hay. Está publicado para que puedas leer el código antes de hablar con
 nosotros.
@@ -293,7 +297,7 @@ Una librería calcula; no decide. El binning, la calibración y las métricas lo
 a qué tasa central anclas (TTC o PIT), dónde pones el corte y qué supuestos sostienes ante
 Validación o ante tu regulador sigue siendo juicio de modelo, y eso no lo entrega ningún paquete
 de pip.
-Si ese es el problema, puedes [proponer un caso](https://www.nikodym.cl/?ref=readme#contact). Cada
+Si ese es el problema, puedes [proponer un caso](https://www.bayesadvisory.cl/?ref=readme#contact). Cada
 caso se evalúa antes de aceptarse; si no hay caso, también te lo decimos, en menos de 48 horas
 hábiles.
 

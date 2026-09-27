@@ -18,14 +18,14 @@ from pathlib import Path
 import pytest
 from _ui_f1 import full_f1_config, write_behavior_parquet
 
-import nikodym
-import nikodym.api as api_module
-from nikodym.audit.config import AuditConfig
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ConfigError, MissingDependencyError
-from nikodym.core.study import Study
-from nikodym.governance.config import GovernanceConfig
-from nikodym.performance.step import PerformanceStep
+import bayesrisk
+import bayesrisk.api as api_module
+from bayesrisk.audit.config import AuditConfig
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ConfigError, MissingDependencyError
+from bayesrisk.core.study import Study
+from bayesrisk.governance.config import GovernanceConfig
+from bayesrisk.performance.step import PerformanceStep
 
 
 @pytest.fixture(autouse=True)
@@ -42,7 +42,7 @@ def fuente_f1(tmp_path: Path) -> str:
     return str(source)
 
 
-def _config_gobernada(fuente: str, **secciones: object) -> NikodymConfig:
+def _config_gobernada(fuente: str, **secciones: object) -> BayesRiskConfig:
     """Config F1 con las secciones de gobernanza que pida cada gate."""
     base = full_f1_config(fuente)
     return base.model_copy(update=secciones)
@@ -63,13 +63,13 @@ def test_el_model_card_json_en_disco_trae_las_metricas(fuente_f1: str, tmp_path:
     """Test 4 de §6: se mide sobre el ``model_card.json`` escrito, no sobre el objeto en memoria.
 
     Es la diferencia entre «el builder funciona» y «la persona recibe el archivo». Antes de D-GOB-6
-    este archivo **no existía en ninguna ruta entregada**: ``nikodym.run()`` no creaba directorio
+    este archivo **no existía en ninguna ruta entregada**: ``bayesrisk.run()`` no creaba directorio
     de corrida alguno, así que el layout de SDD-03 §6 no tenía dónde anclarse.
     """
     destino = tmp_path / "corrida"
     config = _config_gobernada(fuente_f1, governance=_gobernanza(), audit=AuditConfig(enabled=True))
 
-    study = nikodym.run(config, run_dir=destino)
+    study = bayesrisk.run(config, run_dir=destino)
     assert study.run_context.status == "done"
 
     card_json = destino / "model_card.json"
@@ -99,7 +99,7 @@ def test_el_layout_escribe_solo_lo_que_su_seccion_activa(fuente_f1: str, tmp_pat
     destino = tmp_path / "solo-audit"
     config = _config_gobernada(fuente_f1, audit=AuditConfig(enabled=True))
 
-    nikodym.run(config, run_dir=destino)
+    bayesrisk.run(config, run_dir=destino)
 
     assert (destino / "audit_trail.jsonl").is_file()
     assert (destino / "environment.json").is_file()
@@ -122,7 +122,7 @@ def test_sin_run_dir_no_se_toca_el_disco(fuente_f1: str, tmp_path: Path, monkeyp
     cwd.mkdir()
     monkeypatch.chdir(cwd)
 
-    study = nikodym.run(full_f1_config(fuente_f1))
+    study = bayesrisk.run(full_f1_config(fuente_f1))
 
     assert study.run_context.status == "done"
     assert list(cwd.iterdir()) == [], f"la corrida dejó archivos en el cwd: {list(cwd.iterdir())}"
@@ -147,8 +147,8 @@ def test_dos_corridas_desde_el_mismo_cwd_no_comparten_trail(
     monkeypatch.chdir(cwd)
     config = _config_gobernada(fuente_f1, audit=AuditConfig(enabled=True))
 
-    primera = nikodym.run(config, run_dir=tmp_path / "run-a")
-    segunda = nikodym.run(config, run_dir=tmp_path / "run-b")
+    primera = bayesrisk.run(config, run_dir=tmp_path / "run-a")
+    segunda = bayesrisk.run(config, run_dir=tmp_path / "run-b")
 
     assert primera.run_context.run_id != segunda.run_context.run_id
 
@@ -175,7 +175,7 @@ def test_trail_relativo_sin_run_dir_es_un_error_explicito(fuente_f1: str, tmp_pa
     config = _config_gobernada(fuente_f1, audit=AuditConfig(enabled=True))
 
     with pytest.raises(ConfigError, match="trail_filename relativo"):
-        nikodym.run(config)
+        bayesrisk.run(config)
 
 
 def test_trail_absoluto_sin_run_dir_se_sigue_respetando(fuente_f1: str, tmp_path: Path) -> None:
@@ -186,7 +186,7 @@ def test_trail_absoluto_sin_run_dir_se_sigue_respetando(fuente_f1: str, tmp_path
         fuente_f1, audit=AuditConfig(enabled=True, trail_filename=str(trail))
     )
 
-    study = nikodym.run(config)
+    study = bayesrisk.run(config)
 
     assert study.run_context.status == "done"
     assert trail.is_file() and trail.stat().st_size > 0
@@ -204,11 +204,11 @@ def test_un_run_dir_no_vacio_se_aparta_en_vez_de_mezclarse(fuente_f1: str, tmp_p
     destino = tmp_path / "reutilizado"
     config = _config_gobernada(fuente_f1, governance=_gobernanza(), audit=AuditConfig(enabled=True))
 
-    primera = nikodym.run(config, run_dir=destino)
+    primera = bayesrisk.run(config, run_dir=destino)
     eventos_primera = len(_eventos(destino / "audit_trail.jsonl"))
     assert eventos_primera > 0
 
-    segunda = nikodym.run(config, run_dir=destino)
+    segunda = bayesrisk.run(config, run_dir=destino)
 
     card = json.loads((destino / "model_card.json").read_text(encoding="utf-8"))
     assert card["run_id"] == segunda.run_context.run_id
@@ -244,7 +244,7 @@ def test_un_run_dir_no_vacio_se_aparta_en_vez_de_mezclarse(fuente_f1: str, tmp_p
 def _corrida_previa_con_centinela(fuente: str, destino: Path) -> dict[str, bytes]:
     """Deja una corrida completa en ``destino`` más un centinela ajeno, y devuelve su huella."""
     config = _config_gobernada(fuente, governance=_gobernanza(), audit=AuditConfig(enabled=True))
-    study = nikodym.run(config, run_dir=destino)
+    study = bayesrisk.run(config, run_dir=destino)
     assert study.run_context.status == "done"
     (destino / "CENTINELA.txt").write_bytes(b"lo que habia antes")
     return _huella(destino)
@@ -264,7 +264,7 @@ def _hermanos(destino: Path) -> list[Path]:
     return sorted(ruta for ruta in destino.parent.iterdir() if ruta != destino and ruta.is_dir())
 
 
-def _config_que_publica(fuente: str) -> NikodymConfig:
+def _config_que_publica(fuente: str) -> BayesRiskConfig:
     """Pide inventario: sin el extra ``tracking`` el ensamblado falla ANTES de correr nada."""
     return _config_gobernada(
         fuente,
@@ -290,7 +290,7 @@ def test_un_fallo_al_ensamblar_deja_la_corrida_previa_donde_estaba(
 
     monkeypatch.setattr(api_module, "require_extra", sin_extra)
     with pytest.raises(MissingDependencyError, match="tracking"):
-        nikodym.run(_config_que_publica(fuente_f1), run_dir=destino)
+        bayesrisk.run(_config_que_publica(fuente_f1), run_dir=destino)
 
     assert _huella(destino) == huella, "la corrida previa tiene que quedar byte a byte como estaba"
     assert _hermanos(destino) == hermanos, "ni temporal ni respaldo pueden quedar al lado"
@@ -315,7 +315,7 @@ def test_un_fallo_inesperado_en_la_corrida_deja_la_corrida_previa_donde_estaba(
 
     monkeypatch.setattr(Study, "run", revienta_a_mitad)
     with pytest.raises(RuntimeError, match="a mitad de corrida"):
-        nikodym.run(config, run_dir=destino)
+        bayesrisk.run(config, run_dir=destino)
 
     assert _huella(destino) == huella
     # Aquí no llegó a haber evidencia (el fallo es anterior a `run_start`): no queda rastro. Cuando
@@ -341,7 +341,7 @@ def test_un_fallo_al_escribir_la_evidencia_deja_la_corrida_previa_donde_estaba(
 
     monkeypatch.setattr(Study, "save", disco_lleno)
     with pytest.raises(OSError, match="disco lleno"):
-        nikodym.run(config, run_dir=destino)
+        bayesrisk.run(config, run_dir=destino)
 
     assert _huella(destino) == huella
     nuevos = _nuevos_hermanos(destino, hermanos)
@@ -372,7 +372,7 @@ def test_un_fallo_al_sustituir_restaura_la_corrida_previa_y_conserva_la_nueva(
 
     monkeypatch.setattr(api_module, "_replace_path", falla_el_swap_final)
     with pytest.raises(PermissionError, match="al sustituir") as excinfo:
-        nikodym.run(config, run_dir=destino)
+        bayesrisk.run(config, run_dir=destino)
 
     assert _huella(destino) == huella, "el previo tiene que volver del respaldo lateral"
     nuevos = _nuevos_hermanos(destino, hermanos)
@@ -395,7 +395,7 @@ def test_una_corrida_fallida_deja_su_evidencia(tmp_path: Path) -> None:
         update={"audit": AuditConfig(enabled=True), "governance": _gobernanza()}
     )
 
-    study = nikodym.run(config, run_dir=destino)
+    study = bayesrisk.run(config, run_dir=destino)
 
     assert study.run_context.status == "failed"
     assert (destino / "audit_trail.jsonl").is_file()
@@ -445,7 +445,7 @@ def _revienta_en_performance(self: PerformanceStep, study: Study, rng: object) -
     raise RuntimeError("se cayó el cómputo de performance")
 
 
-def _trail_absoluto_dentro(fuente: str, destino: Path) -> NikodymConfig:
+def _trail_absoluto_dentro(fuente: str, destino: Path) -> BayesRiskConfig:
     """La ruta absoluta apunta al MISMO archivo que la previa dejó con el default relativo."""
     return _config_gobernada(
         fuente,
@@ -479,7 +479,7 @@ def test_un_trail_absoluto_dentro_del_run_dir_va_a_la_corrida_nueva_y_no_a_la_pr
     huella = _corrida_previa_con_centinela(fuente_f1, destino)
     trail = destino / "audit_trail.jsonl"
 
-    segunda = nikodym.run(_trail_absoluto_dentro(fuente_f1, destino), run_dir=destino)
+    segunda = bayesrisk.run(_trail_absoluto_dentro(fuente_f1, destino), run_dir=destino)
 
     assert segunda.run_context.status == "done"
     # El trail está donde la ruta absoluta dijo, y sólo con esta corrida.
@@ -506,7 +506,7 @@ def test_un_fallo_inesperado_con_trail_absoluto_dentro_del_run_dir_no_toca_la_co
     monkeypatch.setattr(PerformanceStep, "execute", _revienta_en_performance)
 
     with pytest.raises(RuntimeError, match="se cayó el cómputo"):
-        nikodym.run(_trail_absoluto_dentro(fuente_f1, destino), run_dir=destino)
+        bayesrisk.run(_trail_absoluto_dentro(fuente_f1, destino), run_dir=destino)
 
     assert _huella(destino) == huella, "ni un evento de la corrida fallida puede caer en la previa"
     nuevos = _nuevos_hermanos(destino, hermanos)
@@ -531,7 +531,7 @@ def test_un_fallo_inesperado_conserva_la_evidencia_de_la_corrida_fallida_al_lado
     monkeypatch.setattr(PerformanceStep, "execute", _revienta_en_performance)
 
     with pytest.raises(RuntimeError, match="se cayó el cómputo") as excinfo:
-        nikodym.run(config, run_dir=destino)
+        bayesrisk.run(config, run_dir=destino)
 
     assert _huella(destino) == huella
     nuevos = _nuevos_hermanos(destino, hermanos)
@@ -573,7 +573,7 @@ def test_si_el_rescate_de_la_evidencia_falla_sobreviven_la_excepcion_original_y_
     monkeypatch.setattr(api_module, "_missing_backup_path", sin_espacio)
 
     with pytest.raises(RuntimeError, match="se cayó el cómputo") as excinfo:
-        nikodym.run(config, run_dir=destino)
+        bayesrisk.run(config, run_dir=destino)
 
     assert _huella(destino) == huella
     nuevos = _nuevos_hermanos(destino, hermanos)

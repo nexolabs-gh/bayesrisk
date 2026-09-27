@@ -14,12 +14,12 @@ import pytest
 from pandas.testing import assert_frame_equal
 from sklearn.base import clone
 
-import nikodym.performance.evaluator as evaluator_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ConfigError, MissingDependencyError
-from nikodym.performance.config import PerformanceConfig
-from nikodym.performance.evaluator import PerformanceEvaluator
-from nikodym.performance.exceptions import PerformanceDataError, PerformanceMetricError
+import bayesrisk.performance.evaluator as evaluator_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ConfigError, MissingDependencyError
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.performance.evaluator import PerformanceEvaluator
+from bayesrisk.performance.exceptions import PerformanceDataError, PerformanceMetricError
 
 
 def test_auc_gini_ks_golden_y_deciles_no_muta() -> None:
@@ -653,7 +653,7 @@ def test_helpers_defensivos_metricos(monkeypatch: pytest.MonkeyPatch) -> None:
         return real_import(name)
 
     monkeypatch.setattr(evaluator_module.importlib, "import_module", block_sklearn)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         evaluator_module._dependency_versions()
 
 
@@ -661,7 +661,7 @@ def test_import_performance_evaluator_liviano_subprocess() -> None:
     code = textwrap.dedent(
         """
         import sys
-        from nikodym.performance.evaluator import PerformanceEvaluator
+        from bayesrisk.performance.evaluator import PerformanceEvaluator
 
         assert PerformanceEvaluator.__name__ == "PerformanceEvaluator"
         blocked = [m for m in ("pandas", "pandera", "sklearn", "scipy") if m in sys.modules]
@@ -694,7 +694,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         evaluator_module._import_numpy,
         evaluator_module._import_sklearn_metrics,
     ):
-        with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+        with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
             helper()
 
     monkeypatch.setattr(evaluator_module.importlib, "import_module", real_import)
@@ -706,7 +706,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         return real_dunder_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", block_pandera)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         evaluator_module._import_pandera()
 
 

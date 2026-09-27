@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from nikodym.core.time_units import YEAR_FRACTIONS, known_time_units, year_fraction
+from bayesrisk.core.time_units import YEAR_FRACTIONS, known_time_units, year_fraction
 
 
 @pytest.mark.parametrize(

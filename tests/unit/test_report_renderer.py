@@ -18,10 +18,10 @@ import pandas as pd
 import pytest
 from pydantic import BaseModel
 
-import nikodym.report as report_pkg
-import nikodym.report.renderer as renderer_module
-from nikodym.core.lineage import LineageBundle
-from nikodym.report.config import (
+import bayesrisk.report as report_pkg
+import bayesrisk.report.renderer as renderer_module
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.report.config import (
     AiNarrationConfig,
     DocumentStructureConfig,
     HtmlRenderConfig,
@@ -29,19 +29,19 @@ from nikodym.report.config import (
     ReportConfig,
     SectionPolicyConfig,
 )
-from nikodym.report.exceptions import (
+from bayesrisk.report.exceptions import (
     ReportDependencyError,
     ReportExportError,
     ReportRenderError,
 )
-from nikodym.report.renderer import HtmlReportRenderer, PdfReportRenderer
-from nikodym.report.results import (
+from bayesrisk.report.renderer import HtmlReportRenderer, PdfReportRenderer
+from bayesrisk.report.results import (
     AiNarrationBlock,
     PlaceholderBlock,
     ReportInputBundle,
     ReportSection,
 )
-from nikodym.validation.results import VALIDATION_STATUS_LABELS
+from bayesrisk.validation.results import VALIDATION_STATUS_LABELS
 
 # Golden del ``_digest_html`` (excluye los bytes ``<svg>``, ver renderer): con el extra ``report``
 # el bundle golden embebe un único gráfico (forest de coeficientes) cuyo slot cuenta en el digest.
@@ -50,10 +50,10 @@ from nikodym.validation.results import VALIDATION_STATUS_LABELS
 # Recalculado (SDD-28 G5) al retirar del resumen ejecutivo y de Limitaciones la frase que declaraba
 # las provisiones "fase posterior": el capítulo de provisiones ya existe (condicional, no en este
 # bundle F1). Verificado que el HTML cambió SOLO en esas dos frases (el orden canónico intacto).
-# Recalculado (re-skin Quarto): el tema "nikodym" adoptó un layout editorial de 3 columnas (sidebar
-# de secciones + índice lateral "En esta página") con un CSS nuevo y marca oficial, ambos inline en
-# el HTML → el digest se mueve. El markup del documento (data-section-id y orden canónico, tablas
-# con id/thead/tbody, literales config_hash=/data_hash=/git_sha=/root_seed=) queda intacto.
+# Recalculado (re-skin Quarto): el tema "bayesrisk" adoptó un layout editorial de 3 columnas
+# (sidebar de secciones + índice lateral "En esta página") con un CSS nuevo y marca oficial, ambos
+# inline en el HTML → el digest se mueve. El markup del documento (data-section-id y orden canónico,
+# tablas con id/thead/tbody, literales config_hash=/data_hash=/git_sha=/root_seed=) queda intacto.
 # Recalculado al reescribir en lenguaje de negocio la prosa que nombraba tipos internos
 # (DTO, ValidationResult, DataCardSection, «el step») y referencias a los SDD: sólo cambia
 # el texto de esos párrafos.
@@ -64,7 +64,7 @@ from nikodym.validation.results import VALIDATION_STATUS_LABELS
 # (`<figure class="chart-slot" id="figure-eda-figures" data-figure="eda.figures">` con la clave
 # interna por rótulo): las figuras de `eda` se dibujan en el cuerpo de su subsección. Medido con
 # `diff` sobre los dos renders: cambian SOLO esas tres líneas.
-# Recalculado el 2026-09-21 (capa C2 de FLUJO-GUIADO-SCORECARD): el tema `nikodym` incrusta la
+# Recalculado el 2026-09-21 (capa C2 de FLUJO-GUIADO-SCORECARD): el tema `bayesrisk` incrusta la
 # tipografía del sitio —dos `@font-face` de Roboto (400/700) en base64 antepuestas a la hoja— y
 # la pila `--sans` empieza por Roboto. Medido: con el CSS del commit anterior este mismo bundle
 # da exactamente el golden anterior `f2c48380…`, y fuera del bloque `<style>` los dos HTML son
@@ -81,7 +81,10 @@ from nikodym.validation.results import VALIDATION_STATUS_LABELS
 # Recalculado el mismo día: `<wbr>` tras cada guion bajo de un identificador en las tablas HTML
 # (D-INF-3). Medido: quitando los `<wbr>` del render nuevo, el HTML (fuera de `<style>` y los SVG)
 # es idéntico al de `HEAD`.
-GOLDEN_HTML_SHA256 = "a0cf103dfdfaa247fb7777cd7946d065547a47b8b14fba4ce3b63c3f3f2fc57f"
+# Recalculado el 2026-09-27 por el renombre (D-REN-9): medido con `diff` contra el render de
+# `315ccd4`, cambian sólo la marca (portada y barra: «bayesrisk»), el comentario del tema en el
+# CSS y la clave `bayesrisk` de `library_versions` en el anexo de linaje.
+GOLDEN_HTML_SHA256 = "da8879824379c54e02814ef9da9594b0380150df572a996b9c1f58dd7c4aba8e"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
@@ -425,7 +428,7 @@ def test_plantilla_y_css_empaquetados_en_el_paquete() -> None:
     """
     from importlib import resources
 
-    root = resources.files("nikodym.report.templates")
+    root = resources.files("bayesrisk.report.templates")
     for nombre in (
         "scorecard_report.html.j2",
         "_base.html.j2",
@@ -457,10 +460,10 @@ def test_plantilla_y_css_empaquetados_en_el_paquete() -> None:
         assert fuentes.joinpath(nombre).is_file(), nombre
 
 
-def test_el_tema_nikodym_incrusta_roboto_y_el_tema_plain_no() -> None:
+def test_el_tema_bayesrisk_incrusta_roboto_y_el_tema_plain_no() -> None:
     """Capa C2 (D-FLU-11 fila C): el informe usa la tipografía del sitio (Roboto, la que sirve
-    docs.nikodym.cl) sin depender de la red ni del sistema: los dos pesos van incrustados en el
-    CSS como `data:` URIs desde los archivos empaquetados, y la pila de fuentes empieza por
+    docs.bayesadvisory.cl) sin depender de la red ni del sistema: los dos pesos van incrustados en
+    el CSS como `data:` URIs desde los archivos empaquetados, y la pila de fuentes empieza por
     Roboto con la del sistema detrás. El tema `plain` sigue en Arial y sin fuentes incrustadas."""
     import base64
     from importlib import resources
@@ -469,7 +472,7 @@ def test_el_tema_nikodym_incrusta_roboto_y_el_tema_plain_no() -> None:
     assert html.count("@font-face {") == 2  # las dos reglas (el comentario del CSS no cuenta)
     assert 'font-family: "Roboto"' in html
     assert "--sans: Roboto," in html
-    root = resources.files("nikodym.report.templates").joinpath("fonts")
+    root = resources.files("bayesrisk.report.templates").joinpath("fonts")
     for peso, nombre in ((400, "roboto-regular-latin.woff2"), (700, "roboto-bold-latin.woff2")):
         payload = base64.b64encode(root.joinpath(nombre).read_bytes()).decode("ascii")
         assert f"font-weight: {peso}" in html
@@ -583,7 +586,7 @@ def test_en_pantalla_una_cifra_no_se_parte_y_en_el_pdf_la_celda_si(hoja: str) ->
     es una cifra."""
     from importlib import resources
 
-    css = resources.files("nikodym.report.templates").joinpath(hoja).read_text(encoding="utf-8")
+    css = resources.files("bayesrisk.report.templates").joinpath(hoja).read_text(encoding="utf-8")
     assert len(_reglas_css(css)) > 20  # el parser recorrió la hoja, no una lista vacía
     assert _celdas_que_se_parten(css, "screen") == set()
     en_papel = _celdas_que_se_parten(css, "print")
@@ -602,7 +605,7 @@ def test_las_fuentes_se_leen_con_un_segmento_por_joinpath(monkeypatch: pytest.Mo
     """
     from importlib import resources
 
-    real = resources.files("nikodym.report.templates")
+    real = resources.files("bayesrisk.report.templates")
 
     class SoloUnSegmento:
         def __init__(self, destino: Any) -> None:
@@ -620,7 +623,7 @@ def test_las_fuentes_se_leen_con_un_segmento_por_joinpath(monkeypatch: pytest.Mo
     monkeypatch.setattr(renderer_module.resources, "files", lambda paquete: SoloUnSegmento(real))
     renderer_module._font_faces.cache_clear()
     try:
-        css = renderer_module._css_for_theme("nikodym")
+        css = renderer_module._css_for_theme("bayesrisk")
     finally:
         renderer_module._font_faces.cache_clear()
     assert css.count("@font-face {") == 2
@@ -912,7 +915,7 @@ def test_constructores_helpers_y_reexports_livianos_por_subprocess() -> None:
 
     code = (
         "import sys;"
-        "import nikodym.report as report;"
+        "import bayesrisk.report as report;"
         "blocked=[m for m in ('jinja2','matplotlib','plotly','anthropic') if m in sys.modules];"
         "assert not blocked, blocked;"
         "assert report.HtmlReportRenderer.__name__ == 'HtmlReportRenderer';"
@@ -1081,7 +1084,7 @@ def test_la_tasa_por_cohorte_tiene_un_tope_duro_aunque_max_table_rows_sea_mayor(
     materializar la tabla entera. El cierre 1 de D-SC fija 1.000 para el informe igual que para
     la respuesta: `min(max_table_rows, 1.000)` sobre `eda.default_rate.by_period` —y sólo sobre
     ella: las demás tablas siguen el valor configurado—."""
-    from nikodym.eda.default_rate import MAX_PUBLISHED_PERIODS
+    from bayesrisk.eda.default_rate import MAX_PUBLISHED_PERIODS
 
     n = 1_500
     section = _section("context.eda", "Población y calidad de datos", level=2, number="2.2")
@@ -1254,7 +1257,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "0.1.0", "pandas": "2.2.0"},
+        library_versions={"bayesrisk": "0.1.0", "pandas": "2.2.0"},
         determinism_caveats=["fixture controlado"],
         created_at=datetime(2026, 6, 24, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",
@@ -1431,7 +1434,7 @@ def _ai_block() -> AiNarrationBlock:
     )
 
 
-# Orden canónico del DOCUMENTO (fuente única: nikodym.report.document), no del pipeline.
+# Orden canónico del DOCUMENTO (fuente única: bayesrisk.report.document), no del pipeline.
 _CANONICAL_IDS = (
     "toc",
     "context",
@@ -1513,7 +1516,7 @@ def test_el_capitulo_de_provisiones_se_emite_con_un_solo_motor() -> None:
     se gateaba por el **orquestador**, que no puede existir con un motor solo porque prohíbe
     `source_a == source_b` (D-CAP-1).
     """
-    document = importlib.import_module("nikodym.report.document")
+    document = importlib.import_module("bayesrisk.report.document")
     spec = next(s for s in document.CHAPTER_SPECS if s.id == "provisions")
 
     assert spec.requires_domain == "", (
@@ -1530,7 +1533,7 @@ def test_el_titular_de_un_solo_motor_interno_no_cita_ninguna_norma() -> None:
     Es la mitad cara de D-CAP-2. Sin ella el capítulo se emitía **mudo** —la prosa devolvía `()` al
     no hallar el orquestador—, y un capítulo mudo es el mismo defecto con otro disfraz.
     """
-    prose = importlib.import_module("nikodym.report.prose")
+    prose = importlib.import_module("bayesrisk.report.prose")
 
     parrafos = prose.provisions_intro(_bundle_provisiones(_CARD_SOLO_INTERNO))
 
@@ -1547,7 +1550,7 @@ def test_el_titular_de_un_solo_motor_interno_no_cita_ninguna_norma() -> None:
 
 def test_el_titular_de_un_solo_motor_cmf_si_nombra_su_norma() -> None:
     """Control simétrico: callar la norma en el motor CMF sería la mentira contraria."""
-    prose = importlib.import_module("nikodym.report.prose")
+    prose = importlib.import_module("bayesrisk.report.prose")
     cards = {
         "provisioning_cmf": {"total_provision_amount": 1000.0, "total_exposure_amount": 50000.0}
     }
@@ -1570,7 +1573,7 @@ def test_los_dos_motores_sin_comparador_no_dejan_el_capitulo_mudo() -> None:
     («5 Provisiones regulatorias») contra los 742 del mismo preset con el comparador encendido: el
     lector saltaba del título a la primera subsección y el total nunca aparecía.
     """
-    prose = importlib.import_module("nikodym.report.prose")
+    prose = importlib.import_module("bayesrisk.report.prose")
     cards = {
         **_CARD_SOLO_INTERNO,
         "provisioning_cmf": {"total_provision_amount": 1000.0, "total_exposure_amount": 50000.0},
@@ -1607,7 +1610,7 @@ def test_el_passthrough_no_afirma_la_regla_del_maximo_que_no_aplico() -> None:
 
     Preexistente: no lo introduce 1.11.0, pero D-CAP-2 pasó por esta función y no lo vio.
     """
-    prose = importlib.import_module("nikodym.report.prose")
+    prose = importlib.import_module("bayesrisk.report.prose")
     cards = {
         "provisioning": {
             "source_a": "cmf",
@@ -1666,7 +1669,7 @@ def test_la_prosa_de_provisiones_nombra_el_pais_y_declara_la_moneda_que_se_le_di
     jurisdicción de la NORMA y la moneda de los MONTOS son cosas distintas: un banco chileno puede
     reportar en UF o en dólares, y el Cap. B-1 se sigue llamando igual.
     """
-    prose = importlib.import_module("nikodym.report.prose")
+    prose = importlib.import_module("bayesrisk.report.prose")
     for moneda in _MONEDAS_AJENAS:
         bundle = _bundle_provisiones(_CARDS_COMPARACION).model_copy(update={"currency": moneda})
 
@@ -1687,7 +1690,7 @@ def test_la_prosa_de_provisiones_calla_la_moneda_cuando_nadie_la_declaro() -> No
     Es la mitad del contrato que evita cambiar un default chileno por otro: el motor no inventa un
     dato institucional, y la moneda de una cartera la sabe la institución (D-MON-2).
     """
-    prose = importlib.import_module("nikodym.report.prose")
+    prose = importlib.import_module("bayesrisk.report.prose")
     bundle = _bundle_provisiones(_CARDS_COMPARACION)
     assert bundle.currency == "", "el bundle de fábrica no debe traer moneda"
 
@@ -1706,7 +1709,7 @@ def test_la_prosa_de_ifrs9_declara_la_moneda_de_los_montos() -> None:
     incluso sobre el dataset de la demo publicada, cuya descripción declara sus montos agnósticos
     de moneda.
     """
-    prose = importlib.import_module("nikodym.report.prose")
+    prose = importlib.import_module("bayesrisk.report.prose")
     cards = {"provisioning_ifrs9": {"total_ecl_reported": 3423116.0, "total_ead": 114325315.0}}
 
     sin_declarar = " ".join(prose.ifrs9_intro(_bundle_provisiones(cards)))
@@ -1731,7 +1734,7 @@ def test_los_titulos_de_los_capitulos_de_provisiones_rotulan_el_pais() -> None:
     Un gate que sólo comprobara el literal del diccionario volvería a dejar pasar el defecto que
     esto cierra: hasta el 2026-08-04 el título decía «la regla del máximo (Chile)» **siempre**.
     """
-    from nikodym.report.document import DOMAIN_TITLES, domain_title
+    from bayesrisk.report.document import DOMAIN_TITLES, domain_title
 
     assert "Chile" in DOMAIN_TITLES["provisioning_cmf"]
 

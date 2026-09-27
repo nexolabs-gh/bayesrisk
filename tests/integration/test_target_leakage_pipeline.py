@@ -8,12 +8,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nikodym.audit import JsonlAuditSink
-from nikodym.binning.config import BinningConfig
-from nikodym.calibration.config import CalibrationConfig
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.study import Study
-from nikodym.data.config import (
+from bayesrisk.audit import JsonlAuditSink
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.calibration.config import CalibrationConfig
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     CohortSplitConfig,
     DataConfig,
     PartitionConfig,
@@ -21,17 +21,17 @@ from nikodym.data.config import (
     Rule,
     TargetConfig,
 )
-from nikodym.data.step import INPUT_FRAME_KEY
-from nikodym.governance import GovernanceConfig, ModelCardBuilder
-from nikodym.model.config import (
+from bayesrisk.data.step import INPUT_FRAME_KEY
+from bayesrisk.governance import GovernanceConfig, ModelCardBuilder
+from bayesrisk.model.config import (
     IvContributionConfig,
     ModelConfig,
     SignPolicyConfig,
     StepwiseConfig,
 )
-from nikodym.performance.config import PerformanceConfig
-from nikodym.scorecard.config import ScorecardConfig
-from nikodym.selection.config import (
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.scorecard.config import ScorecardConfig
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
@@ -77,7 +77,7 @@ def _run_pipeline(
     trail_path: Path | None = None,
 ) -> Study:
     """Corre el F1 completo desde datos crudos hasta métricas discriminantes."""
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         repro=ReproConfig(seed=42),
         data=DataConfig(
             target=TargetConfig(

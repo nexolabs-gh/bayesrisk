@@ -11,10 +11,10 @@ from hypothesis import strategies as st
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.eda.config import DefaultRateConfig
-from nikodym.eda.default_rate import DefaultRateAnalyzer, DefaultRateResult, _stable_label
-from nikodym.eda.exceptions import EdaError
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.eda.config import DefaultRateConfig
+from bayesrisk.eda.default_rate import DefaultRateAnalyzer, DefaultRateResult, _stable_label
+from bayesrisk.eda.exceptions import EdaError
 
 
 def _frame_from_targets(targets: list[int | None], months: list[str]) -> pd.DataFrame:

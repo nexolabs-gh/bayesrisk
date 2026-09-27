@@ -73,7 +73,7 @@ const DISCRIMINANTE_HOLDOUT = resultsF1.performance.discriminant.find(
  * la landing dice describir**, y ya era la fuente de los títulos, así que título y tipo se miden
  * contra lo mismo y una recaptura los mueve juntos. `ChapterSpec` está aguas arriba y emite
  * capítulos CONDICIONALES: cuáles trae ESTA corrida sólo lo sabe su informe. Y leer
- * `src/nikodym/report/` desde aquí cruzaría la raíz de vite (`web/`) por un dato que el fixture
+ * `src/bayesrisk/report/` desde aquí cruzaría la raíz de vite (`web/`) por un dato que el fixture
  * ya trae.
  */
 const CAPITULOS_DEL_INFORME = reportF1Html

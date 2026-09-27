@@ -17,13 +17,13 @@ import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
 from sklearn.base import clone
 
-import nikodym.binning
-import nikodym.binning.transformer as transformer_module
-from nikodym.binning.config import BinningConfig, VariableBinningConfig
-from nikodym.binning.exceptions import BinningFitError, BinningTransformError
-from nikodym.binning.transformer import WoEBinner
-from nikodym.core.exceptions import ConfigError, MissingDependencyError
-from nikodym.data.special import MaskedFrame
+import bayesrisk.binning
+import bayesrisk.binning.transformer as transformer_module
+from bayesrisk.binning.config import BinningConfig, VariableBinningConfig
+from bayesrisk.binning.exceptions import BinningFitError, BinningTransformError
+from bayesrisk.binning.transformer import WoEBinner
+from bayesrisk.core.exceptions import ConfigError, MissingDependencyError
+from bayesrisk.data.special import MaskedFrame
 
 
 def _index(n: int) -> pd.Index:
@@ -557,8 +557,8 @@ def _metric_or_empirical(
 
 
 def test_reexport_perezoso_publica_woebinner() -> None:
-    """``nikodym.binning.WoEBinner`` carga el transformer bajo demanda."""
-    assert nikodym.binning.WoEBinner is WoEBinner
+    """``bayesrisk.binning.WoEBinner`` carga el transformer bajo demanda."""
+    assert bayesrisk.binning.WoEBinner is WoEBinner
 
 
 def test_import_binning_process_success_sin_importar_optbinning_real(
@@ -585,7 +585,7 @@ def test_woebinner_ejerce_optbinning_real_en_subprocess() -> None:
         import math
 
         import pandas as pd
-        from nikodym.binning.transformer import WoEBinner
+        from bayesrisk.binning.transformer import WoEBinner
 
         index = pd.Index([f"op-{i}" for i in range(8)], name="loan_id")
         X = pd.DataFrame({"score": [0, 0, 1, 1, 2, 2, 3, 3]}, index=index)
@@ -633,8 +633,8 @@ def test_special_codes_por_variable_ejercitan_optbinning_real_en_subprocess() ->
         import numpy as np
         import pandas as pd
 
-        from nikodym.binning.transformer import WoEBinner
-        from nikodym.data.special import MaskedFrame
+        from bayesrisk.binning.transformer import WoEBinner
+        from bayesrisk.data.special import MaskedFrame
 
         index = pd.Index([f"op-{i}" for i in range(12)], name="loan_id")
         raw = pd.DataFrame(
@@ -701,7 +701,7 @@ def test_woebinner_default_binnea_numericas_continuas_reales_en_subprocess() -> 
         """
         import numpy as np
         import pandas as pd
-        from nikodym.binning.transformer import WoEBinner
+        from bayesrisk.binning.transformer import WoEBinner
 
         rng = np.random.default_rng(20260704)
         n = 2500
@@ -765,8 +765,8 @@ def test_reexport_woebinner_sin_sklearn_falla_con_missing_dependency_espanol() -
         """
         import sys
 
-        import nikodym.binning
-        from nikodym.core.exceptions import MissingDependencyError
+        import bayesrisk.binning
+        from bayesrisk.core.exceptions import MissingDependencyError
 
 
         class BlockSklearn:
@@ -779,9 +779,9 @@ def test_reexport_woebinner_sin_sklearn_falla_con_missing_dependency_espanol() -
 
         sys.meta_path.insert(0, BlockSklearn())
         try:
-            nikodym.binning.WoEBinner
+            bayesrisk.binning.WoEBinner
         except MissingDependencyError as exc:
-            assert "instale nikodym[scoring]" in str(exc)
+            assert "instale bayesrisk[scoring]" in str(exc)
         else:
             raise AssertionError("WoEBinner no tradujo la ausencia de sklearn")
         print("ok")
@@ -819,7 +819,7 @@ def test_import_transformer_sin_sklearn_cubre_missing_dependency(
     module_path = transformer_module.__file__
     assert module_path is not None
     spec = importlib.util.spec_from_file_location(
-        "nikodym.binning._missing_sklearn_transformer_test",
+        "bayesrisk.binning._missing_sklearn_transformer_test",
         module_path,
     )
     assert spec is not None
@@ -827,7 +827,7 @@ def test_import_transformer_sin_sklearn_cubre_missing_dependency(
     loader = spec.loader
     assert loader is not None
 
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         loader.exec_module(module)
 
 
@@ -1077,7 +1077,7 @@ def test_summary_monotonic_trend_round_trip_real_en_subprocess() -> None:
         """
         import numpy as np
         import pandas as pd
-        from nikodym.binning.transformer import WoEBinner
+        from bayesrisk.binning.transformer import WoEBinner
 
         def derived_trend(x, y, trend):
             binner = WoEBinner(feature_columns=("v",), monotonic_trend=trend).fit(
@@ -1476,7 +1476,7 @@ def test_ramas_de_error_y_helpers_internos(monkeypatch: pytest.MonkeyPatch) -> N
     assert params["score"]["max_n_bins"] == 3
     assert "min_bin_size" not in params["score"]
     assert transformer_module._none_if_zero(0) is None
-    # Sin override de dtype, Nikodym fija el dtype explícito (fix B0): 'numerical' si la variable
+    # Sin override de dtype, bayesrisk fija el dtype explícito (fix B0): 'numerical' si la variable
     # no está en el set categórico resuelto, 'categorical' si lo está.
     default_override_params = transformer_module._build_binning_fit_params(
         _binner(
@@ -1584,5 +1584,5 @@ def test_missing_dependency_error_optbinning(monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr(transformer_module.importlib, "import_module", fake_import_module)
 
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         _binner(feature_columns=("score",)).fit(X, y)

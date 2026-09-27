@@ -15,12 +15,12 @@ import pytest
 from pandas.testing import assert_frame_equal
 from sklearn.base import clone
 
-import nikodym.stability.evaluator as evaluator_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ConfigError, MissingDependencyError
-from nikodym.stability.config import StabilityConfig
-from nikodym.stability.evaluator import StabilityEvaluator
-from nikodym.stability.exceptions import StabilityDataError, StabilityMetricError
+import bayesrisk.stability.evaluator as evaluator_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ConfigError, MissingDependencyError
+from bayesrisk.stability.config import StabilityConfig
+from bayesrisk.stability.evaluator import StabilityEvaluator
+from bayesrisk.stability.exceptions import StabilityDataError, StabilityMetricError
 
 _PSI_TABLE_COLUMNS = (
     "metric",
@@ -797,7 +797,7 @@ def test_helpers_defensivos(monkeypatch: pytest.MonkeyPatch) -> None:
         return real_import(name)
 
     monkeypatch.setattr(evaluator_module.importlib, "import_module", block_numpy)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         evaluator_module._dependency_versions()
     monkeypatch.setattr(evaluator_module.importlib, "import_module", real_import)
 
@@ -805,7 +805,7 @@ def test_helpers_defensivos(monkeypatch: pytest.MonkeyPatch) -> None:
         raise importlib.metadata.PackageNotFoundError(name)
 
     monkeypatch.setattr(importlib.metadata, "version", raise_missing)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         evaluator_module._dependency_versions()
 
 
@@ -813,7 +813,7 @@ def test_import_stability_evaluator_liviano_subprocess() -> None:
     code = textwrap.dedent(
         """
         import sys
-        from nikodym.stability.evaluator import StabilityEvaluator
+        from bayesrisk.stability.evaluator import StabilityEvaluator
 
         assert StabilityEvaluator.__name__ == "StabilityEvaluator"
         blocked = [m for m in ("pandas", "pandera", "sklearn", "scipy") if m in sys.modules]
@@ -842,7 +842,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setattr(evaluator_module.importlib, "import_module", block)
     for helper in (evaluator_module._import_pandas, evaluator_module._import_numpy):
-        with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+        with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
             helper()
 
     monkeypatch.setattr(evaluator_module.importlib, "import_module", real_import)
@@ -854,7 +854,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         return real_dunder_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", block_pandera)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         evaluator_module._import_pandera()
 
 

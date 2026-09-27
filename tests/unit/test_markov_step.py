@@ -12,24 +12,24 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.markov as markov_pkg
-import nikodym.markov.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.markov.config import (
+import bayesrisk.core.study as study_module
+import bayesrisk.markov as markov_pkg
+import bayesrisk.markov.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.markov.config import (
     MarkovConfig,
     MarkovDynamicsConfig,
     MarkovEstimationConfig,
     MarkovInputConfig,
     MarkovStateConfig,
 )
-from nikodym.markov.exceptions import MarkovInputError, MarkovTransformError
-from nikodym.markov.results import MarkovResult
-from nikodym.markov.step import MARKOV_ARTIFACTS, MarkovStep
+from bayesrisk.markov.exceptions import MarkovInputError, MarkovTransformError
+from bayesrisk.markov.results import MarkovResult
+from bayesrisk.markov.step import MARKOV_ARTIFACTS, MarkovStep
 
 ROOT_SEED = 20_260_629
 _TERM_COLUMNS = [
@@ -135,7 +135,7 @@ def _aj_frame() -> pd.DataFrame:
 
 def _study_with_frame(cfg: MarkovConfig, frame: pd.DataFrame) -> Study:
     """Construye un ``Study`` markov con ``data.frame`` ya publicado."""
-    study = Study(NikodymConfig(markov=cfg))
+    study = Study(BayesRiskConfig(markov=cfg))
     study.artifacts.set("data", "frame", frame)
     return study
 
@@ -178,13 +178,13 @@ def test_from_config_registro_reexport_contrato_orden_e_import_liviano() -> None
     )
 
     code = (
-        "import nikodym.core, sys;"
-        "assert 'nikodym.markov' not in sys.modules;"
-        "import nikodym.markov;"
-        "blocked=[m for m in ('pandas','scipy','numpy','nikodym.markov.transition') "
+        "import bayesrisk.core, sys;"
+        "assert 'bayesrisk.markov' not in sys.modules;"
+        "import bayesrisk.markov;"
+        "blocked=[m for m in ('pandas','scipy','numpy','bayesrisk.markov.transition') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'MarkovStep' in nikodym.markov.__all__"
+        "assert 'MarkovStep' in bayesrisk.markov.__all__"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -393,7 +393,7 @@ def test_ct1_falta_data_frame_y_tipo_invalido_fallan_con_error_propio() -> None:
     """CT-1 directo levanta ``ArtifactNotFoundError`` y el tipo incorrecto falla claro."""
     cfg = _cfg()
     step = MarkovStep.from_config(cfg)
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
 
     with pytest.raises(ArtifactNotFoundError, match=r"\('data', 'frame'\)"):
         step.execute(study, np.random.default_rng(ROOT_SEED))

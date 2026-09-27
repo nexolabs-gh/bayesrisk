@@ -8,12 +8,12 @@ import sys
 
 import pytest
 
-from nikodym.core.config import INFRA_SECTIONS, NikodymConfig, ReproConfig, config_hash
+from bayesrisk.core.config import INFRA_SECTIONS, BayesRiskConfig, ReproConfig, config_hash
 
 
 def test_es_hex_sha256() -> None:
     """El hash es un string hexadecimal SHA-256 de 64 caracteres."""
-    digest = config_hash(NikodymConfig())
+    digest = config_hash(BayesRiskConfig())
     assert isinstance(digest, str)
     assert len(digest) == 64
     int(digest, 16)  # no levanta -> es hex válido
@@ -21,18 +21,18 @@ def test_es_hex_sha256() -> None:
 
 def test_determinista() -> None:
     """Dos configs idénticos producen el mismo hash (DoD F0 b)."""
-    assert config_hash(NikodymConfig()) == config_hash(NikodymConfig())
+    assert config_hash(BayesRiskConfig()) == config_hash(BayesRiskConfig())
 
 
 def test_excluye_infra_sections() -> None:
     """Cambiar 'name' (en INFRA_SECTIONS) NO cambia el hash (DoD F0 b)."""
-    assert config_hash(NikodymConfig(name="alfa")) == config_hash(NikodymConfig(name="beta"))
+    assert config_hash(BayesRiskConfig(name="alfa")) == config_hash(BayesRiskConfig(name="beta"))
 
 
 def test_cambia_con_campo_computacional() -> None:
     """Cambiar repro.seed (sección computacional) SÍ cambia el hash."""
-    uno = config_hash(NikodymConfig(repro=ReproConfig(seed=1)))
-    dos = config_hash(NikodymConfig(repro=ReproConfig(seed=2)))
+    uno = config_hash(BayesRiskConfig(repro=ReproConfig(seed=1)))
+    dos = config_hash(BayesRiskConfig(repro=ReproConfig(seed=2)))
     assert uno != dos
 
 
@@ -55,12 +55,12 @@ _CONFIG_CON_SECCION_DE_DOMINIO = {"binning": {"max_n_prebins": 15}}
 _CODIGO_HASH_EN_SUBPROCESO = """
 import json, sys
 if {importar}:
-    import nikodym.binning  # puebla el hook _BINNING_CONFIG_CLS
-from nikodym.core.config import NikodymConfig, config_hash
-cfg = NikodymConfig.model_validate({payload})
+    import bayesrisk.binning  # puebla el hook _BINNING_CONFIG_CLS
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+cfg = BayesRiskConfig.model_validate({payload})
 antes = {{
     "opaca": isinstance(cfg.binning, dict),
-    "capa_importada": "nikodym.binning" in sys.modules,
+    "capa_importada": "bayesrisk.binning" in sys.modules,
 }}
 print(json.dumps({{**antes, "hash": config_hash(cfg)}}))
 """
@@ -117,9 +117,9 @@ def test_el_hash_converge_al_del_config_coaccionado() -> None:
     con lo que el test pasaría incluso contra el código defectuoso. Se verificó que falla sin el
     arreglo.
     """
-    import nikodym.binning  # noqa: F401 - importa la capa: puebla el hook y fuerza la coacción
+    import bayesrisk.binning  # noqa: F401 - importa la capa: puebla el hook y fuerza la coacción
 
-    esperado = config_hash(NikodymConfig.model_validate(_CONFIG_CON_SECCION_DE_DOMINIO))
+    esperado = config_hash(BayesRiskConfig.model_validate(_CONFIG_CON_SECCION_DE_DOMINIO))
     assert _hash_en_subproceso(importar_capa=False)["hash"] == esperado
 
 
@@ -136,17 +136,17 @@ import sys, importlib.abc
 
 class Bloqueador(importlib.abc.MetaPathFinder):
     def find_spec(self, nombre, ruta=None, destino=None):
-        if nombre == "nikodym.binning" or nombre.startswith("nikodym.binning."):
+        if nombre == "bayesrisk.binning" or nombre.startswith("bayesrisk.binning."):
             raise ImportError("extra ausente (simulado)")
         return None
 
 sys.meta_path.insert(0, Bloqueador())
-from nikodym.core.config import NikodymConfig, config_hash
-cfg = NikodymConfig.model_validate({json.dumps(_CONFIG_CON_SECCION_DE_DOMINIO)})
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+cfg = BayesRiskConfig.model_validate({json.dumps(_CONFIG_CON_SECCION_DE_DOMINIO)})
 digest = config_hash(cfg)
 assert isinstance(cfg.binning, dict), "la sección queda opaca"
 assert len(digest) == 64, "el hash se calcula igual"
-assert "nikodym.binning" not in sys.modules
+assert "bayesrisk.binning" not in sys.modules
 """
     subprocess.run([sys.executable, "-c", codigo], check=True)
 
@@ -162,10 +162,10 @@ def test_una_seccion_opaca_invalida_no_vuelve_fallable_el_hash() -> None:
     """
     codigo = """
 import sys
-from nikodym.core.config import NikodymConfig, config_hash
-cfg = NikodymConfig.model_validate({"binning": {"campo_que_no_existe": 1}})
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+cfg = BayesRiskConfig.model_validate({"binning": {"campo_que_no_existe": 1}})
 assert isinstance(cfg.binning, dict), "precondición: la sección llega opaca"
-assert "nikodym.binning" not in sys.modules, "precondición: la capa no está importada"
+assert "bayesrisk.binning" not in sys.modules, "precondición: la capa no está importada"
 digest = config_hash(cfg)   # no debe levantar
 assert len(digest) == 64
 """
@@ -178,7 +178,7 @@ assert len(digest) == 64
         # Desciende de ``ConfigError``. El `raise` se escribió el 2026-08-04 (D-ABA-5): cerrar un
         # defecto en el validador de un dominio CREABA un escape nuevo en la identidad.
         ("binning", {"solver": "cp"}, "ConfigError"),
-        # 🔴 NO desciende de ``ConfigError``, sólo de ``NikodymError``. Este caso es el que hace
+        # 🔴 NO desciende de ``ConfigError``, sólo de ``BayesRiskError``. Este caso es el que hace
         # falsable el gate: con ``except (ValidationError, ConfigError)`` —el arreglo insuficiente
         # que parece bastar— el de arriba pasa y ÉSTE se pone rojo. Son cuatro clases así, en
         # ``stress`` y ``forward``.
@@ -197,7 +197,7 @@ def test_un_error_de_dominio_tampoco_vuelve_fallable_el_hash(
     Hermano de :func:`test_una_seccion_opaca_invalida_no_vuelve_fallable_el_hash`, que prueba la
     única rama que funcionaba: un campo desconocido, o sea ``extra_forbidden`` de pydantic, que
     **sí** es ``ValidationError``. La otra familia es un ``raise`` del propio validador de dominio,
-    y pydantic sólo lo envuelve si hereda de ``ValueError`` — cosa que ``NikodymError`` no hace.
+    y pydantic sólo lo envuelve si hereda de ``ValueError`` — cosa que ``BayesRiskError`` no hace.
     Eran **123 `raise` en 18 de las 22 secciones de dominio**, 72 de ellos alcanzables desde el
     formulario, y bastaba un ``Select`` para que ``config_hash`` dejara de ser total.
 
@@ -207,17 +207,17 @@ def test_un_error_de_dominio_tampoco_vuelve_fallable_el_hash(
     """
     codigo = f"""
 import sys
-from nikodym.core.config import NikodymConfig, config_hash
-cfg = NikodymConfig.model_validate({{{seccion!r}: {payload!r}}})
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+cfg = BayesRiskConfig.model_validate({{{seccion!r}: {payload!r}}})
 assert isinstance(cfg.{seccion}, dict), "precondición: la sección llega opaca"
-assert "nikodym.{seccion}" not in sys.modules, "precondición: la capa no está importada"
+assert "bayesrisk.{seccion}" not in sys.modules, "precondición: la capa no está importada"
 
 # Control positivo: la coacción falla de verdad, y con la excepción que este caso dice medir.
 # Sin esto el test pasaría aunque el payload fuese válido — daría verde sin ejercitar nada.
-from nikodym.core.config.schema import cargar_configs_de_dominio
+from bayesrisk.core.config.schema import cargar_configs_de_dominio
 cargar_configs_de_dominio()
 try:
-    NikodymConfig.model_validate(cfg.model_dump(mode="json", by_alias=True))
+    BayesRiskConfig.model_validate(cfg.model_dump(mode="json", by_alias=True))
 except Exception as exc:
     assert type(exc).__name__ == {excepcion!r}, f"esperaba {excepcion}, no {{type(exc).__name__}}"
 else:

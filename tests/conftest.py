@@ -1,4 +1,4 @@
-"""Fixtures raíz de la suite de tests de Nikodym."""
+"""Fixtures raíz de la suite de tests de bayesrisk."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from hypothesis import settings
 
-from nikodym.core.seeding import SeedManager
+from bayesrisk.core.seeding import SeedManager
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -25,7 +25,7 @@ settings.register_profile(
     print_blob=True,
 )
 settings.register_profile(
-    "nikodym_deterministic",
+    "bayesrisk_deterministic",
     derandomize=True,
     max_examples=25,
     deadline=None,
@@ -168,7 +168,7 @@ class FakeBinningProcess:
         return self
 
     def summary(self) -> pd.DataFrame:
-        """Devuelve el summary global con las columnas de OptBinning usadas por Nikodym."""
+        """Devuelve el summary global con las columnas de OptBinning usadas por bayesrisk."""
         assert self._summary is not None
         summary = self._summary.copy(deep=True)
         summary["selected"] = True
@@ -211,7 +211,7 @@ class FakeBinningProcess:
 @pytest.fixture
 def fake_binning_process(monkeypatch: pytest.MonkeyPatch) -> type[FakeBinningProcess]:
     """Parcha ``WoEBinner`` para usar el doble determinista de OptBinning."""
-    import nikodym.binning.transformer as transformer_module
+    import bayesrisk.binning.transformer as transformer_module
 
     monkeypatch.setattr(transformer_module, "_import_binning_process", lambda: FakeBinningProcess)
     return FakeBinningProcess

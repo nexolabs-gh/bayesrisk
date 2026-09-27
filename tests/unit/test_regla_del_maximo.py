@@ -18,13 +18,13 @@ from typing import Any
 
 import pytest
 
-from nikodym.provisioning.config import (
+from bayesrisk.provisioning.config import (
     CMF_SOURCE,
     IFRS9_SOURCE,
     INTERNAL_SOURCE,
     ProvisioningConfig,
 )
-from nikodym.report.document import domain_title
+from bayesrisk.report.document import domain_title
 
 _CORTO = {CMF_SOURCE: "cmf", INTERNAL_SOURCE: "internal", IFRS9_SOURCE: "ifrs9"}
 
@@ -124,7 +124,7 @@ def test_el_titulo_y_la_etiqueta_del_lineage_cuentan_la_misma_historia(
     substring en copy es adivinar; el criterio son las dos constantes que el motor elige cuando la
     comparación sí vincula.
     """
-    from nikodym.provisioning.orchestrator import (
+    from bayesrisk.provisioning.orchestrator import (
         _B1_INTERNAL_RULE_SOURCE,
         _B1_MAX_RULE_SOURCE,
         _rule_source,
@@ -142,7 +142,7 @@ def test_el_titulo_y_la_etiqueta_del_lineage_cuentan_la_misma_historia(
 
 def test_el_barrido_no_es_vacuo() -> None:
     """Un gate que recorre cero da verde y no prueba nada: pasó ya dos veces en este repo."""
-    from nikodym.provisioning.orchestrator import _rule_source
+    from bayesrisk.provisioning.orchestrator import _rule_source
 
     etiquetas = {
         _rule_source(ProvisioningConfig()),

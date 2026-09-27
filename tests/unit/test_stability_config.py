@@ -1,4 +1,4 @@
-"""Tests de ``StabilityConfig`` (SDD-11 §5) y su integración con ``NikodymConfig``."""
+"""Tests de ``StabilityConfig`` (SDD-11 §5) y su integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -12,18 +12,18 @@ import yaml
 from hypothesis import given, settings
 from pydantic import ValidationError
 
-import nikodym.stability as stability_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.stability as stability_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import ConfigError, NikodymError
-from nikodym.stability.config import StabilityConfig
-from nikodym.testing.strategies import _config_cls_for_domain, nikodym_config_strategy
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError, ConfigError
+from bayesrisk.stability.config import StabilityConfig
+from bayesrisk.testing.strategies import _config_cls_for_domain, bayesrisk_config_strategy
 
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 
@@ -85,45 +85,45 @@ def test_round_trip_yaml_stabilityconfig() -> None:
     assert StabilityConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_stability_instancia() -> None:
-    """Pasar una instancia ``StabilityConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_stability_instancia() -> None:
+    """Pasar una instancia ``StabilityConfig`` a ``BayesRiskConfig`` la conserva."""
     stability = StabilityConfig()
-    cfg = NikodymConfig(stability=stability)
+    cfg = BayesRiskConfig(stability=stability)
     assert isinstance(cfg.stability, StabilityConfig)
     assert cfg.stability is stability
 
 
-def test_nikodymconfig_stability_dict_coacciona() -> None:
+def test_bayesriskconfig_stability_dict_coacciona() -> None:
     """Un dict en ``stability`` se coacciona a ``StabilityConfig`` por el hook cargado."""
-    cfg = NikodymConfig(stability={"psi_bins": 20, "temporal_axis": "none"})
+    cfg = BayesRiskConfig(stability={"psi_bins": 20, "temporal_axis": "none"})
     assert isinstance(cfg.stability, StabilityConfig)
     assert cfg.stability.psi_bins == 20
     assert cfg.stability.temporal_axis == "none"
 
 
-def test_nikodymconfig_stability_none_explicito() -> None:
+def test_bayesriskconfig_stability_none_explicito() -> None:
     """``stability=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(stability=None).stability is None
+    assert BayesRiskConfig(stability=None).stability is None
 
 
-def test_nikodymconfig_stability_core_only_acepta_blob_json(
+def test_bayesriskconfig_stability_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``stability`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_STABILITY_CONFIG_CLS", None)
-    cfg = NikodymConfig(stability={"psi_bins": 20, "temporal_axis": "none"})
+    cfg = BayesRiskConfig(stability={"psi_bins": 20, "temporal_axis": "none"})
     assert cfg.stability == {"psi_bins": 20, "temporal_axis": "none"}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_stability_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_stability_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``stability`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_STABILITY_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(stability=blob)
+        BayesRiskConfig(stability=blob)
 
 
 @pytest.mark.parametrize(
@@ -139,16 +139,16 @@ def test_nikodymconfig_stability_core_only_rechaza_json_no_canonico(
 )
 def test_config_hash_cambia_al_variar_stability(stability: StabilityConfig) -> None:
     """``stability`` no es INFRA: bins, umbrales, columnas y fuente cambian la identidad."""
-    base = config_hash(NikodymConfig(stability=StabilityConfig()))
-    variado = config_hash(NikodymConfig(stability=stability))
+    base = config_hash(BayesRiskConfig(stability=StabilityConfig()))
+    variado = config_hash(BayesRiskConfig(stability=stability))
     assert "stability" not in INFRA_SECTIONS
     assert variado != base
 
 
 @settings(max_examples=12, deadline=None)
-@given(cfg=nikodym_config_strategy(sections=["stability"]))
-def test_nikodym_config_strategy_genera_configs_stability_validos(
-    cfg: NikodymConfig,
+@given(cfg=bayesrisk_config_strategy(sections=["stability"]))
+def test_bayesrisk_config_strategy_genera_configs_stability_validos(
+    cfg: BayesRiskConfig,
 ) -> None:
     """La estrategia pública genera configs raíz válidos con ``stability`` activo."""
     assert isinstance(cfg.stability, StabilityConfig)
@@ -251,36 +251,36 @@ def test_stability_public_api_minimo() -> None:
         stability_pkg.__getattr__("Unknown")
 
 
-def test_stability_errors_descienden_de_nikodym_error() -> None:
+def test_stability_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``stability`` cuelgan de la raíz propia de la librería."""
     for name in ("StabilityError", "StabilityDataError", "StabilityMetricError"):
         error_cls = getattr(stability_pkg, name)
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
 
 
 def test_import_stability_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.stability`` registra el hook sin arrastrar stack tabular/scoring."""
+    """``import bayesrisk.stability`` registra el hook sin arrastrar stack tabular/scoring."""
     code = (
-        "import nikodym.stability, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.stability.config import StabilityConfig;"
+        "import bayesrisk.stability, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.stability.config import StabilityConfig;"
         "bloqueados=[m for m in "
         "('pandas','pandera','pyarrow','scipy','sklearn','mlflow') if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(stability={'psi_bins': 12});"
+        "cfg=BayesRiskConfig(stability={'psi_bins': 12});"
         "assert isinstance(cfg.stability, StabilityConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_core_valida_stability_como_blob_opaco_sin_importar_stability() -> None:
-    """El core acepta ``stability`` JSON/dict sin importar ``nikodym.stability``."""
+    """El core acepta ``stability`` JSON/dict sin importar ``bayesrisk.stability``."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(stability={'psi_bins': 20});"
+        "cfg=BayesRiskConfig(stability={'psi_bins': 20});"
         "assert cfg.stability == {'psi_bins': 20};"
-        "assert 'nikodym.stability' not in sys.modules"
+        "assert 'bayesrisk.stability' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -292,4 +292,4 @@ def test_config_cls_for_domain_resuelve_stability() -> None:
 
 def test_config_hash_default_con_stability_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``stability`` con valor None."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH

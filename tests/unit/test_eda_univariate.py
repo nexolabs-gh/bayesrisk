@@ -11,12 +11,12 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pandas.testing import assert_frame_equal
 
-import nikodym.eda as eda
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.seeding import SeedManager
-from nikodym.eda.config import UnivariateConfig
-from nikodym.eda.exceptions import EdaError
-from nikodym.eda.univariate import UnivariateProfiler, UnivariateResult
+import bayesrisk.eda as eda
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.seeding import SeedManager
+from bayesrisk.eda.config import UnivariateConfig
+from bayesrisk.eda.exceptions import EdaError
+from bayesrisk.eda.univariate import UnivariateProfiler, UnivariateResult
 
 
 def _frame() -> pd.DataFrame:

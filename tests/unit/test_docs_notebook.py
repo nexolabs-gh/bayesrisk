@@ -1,8 +1,8 @@
 """El cuaderno publicado `docs_site/notebooks/primer-scorecard.ipynb` corre de verdad, en cada CI.
 
 Decisión de Cami del 2026-09-23 (interactiva): el notebook del criterio de completado del scorecard
-vive en `docs_site/notebooks/`, se publica en docs.nikodym.cl y **se ejecuta en CI**, para que sus
-salidas no puedan quedar viejas sin que nada lo acuse.
+vive en `docs_site/notebooks/`, se publica en docs.bayesadvisory.cl y **se ejecuta en CI**, para que
+sus salidas no puedan quedar viejas sin que nada lo acuse.
 
 Se ejecuta **sin jupyter**: el `.ipynb` es JSON, sus celdas de código son Python plano y se
 corren en orden en un mismo espacio de nombres —que es lo que hace un kernel—, con el directorio de
@@ -213,7 +213,7 @@ def test_el_cuaderno_corre_de_punta_a_punta_y_publica_las_salidas_de_hoy(
     sc = espacio["sc"]
     assert sc.study.run_context.status == "done", sc.study.run_context.error
     assert sc.summary().execution == "completada"
-    proyecto = tmp_path / "nikodym-runs" / "consumo_v01"
+    proyecto = tmp_path / "bayesrisk-runs" / "consumo_v01"
     assert (proyecto / "reports" / "scorecard_report.html").is_file()
     assert (proyecto / "reports" / "scorecard_report.docx").is_file()
     libros = sorted((proyecto / "excel").glob("*.xlsx"))

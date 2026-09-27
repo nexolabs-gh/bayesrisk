@@ -14,19 +14,19 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.stability as stability_pkg
-import nikodym.stability.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.stability.config import StabilityConfig
-from nikodym.stability.exceptions import StabilityDataError
-from nikodym.stability.results import StabilityCardSection, StabilityResult
-from nikodym.stability.step import STABILITY_ARTIFACTS, StabilityStep
-from nikodym.testing import assert_bitwise_reproducible
+import bayesrisk.core.study as study_module
+import bayesrisk.stability as stability_pkg
+import bayesrisk.stability.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.stability.config import StabilityConfig
+from bayesrisk.stability.exceptions import StabilityDataError
+from bayesrisk.stability.results import StabilityCardSection, StabilityResult
+from bayesrisk.stability.step import STABILITY_ARTIFACTS, StabilityStep
+from bayesrisk.testing import assert_bitwise_reproducible
 
 
 def _config(**kwargs: Any) -> StabilityConfig:
@@ -114,7 +114,7 @@ def _study_with_artifacts(
 ) -> Study:
     """Construye un ``Study`` con los artefactos mínimos de stability."""
     cfg = config or _config()
-    study = Study(NikodymConfig(stability=cfg))
+    study = Study(BayesRiskConfig(stability=cfg))
     study.artifacts.set("scorecard", "score", _score_frame() if score is None else score)
     study.artifacts.set(
         "calibration",
@@ -172,13 +172,13 @@ def test_core_study_cablea_stability_en_orden_por_defecto() -> None:
     """``Study`` resuelve ``stability`` como dominio perezoso después de ``performance``."""
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order[order.index("performance") + 1] == "stability"
-    assert study_module._DOMAIN_MODULES["stability"] == "nikodym.stability"
+    assert study_module._DOMAIN_MODULES["stability"] == "bayesrisk.stability"
     assert study_module._DOMAIN_CONFIG_CLASSES["stability"] == (
-        "nikodym.stability.config",
+        "bayesrisk.stability.config",
         "StabilityConfig",
     )
 
-    study = Study(NikodymConfig(stability=StabilityConfig(temporal_axis="none")))
+    study = Study(BayesRiskConfig(stability=StabilityConfig(temporal_axis="none")))
 
     assert study._default_step_names() == ["stability"]
     assert isinstance(study._resolve_step("stability"), StabilityStep)
@@ -606,7 +606,7 @@ def test_helpers_temporales_cubren_ramas_de_recuperacion() -> None:
 def test_import_pandas_y_stability_step_liviano_subprocess(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """``import nikodym.stability`` registra el step sin cargar tabulares/scoring."""
+    """``import bayesrisk.stability`` registra el step sin cargar tabulares/scoring."""
     real_import = step_module.importlib.import_module
 
     def block_pandas(name: str) -> Any:
@@ -621,8 +621,8 @@ def test_import_pandas_y_stability_step_liviano_subprocess(
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.stability
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.stability
+        from bayesrisk.core.registry import REGISTRY
 
         assert REGISTRY.resolve("stability", "standard").__name__ == "StabilityStep"
         blocked = [

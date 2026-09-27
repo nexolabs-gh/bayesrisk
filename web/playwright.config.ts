@@ -12,7 +12,7 @@ import { defineConfig, devices } from "@playwright/test"
  * procedencia del frontend) y no se ejecutaba nunca: un bundle íntegro pero roto pasaba los 16
  * jobs. Esto lo cierra.
  */
-const baseURL = process.env.NIKODYM_UI_URL ?? "http://127.0.0.1:8000"
+const baseURL = process.env.BAYESRISK_UI_URL ?? "http://127.0.0.1:8000"
 
 export default defineConfig({
   testDir: "./e2e",

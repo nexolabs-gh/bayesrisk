@@ -12,18 +12,18 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.validation as validation_pkg
-import nikodym.validation.results as validation_results
-from nikodym.validation.config import (
+import bayesrisk.validation as validation_pkg
+import bayesrisk.validation.results as validation_results
+from bayesrisk.validation.config import (
     BacktestParameter as ConfigBacktestParameter,
 )
-from nikodym.validation.config import (
+from bayesrisk.validation.config import (
     PdTest as ConfigPdTest,
 )
-from nikodym.validation.config import (
+from bayesrisk.validation.config import (
     ValidationFamily as ConfigValidationFamily,
 )
-from nikodym.validation.results import (
+from bayesrisk.validation.results import (
     BacktestRecord,
     CalibrationTestRecord,
     DiscriminationRecord,
@@ -332,7 +332,7 @@ def test_grade_binomial_record_rechaza_un_color_que_sus_cortes_no_explican(
 def test_la_regla_del_dto_es_la_del_kernel() -> None:
     """El DTO no puede importar ``calibration_tests`` (importaría al revés), así que replica la
     regla; este gate los ata sobre una malla de p-valores y cortes, bordes incluidos."""
-    from nikodym.validation.calibration_tests import traffic_light
+    from bayesrisk.validation.calibration_tests import traffic_light
 
     for green, red in [(0.05, 0.01), (0.10, 0.02), (0.5, 0.499), (0.05004, 0.01004)]:
         for p_value in [0.0, red / 2, red, (red + green) / 2, green, (green + 1) / 2, 1.0]:
@@ -805,7 +805,7 @@ def test_validation_result_rechaza_particiones_sin_veredicto_malformadas_o_adult
     (``NotEvaluablePartition``) con sus invariantes, y sus números se reconcilian con la tabla y
     los records: ``n`` con la fila, ``n_groups`` con el record, ``min_group_size`` con
     ``n // n_groups`` y ``min_rows`` homogéneo."""
-    from nikodym.validation.results import NOT_EVALUABLE_PARTITION_FIELDS, NotEvaluablePartition
+    from bayesrisk.validation.results import NOT_EVALUABLE_PARTITION_FIELDS, NotEvaluablePartition
 
     assert tuple(NotEvaluablePartition.model_fields) == NOT_EVALUABLE_PARTITION_FIELDS
     tabla, records = _hl_no_evaluable()
@@ -915,7 +915,7 @@ def test_not_evaluable_partition_reproduce_la_precedencia_de_causas_del_kernel(
     que el kernel nunca produce (devuelve ``group_below_min`` antes de calcular nada). La
     precedencia exacta del kernel —vacío → degenerado; bajo el mínimo → ``group_below_min``;
     después denominador y finitud— queda codificada."""
-    from nikodym.validation.results import NotEvaluablePartition
+    from bayesrisk.validation.results import NotEvaluablePartition
 
     with pytest.raises(ValidationError, match="kernel"):
         NotEvaluablePartition(
@@ -940,7 +940,7 @@ def test_not_evaluable_partition_reproduce_la_precedencia_de_causas_del_kernel(
 def test_not_evaluable_partition_acepta_lo_que_el_kernel_produce(
     n: int, min_group_size: int, reason: str
 ) -> None:
-    from nikodym.validation.results import NotEvaluablePartition
+    from bayesrisk.validation.results import NotEvaluablePartition
 
     entrada = NotEvaluablePartition(
         partition="p",
@@ -1106,8 +1106,8 @@ def test_validation_result_sin_evidencia_evaluable_es_not_evaluable() -> None:
 def test_validation_results_lazy_exports_y_nucleo_liviano_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.core;"
-        "import nikodym.validation as validation;"
+        "import bayesrisk.core;"
+        "import bayesrisk.validation as validation;"
         "blocked=[m for m in ('pandas','pandera','scipy','sklearn','statsmodels') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"

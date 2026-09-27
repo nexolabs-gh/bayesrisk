@@ -19,7 +19,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from nikodym.forward.config import (
+from bayesrisk.forward.config import (
     ForwardConfig,
     ForwardInputConfig,
     MacroModelConfig,
@@ -29,12 +29,12 @@ from nikodym.forward.config import (
     ScenarioDefinitionConfig,
     TtcReversionConfig,
 )
-from nikodym.forward.scenarios import ScenarioWeighting
-from nikodym.forward.step import _FORWARD_TERM_STRUCTURE_COLUMNS
-from nikodym.provisioning.ifrs9 import EclEngine
-from nikodym.provisioning.ifrs9.config import IfrsEclConfig
-from nikodym.provisioning.ifrs9.exceptions import IfrsEclError
-from nikodym.provisioning.ifrs9.results import IfrsEclRecord, IfrsProvisionCard
+from bayesrisk.forward.scenarios import ScenarioWeighting
+from bayesrisk.forward.step import _FORWARD_TERM_STRUCTURE_COLUMNS
+from bayesrisk.provisioning.ifrs9 import EclEngine
+from bayesrisk.provisioning.ifrs9.config import IfrsEclConfig
+from bayesrisk.provisioning.ifrs9.exceptions import IfrsEclError
+from bayesrisk.provisioning.ifrs9.results import IfrsEclRecord, IfrsProvisionCard
 
 
 def _scenario(name: str, weight: float, shock: float = 0.0) -> ScenarioDefinitionConfig:

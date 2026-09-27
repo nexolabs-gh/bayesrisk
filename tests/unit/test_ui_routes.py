@@ -2,7 +2,7 @@
 
 La lógica de ``/schema``/``/validate``/``/datasets`` se prueba **sin FastAPI** (funciones puras);
 el cableado HTTP se prueba en ``test_ui_server.py`` vía ``TestClient``. Aquí también viven los
-tests AST de la frontera: ``nikodym.ui`` no usa ``eval``/``exec``, no importa módulos de dominio y
+tests AST de la frontera: ``bayesrisk.ui`` no usa ``eval``/``exec``, no importa módulos de dominio y
 no reimplementa fórmulas de riesgo.
 """
 
@@ -23,14 +23,20 @@ import pandas as pd
 import pytest
 from _ui_f1 import failing_config, full_f1_config, write_behavior_parquet
 
-from nikodym.core.config import NikodymConfig, ReproConfig, config_hash, dump_config, loads_config
-from nikodym.core.config.migration import _MIGRATORS, migration
-from nikodym.core.config.schema import rama_objeto
-from nikodym.core.exceptions import ConfigError
-from nikodym.ui import datasets as datasets_module
-from nikodym.ui import presets as presets_module
-from nikodym.ui import routes
-from nikodym.ui.exceptions import UiDatasetError
+from bayesrisk.core.config import (
+    BayesRiskConfig,
+    ReproConfig,
+    config_hash,
+    dump_config,
+    loads_config,
+)
+from bayesrisk.core.config.migration import _MIGRATORS, migration
+from bayesrisk.core.config.schema import rama_objeto
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.ui import datasets as datasets_module
+from bayesrisk.ui import presets as presets_module
+from bayesrisk.ui import routes
+from bayesrisk.ui.exceptions import UiDatasetError
 
 # ─────────────────────────────── lógica pura de endpoints ───────────────────────────────
 
@@ -50,7 +56,7 @@ def test_schema_payload_shape() -> None:
         "effective_defaults",
         "disabled_methodology_values",
     }
-    assert payload["section_order"] == list(NikodymConfig.model_fields)
+    assert payload["section_order"] == list(BayesRiskConfig.model_fields)
     assert payload["section_order"][0] == "schema_version"
     assert {"repro", "data", "report"} <= set(payload["section_order"])
     assert "properties" in payload["json_schema"]
@@ -72,7 +78,7 @@ def test_schema_payload_expande_dominios_f1() -> None:
 
     Con el extra ``scoring`` instalado (job del CI), el motor de formulario del front recibe los
     campos reales de cada sección de dominio F1, no el schema opaco. La materialización vive en el
-    core (``build_full_json_schema``); ``nikodym.ui`` sigue domain-agnostic (ver test AST abajo).
+    core (``build_full_json_schema``); ``bayesrisk.ui`` sigue domain-agnostic (ver test AST abajo).
 
     Se comprueban las DOS mitades del contrato, porque la sección viaja como
     ``anyOf: [<objeto>, {"type": "null"}]``: que la rama-objeto trae los campos, y que la rama nula
@@ -103,7 +109,7 @@ def test_validate_config_valido_devuelve_hash() -> None:
     config sin secciones activas es ejecutable con pipeline vacío: no hay nada que correr, y eso
     no es un error del config.
     """
-    cfg = NikodymConfig(repro=ReproConfig(seed=7))
+    cfg = BayesRiskConfig(repro=ReproConfig(seed=7))
     resultado = routes.validate_config(cfg.model_dump(mode="json", by_alias=True))
     assert resultado == {
         "valid": True,
@@ -118,7 +124,7 @@ def test_validate_config_valido_devuelve_hash() -> None:
         # D-PRO-2, aditivo. Con `data` apagada nadie produce nada, así que el mapa trae todas las
         # claves del config con listas vacías — se publica completo a propósito, para que el front
         # no tenga que distinguir «esta sección no viene» de «no aporta nada».
-        "produced_columns_by_section": {seccion: [] for seccion in NikodymConfig.model_fields},
+        "produced_columns_by_section": {seccion: [] for seccion in BayesRiskConfig.model_fields},
     }
 
 
@@ -178,7 +184,7 @@ def test_un_error_de_dominio_que_pertenece_a_un_campo_llega_anclado(rama: str, c
     salida no fue adivinarlo, fue que el ``raise`` lo declare.
 
     ⚠️ La ruta va **absoluta desde la raíz**: el ``except`` que traduce vive en el endpoint y atrapa
-    la validación del ``NikodymConfig`` entero, así que ahí ya no se sabe de qué sección viene.
+    la validación del ``BayesRiskConfig`` entero, así que ahí ya no se sabe de qué sección viene.
     """
     resultado = routes.validate_config({"provisioning_internal": {"lgd": {"method": rama}}})
 
@@ -198,7 +204,7 @@ def test_ninguna_excepcion_de_un_config_py_escapa_del_endpoint() -> None:
 
     🔴 Las tres veces anteriores se parcheó el caso: primero un ``except`` que faltaba, luego doce
     ``*ConfigError`` de dominio que no heredaban de ``ConfigError``… y seguía habiendo **18 `raise`
-    en 6 clases** que cuelgan directas de ``NikodymError`` y salían como **500** sobre configs
+    en 6 clases** que cuelgan directas de ``BayesRiskError`` y salían como **500** sobre configs
     alcanzables desde el formulario (bastan dos escenarios de stress homónimos).
 
     El repo ya había medido estas clases en **D-ANC-10** y amplió la captura de
@@ -214,13 +220,13 @@ def test_ninguna_excepcion_de_un_config_py_escapa_del_endpoint() -> None:
     import pkgutil
     from pathlib import Path
 
-    import nikodym
-    from nikodym.core.config.schema import cargar_configs_de_dominio
-    from nikodym.core.exceptions import NikodymError
+    import bayesrisk
+    from bayesrisk.core.config.schema import cargar_configs_de_dominio
+    from bayesrisk.core.exceptions import BayesRiskError
 
     cargar_configs_de_dominio()
     clases: dict[str, type[BaseException]] = {}
-    for modulo in pkgutil.walk_packages(nikodym.__path__, "nikodym."):
+    for modulo in pkgutil.walk_packages(bayesrisk.__path__, "bayesrisk."):
         try:
             importado = importlib.import_module(modulo.name)
         except Exception:  # un extra ausente no debe tumbar el barrido
@@ -229,7 +235,7 @@ def test_ninguna_excepcion_de_un_config_py_escapa_del_endpoint() -> None:
             if isinstance(valor, type) and issubclass(valor, BaseException):
                 clases.setdefault(nombre, valor)
 
-    raiz = Path(__file__).resolve().parents[2] / "src" / "nikodym"
+    raiz = Path(__file__).resolve().parents[2] / "src" / "bayesrisk"
     fugas: list[str] = []
     vistos = 0
     for archivo in sorted(raiz.rglob("config.py")):
@@ -243,8 +249,8 @@ def test_ninguna_excepcion_de_un_config_py_escapa_del_endpoint() -> None:
                 continue
             vistos += 1
             # Lo que el endpoint atrapa: `ValidationError` (vía `ValueError`, que Pydantic envuelve)
-            # o `NikodymError`. Cualquier otra cosa sale como 500.
-            if not issubclass(clase, NikodymError | ValueError):
+            # o `BayesRiskError`. Cualquier otra cosa sale como 500.
+            if not issubclass(clase, BayesRiskError | ValueError):
                 fugas.append(f"{archivo.relative_to(raiz)}:{nodo.lineno} ({nombre})")
 
     assert vistos > 100, f"el barrido sólo vio {vistos} `raise`: no está recorriendo los config.py"
@@ -257,7 +263,7 @@ def test_ninguna_excepcion_de_un_config_py_escapa_del_endpoint() -> None:
 def test_una_excepcion_que_no_es_config_error_llega_como_veredicto_y_no_como_500() -> None:
     """El control POSITIVO del gate de arriba, por la puerta pública y con un caso REAL.
 
-    ``StressScenarioError`` cuelga directa de ``NikodymError`` —no de ``ConfigError``— y este
+    ``StressScenarioError`` cuelga directa de ``BayesRiskError`` —no de ``ConfigError``— y este
     config se arma con dos clics en el formulario. Antes de ampliar la captura, esta llamada
     levantaba la excepción entera y el endpoint devolvía 500.
     """
@@ -271,7 +277,7 @@ def test_una_excepcion_que_no_es_config_error_llega_como_veredicto_y_no_como_500
 
 
 def _rutas_declaradas_por_los_raise() -> tuple[list[tuple[tuple[str, ...], str]], list[str]]:
-    """Barre `src/nikodym` y devuelve `(rutas, inevaluables)` de todo `raise X(..., loc=…)`.
+    """Barre `src/bayesrisk` y devuelve `(rutas, inevaluables)` de todo `raise X(..., loc=…)`.
 
     Evalúa **estáticamente**, sin importar el módulo: un `loc` es una tupla de literales, con un
     posible `*_LOC_SECCION` al principio, que se resuelve leyendo la constante de nivel de módulo
@@ -281,7 +287,7 @@ def _rutas_declaradas_por_los_raise() -> tuple[list[tuple[tuple[str, ...], str]]
     import ast
     from pathlib import Path
 
-    raiz = Path(__file__).resolve().parents[2] / "src" / "nikodym"
+    raiz = Path(__file__).resolve().parents[2] / "src" / "bayesrisk"
     rutas: list[tuple[tuple[str, ...], str]] = []
     inevaluables: list[str] = []
 
@@ -341,13 +347,13 @@ def test_toda_ruta_declarada_por_un_error_resuelve_contra_el_config() -> None:
     import types
     import typing
 
-    from nikodym.core.config.schema import cargar_configs_de_dominio
+    from bayesrisk.core.config.schema import cargar_configs_de_dominio
 
     secciones = cargar_configs_de_dominio()
 
     def resuelve(ruta: list[str]) -> bool:
         # 🔴 El primer tramo se resuelve contra el REGISTRO de dominio, no contra la anotación:
-        # medido, `NikodymConfig.model_fields["provisioning_internal"].annotation` es `typing.Any`
+        # medido, `BayesRiskConfig.model_fields["provisioning_internal"].annotation` es `typing.Any`
         # —el blob opaco del núcleo liviano, que es diseño (SDD-23 §4.1)— así que bajar por la
         # anotación devuelve nada. La clase real vive en `cargar_configs_de_dominio()`, que es
         # exactamente cómo el motor la resuelve al coaccionar.
@@ -476,8 +482,8 @@ def test_validate_config_no_depende_de_que_el_proceso_haya_pedido_el_schema() ->
     """
     codigo = """
 import json, sys
-from nikodym.ui import routes
-assert "nikodym.binning" not in sys.modules, "precondición: proceso frío, sin la capa"
+from bayesrisk.ui import routes
+assert "bayesrisk.binning" not in sys.modules, "precondición: proceso frío, sin la capa"
 resultado = routes.validate_config({"binning": {"min_bin_size": -1}})
 assert resultado["valid"] is False, resultado
 assert resultado["config_hash"] is None, "no se publica identidad de un config inválido"
@@ -534,10 +540,10 @@ def test_el_aviso_no_publica_codigos_de_marca(monkeypatch: pytest.MonkeyPatch) -
     El corte se prueba aquí y no en ``check_pipeline``, que conserva el código porque es
     superficie de código: la misma frase, distinta según quién la lee.
     """
-    from nikodym import api as api_module
+    from bayesrisk import api as api_module
 
     monkeypatch.setattr(
-        routes.nikodym,
+        routes.bayesrisk,
         "check_pipeline",
         lambda _config, *, artifacts=None: api_module.PipelineCheck(
             executable=False,
@@ -556,10 +562,10 @@ def test_el_aviso_no_publica_codigos_de_marca(monkeypatch: pytest.MonkeyPatch) -
 
 def test_un_fallo_inesperado_no_publica_su_detalle_interno(monkeypatch: pytest.MonkeyPatch) -> None:
     """Lo que no es accionable por quien configura no se publica crudo (D-ERR-5)."""
-    from nikodym import api as api_module
+    from bayesrisk import api as api_module
 
     monkeypatch.setattr(
-        routes.nikodym,
+        routes.bayesrisk,
         "check_pipeline",
         lambda _config, *, artifacts=None: api_module.PipelineCheck(
             executable=False,
@@ -596,16 +602,16 @@ def test_config_to_yaml_round_trip_preserva_hash() -> None:
 def test_config_to_yaml_no_reintroduce_report_document_materializado() -> None:
     """El ``to-yaml`` es determinista: no reinyecta ``report.document`` por la coacción.
 
-    ``report: Any`` se coacciona a ``ReportConfig`` sólo cuando ``nikodym.report`` ya fue
+    ``report: Any`` se coacciona a ``ReportConfig`` sólo cuando ``bayesrisk.report`` ya fue
     importado, y esa coacción materializa ``report.document`` (``default_factory``) que el config
     del cliente no traía. Sin ``exclude_unset`` el YAML dependería de qué se hubiera importado antes
     (no-determinista; así se colaba el bloque al capturar los fixtures de la demo tras generar un
     informe). Se fuerza el import (peor caso) y un config SIN ``document`` no debe recuperarlo.
     """
-    import nikodym.report  # noqa: F401  — puebla _REPORT_CONFIG_CLS: activa la coacción (peor caso)
-    from nikodym.report.config import ReportConfig
+    import bayesrisk.report  # noqa: F401  — puebla _REPORT_CONFIG_CLS: activa la coacción (peor caso)
+    from bayesrisk.report.config import ReportConfig
 
-    config = NikodymConfig(report=ReportConfig()).model_dump(mode="json", by_alias=True)
+    config = BayesRiskConfig(report=ReportConfig()).model_dump(mode="json", by_alias=True)
     assert "document" in config["report"], "precondición: la coacción materializa document"
     del config["report"]["document"]  # el cliente no lo envía
 
@@ -613,7 +619,7 @@ def test_config_to_yaml_no_reintroduce_report_document_materializado() -> None:
     assert "document:" not in yaml_text
     # El round-trip por hash se preserva (report es sección de infraestructura, fuera del hash).
     recargado = loads_config(yaml_text)
-    assert config_hash(recargado) == config_hash(NikodymConfig.model_validate(config))
+    assert config_hash(recargado) == config_hash(BayesRiskConfig.model_validate(config))
 
 
 def test_config_to_yaml_config_invalido_propaga_validation_error() -> None:
@@ -674,10 +680,10 @@ def test_config_from_yaml_no_mueve_la_identidad() -> None:
     ejecutaría*. Devolver menos claves no puede cambiar la identidad de la corrida.
     """
     parcial = routes.config_from_yaml("name: parcial\nrepro:\n  seed: 7\n")
-    completo = NikodymConfig.model_validate({"name": "parcial", "repro": {"seed": 7}})
+    completo = BayesRiskConfig.model_validate({"name": "parcial", "repro": {"seed": 7}})
     assert parcial["config_hash"] == config_hash(completo)
     # Y el round-trip cerrado conserva el hash: cargar la proyección da la misma identidad.
-    assert config_hash(NikodymConfig.model_validate(parcial["config"])) == parcial["config_hash"]
+    assert config_hash(BayesRiskConfig.model_validate(parcial["config"])) == parcial["config_hash"]
 
 
 def test_config_to_yaml_conserva_la_misma_frontera() -> None:
@@ -736,30 +742,30 @@ def test_config_from_yaml_migra_version_anterior(_registro_limpio: None) -> None
 _UI_DIR = Path(routes.__file__).resolve().parent
 _DOMINIOS_PROHIBIDOS = frozenset(
     {
-        "nikodym.binning",
-        "nikodym.selection",
-        "nikodym.model",
-        "nikodym.calibration",
-        "nikodym.scorecard",
-        "nikodym.performance",
-        "nikodym.stability",
-        "nikodym.validation",
-        "nikodym.provisioning",
-        "nikodym.survival",
-        "nikodym.markov",
-        "nikodym.forward",
-        "nikodym.stress",
-        "nikodym.explain",
-        "nikodym.tuning",
-        "nikodym.ml",
-        "nikodym.eda",
-        "nikodym.data",
+        "bayesrisk.binning",
+        "bayesrisk.selection",
+        "bayesrisk.model",
+        "bayesrisk.calibration",
+        "bayesrisk.scorecard",
+        "bayesrisk.performance",
+        "bayesrisk.stability",
+        "bayesrisk.validation",
+        "bayesrisk.provisioning",
+        "bayesrisk.survival",
+        "bayesrisk.markov",
+        "bayesrisk.forward",
+        "bayesrisk.stress",
+        "bayesrisk.explain",
+        "bayesrisk.tuning",
+        "bayesrisk.ml",
+        "bayesrisk.eda",
+        "bayesrisk.data",
     }
 )
 
 
 def _modulos_ui() -> list[Path]:
-    """Devuelve los ``.py`` del paquete ``nikodym.ui``."""
+    """Devuelve los ``.py`` del paquete ``bayesrisk.ui``."""
     return sorted(_UI_DIR.glob("*.py"))
 
 
@@ -775,7 +781,7 @@ def _nombres_importados(arbol: ast.AST) -> set[str]:
 
 
 def test_ui_no_usa_eval_ni_exec() -> None:
-    """Ningún módulo de ``nikodym.ui`` llama ``eval``/``exec`` (seguridad, §11)."""
+    """Ningún módulo de ``bayesrisk.ui`` llama ``eval``/``exec`` (seguridad, §11)."""
     for ruta in _modulos_ui():
         arbol = ast.parse(ruta.read_text(encoding="utf-8"))
         for nodo in ast.walk(arbol):
@@ -817,10 +823,10 @@ def test_wire_dataset_source_relativo_usa_identificador_posix() -> None:
     config = {"data": {"load": {"source": None}}}
 
     wired = routes._wire_dataset_source(
-        config, Path(".nikodym_ui") / "datasets" / "cartera.parquet"
+        config, Path(".bayesrisk_ui") / "datasets" / "cartera.parquet"
     )
 
-    assert wired["data"]["load"]["source"] == ".nikodym_ui/datasets/cartera.parquet"
+    assert wired["data"]["load"]["source"] == ".bayesrisk_ui/datasets/cartera.parquet"
 
 
 @pytest.mark.parametrize(
@@ -869,9 +875,9 @@ def test_wire_report_output_dir_resuelve_workdir_relativo(
     monkeypatch.chdir(tmp_path)
     config = {"report": {"output_dir": "reports"}}
 
-    wired = routes._wire_report_output_dir(config, workdir=Path(".nikodym_ui"))
+    wired = routes._wire_report_output_dir(config, workdir=Path(".bayesrisk_ui"))
 
-    assert wired["report"]["output_dir"] == str(tmp_path / ".nikodym_ui" / "reports")
+    assert wired["report"]["output_dir"] == str(tmp_path / ".bayesrisk_ui" / "reports")
 
 
 def test_wire_report_output_dir_sin_report_es_idempotente(tmp_path: Path) -> None:
@@ -965,8 +971,8 @@ def test_run_pipeline_preset_genera_reporte_html_determinista(tmp_path: Path) ->
     real): el job de dependencias mínimas lo salta.
     """
     pytest.importorskip("optbinning")
-    from nikodym.ui import runs
-    from nikodym.ui.presets import STANDARD_DATASET_ID, standard_preset
+    from bayesrisk.ui import runs
+    from bayesrisk.ui.presets import STANDARD_DATASET_ID, standard_preset
 
     def _run_and_load() -> tuple[str, str | None]:
         result = routes.run_pipeline(
@@ -995,9 +1001,9 @@ def test_run_pipeline_preset_provisiones_estandar_muerde(tmp_path: Path) -> None
     reporta el estándar. Requiere el extra ``scoring`` (binning MIP real); el job mínimo lo salta.
     """
     pytest.importorskip("optbinning")
-    import nikodym
-    from nikodym.core.config import NikodymConfig
-    from nikodym.ui.presets import PROVISIONES_DATASET_ID, provisiones_preset
+    import bayesrisk
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.ui.presets import PROVISIONES_DATASET_ID, provisiones_preset
 
     # Se lee la card del ``Study`` (no ``results.json``): el serializer de las cards de provisiones
     # es el paso siguiente del track; aquí se verifica el motor, no su serialización.
@@ -1005,7 +1011,7 @@ def test_run_pipeline_preset_provisiones_estandar_muerde(tmp_path: Path) -> None
     config = provisiones_preset()["config"]
     config["data"]["load"]["source"] = str(source)
     config["audit"]["trail_filename"] = str(tmp_path / "audit_trail.jsonl")
-    study = nikodym.run(NikodymConfig.model_validate(config))
+    study = bayesrisk.run(BayesRiskConfig.model_validate(config))
 
     assert study.run_context.status == "done"
     orquestador = study.artifacts.get("provisioning", "card")
@@ -1028,8 +1034,8 @@ def test_run_pipeline_preset_provisiones_informe_trae_el_capitulo(tmp_path: Path
     capítulo existió). Requiere el extra ``scoring`` (binning MIP real); el job mínimo lo salta.
     """
     pytest.importorskip("optbinning")
-    from nikodym.ui import runs
-    from nikodym.ui.presets import PROVISIONES_DATASET_ID, provisiones_preset
+    from bayesrisk.ui import runs
+    from bayesrisk.ui.presets import PROVISIONES_DATASET_ID, provisiones_preset
 
     result = routes.run_pipeline(
         provisiones_preset()["config"], PROVISIONES_DATASET_ID, workdir=tmp_path
@@ -1167,7 +1173,7 @@ def test_upload_max_mb_gobierna_el_endpoint_de_verdad(tmp_path: Path) -> None:
     pytest.importorskip("httpx2")
     from _ui_client import ui_client
 
-    from nikodym.ui.settings import UiConfig
+    from bayesrisk.ui.settings import UiConfig
 
     cliente = ui_client(UiConfig(workdir=str(tmp_path), upload_max_mb=1))
     grande = b"col\n" + b"x\n" * (2 * 1024 * 1024)
@@ -1193,7 +1199,7 @@ def test_el_tope_se_comprueba_antes_de_traer_el_cuerpo_a_memoria(
     from _ui_client import ui_client
     from starlette.datastructures import UploadFile as StarletteUploadFile
 
-    from nikodym.ui.settings import UiConfig
+    from bayesrisk.ui.settings import UiConfig
 
     async def _read_prohibido(self: object, size: int = -1) -> bytes:
         raise AssertionError("el cuerpo se materializó antes de comprobar el tope")
@@ -1254,18 +1260,18 @@ def test_run_endpoint_dependencia_faltante_422(
 
     from _ui_client import ui_client
 
-    import nikodym
-    from nikodym.core.exceptions import MissingDependencyError
-    from nikodym.ui.settings import UiConfig
+    import bayesrisk
+    from bayesrisk.core.exceptions import MissingDependencyError
+    from bayesrisk.ui.settings import UiConfig
 
     def _materialize(dataset_id: str, *, workdir: Path) -> Path:
         return Path(workdir) / "datasets" / f"{dataset_id}.parquet"
 
     def _raise_missing(config: object, *, artifacts: object = None) -> object:
-        raise MissingDependencyError("instale nikodym[tracking] para publicar al inventario.")
+        raise MissingDependencyError("instale bayesrisk[tracking] para publicar al inventario.")
 
     monkeypatch.setattr(datasets_module, "materialize", _materialize)
-    monkeypatch.setattr(nikodym, "run", _raise_missing)
+    monkeypatch.setattr(bayesrisk, "run", _raise_missing)
 
     client = ui_client(UiConfig(workdir=str(tmp_path)))
     config = full_f1_config("placeholder.parquet").model_dump(mode="json", by_alias=True)
@@ -1274,7 +1280,7 @@ def test_run_endpoint_dependencia_faltante_422(
     )
 
     assert respuesta.status_code == 422
-    assert "nikodym[tracking]" in respuesta.json()["detail"]
+    assert "bayesrisk[tracking]" in respuesta.json()["detail"]
 
 
 # ── preflight config↔dataset (enmienda PREFLIGHT-DATASET, D-PRE-1…D-PRE-9) ────────────────────
@@ -1288,7 +1294,7 @@ def test_preflight_no_confunde_el_indice_del_parquet_con_una_columna(tmp_path: P
     `data.schema.index_col` justo en el caso más común. Sólo se ve **probando contra el parquet
     real**: un test que pase los nombres a mano ya los trae separados y nunca reproduce el estado.
     """
-    from nikodym.ui.routes import preflight_dataset
+    from bayesrisk.ui.routes import preflight_dataset
 
     resultado = preflight_dataset(
         presets_module.get_preset("f1-estandar-consumo")["config"],
@@ -1303,7 +1309,7 @@ def test_preflight_no_confunde_el_indice_del_parquet_con_una_columna(tmp_path: P
 
 def test_preflight_reporta_todos_los_desajustes_de_un_csv_ajeno(tmp_path: Path) -> None:
     """El caso que originó la capacidad: seis corridas seriales pasan a ser una llamada."""
-    from nikodym.ui.routes import preflight_dataset, upload_dataset
+    from bayesrisk.ui.routes import preflight_dataset, upload_dataset
 
     ajeno = pd.DataFrame(
         {

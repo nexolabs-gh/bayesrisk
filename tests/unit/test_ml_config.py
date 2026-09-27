@@ -1,4 +1,4 @@
-"""Tests de ``MLConfig`` (SDD-12 §5) e integración con ``NikodymConfig``."""
+"""Tests de ``MLConfig`` (SDD-12 §5) e integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -13,15 +13,15 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.ml as ml_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.ml as ml_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.ml.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.ml.config import (
     CatBoostParams,
     LightGBMParams,
     MLComparisonConfig,
@@ -33,7 +33,7 @@ from nikodym.ml.config import (
     SvmParams,
     XGBoostParams,
 )
-from nikodym.ml.exceptions import (
+from bayesrisk.ml.exceptions import (
     MLBackendError,
     MLComparisonError,
     MLConfigError,
@@ -328,48 +328,48 @@ def test_validation_fraction_cero_en_no_gbdt_no_contradice() -> None:
     assert cfg.train.validation_fraction == 0.0
 
 
-# ─────────────────────────── integración NikodymConfig ───────────────────────────
+# ─────────────────────────── integración BayesRiskConfig ───────────────────────────
 
 
-def test_nikodymconfig_ml_instancia() -> None:
-    """Pasar una instancia ``MLConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_ml_instancia() -> None:
+    """Pasar una instancia ``MLConfig`` a ``BayesRiskConfig`` la conserva."""
     ml = MLConfig()
-    cfg = NikodymConfig(ml=ml)
+    cfg = BayesRiskConfig(ml=ml)
     assert isinstance(cfg.ml, MLConfig)
     assert cfg.ml is ml
 
 
-def test_nikodymconfig_ml_dict_coacciona() -> None:
+def test_bayesriskconfig_ml_dict_coacciona() -> None:
     """Un dict en ``ml`` se coacciona por el hook cargado."""
-    cfg = NikodymConfig(ml={"backend": "lightgbm"})
+    cfg = BayesRiskConfig(ml={"backend": "lightgbm"})
     assert isinstance(cfg.ml, MLConfig)
     assert cfg.ml.backend == "lightgbm"
     assert isinstance(cfg.ml.hyperparameters, LightGBMParams)
 
 
-def test_nikodymconfig_ml_none_explicito() -> None:
+def test_bayesriskconfig_ml_none_explicito() -> None:
     """``ml=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(ml=None).ml is None
+    assert BayesRiskConfig(ml=None).ml is None
 
 
-def test_nikodymconfig_ml_core_only_acepta_blob_json(
+def test_bayesriskconfig_ml_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``ml`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_ML_CONFIG_CLS", None)
-    cfg = NikodymConfig(ml={"backend": "xgboost"})
+    cfg = BayesRiskConfig(ml={"backend": "xgboost"})
     assert cfg.ml == {"backend": "xgboost"}
 
 
 @pytest.mark.parametrize("blob", [{"cols": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_ml_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_ml_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``ml`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_ML_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(ml=blob)
+        BayesRiskConfig(ml=blob)
 
 
 # ─────────────────────────── literales y rangos Pydantic ───────────────────────────
@@ -424,13 +424,13 @@ def test_literales_y_rangos_invalidos_rechazados_por_pydantic(
 
 def test_config_hash_default_con_ml_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``ml=None``."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_config_hash_se_movio_por_seccion_ml() -> None:
     """Añadir ``ml`` movió el golden respecto al valor previo (no es regresión)."""
     assert GOLDEN_DEFAULT_CONFIG_HASH != GOLDEN_PREVIO_SIN_ML
-    assert config_hash(NikodymConfig()) != GOLDEN_PREVIO_SIN_ML
+    assert config_hash(BayesRiskConfig()) != GOLDEN_PREVIO_SIN_ML
 
 
 def test_config_hash_es_puramente_aditivo_sobre_ml() -> None:
@@ -440,7 +440,7 @@ def test_config_hash_es_puramente_aditivo_sobre_ml() -> None:
     para reconstruir el estado inmediatamente anterior a ``ml`` hay que retirar las tres claves
     computacionales nuevas.
     """
-    payload = NikodymConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
+    payload = BayesRiskConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
     assert payload["ml"] is None
     assert payload["tuning"] is None
     assert payload["explain"] is None
@@ -470,16 +470,16 @@ def test_config_hash_es_puramente_aditivo_sobre_ml() -> None:
 )
 def test_config_hash_cambia_al_variar_ml(ml: MLConfig) -> None:
     """``ml`` no es INFRA: backend/hiperparámetros/fuente/monotonía/etc. cambian el hash."""
-    base = config_hash(NikodymConfig(ml=MLConfig()))
-    variado = config_hash(NikodymConfig(ml=ml))
+    base = config_hash(BayesRiskConfig(ml=MLConfig()))
+    variado = config_hash(BayesRiskConfig(ml=ml))
     assert "ml" not in INFRA_SECTIONS
     assert variado != base
 
 
 def test_config_hash_cambia_backend_por_hiperparametros_distintos() -> None:
     """Cambiar backend mueve el hash porque cambian los hiperparámetros resueltos."""
-    xgb = config_hash(NikodymConfig(ml=MLConfig(backend="xgboost")))
-    lgbm = config_hash(NikodymConfig(ml=MLConfig(backend="lightgbm")))
+    xgb = config_hash(BayesRiskConfig(ml=MLConfig(backend="xgboost")))
+    lgbm = config_hash(BayesRiskConfig(ml=MLConfig(backend="lightgbm")))
     assert xgb != lgbm
 
 
@@ -516,7 +516,7 @@ def test_ml_public_api_minimo() -> None:
     assert "MLError" in ml_pkg.__all__
 
 
-def test_ml_errors_descienden_de_nikodym_error() -> None:
+def test_ml_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``ml`` cuelgan de la raíz propia de la librería."""
     for error_cls in (
         MLError,
@@ -529,7 +529,7 @@ def test_ml_errors_descienden_de_nikodym_error() -> None:
         MLComparisonError,
         MLDeterminismError,
     ):
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
         assert issubclass(error_cls, MLError)
 
 
@@ -550,17 +550,17 @@ def test_ml_getattr_desconocido_levanta() -> None:
 
 
 def test_import_ml_config_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.ml.config`` registra el hook sin arrastrar librerías ML ni tabulares."""
+    """``import bayesrisk.ml.config`` registra el hook sin arrastrar librerías ML ni tabulares."""
     code = (
-        "import nikodym.ml.config, nikodym.core, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.ml.config import MLConfig;"
+        "import bayesrisk.ml.config, bayesrisk.core, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.ml.config import MLConfig;"
         "bloqueados=[m for m in "
         "('numpy','pandas','pandera','pyarrow','scipy','sklearn','xgboost','lightgbm',"
-        "'catboost','nikodym.tracking','mlflow','nikodym.data') "
+        "'catboost','bayesrisk.tracking','mlflow','bayesrisk.data') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(ml={'backend': 'xgboost'});"
+        "cfg=BayesRiskConfig(ml={'backend': 'xgboost'});"
         "assert isinstance(cfg.ml, MLConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -569,10 +569,10 @@ def test_import_ml_config_liviano_y_registra_hook_en_proceso_fresco() -> None:
 def test_core_valida_ml_como_blob_opaco_sin_importar_la_capa() -> None:
     """El core acepta ``ml`` JSON/dict sin importar la capa de ML."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(ml={'backend': 'xgboost'});"
+        "cfg=BayesRiskConfig(ml={'backend': 'xgboost'});"
         "assert cfg.ml == {'backend': 'xgboost'};"
-        "assert 'nikodym.ml' not in sys.modules"
+        "assert 'bayesrisk.ml' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)

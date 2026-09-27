@@ -1,4 +1,4 @@
-"""Tests de ``MarkovConfig`` (SDD-19 §5) e integración con ``NikodymConfig``."""
+"""Tests de ``MarkovConfig`` (SDD-19 §5) e integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -10,12 +10,12 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.markov as markov_pkg  # importa la capa: puebla el hook
-from nikodym.core import study as study_module
-from nikodym.core.config import INFRA_SECTIONS, NikodymConfig, config_hash
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.markov.config import (
+import bayesrisk.markov as markov_pkg  # importa la capa: puebla el hook
+from bayesrisk.core import study as study_module
+from bayesrisk.core.config import INFRA_SECTIONS, BayesRiskConfig, config_hash
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.markov.config import (
     MarkovConfig,
     MarkovDynamicsConfig,
     MarkovEstimationConfig,
@@ -23,7 +23,7 @@ from nikodym.markov.config import (
     MarkovStateConfig,
     MarkovValidationConfig,
 )
-from nikodym.markov.exceptions import (
+from bayesrisk.markov.exceptions import (
     InvalidGeneratorError,
     MarkovConfigError,
     MarkovEmbeddingError,
@@ -33,7 +33,7 @@ from nikodym.markov.exceptions import (
     MarkovTransformError,
     NonStochasticMatrixError,
 )
-from nikodym.testing.strategies import _config_cls_for_domain
+from bayesrisk.testing.strategies import _config_cls_for_domain
 
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 
@@ -149,17 +149,17 @@ def test_round_trip_yaml_markovconfig() -> None:
     assert MarkovConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_markov_instancia() -> None:
-    """Pasar una instancia ``MarkovConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_markov_instancia() -> None:
+    """Pasar una instancia ``MarkovConfig`` a ``BayesRiskConfig`` la conserva."""
     markov = _markov_config_minimo()
-    cfg = NikodymConfig(markov=markov)
+    cfg = BayesRiskConfig(markov=markov)
     assert isinstance(cfg.markov, MarkovConfig)
     assert cfg.markov is markov
 
 
-def test_nikodymconfig_markov_dict_coacciona() -> None:
+def test_bayesriskconfig_markov_dict_coacciona() -> None:
     """Un dict en ``markov`` se coacciona a ``MarkovConfig`` por el hook cargado."""
-    cfg = NikodymConfig(
+    cfg = BayesRiskConfig(
         markov={
             "input": {"id_col": "id", "time_col": "periodo", "state_col": "estado"},
             "states": {"states": ["A", "B", "default"]},
@@ -171,36 +171,36 @@ def test_nikodymconfig_markov_dict_coacciona() -> None:
     assert cfg.markov.dynamics.embedding_policy == "forbid"
 
 
-def test_nikodymconfig_markov_none_explicito() -> None:
+def test_bayesriskconfig_markov_none_explicito() -> None:
     """``markov=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(markov=None).markov is None
+    assert BayesRiskConfig(markov=None).markov is None
 
 
-def test_nikodymconfig_markov_core_only_acepta_blob_json(
+def test_bayesriskconfig_markov_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``markov`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_MARKOV_CONFIG_CLS", None)
-    cfg = NikodymConfig(markov={"states": {"states": ["A", "default"]}})
+    cfg = BayesRiskConfig(markov={"states": {"states": ["A", "default"]}})
     assert cfg.markov == {"states": {"states": ["A", "default"]}}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_markov_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_markov_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``markov`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_MARKOV_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(markov=blob)
+        BayesRiskConfig(markov=blob)
 
 
 def test_config_hash_cambia_al_variar_method() -> None:
     """``markov.estimation.method`` es computacional y cambia identidad."""
-    base = config_hash(NikodymConfig(markov=_markov_config_minimo()))
+    base = config_hash(BayesRiskConfig(markov=_markov_config_minimo()))
     variado = config_hash(
-        NikodymConfig(
+        BayesRiskConfig(
             markov=_markov_config_minimo(
                 input=_input(exposure_time_col="tiempo_riesgo"),
                 estimation=MarkovEstimationConfig(method="duration"),
@@ -217,9 +217,9 @@ def test_config_hash_cambia_al_variar_projection_mode() -> None:
     esa opción —el motor la rechazaba al proyectar y el config la aceptaba, D-ABA-5— construirla
     aquí mediría el rechazo en vez de la identidad.
     """
-    base = config_hash(NikodymConfig(markov=_markov_config_minimo()))
+    base = config_hash(BayesRiskConfig(markov=_markov_config_minimo()))
     variado = config_hash(
-        NikodymConfig(
+        BayesRiskConfig(
             markov=_markov_config_minimo(
                 input=MarkovInputConfig(
                     id_col="id", state_col="estado", time_col="fecha", transition_time_col="t"
@@ -247,9 +247,9 @@ def test_el_config_rechaza_la_opcion_que_el_motor_no_implementa() -> None:
 
 def test_config_hash_cambia_al_variar_embedding_policy() -> None:
     """``markov.dynamics.embedding_policy`` es computacional y cambia identidad."""
-    base = config_hash(NikodymConfig(markov=_markov_config_minimo()))
+    base = config_hash(BayesRiskConfig(markov=_markov_config_minimo()))
     variado = config_hash(
-        NikodymConfig(
+        BayesRiskConfig(
             markov=_markov_config_minimo(dynamics=MarkovDynamicsConfig(embedding_policy="forbid"))
         )
     )
@@ -258,18 +258,18 @@ def test_config_hash_cambia_al_variar_embedding_policy() -> None:
 
 def test_config_hash_cambia_al_variar_estados() -> None:
     """``markov.states`` es computacional y cambia identidad."""
-    base = config_hash(NikodymConfig(markov=_markov_config_minimo()))
+    base = config_hash(BayesRiskConfig(markov=_markov_config_minimo()))
     variado = config_hash(
-        NikodymConfig(markov=_markov_config_minimo(states=_states(states=("A", "B", "default"))))
+        BayesRiskConfig(markov=_markov_config_minimo(states=_states(states=("A", "B", "default"))))
     )
     assert variado != base
 
 
 def test_config_hash_cambia_al_variar_horizonte() -> None:
     """``markov.dynamics.horizon_periods`` es computacional y cambia identidad."""
-    base = config_hash(NikodymConfig(markov=_markov_config_minimo()))
+    base = config_hash(BayesRiskConfig(markov=_markov_config_minimo()))
     variado = config_hash(
-        NikodymConfig(
+        BayesRiskConfig(
             markov=_markov_config_minimo(
                 dynamics=MarkovDynamicsConfig(horizon_periods=(1, 2, 3, 6))
             )
@@ -280,9 +280,9 @@ def test_config_hash_cambia_al_variar_horizonte() -> None:
 
 def test_config_hash_cambia_al_variar_tolerancia() -> None:
     """``markov.validation.stochastic_tol`` es computacional y cambia identidad."""
-    base = config_hash(NikodymConfig(markov=_markov_config_minimo()))
+    base = config_hash(BayesRiskConfig(markov=_markov_config_minimo()))
     variado = config_hash(
-        NikodymConfig(
+        BayesRiskConfig(
             markov=_markov_config_minimo(validation=MarkovValidationConfig(stochastic_tol=1e-9))
         )
     )
@@ -291,7 +291,7 @@ def test_config_hash_cambia_al_variar_tolerancia() -> None:
 
 def test_config_hash_default_con_markov_none_golden() -> None:
     """El hash por defecto incorpora la nueva clave computacional ``markov=None``."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_markov_no_es_infra_section() -> None:
@@ -308,27 +308,27 @@ def test_core_study_cablea_markov_en_orden_por_defecto() -> None:
     """``Study`` conoce ``markov`` después de datos y antes de provisiones CMF."""
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order.index("data") < order.index("markov") < order.index("provisioning_cmf")
-    assert study_module._DOMAIN_MODULES["markov"] == "nikodym.markov"
+    assert study_module._DOMAIN_MODULES["markov"] == "bayesrisk.markov"
     assert study_module._DOMAIN_CONFIG_CLASSES["markov"] == (
-        "nikodym.markov.config",
+        "bayesrisk.markov.config",
         "MarkovConfig",
     )
 
 
 def test_import_markov_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.markov`` registra hook y step sin arrastrar motores pesados."""
+    """``import bayesrisk.markov`` registra hook y step sin arrastrar motores pesados."""
     code = (
-        "import nikodym.markov, sys;"
-        "from nikodym.core.registry import REGISTRY;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.markov.config import MarkovConfig;"
+        "import bayesrisk.markov, sys;"
+        "from bayesrisk.core.registry import REGISTRY;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.markov.config import MarkovConfig;"
         "bloqueados=[m for m in "
-        "('numpy','scipy','pandas','nikodym.markov.transition') "
+        "('numpy','scipy','pandas','bayesrisk.markov.transition') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "assert 'nikodym.markov.step' in sys.modules;"
-        "assert REGISTRY.resolve('markov','standard') is nikodym.markov.MarkovStep;"
-        "cfg=NikodymConfig(markov={'states': {'states': ['A', 'default']}});"
+        "assert 'bayesrisk.markov.step' in sys.modules;"
+        "assert REGISTRY.resolve('markov','standard') is bayesrisk.markov.MarkovStep;"
+        "cfg=BayesRiskConfig(markov={'states': {'states': ['A', 'default']}});"
         "assert isinstance(cfg.markov, MarkovConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -337,12 +337,12 @@ def test_import_markov_liviano_y_registra_hook_en_proceso_fresco() -> None:
 def test_core_valida_markov_como_blob_opaco_sin_importar_markov() -> None:
     """El core acepta ``markov`` JSON/dict sin importar la capa Markov."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "assert 'nikodym.markov' not in sys.modules;"
-        "cfg=NikodymConfig(markov={'states': {'states': ['A', 'default']}});"
+        "assert 'bayesrisk.markov' not in sys.modules;"
+        "cfg=BayesRiskConfig(markov={'states': {'states': ['A', 'default']}});"
         "assert cfg.markov == {'states': {'states': ['A', 'default']}};"
-        "assert 'nikodym.markov' not in sys.modules"
+        "assert 'bayesrisk.markov' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -357,7 +357,7 @@ def test_lazy_exports_markov(monkeypatch: pytest.MonkeyPatch) -> None:
 
     def fake_import_module(name: str) -> type[DummyModule]:
         """Simula import perezoso sin crear el módulo futuro."""
-        assert name == "nikodym.markov.transition"
+        assert name == "bayesrisk.markov.transition"
         return DummyModule
 
     monkeypatch.setattr(markov_pkg.importlib, "import_module", fake_import_module)
@@ -374,7 +374,7 @@ def test_markov_public_api_minimo() -> None:
     assert "TransitionMatrixEstimator" in markov_pkg.__all__
 
 
-def test_markov_errors_descienden_de_nikodym_error() -> None:
+def test_markov_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``markov`` cuelgan de la raíz propia de la librería."""
     for error_cls in (
         MarkovError,
@@ -386,7 +386,7 @@ def test_markov_errors_descienden_de_nikodym_error() -> None:
         InvalidGeneratorError,
         MarkovEmbeddingError,
     ):
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
         with pytest.raises(MarkovError, match="fallo markov"):
             raise error_cls("fallo markov")
 

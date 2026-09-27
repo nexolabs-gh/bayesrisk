@@ -14,8 +14,8 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.provisioning.results as prov_results
-from nikodym.provisioning.results import (
+import bayesrisk.provisioning.results as prov_results
+from bayesrisk.provisioning.results import (
     ProvisionComparisonRecord,
     ProvisionComparisonSummary,
     ProvisionOrchestrationCard,
@@ -400,7 +400,7 @@ def test_orchestration_result_term_structure_delega_o_none() -> None:
 
 
 def test_orchestration_result_term_structure_delega_en_ifrs9_result() -> None:
-    from nikodym.provisioning.ifrs9 import IfrsProvisionResult
+    from bayesrisk.provisioning.ifrs9 import IfrsProvisionResult
 
     ifrs9 = _ifrs9_result()
     curva_ifrs9 = ifrs9.term_structure()
@@ -417,11 +417,11 @@ def test_orchestration_result_term_structure_delega_en_ifrs9_result() -> None:
 def test_provisioning_results_import_liviano_y_exports_publicos() -> None:
     code = (
         "import sys;"
-        "import nikodym.provisioning;"
-        "import nikodym.provisioning.results;"
+        "import bayesrisk.provisioning;"
+        "import bayesrisk.provisioning.results;"
         "bloqueados=[m for m in "
-        "('nikodym.data','pandera','pyarrow','pandas','numpy','scipy','statsmodels',"
-        "'nikodym.tracking','mlflow') if m in sys.modules];"
+        "('bayesrisk.data','pandera','pyarrow','pandas','numpy','scipy','statsmodels',"
+        "'bayesrisk.tracking','mlflow') if m in sys.modules];"
         "assert not bloqueados, bloqueados"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -584,7 +584,7 @@ def _result(
 
 def _ifrs9_result() -> Any:
     """Construye un ``IfrsProvisionResult`` mínimo real para probar la delegación CT-2."""
-    from nikodym.provisioning.ifrs9 import (
+    from bayesrisk.provisioning.ifrs9 import (
         IfrsEclRecord,
         IfrsProvisionCard,
         IfrsProvisionResult,

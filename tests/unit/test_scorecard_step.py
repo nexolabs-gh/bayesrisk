@@ -14,16 +14,16 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.scorecard.step as step_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.core.study import Study
-from nikodym.scorecard.config import PointOverrideConfig, ScorecardConfig
-from nikodym.scorecard.exceptions import ScorecardFitError, ScorecardTransformError
-from nikodym.scorecard.results import ScorecardCardSection, ScorecardResult
-from nikodym.scorecard.step import SCORECARD_ARTIFACTS, ScorecardStep
+import bayesrisk.core.study as study_module
+import bayesrisk.scorecard.step as step_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.core.study import Study
+from bayesrisk.scorecard.config import PointOverrideConfig, ScorecardConfig
+from bayesrisk.scorecard.exceptions import ScorecardFitError, ScorecardTransformError
+from bayesrisk.scorecard.results import ScorecardCardSection, ScorecardResult
+from bayesrisk.scorecard.step import SCORECARD_ARTIFACTS, ScorecardStep
 
 FACTOR_GOLDEN = 28.85390081777927
 OFFSET_GOLDEN = 487.1228762045055
@@ -128,7 +128,7 @@ def _study_with_artifacts(
 ) -> Study:
     """Construye un ``Study`` con los nueve artefactos upstream del contrato."""
     cfg = config or _config()
-    study = Study(NikodymConfig(scorecard=cfg))
+    study = Study(BayesRiskConfig(scorecard=cfg))
     study.artifacts.set("binning", "tables", _tables() if tables is None else tables)
     study.artifacts.set("binning", "summary", _summary() if summary is None else summary)
     study.artifacts.set(
@@ -189,13 +189,13 @@ def test_core_study_cablea_scorecard_en_orden_por_defecto() -> None:
     """``Study`` resuelve ``scorecard`` como dominio perezoso después de ``model``."""
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order[order.index("model") + 1] == "scorecard"
-    assert study_module._DOMAIN_MODULES["scorecard"] == "nikodym.scorecard"
+    assert study_module._DOMAIN_MODULES["scorecard"] == "bayesrisk.scorecard"
     assert study_module._DOMAIN_CONFIG_CLASSES["scorecard"] == (
-        "nikodym.scorecard.config",
+        "bayesrisk.scorecard.config",
         "ScorecardConfig",
     )
 
-    study = Study(NikodymConfig(scorecard=ScorecardConfig()))
+    study = Study(BayesRiskConfig(scorecard=ScorecardConfig()))
 
     assert study._default_step_names() == ["scorecard"]
     assert isinstance(study._resolve_step("scorecard"), ScorecardStep)
@@ -302,7 +302,7 @@ def test_mapping_columnas_indices_y_config_dict_cubren_ramas_defensivas() -> Non
     )
     assert (
         step_module._scorecard_config_from_study(
-            Study(NikodymConfig()),
+            Study(BayesRiskConfig()),
             fallback=fallback,
         )
         is fallback
@@ -579,12 +579,12 @@ def test_alineacion_versiones_import_y_helpers_defensivos(
 
 
 def test_import_scorecard_step_liviano_no_carga_tabulares_ni_scoring() -> None:
-    """``import nikodym.scorecard`` registra el step sin arrastrar pandas/sklearn."""
+    """``import bayesrisk.scorecard`` registra el step sin arrastrar pandas/sklearn."""
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.scorecard
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.scorecard
+        from bayesrisk.core.registry import REGISTRY
 
         assert REGISTRY.resolve("scorecard", "standard").__name__ == "ScorecardStep"
         blocked = [

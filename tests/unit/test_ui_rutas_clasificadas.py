@@ -36,7 +36,7 @@ tres daban verde:
    archivo y el test de sincronía comparaba contra ``build_router()``, no contra la app final; una
    ruta ``/api`` registrada en ``server.py`` era invisible por partida doble. Y la vía existe hoy en
    el código: ``server.py`` registra los recursos de raíz con ``app.get(f"/{resource}", ...)``.
-   Ahora el barrido recorre **todos** los módulos de ``nikodym/ui/`` y el contraste runtime va
+   Ahora el barrido recorre **todos** los módulos de ``bayesrisk/ui/`` y el contraste runtime va
    contra ``create_app()``.
 """
 
@@ -49,9 +49,9 @@ from typing import Any
 
 import pytest
 
-from nikodym.ui.security import CREDENTIALED_PATHS, MUTATING_PATHS, PUBLIC_PATHS
+from bayesrisk.ui.security import CREDENTIALED_PATHS, MUTATING_PATHS, PUBLIC_PATHS
 
-_UI_DIR = Path(__file__).resolve().parents[2] / "src" / "nikodym" / "ui"
+_UI_DIR = Path(__file__).resolve().parents[2] / "src" / "bayesrisk" / "ui"
 
 #: Prefijo del contrato REST: sólo estas rutas exigen clasificación de seguridad. ``/`` y los
 #: recursos de raíz (``/favicon.svg``) sirven bytes del propio paquete y quedan fuera, igual que
@@ -238,7 +238,7 @@ def _barrer_modulo(archivo: Path) -> tuple[set[tuple[str, str]], list[str]]:
 
 @cache
 def _barrido() -> tuple[frozenset[tuple[str, str]], tuple[str, ...], tuple[str, ...]]:
-    """Recorre **todos** los módulos de ``nikodym/ui/``: registros, problemas y módulos leídos."""
+    """Recorre **todos** los módulos de ``bayesrisk/ui/``: registros, problemas y módulos leídos."""
     registros: set[tuple[str, str]] = set()
     problemas: list[str] = []
     modulos = sorted(_UI_DIR.glob("*.py"))
@@ -337,7 +337,7 @@ def test_el_barrido_no_deja_registros_sin_resolver() -> None:
     _, problemas, _ = _barrido()
     detalle = "\n".join(f"  - {problema}" for problema in problemas)
     assert not problemas, (
-        f"El barrido de nikodym/ui/ no pudo clasificar estos registros:\n{detalle}"
+        f"El barrido de bayesrisk/ui/ no pudo clasificar estos registros:\n{detalle}"
     )
 
 
@@ -378,7 +378,7 @@ def test_toda_ruta_esta_clasificada() -> None:
     clasificadas = MUTATING_PATHS | CREDENTIALED_PATHS | frozenset(PUBLIC_PATHS)
     sin_clasificar = sorted(_rutas_del_contrato() - clasificadas)
     assert not sin_clasificar, (
-        "Estos pares (método, ruta) no están clasificados en nikodym/ui/security.py: "
+        "Estos pares (método, ruta) no están clasificados en bayesrisk/ui/security.py: "
         f"{sin_clasificar}. Añádelos a MUTATING_PATHS (escribe o ejecuta), a "
         "CREDENTIALED_PATHS (exige credenciales pero no ejecuta el pipeline) o a "
         "PUBLIC_PATHS con la razón por la que no exige credenciales. Un método nuevo sobre una "
@@ -460,7 +460,7 @@ def test_ninguna_ruta_protegida_es_parametrizada() -> None:
         assert not parametrizadas, (
             f"{nombre} contiene rutas parametrizadas: {parametrizadas}. El middleware compara la "
             "URL concreta por igualdad, y esa guarda no se aplicaría a ninguna petición real. "
-            "Enseña primero a nikodym/ui/security.py a resolver la URL contra su template, o no "
+            "Enseña primero a bayesrisk/ui/security.py a resolver la URL contra su template, o no "
             "declares protegida una ruta que no lo estaría."
         )
 
@@ -470,7 +470,7 @@ def test_ninguna_ruta_protegida_es_parametrizada() -> None:
 
 def test_el_clasificador_distingue_el_metodo() -> None:
     """La guarda se decide por el par, no por la ruta: es la mitad de D4 que vive en runtime."""
-    from nikodym.ui.security import _categoria
+    from bayesrisk.ui.security import _categoria
 
     assert _categoria("POST", "/api/run") == "mutador"
     assert _categoria("POST", "/api/upload") == "mutador"
@@ -485,7 +485,7 @@ def test_un_verbo_no_contratado_sobre_una_ruta_protegida_sigue_protegido() -> No
     Pasar de clasificar rutas a clasificar pares es más preciso, y por eso mismo podría dejar fuera
     de la guarda un verbo que hoy sí la pasa. Este test fija que no ocurre.
     """
-    from nikodym.ui.security import _categoria
+    from bayesrisk.ui.security import _categoria
 
     for verbo in ("GET", "PUT", "DELETE", "HEAD", "PATCH", "OPTIONS"):
         assert _categoria(verbo, "/api/run") == "mutador", f"{verbo} /api/run quedó sin guarda."
@@ -506,7 +506,7 @@ def test_una_ruta_puede_ser_publica_por_un_verbo_y_protegida_por_otro() -> None:
     pytest.importorskip("httpx2")
     from _ui_client import ui_client
 
-    from nikodym.ui import security
+    from bayesrisk.ui import security
 
     sin_credenciales = ui_client(con_credenciales=False)
     assert sin_credenciales.get("/api/schema").status_code == 200
@@ -547,8 +547,8 @@ def test_el_ast_ve_las_mismas_rutas_que_la_app_real(tmp_path: Path) -> None:
     pytest.importorskip("fastapi")
     from _ui_client import build_test_runtime
 
-    from nikodym.ui.server import create_app
-    from nikodym.ui.settings import UiConfig
+    from bayesrisk.ui.server import create_app
+    from bayesrisk.ui.settings import UiConfig
 
     app = create_app(UiConfig(workdir=str(tmp_path)), build_test_runtime(tmp_path))
     de_la_app = frozenset(par for par in _rutas_de_la_app(app) if par[1].startswith(f"{_PREFIJO}/"))

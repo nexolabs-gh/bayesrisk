@@ -7,7 +7,7 @@ sin que nada se ponga rojo. Por eso se fija aquí, y no sólo en cada capa.
 
 import pytest
 
-from nikodym.core.markers import (
+from bayesrisk.core.markers import (
     DECLARED_MARKERS,
     INSTITUTIONAL_MARKER,
     MISSING_DATA_MARKER,

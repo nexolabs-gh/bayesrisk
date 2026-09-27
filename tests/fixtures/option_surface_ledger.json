@@ -5,7 +5,7 @@
       "canonical": "logit",
       "classification": "compat_alias_hidden",
       "path": "model.engine",
-      "reason": "Alias SemVer 1.x normalizado a la rama canónica y excluido del selector.",
+      "reason": "Alias SemVer 2.x normalizado a la rama canónica y excluido del selector.",
       "value": "glm_binomial"
     },
     {
@@ -13,7 +13,7 @@
       "canonical": "auc",
       "classification": "compat_alias_hidden",
       "path": "selection.priority_order",
-      "reason": "Alias SemVer 1.x normalizado a la rama canónica y excluido del selector.",
+      "reason": "Alias SemVer 2.x normalizado a la rama canónica y excluido del selector.",
       "value": "gini"
     },
     {
@@ -21,7 +21,7 @@
       "canonical": "html_always_on",
       "classification": "compat_alias_hidden",
       "path": "report.formats",
-      "reason": "Alias SemVer 1.x de una base always-on, fuera del selector de formatos.",
+      "reason": "Alias SemVer 2.x de una base always-on, fuera del selector de formatos.",
       "value": "html"
     },
     {
@@ -2587,7 +2587,7 @@
       "classification": "methodology_selectable",
       "path": "report.html.theme",
       "reason": "Par metodológico declarado en el catálogo D-JOB y sujeto a su gate de efecto.",
-      "value": "nikodym"
+      "value": "bayesrisk"
     },
     {
       "authority": "SDD-30 D-RDY-ABA-1…4",

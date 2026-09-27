@@ -1,0 +1,81 @@
+"""bayesrisk — librería de riesgo de crédito (scoring, ML, provisiones e IFRS 9).
+
+`import bayesrisk` mantiene el **núcleo liviano**: no arrastra el stack ML pesado, que vive tras
+*extras* opcionales con import perezoso (ver :mod:`bayesrisk.utils.optional`). La superficie
+pública de alto nivel (`run`, `check_pipeline`, `assemble_run`) se re-exporta de forma
+**perezosa** (PEP 562):
+:mod:`bayesrisk.api` importa audit/governance/tracking en top-level, así que solo se importa al
+**acceder** el atributo, nunca al hacer `import bayesrisk`.
+"""
+
+from typing import TYPE_CHECKING, Any
+
+__version__ = "1.20.0"
+
+__all__ = [
+    "DatasetCheck",
+    "FittedScorecardBundle",
+    "PipelineCheck",
+    "Scorecard",
+    "__version__",
+    "apply",
+    "assemble_run",
+    "check_dataset",
+    "check_pipeline",
+    "fit_scorecard_bundle",
+    "run",
+]
+
+_LAZY = frozenset(
+    {
+        "run",
+        "check_pipeline",
+        "check_dataset",
+        "assemble_run",
+        "PipelineCheck",
+        "DatasetCheck",
+    }
+)
+
+_SCORECARD_LAZY = frozenset({"apply", "fit_scorecard_bundle", "FittedScorecardBundle"})
+# La puerta guiada (SDD-31, enmienda FLUJO-GUIADO-SCORECARD) se importa al acceder al atributo,
+# como `run`: arrastra pandas y los mapas de rótulos del informe, que el núcleo liviano no carga.
+_GUIDED_LAZY = frozenset({"Scorecard"})
+
+if TYPE_CHECKING:  # pragma: no cover - solo para el type-checker, no en runtime
+    from bayesrisk.api import (
+        DatasetCheck,
+        PipelineCheck,
+        assemble_run,
+        check_dataset,
+        check_pipeline,
+        run,
+    )
+    from bayesrisk.guided import Scorecard
+    from bayesrisk.scorecard.bundle import FittedScorecardBundle, apply, fit_scorecard_bundle
+
+
+def __getattr__(name: str) -> Any:
+    """Importa perezosamente la superficie de :mod:`bayesrisk.api` (PEP 562).
+
+    El import de ``bayesrisk.api`` (y su stack audit/governance/tracking) ocurre solo al acceder
+    el atributo, para no romper el núcleo liviano al hacer ``import bayesrisk``.
+    """
+    if name in _LAZY:
+        from bayesrisk import api
+
+        return getattr(api, name)
+    if name in _SCORECARD_LAZY:
+        from bayesrisk.scorecard import bundle
+
+        return getattr(bundle, name)
+    if name in _GUIDED_LAZY:
+        from bayesrisk import guided
+
+        return getattr(guided, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """Expone los símbolos perezosos en ``dir(bayesrisk)`` además de los del módulo."""
+    return sorted({*globals(), *_LAZY, *_SCORECARD_LAZY, *_GUIDED_LAZY})

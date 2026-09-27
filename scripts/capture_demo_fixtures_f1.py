@@ -5,7 +5,7 @@ enlatados en ``web/src/fixtures/demo/``. Este script captura el set del preset
 ``f1-estandar-consumo`` —el **scorecard de comportamiento** puro
 (data→binning→selection→model→scorecard→calibration→performance→stability→validation), SIN
 provisiones— corriendo la cadena **de verdad** contra el backend, vía
-:func:`nikodym.ui.server.create_app` sobre ``TestClient`` (sin ``uvicorn``).
+:func:`bayesrisk.ui.server.create_app` sobre ``TestClient`` (sin ``uvicorn``).
 
 **No sobrescribe los fixtures F3/F4** (``*.json``/``*-ifrs9.*``, LIVE): escribe archivos NUEVOS con
 sufijo ``-f1`` para que el front arme una demo multi-preset. El preset F1 tiene el **report
@@ -13,7 +13,7 @@ ENCENDIDO** (los cuatro entregables), así que baja el informe completo, igual q
 
 **Además recaptura el catálogo COMPARTIDO** ``datasets.json`` (el único fixture sin sufijo que
 comparten los tres bundles). El fixture versionado hoy está *stale* (4 datasets, sin la cartera
-IFRS 9): el preset F4 recomienda ``ifrs9_retail_latam`` —ya registrado en ``nikodym.ui.datasets``—
+IFRS 9): el preset F4 recomienda ``ifrs9_retail_latam`` —ya registrado en ``bayesrisk.ui.datasets``—
 pero el catálogo enlatado no lo trae, así que la demo no lo lista. Este script lo refresca con la
 salida real de ``GET /api/datasets``, que ya incluye ``ifrs9_retail_latam`` (n_rows 6.000).
 
@@ -28,7 +28,7 @@ Por eso el script:
    ``gini = 2·auc - 1``, desarrollo el más fuerte) y las CONGELA byte-a-byte (corrida determinista
    con ``PYTHONHASHSEED=0``). El scorecard NO produce provisiones: las cuatro cards de provisiones
    quedan nulas. Y verifica la **procedencia**: lineage completo, árbol limpio y la versión de
-   ``nikodym`` que firma la corrida (ver :func:`_verificar_lineage`).
+   ``bayesrisk`` que firma la corrida (ver :func:`_verificar_lineage`).
 3. Solo si la verificación pasa, **escribe** los 8 archivos (atómico: o salen todos, o ninguno).
 4. Re-verifica el **artefacto ya escrito**: ``scorecard``/``performance`` NO nulas, las cuatro cards
    de provisiones nulas, el ``report-f1.html`` titulado «Informe de Validación de Scorecard»
@@ -62,10 +62,10 @@ from pathlib import Path
 from runpy import run_path
 from typing import TYPE_CHECKING, Any
 
-import nikodym
-from nikodym.ui.runtime import TOKEN_HEADER, build_runtime
-from nikodym.ui.server import create_app
-from nikodym.ui.settings import UiConfig
+import bayesrisk
+from bayesrisk.ui.runtime import TOKEN_HEADER, build_runtime
+from bayesrisk.ui.server import create_app
+from bayesrisk.ui.settings import UiConfig
 
 _VERIFY_SYMBOLS = run_path(str(Path(__file__).with_name("verify_demo_prose_artifacts.py")))
 verify_demo_family = _VERIFY_SYMBOLS["verify_demo_family"]
@@ -84,7 +84,7 @@ PRESET_ID = "f1-estandar-consumo"
 DEMO_GOVERNANCE: dict[str, Any] = {
     "model_name": "scorecard-consumo-demo",
     "purpose": (
-        "Demostración pública de Nikodym RiskLib: scorecard de comportamiento sobre una cartera "
+        "Demostración pública de bayesrisk: scorecard de comportamiento sobre una cartera "
         "de consumo sintética. Ilustra el flujo completo de construcción y validación; no decide "
         "sobre ninguna operación real."
     ),
@@ -100,11 +100,11 @@ DEMO_GOVERNANCE: dict[str, Any] = {
     "motor": "scoring",
     "fase": "F1",
     "estado_validacion": "desarrollo",
-    "author": "Nexo Labs",
+    "author": "Bayes Advisory",
 }
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _FIXTURES_DIR = _PROJECT_ROOT / "web" / "src" / "fixtures" / "demo"
-_CAPTURE_WORKDIR_NAME = ".nikodym-demo-fixtures-f1"
+_CAPTURE_WORKDIR_NAME = ".bayesrisk-demo-fixtures-f1"
 
 # Título dinámico del renderer: la corrida F1 corre scorecard, así que el informe se titula como
 # validación de scorecard (NO como el informe IFRS 9, que titula la cadena F4 sin scorecard).
@@ -160,7 +160,7 @@ _PROVISIONING_KEYS = (
 # La versión esperada se lee del ATRIBUTO del árbol, nunca de un literal congelado: un freeze
 # escrito a mano caduca en el próximo bump y obligaría a editar los tres capturadores para publicar
 # una versión nueva.
-NIKODYM_VERSION = nikodym.__version__
+BAYESRISK_VERSION = bayesrisk.__version__
 _LINEAGE_REQUIRED_FIELDS = (
     "config_hash",
     "data_hash",
@@ -241,15 +241,15 @@ def _verificar_lineage(results: dict[str, Any], fixture: str) -> None:
     1.10.0. **Ninguna cifra de negocio se mueve por eso**, de modo que el resto del verificador pasa
     en verde y el defecto sólo se ve leyendo el Anexo del informe ya publicado.
 
-    La versión esperada se lee de ``nikodym.__version__`` —el atributo del árbol— y NO de un literal
-    congelado: un freeze escrito a mano caduca en el próximo bump y obligaría a editar los tres
-    capturadores para publicar una versión nueva.
+    La versión esperada se lee de ``bayesrisk.__version__`` —el atributo del árbol— y NO de un
+    literal congelado: un freeze escrito a mano caduca en el próximo bump y obligaría a editar los
+    tres capturadores para publicar una versión nueva.
     """
     lineage = results.get("lineage")
     assert isinstance(lineage, dict), (
         f"{fixture} no trae bloque 'lineage': la demo publicaría la corrida sin procedencia "
         "(config_hash, data_hash, git_sha). Recaptura contra un backend que lo serialice; si el "
-        "árbol se actualizó, corre antes `uv sync --reinstall-package nikodym`."
+        "árbol se actualizó, corre antes `uv sync --reinstall-package bayesrisk`."
     )
     faltantes = [campo for campo in _LINEAGE_REQUIRED_FIELDS if _lineage_vacio(lineage.get(campo))]
     assert not faltantes, (
@@ -266,11 +266,11 @@ def _verificar_lineage(results: dict[str, Any], fixture: str) -> None:
     assert isinstance(versiones, dict), (
         f"{fixture}: library_versions no es un objeto ({type(versiones).__name__})."
     )
-    declarada = versiones.get("nikodym")
-    assert declarada == NIKODYM_VERSION, (
-        f"{fixture}: el lineage firma la corrida con nikodym {declarada!r} y el árbol va en "
-        f"{NIKODYM_VERSION!r}. `importlib.metadata` sirve la versión cacheada del editable "
-        "install: corre `uv sync --reinstall-package nikodym` ANTES de capturar y repite la "
+    declarada = versiones.get("bayesrisk")
+    assert declarada == BAYESRISK_VERSION, (
+        f"{fixture}: el lineage firma la corrida con bayesrisk {declarada!r} y el árbol va en "
+        f"{BAYESRISK_VERSION!r}. `importlib.metadata` sirve la versión cacheada del editable "
+        "install: corre `uv sync --reinstall-package bayesrisk` ANTES de capturar y repite la "
         "captura entera "
         "(el fixture NO se edita a mano)."
     )
@@ -559,8 +559,8 @@ def main() -> None:
         f"(n_rows {_EXPECTED_IFRS9_DATASET_ROWS}) ✅"
     )
     print(
-        f"[verify]  lineage completo · git_dirty=false · nikodym={NIKODYM_VERSION} "
-        "(= nikodym.__version__) · informe sin caveat de árbol sucio ✅"
+        f"[verify]  lineage completo · git_dirty=false · bayesrisk={BAYESRISK_VERSION} "
+        "(= bayesrisk.__version__) · informe sin caveat de árbol sucio ✅"
     )
     print(f"✅ {len(written)} fixtures escritos en {_FIXTURES_DIR.relative_to(Path.cwd())}:")
     for name, size in written:

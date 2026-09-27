@@ -16,18 +16,18 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.provisioning.cmf as cmf_pkg
-import nikodym.provisioning.cmf.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.provisioning.cmf.config import CmfPdMappingConfig, CmfProvisioningConfig
-from nikodym.provisioning.cmf.exceptions import CmfConfigError, CmfInputError
-from nikodym.provisioning.cmf.results import CmfProvisionCard, CmfProvisionResult
-from nikodym.provisioning.cmf.step import CMF_PROVISIONING_ARTIFACTS, CmfProvisioningStep
+import bayesrisk.core.study as study_module
+import bayesrisk.provisioning.cmf as cmf_pkg
+import bayesrisk.provisioning.cmf.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.provisioning.cmf.config import CmfPdMappingConfig, CmfProvisioningConfig
+from bayesrisk.provisioning.cmf.exceptions import CmfConfigError, CmfInputError
+from bayesrisk.provisioning.cmf.results import CmfProvisionCard, CmfProvisionResult
+from bayesrisk.provisioning.cmf.step import CMF_PROVISIONING_ARTIFACTS, CmfProvisioningStep
 
 ROOT_SEED = 20_240_629
 EXPECTED_A1_PROVISION = Decimal("360.00000")
@@ -119,7 +119,7 @@ def _study_with_frame(
 ) -> Study:
     """Construye un ``Study`` con ``data.frame`` CMF preinyectado."""
     cfg = config or _config()
-    root_config = NikodymConfig(provisioning_cmf=cfg) if active_config else NikodymConfig()
+    root_config = BayesRiskConfig(provisioning_cmf=cfg) if active_config else BayesRiskConfig()
     study = Study(root_config)
     study.artifacts.set("data", "frame", _standalone_frame() if frame is None else frame)
     return study
@@ -191,13 +191,13 @@ def test_core_study_cablea_provisioning_cmf_en_orden_por_defecto() -> None:
     """``Study`` resuelve ``provisioning_cmf`` como dominio perezoso posterior a F1."""
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order.index("calibration") < order.index("provisioning_cmf")
-    assert study_module._DOMAIN_MODULES["provisioning_cmf"] == "nikodym.provisioning.cmf"
+    assert study_module._DOMAIN_MODULES["provisioning_cmf"] == "bayesrisk.provisioning.cmf"
     assert study_module._DOMAIN_CONFIG_CLASSES["provisioning_cmf"] == (
-        "nikodym.provisioning.cmf.config",
+        "bayesrisk.provisioning.cmf.config",
         "CmfProvisioningConfig",
     )
 
-    study = Study(NikodymConfig(provisioning_cmf=CmfProvisioningConfig()))
+    study = Study(BayesRiskConfig(provisioning_cmf=CmfProvisioningConfig()))
 
     assert study._default_step_names() == ["provisioning_cmf"]
     assert isinstance(study._resolve_step("provisioning_cmf"), CmfProvisioningStep)
@@ -205,7 +205,7 @@ def test_core_study_cablea_provisioning_cmf_en_orden_por_defecto() -> None:
 
 def test_ct1_falta_data_frame_levanta_artifactnotfound() -> None:
     """La dependencia dura única ``data.frame`` falla con error CT-1 tipado."""
-    study = Study(NikodymConfig(provisioning_cmf=_config()))
+    study = Study(BayesRiskConfig(provisioning_cmf=_config()))
     step = CmfProvisioningStep.from_config(study.config.provisioning_cmf)
 
     with pytest.raises(ArtifactNotFoundError, match=r"\('data', 'frame'\)"):
@@ -510,7 +510,7 @@ def test_helpers_defensivos_de_estadisticas_y_validacion() -> None:
 def test_import_pandas_y_provisioning_cmf_liviano_subprocess(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """``import nikodym.provisioning.cmf`` registra el step sin cargar tabulares pesados."""
+    """``import bayesrisk.provisioning.cmf`` registra el step sin cargar tabulares pesados."""
     real_import = step_module.importlib.import_module
 
     def block_pandas(name: str) -> Any:
@@ -525,8 +525,8 @@ def test_import_pandas_y_provisioning_cmf_liviano_subprocess(
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.provisioning.cmf
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.provisioning.cmf
+        from bayesrisk.core.registry import REGISTRY
 
         assert REGISTRY.resolve("provisioning_cmf", "standard").__name__ == "CmfProvisioningStep"
         blocked = [
@@ -535,7 +535,7 @@ def test_import_pandas_y_provisioning_cmf_liviano_subprocess(
             if name in sys.modules
         ]
         assert blocked == [], blocked
-        assert "nikodym.provisioning.cmf.matrices" not in sys.modules
+        assert "bayesrisk.provisioning.cmf.matrices" not in sys.modules
         print("ok")
         """
     )

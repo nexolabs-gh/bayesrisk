@@ -691,10 +691,10 @@ inputs = Path(sys.argv[1])
 staging = Path(sys.argv[2])
 result = Path(sys.argv[3])
 for forbidden in (
-    "NIKODYM_H9R_OUTPUT_ROOT",
-    "NIKODYM_H9R_BOUNDARY_JSONL",
-    "NIKODYM_H9R_FILESYSTEM_JSONL",
-    "NIKODYM_H9R_NATIVE_POOLS_JSONL",
+    "BAYESRISK_H9R_OUTPUT_ROOT",
+    "BAYESRISK_H9R_BOUNDARY_JSONL",
+    "BAYESRISK_H9R_FILESYSTEM_JSONL",
+    "BAYESRISK_H9R_NATIVE_POOLS_JSONL",
 ):
     assert forbidden not in os.environ
 json.loads(next(inputs.glob("*.json")).read_text(encoding="utf-8"))
@@ -1212,7 +1212,7 @@ def test_proxy_ui_reenvia_servicio_real_y_persiste_exchange_durable(
             body=request_body,
             headers={
                 "Content-Length": str(len(request_body)),
-                "X-Nikodym-Request-Id": request_id,
+                "X-BayesRisk-Request-Id": request_id,
             },
         )
         try:

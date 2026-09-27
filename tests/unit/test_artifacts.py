@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import pytest
 
-from nikodym.core.artifacts import ArtifactStore
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ArtifactExistsError, ArtifactNotFoundError
+from bayesrisk.core.artifacts import ArtifactStore
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ArtifactExistsError, ArtifactNotFoundError
 
 
 def test_set_get_round_trip_por_identidad() -> None:

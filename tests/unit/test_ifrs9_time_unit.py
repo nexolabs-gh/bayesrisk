@@ -26,8 +26,8 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from nikodym.provisioning.ifrs9 import IfrsProvisioningConfig, IfrsProvisioningEngine
-from nikodym.provisioning.ifrs9.config import (
+from bayesrisk.provisioning.ifrs9 import IfrsProvisioningConfig, IfrsProvisioningEngine
+from bayesrisk.provisioning.ifrs9.config import (
     IfrsEadConfig,
     IfrsEclConfig,
     IfrsLgdConfig,
@@ -35,8 +35,8 @@ from nikodym.provisioning.ifrs9.config import (
     IfrsScenarioConfig,
     IfrsStagingConfig,
 )
-from nikodym.provisioning.ifrs9.exceptions import IfrsFaltaDatoError
-from nikodym.provisioning.ifrs9.results import IfrsProvisionResult
+from bayesrisk.provisioning.ifrs9.exceptions import IfrsFaltaDatoError
+from bayesrisk.provisioning.ifrs9.results import IfrsProvisionResult
 
 # Marcas de esta enmienda. El código NO viaja al copy público: la prosa explica la limitación en el
 # idioma del lector (gate `tests/unit/test_public_copy.py`).
@@ -411,7 +411,7 @@ def test_el_record_de_evidencia_rechaza_una_conversion_corrupta() -> None:
     Era la única columna de la tabla de evidencia sin validación, justo la que la enmienda vende
     como «paso aritmético auditable»: un `inf` o un `nan` habrían pasado como evidencia buena.
     """
-    from nikodym.provisioning.ifrs9.results import IfrsEclTermRecord
+    from bayesrisk.provisioning.ifrs9.results import IfrsEclTermRecord
 
     base = {
         "row_id": "op1",
@@ -439,7 +439,7 @@ def test_el_audit_trail_registra_la_unidad_observada_y_el_soporte() -> None:
     `_observed_time_units` devuelve `()` cuando la curva no trae la columna —el caso de aditividad
     CT-2 que el docstring dice servir—, y esa rama no la ejercitaba ningún test del step.
     """
-    from nikodym.provisioning.ifrs9.step import _observed_time_units, _period_bounds
+    from bayesrisk.provisioning.ifrs9.step import _observed_time_units, _period_bounds
 
     con_unidad = _ts(time_value=_ANIOS, time_unit="year")
     sin_unidad = _ts(time_value=_ANIOS, declara_unidad=False)

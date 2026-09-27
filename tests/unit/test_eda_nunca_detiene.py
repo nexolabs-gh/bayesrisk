@@ -26,17 +26,17 @@ from test_eda_step import (
     _study_con_data,
 )
 
-import nikodym
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.dataset_check import check_dataset
-from nikodym.core.study import Study
-from nikodym.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
-from nikodym.eda.default_rate import _RESULT_COLUMNS, tasa_no_calculable
-from nikodym.eda.stability import TemporalStabilityAnalyzer
-from nikodym.eda.step import EDA_ARTIFACTS, EdaStep
-from nikodym.eda.univariate import UnivariateProfiler
-from nikodym.guided.summaries import SummaryContext, build_stage_summary
+import bayesrisk
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.dataset_check import check_dataset
+from bayesrisk.core.study import Study
+from bayesrisk.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
+from bayesrisk.eda.default_rate import _RESULT_COLUMNS, tasa_no_calculable
+from bayesrisk.eda.stability import TemporalStabilityAnalyzer
+from bayesrisk.eda.step import EDA_ARTIFACTS, EdaStep
+from bayesrisk.eda.univariate import UnivariateProfiler
+from bayesrisk.guided.summaries import SummaryContext, build_stage_summary
 
 # ───────────────────────── ayudas ─────────────────────────
 
@@ -158,8 +158,8 @@ def test_los_cinco_errores_que_d_sc_17_dejo_intactos_ahora_degradan(
 
 def test_el_analizador_suelto_sigue_levantando() -> None:
     """La regla es del PASO del pipeline: la pieza, usada por código, conserva su contrato."""
-    from nikodym.eda.default_rate import DefaultRateAnalyzer
-    from nikodym.eda.exceptions import EdaError
+    from bayesrisk.eda.default_rate import DefaultRateAnalyzer
+    from bayesrisk.eda.exceptions import EdaError
 
     with pytest.raises(EdaError, match="más de una columna datetime"):
         DefaultRateAnalyzer.from_config(DefaultRateConfig(min_obs_per_period=1)).compute(
@@ -192,7 +192,7 @@ def test_una_poblacion_rota_degrada_todo_y_publica_los_seis_artefactos(
         analysis_partition="todas",
     )
     study = Study(
-        NikodymConfig(repro=ReproConfig(seed=20_240_626), data=_data_config_aleatorio(), eda=cfg)
+        BayesRiskConfig(repro=ReproConfig(seed=20_240_626), data=_data_config_aleatorio(), eda=cfg)
     )
     study.artifacts.set("data", "frame", frame)
     study.artifacts.set("data", "labels", _labels(_frame_sin_fecha()))
@@ -284,7 +284,7 @@ def test_una_decision_por_sub_analisis_caido_y_ninguna_en_una_corrida_sana() -> 
 
 def test_la_calidad_caida_no_publica_ceros(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ceros se leerían «el archivo no tiene problemas de calidad»."""
-    from nikodym.eda.quality import DataQualityProfiler
+    from bayesrisk.eda.quality import DataQualityProfiler
 
     def explota(self: object, *args: object, **kwargs: object) -> object:
         raise ValueError("fallo inyectado en la calidad")
@@ -361,7 +361,7 @@ def test_sin_poblacion_la_tasa_dice_no_disponible_y_no_sin_elegibles() -> None:
         analysis_partition="todas",
     )
     study = Study(
-        NikodymConfig(repro=ReproConfig(seed=20_240_626), data=_data_config_aleatorio(), eda=cfg)
+        BayesRiskConfig(repro=ReproConfig(seed=20_240_626), data=_data_config_aleatorio(), eda=cfg)
     )
     study.artifacts.set("data", "frame", frame)
     study.artifacts.set("data", "labels", _labels(_frame_sin_fecha()))
@@ -376,8 +376,8 @@ def test_sin_poblacion_la_tasa_dice_no_disponible_y_no_sin_elegibles() -> None:
 # ───────────────────────── preflight y catálogo ─────────────────────────
 
 
-def _config_preflight(**eda: object) -> NikodymConfig:
-    return NikodymConfig(
+def _config_preflight(**eda: object) -> BayesRiskConfig:
+    return BayesRiskConfig(
         repro=ReproConfig(seed=1),
         data=_data_config_aleatorio(),
         eda=EdaConfig(**eda),  # type: ignore[arg-type]
@@ -407,7 +407,7 @@ def test_el_preflight_no_predice_un_corte_que_ya_no_ocurre(eda: dict) -> None:
 
 def test_la_exencion_del_preflight_no_se_derrama_a_binning() -> None:
     """Control: la misma columna ausente en `binning` SÍ detiene la corrida y se sigue diciendo."""
-    from nikodym.binning.config import BinningConfig
+    from bayesrisk.binning.config import BinningConfig
 
     config = _config_preflight().model_copy(
         update={"binning": BinningConfig(feature_columns=("no_existe",))}
@@ -419,7 +419,7 @@ def test_la_exencion_del_preflight_no_se_derrama_a_binning() -> None:
 
 def test_la_opcion_por_cohorte_del_catalogo_ya_no_exige_otro_campo() -> None:
     """Igual que D-SC-18 hizo con «period»: «exige otro campo» dejó de ser verdad."""
-    from nikodym.ui import jobs
+    from bayesrisk.ui import jobs
 
     opcion = next(
         o
@@ -439,7 +439,7 @@ def test_la_opcion_por_cohorte_del_catalogo_ya_no_exige_otro_campo() -> None:
 
 @pytest.fixture
 def _cartera_dos_fechas(tmp_path: Path) -> Path:
-    from nikodym.ui import datasets
+    from bayesrisk.ui import datasets
 
     base = pd.read_parquet(datasets.materialize("hipotecario_comportamiento", workdir=tmp_path))
     rng = np.random.default_rng(7)
@@ -457,7 +457,7 @@ def test_gate_de_aceptacion_la_cartera_con_dos_fechas_llega_al_final(
 ) -> None:
     """🔴 GATE DE ACEPTACIÓN: hoy muere en `eda` en 3,5 s; con D-SC-19 termina `done`."""
     pytest.importorskip("optbinning")
-    sc = nikodym.Scorecard(
+    sc = bayesrisk.Scorecard(
         _cartera_dos_fechas,
         target={"col": "bad_flag", "op": "==", "value": 1},
         partition="random",
@@ -478,9 +478,9 @@ def test_gate_de_aceptacion_la_cartera_con_dos_fechas_llega_al_final(
     assert "de forma parcial" in html
     # Test 8: el informe dice la causa y no afirma lo que no hay —ni «0 períodos», ni «un solo
     # período», ni una tabla vacía de la tasa—, y ningún slug del motor llega a la prosa.
-    from nikodym.report import prose
-    from nikodym.report.builder import ReportBuilder
-    from nikodym.report.config import ReportConfig
+    from bayesrisk.report import prose
+    from bayesrisk.report.builder import ReportBuilder
+    from bayesrisk.report.config import ReportConfig
 
     bundle = ReportBuilder.from_config(ReportConfig()).collect(sc.study)
     assert "eda.default_rate.by_period" not in bundle.tables
@@ -501,7 +501,7 @@ def _prosa_eda(study: Study) -> tuple[str, str]:
     """Contexto y Resultados de `eda`, leídos de la card como los lee el informe."""
     from types import SimpleNamespace
 
-    from nikodym.report import prose
+    from bayesrisk.report import prose
 
     card = study.artifacts.get("eda", "eda_card").model_dump(mode="python")
     bundle = SimpleNamespace(cards={"eda": card})
@@ -512,9 +512,9 @@ def test_el_informe_no_dice_sin_alertas_de_calidad_si_la_calidad_cayo(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """🔴 `quality_flag_counts == {}` se leía «no levantó alertas»: un negativo que nadie midió."""
-    from nikodym.eda.quality import DataQualityProfiler
-    from nikodym.report.builder import ReportBuilder
-    from nikodym.report.config import ReportConfig
+    from bayesrisk.eda.quality import DataQualityProfiler
+    from bayesrisk.report.builder import ReportBuilder
+    from bayesrisk.report.config import ReportConfig
 
     def explota(self: object, *args: object, **kwargs: object) -> object:
         raise ValueError("fallo inyectado en la calidad")
@@ -564,7 +564,7 @@ def test_una_corrida_sana_no_menciona_nada_parcial() -> None:
 
 
 def _estado(study: Study, **contexto: object) -> str:
-    from nikodym.guided.summaries import _estado_de_ejecucion
+    from bayesrisk.guided.summaries import _estado_de_ejecucion
 
     base = {
         "project_dir": None,
@@ -625,7 +625,7 @@ def test_la_red_final_de_la_estabilidad_tampoco_levanta(monkeypatch: pytest.Monk
         analysis_partition="todas",
     )
     study = Study(
-        NikodymConfig(repro=ReproConfig(seed=20_240_626), data=_data_config_aleatorio(), eda=cfg)
+        BayesRiskConfig(repro=ReproConfig(seed=20_240_626), data=_data_config_aleatorio(), eda=cfg)
     )
     study.artifacts.set("data", "frame", _frame_sin_fecha().iloc[:0])
     study.artifacts.set("data", "labels", _labels(_frame_sin_fecha()))
@@ -663,7 +663,7 @@ def test_una_falla_de_las_figuras_se_declara_y_no_se_publica_como_cero_figuras(
 ) -> None:
     """🔴 Pasada 2 de Codex: si las recetas de figura fallaban, la card publicaba `n_figures = 0`
     sin causa ni alerta —un negativo publicado y un defecto del motor escondido—."""
-    from nikodym.eda import step as modulo_step
+    from bayesrisk.eda import step as modulo_step
 
     def explota(**kwargs: object) -> object:
         raise ValueError("fallo inyectado en las figuras")

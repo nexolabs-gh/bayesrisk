@@ -16,18 +16,18 @@ import pytest
 from _ui_f1 import full_f1_config, write_stacked_behavior_parquet
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.performance as performance_pkg
-import nikodym.performance.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.performance.config import PerformanceConfig
-from nikodym.performance.exceptions import PerformanceDataError
-from nikodym.performance.results import PerformanceCardSection, PerformanceResult
-from nikodym.performance.step import PERFORMANCE_ARTIFACTS, PerformanceStep
+import bayesrisk.core.study as study_module
+import bayesrisk.performance as performance_pkg
+import bayesrisk.performance.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.performance.exceptions import PerformanceDataError
+from bayesrisk.performance.results import PerformanceCardSection, PerformanceResult
+from bayesrisk.performance.step import PERFORMANCE_ARTIFACTS, PerformanceStep
 
 
 def _config(**kwargs: Any) -> PerformanceConfig:
@@ -80,7 +80,7 @@ def _study_with_artifacts(
 ) -> Study:
     """Construye un ``Study`` con los dos artefactos upstream mínimos de ``performance``."""
     cfg = config or _config()
-    study = Study(NikodymConfig(performance=cfg))
+    study = Study(BayesRiskConfig(performance=cfg))
     study.artifacts.set("scorecard", "score", _score_frame() if score is None else score)
     study.artifacts.set(
         "calibration",
@@ -121,13 +121,13 @@ def test_core_study_cablea_performance_en_orden_por_defecto() -> None:
     """``Study`` resuelve ``performance`` después de ``survival`` en el orden por defecto."""
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order.index("calibration") < order.index("survival") < order.index("performance")
-    assert study_module._DOMAIN_MODULES["performance"] == "nikodym.performance"
+    assert study_module._DOMAIN_MODULES["performance"] == "bayesrisk.performance"
     assert study_module._DOMAIN_CONFIG_CLASSES["performance"] == (
-        "nikodym.performance.config",
+        "bayesrisk.performance.config",
         "PerformanceConfig",
     )
 
-    study = Study(NikodymConfig(performance=PerformanceConfig()))
+    study = Study(BayesRiskConfig(performance=PerformanceConfig()))
 
     assert study._default_step_names() == ["performance"]
     assert isinstance(study._resolve_step("performance"), PerformanceStep)
@@ -353,7 +353,7 @@ def test_validadores_y_fallback_config_cubren_ramas_defensivas() -> None:
 def test_import_pandas_y_performance_step_liviano_subprocess(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """``import nikodym.performance`` registra el step sin cargar tabulares/scoring."""
+    """``import bayesrisk.performance`` registra el step sin cargar tabulares/scoring."""
     real_import = step_module.importlib.import_module
 
     def block_pandas(name: str) -> Any:
@@ -368,8 +368,8 @@ def test_import_pandas_y_performance_step_liviano_subprocess(
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.performance
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.performance
+        from bayesrisk.core.registry import REGISTRY
 
         assert REGISTRY.resolve("performance", "standard").__name__ == "PerformanceStep"
         blocked = [

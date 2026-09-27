@@ -1,4 +1,4 @@
-"""Tests de ``ExplainConfig`` (SDD-14 §5) e integración con ``NikodymConfig`` (B14.1)."""
+"""Tests de ``ExplainConfig`` (SDD-14 §5) e integración con ``BayesRiskConfig`` (B14.1)."""
 
 from __future__ import annotations
 
@@ -13,15 +13,15 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.explain as explain_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.explain as explain_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.explain.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.explain.config import (
     ExplainConfig,
     ExplainOutputConfig,
     LocalScopeConfig,
@@ -29,7 +29,7 @@ from nikodym.explain.config import (
     ReasonCodesConfig,
     ScorecardExplainConfig,
 )
-from nikodym.explain.exceptions import (
+from bayesrisk.explain.exceptions import (
     ExplainBackendError,
     ExplainConfigError,
     ExplainDataError,
@@ -53,7 +53,7 @@ def _capa_explain_cargada(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _manual_default_hash() -> str:
     """Recalcula el golden sin llamar a ``config_hash`` (canonicalización replicada)."""
-    payload = NikodymConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
+    payload = BayesRiskConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -248,18 +248,18 @@ def test_round_trip_yaml_preserva_config() -> None:
 def test_config_hash_default_con_explain_none_golden_no_tautologico() -> None:
     """El golden por defecto incluye ``explain=None`` con cálculo independiente."""
     assert _manual_default_hash() == GOLDEN_DEFAULT_CONFIG_HASH
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_config_hash_se_movio_por_seccion_explain() -> None:
     """Añadir ``explain`` movió el golden respecto al valor previo (no es regresión)."""
     assert GOLDEN_DEFAULT_CONFIG_HASH != GOLDEN_PREVIO_SIN_EXPLAIN
-    assert config_hash(NikodymConfig()) != GOLDEN_PREVIO_SIN_EXPLAIN
+    assert config_hash(BayesRiskConfig()) != GOLDEN_PREVIO_SIN_EXPLAIN
 
 
 def test_config_hash_es_puramente_aditivo_sobre_explain() -> None:
     """Quitar ``explain:null`` del payload default reproduce el hash previo (aditivo)."""
-    payload = NikodymConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
+    payload = BayesRiskConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
     assert payload["explain"] is None
     assert payload["provisioning_internal"] is None
     del payload["explain"]
@@ -289,53 +289,53 @@ def test_explain_no_esta_en_infra_sections() -> None:
 )
 def test_config_hash_cambia_al_variar_explain(explain: ExplainConfig) -> None:
     """``explain`` no es INFRA: explainer/targets/top_n/unidad/background mueven el hash."""
-    base = config_hash(NikodymConfig(explain=ExplainConfig()))
-    variado = config_hash(NikodymConfig(explain=explain))
+    base = config_hash(BayesRiskConfig(explain=ExplainConfig()))
+    variado = config_hash(BayesRiskConfig(explain=explain))
     assert "explain" not in INFRA_SECTIONS
     assert variado != base
 
 
-# ─────────────────────── integración con NikodymConfig ───────────────────────
+# ─────────────────────── integración con BayesRiskConfig ───────────────────────
 
 
-def test_nikodymconfig_explain_none_explicito() -> None:
+def test_bayesriskconfig_explain_none_explicito() -> None:
     """``explain=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(explain=None).explain is None
+    assert BayesRiskConfig(explain=None).explain is None
 
 
-def test_nikodymconfig_coacciona_dict_a_explain_config() -> None:
+def test_bayesriskconfig_coacciona_dict_a_explain_config() -> None:
     """Con el hook cargado, un ``dict`` se coacciona a :class:`ExplainConfig`."""
-    cfg = NikodymConfig(explain={"targets": "scorecard", "reason_codes": {"top_n": 8}})
+    cfg = BayesRiskConfig(explain={"targets": "scorecard", "reason_codes": {"top_n": 8}})
     assert isinstance(cfg.explain, ExplainConfig)
     assert cfg.explain.targets == "scorecard"
     assert cfg.explain.reason_codes.top_n == 8
 
 
-def test_nikodymconfig_pasa_instancia_explain_tal_cual() -> None:
+def test_bayesriskconfig_pasa_instancia_explain_tal_cual() -> None:
     """Una instancia ya validada de ``ExplainConfig`` pasa por el validador sin recrearse."""
     explain = ExplainConfig(targets="ml")
-    cfg = NikodymConfig(explain=explain)
+    cfg = BayesRiskConfig(explain=explain)
     assert cfg.explain is explain
 
 
-def test_nikodymconfig_explain_core_only_acepta_blob_json(
+def test_bayesriskconfig_explain_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``explain`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_EXPLAIN_CONFIG_CLS", None)
-    cfg = NikodymConfig(explain={"targets": "ml"})
+    cfg = BayesRiskConfig(explain={"targets": "ml"})
     assert cfg.explain == {"targets": "ml"}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_explain_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_explain_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``explain`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_EXPLAIN_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(explain=blob)
+        BayesRiskConfig(explain=blob)
 
 
 # ─────────────────────────── metadata UI + API pública ───────────────────────────
@@ -367,7 +367,7 @@ def test_explain_public_api_minimo() -> None:
     assert "ExplainError" in explain_pkg.__all__
 
 
-def test_explain_errors_descienden_de_nikodym_error() -> None:
+def test_explain_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``explain`` cuelgan de la raíz propia de la librería."""
     for error_cls in (
         ExplainError,
@@ -378,7 +378,7 @@ def test_explain_errors_descienden_de_nikodym_error() -> None:
         ExplainReasonCodeError,
         ExplainDeterminismError,
     ):
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
         assert issubclass(error_cls, ExplainError)
 
 
@@ -410,15 +410,15 @@ _MODULOS_PESADOS = (
 
 
 def test_import_explain_config_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.explain.config`` registra el hook sin arrastrar shap ni tabulares."""
+    """``import bayesrisk.explain.config`` registra el hook sin arrastrar shap ni tabulares."""
     pesados = ",".join(f"'{m}'" for m in _MODULOS_PESADOS)
     code = (
-        "import nikodym.explain, nikodym.core, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.explain.config import ExplainConfig;"
+        "import bayesrisk.explain, bayesrisk.core, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.explain.config import ExplainConfig;"
         f"bloqueados=[m for m in ({pesados},) if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(explain={'targets': 'ml'});"
+        "cfg=BayesRiskConfig(explain={'targets': 'ml'});"
         "assert isinstance(cfg.explain, ExplainConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -427,10 +427,10 @@ def test_import_explain_config_liviano_y_registra_hook_en_proceso_fresco() -> No
 def test_core_valida_explain_como_blob_opaco_sin_importar_la_capa() -> None:
     """El core acepta ``explain`` JSON/dict sin importar la capa de explicabilidad."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(explain={'targets': 'ml'});"
+        "cfg=BayesRiskConfig(explain={'targets': 'ml'});"
         "assert cfg.explain == {'targets': 'ml'};"
-        "assert 'nikodym.explain' not in sys.modules"
+        "assert 'bayesrisk.explain' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)

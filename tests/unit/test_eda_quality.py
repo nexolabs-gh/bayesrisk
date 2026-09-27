@@ -9,11 +9,11 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pandas.testing import assert_frame_equal
 
-import nikodym.eda as eda
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.eda.config import QualityConfig
-from nikodym.eda.exceptions import EdaError
-from nikodym.eda.quality import DataQualityProfiler, QualityResult
+import bayesrisk.eda as eda
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.eda.config import QualityConfig
+from bayesrisk.eda.exceptions import EdaError
+from bayesrisk.eda.quality import DataQualityProfiler, QualityResult
 
 
 def _profiler(**kwargs: object) -> DataQualityProfiler:

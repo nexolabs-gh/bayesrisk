@@ -19,13 +19,13 @@ from typing import Any
 import numpy as np
 import pytest
 
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.explain.exceptions import (
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.explain.exceptions import (
     ExplainConfigError,
     ExplainDataError,
     ExplainExplainerError,
 )
-from nikodym.explain.explainers import (
+from bayesrisk.explain.explainers import (
     AnalyticLinearExplainer,
     ContributionExplainer,
     KernelShapExplainer,
@@ -486,7 +486,7 @@ def test_resolve_explainer_espacio_efectivo_y_caveat(
 def test_resolve_explainer_sin_extra_shap_levanta_missing_dependency() -> None:
     """Sin ``shap`` instalado, construir un explainer ML nombra el extra [explain]."""
     assert "shap" not in sys.modules
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[explain\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[explain\]"):
         resolve_explainer(
             backend="xgboost",
             model_kind="ml",
@@ -499,7 +499,7 @@ def test_resolve_explainer_sin_extra_shap_levanta_missing_dependency() -> None:
 # ── import liviano (núcleo) ─────────────────────────────────────────────────────────────────────
 def test_import_explainers_liviano_no_arrastra_shap_ni_tabulares() -> None:
     code = (
-        "import nikodym.explain.explainers, sys;"
+        "import bayesrisk.explain.explainers, sys;"
         "bloqueados=[m for m in ('shap','matplotlib','sklearn','pandas','numpy') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados"

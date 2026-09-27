@@ -14,28 +14,28 @@ import pytest
 from pandas.testing import assert_frame_equal
 from sklearn.base import clone
 
-import nikodym.selection.selector as selector_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ConfigError, MissingDependencyError, NotFittedError
-from nikodym.selection.config import (
+import bayesrisk.selection.selector as selector_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ConfigError, MissingDependencyError, NotFittedError
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
     VifSelectionConfig,
 )
-from nikodym.selection.exceptions import SelectionFitError, SelectionTransformError
-from nikodym.selection.selector import FeatureSelector
+from bayesrisk.selection.exceptions import SelectionFitError, SelectionTransformError
+from bayesrisk.selection.selector import FeatureSelector
 
 
 def test_import_selection_liviano_no_carga_selector_ni_deps_pesadas() -> None:
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.selection
+        import bayesrisk.selection
 
         blocked = [
             name for name in (
-                "nikodym.selection.selector",
+                "bayesrisk.selection.selector",
                 "pandas",
                 "sklearn",
                 "statsmodels",
@@ -63,8 +63,8 @@ def test_reexport_feature_selector_sin_sklearn_falla_con_missing_dependency() ->
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.selection
-        from nikodym.core.exceptions import MissingDependencyError
+        import bayesrisk.selection
+        from bayesrisk.core.exceptions import MissingDependencyError
 
 
         class BlockSklearn:
@@ -77,9 +77,9 @@ def test_reexport_feature_selector_sin_sklearn_falla_con_missing_dependency() ->
 
         sys.meta_path.insert(0, BlockSklearn())
         try:
-            nikodym.selection.FeatureSelector
+            bayesrisk.selection.FeatureSelector
         except MissingDependencyError as exc:
-            assert "instale nikodym[scoring]" in str(exc)
+            assert "instale bayesrisk[scoring]" in str(exc)
         else:
             raise AssertionError("FeatureSelector no tradujo la ausencia de sklearn")
         print("ok")
@@ -112,7 +112,7 @@ def test_import_selector_sin_sklearn_cubre_rama_top_level(
     module_path = selector_module.__file__
     assert module_path is not None
     spec = importlib.util.spec_from_file_location(
-        "nikodym.selection._missing_sklearn_selector_test",
+        "bayesrisk.selection._missing_sklearn_selector_test",
         module_path,
     )
     assert spec is not None
@@ -120,7 +120,7 @@ def test_import_selector_sin_sklearn_cubre_rama_top_level(
     loader = spec.loader
     assert loader is not None
 
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         loader.exec_module(module)
 
 
@@ -153,7 +153,7 @@ def test_imports_perezosos_traducen_dependencias_base_y_metricas(
         return real_import(name)
 
     monkeypatch.setattr(selector_module.importlib, "import_module", block_metrics)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         FeatureSelector(min_iv=0.0, vif_enabled=False).fit(
             _metric_frame(),
             target_col="target",
@@ -177,7 +177,7 @@ def test_vif_sin_statsmodels_falla_con_missing_dependency(
     monkeypatch.setattr(selector_module.importlib, "import_module", fake_import_module)
 
     selector = FeatureSelector(min_iv=0.0, correlation_threshold=1.0)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         selector.fit(
             frame,
             target_col="target",

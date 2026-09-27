@@ -15,24 +15,24 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.calibration as calibration
-import nikodym.calibration.step as step_module
-import nikodym.core.study as study_module
-from nikodym.binning.config import BinningConfig
-from nikodym.calibration.config import CalibrationConfig
-from nikodym.calibration.exceptions import CalibrationFitError
-from nikodym.calibration.results import (
+import bayesrisk.calibration as calibration
+import bayesrisk.calibration.step as step_module
+import bayesrisk.core.study as study_module
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.calibration.config import CalibrationConfig
+from bayesrisk.calibration.exceptions import CalibrationFitError
+from bayesrisk.calibration.results import (
     CalibrationCardSection,
     CalibrationParameters,
     CalibrationResult,
 )
-from nikodym.calibration.step import CALIBRATION_ARTIFACTS, CalibrationStep
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.data.config import (
+from bayesrisk.calibration.step import CALIBRATION_ARTIFACTS, CalibrationStep
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     CohortSplitConfig,
     ColumnSpec,
     DataConfig,
@@ -42,16 +42,21 @@ from nikodym.data.config import (
     SchemaConfig,
     TargetConfig,
 )
-from nikodym.data.step import INPUT_FRAME_KEY
-from nikodym.model.config import IvContributionConfig, ModelConfig, SignPolicyConfig, StepwiseConfig
-from nikodym.scorecard.config import ScorecardConfig
-from nikodym.selection.config import (
+from bayesrisk.data.step import INPUT_FRAME_KEY
+from bayesrisk.model.config import (
+    IvContributionConfig,
+    ModelConfig,
+    SignPolicyConfig,
+    StepwiseConfig,
+)
+from bayesrisk.scorecard.config import ScorecardConfig
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
     VifSelectionConfig,
 )
-from nikodym.testing import assert_bitwise_reproducible
+from bayesrisk.testing import assert_bitwise_reproducible
 
 ROOT_SEED = 20_240_628
 OFFSET_GOLDEN = -1.5255578438983735
@@ -133,7 +138,7 @@ def _study_with_artifacts(
 ) -> Study:
     """Construye un ``Study`` con los cinco artefactos upstream de ``model``."""
     cfg = config or _config()
-    study = Study(NikodymConfig(calibration=cfg))
+    study = Study(BayesRiskConfig(calibration=cfg))
     study.artifacts.set(
         "model",
         "estimator",
@@ -307,7 +312,7 @@ def _data_config() -> DataConfig:
 def _pipeline_study() -> Study:
     """Study canónico ``data``→``scorecard``→``calibration`` con config estable."""
     return Study(
-        NikodymConfig(
+        BayesRiskConfig(
             repro=ReproConfig(seed=ROOT_SEED),
             data=_data_config(),
             binning=BinningConfig(
@@ -380,13 +385,13 @@ def test_core_study_cablea_calibration_en_orden_por_defecto() -> None:
     """``Study`` resuelve ``calibration`` como dominio perezoso después de ``scorecard``."""
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order[order.index("scorecard") + 1] == "calibration"
-    assert study_module._DOMAIN_MODULES["calibration"] == "nikodym.calibration"
+    assert study_module._DOMAIN_MODULES["calibration"] == "bayesrisk.calibration"
     assert study_module._DOMAIN_CONFIG_CLASSES["calibration"] == (
-        "nikodym.calibration.config",
+        "bayesrisk.calibration.config",
         "CalibrationConfig",
     )
 
-    study = Study(NikodymConfig(calibration=CalibrationConfig()))
+    study = Study(BayesRiskConfig(calibration=CalibrationConfig()))
 
     assert study._default_step_names() == ["calibration"]
     assert isinstance(study._resolve_step("calibration"), CalibrationStep)
@@ -580,7 +585,7 @@ def test_validadores_y_fallback_config_cubren_ramas_defensivas() -> None:
         == 0.19
     )
     assert (
-        step_module._calibration_config_from_study(Study(NikodymConfig()), fallback=fallback)
+        step_module._calibration_config_from_study(Study(BayesRiskConfig()), fallback=fallback)
         is fallback
     )
 
@@ -754,12 +759,12 @@ def test_study_run_data_binning_selection_model_scorecard_calibration_end_to_end
 
 
 def test_import_calibration_step_liviano_no_carga_tabulares_ni_scoring() -> None:
-    """``import nikodym.calibration`` registra el step sin arrastrar pandas/scipy/sklearn."""
+    """``import bayesrisk.calibration`` registra el step sin arrastrar pandas/scipy/sklearn."""
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.calibration
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.calibration
+        from bayesrisk.core.registry import REGISTRY
 
         assert REGISTRY.resolve("calibration", "standard").__name__ == "CalibrationStep"
         blocked = [name for name in ("pandas", "scipy", "sklearn") if name in sys.modules]

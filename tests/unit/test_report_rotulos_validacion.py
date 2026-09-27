@@ -3,10 +3,11 @@
 Copy autorizado por Cami el 2026-09-15 (fuera de la enmienda VALIDACION-COTEJADA §7, con OK
 propio): la tabla «Validación formal · calibración» del HTML, del Word y del Markdown imprimía
 ``hosmer_lemeshow``, ``pass``, ``not_evaluable``, ``performance_artifact``… mientras el panel y la
-guía ya los traducían con los mapas de fuente única de ``nikodym.validation.results``. Aquí se exige
-que el renderer aplique esos mismos mapas —ninguna palabra nueva— **sólo** en esas cuatro claves de
-tabla y por clave de tabla (mismo patrón que el filtro de columnas de auditoría), sin mover los
-encabezados: las trece columnas literales que los gates de las capas A y B exigen siguen ahí.
+guía ya los traducían con los mapas de fuente única de ``bayesrisk.validation.results``. Aquí se
+exige que el renderer aplique esos mismos mapas —ninguna palabra nueva— **sólo** en esas cuatro
+claves de tabla y por clave de tabla (mismo patrón que el filtro de columnas de auditoría), sin
+mover los encabezados: las trece columnas literales que los gates de las capas A y B exigen siguen
+ahí.
 
 Control negativo preespecificado: aplicar el mapa a una tabla ajena con una columna ``test`` →
 rojo (``test_una_tabla_ajena_con_una_columna_test_se_pinta_cruda``).
@@ -22,15 +23,15 @@ from datetime import UTC, datetime
 import pandas as pd
 import pytest
 
-from nikodym.core.lineage import LineageBundle
-from nikodym.report.builder import ReportBuilder
-from nikodym.report.config import ReportConfig
-from nikodym.report.markdown import MarkdownReportRenderer
-from nikodym.report.renderer import HtmlReportRenderer, _table_view
-from nikodym.report.results import ReportInputBundle
-from nikodym.validation.config import CalibrationValidationConfig, ValidationConfig
-from nikodym.validation.evaluator import ValidationEvaluator
-from nikodym.validation.results import ValidationResult
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.report.builder import ReportBuilder
+from bayesrisk.report.config import ReportConfig
+from bayesrisk.report.markdown import MarkdownReportRenderer
+from bayesrisk.report.renderer import HtmlReportRenderer, _table_view
+from bayesrisk.report.results import ReportInputBundle
+from bayesrisk.validation.config import CalibrationValidationConfig, ValidationConfig
+from bayesrisk.validation.evaluator import ValidationEvaluator
+from bayesrisk.validation.results import ValidationResult
 
 _HAS_DOCX = importlib.util.find_spec("docx") is not None
 
@@ -128,7 +129,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "1.16.0"},
+        library_versions={"bayesrisk": "1.16.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 9, 15, 12, 0, tzinfo=UTC),
         schema_version="1.0.0",
@@ -249,7 +250,7 @@ def test_un_grado_de_rating_llamado_all_sigue_visible_en_los_tres_formatos() -> 
 
 def test_la_tabla_de_backtesting_pinta_parametro_prueba_y_veredicto() -> None:
     """La vista de la cuarta tabla, sobre las columnas canónicas de ``backtesting``."""
-    from nikodym.validation.results import _BACKTESTING_COLUMNS
+    from bayesrisk.validation.results import _BACKTESTING_COLUMNS
 
     fila = {
         "parameter": "lgd",
@@ -301,7 +302,7 @@ def test_el_markdown_pinta_las_mismas_palabras() -> None:
 def test_el_word_pinta_las_mismas_palabras_y_conserva_los_encabezados() -> None:
     import docx
 
-    from nikodym.report.docx import DocxReportRenderer
+    from bayesrisk.report.docx import DocxReportRenderer
 
     result = _resultado()
     payload = DocxReportRenderer.from_config(_cfg()).render(_bundle(result))

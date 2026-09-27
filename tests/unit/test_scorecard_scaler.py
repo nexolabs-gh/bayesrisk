@@ -16,14 +16,14 @@ import pytest
 from pandas.testing import assert_frame_equal
 from sklearn.base import clone
 
-import nikodym.scorecard.scaler as scaler_module
-import nikodym.scorecard.transformer as transformer_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ConfigError, MissingDependencyError, NotFittedError
-from nikodym.scorecard.config import PointOverrideConfig, ScorecardConfig
-from nikodym.scorecard.exceptions import ScorecardFitError, ScorecardTransformError
-from nikodym.scorecard.scaler import PointsScaler
-from nikodym.scorecard.transformer import Scorecard
+import bayesrisk.scorecard.scaler as scaler_module
+import bayesrisk.scorecard.transformer as transformer_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ConfigError, MissingDependencyError, NotFittedError
+from bayesrisk.scorecard.config import PointOverrideConfig, ScorecardConfig
+from bayesrisk.scorecard.exceptions import ScorecardFitError, ScorecardTransformError
+from bayesrisk.scorecard.scaler import PointsScaler
+from bayesrisk.scorecard.transformer import Scorecard
 
 FACTOR_GOLDEN = 28.85390081777927
 OFFSET_GOLDEN = 487.1228762045055
@@ -485,7 +485,7 @@ def test_helpers_privados_de_redondeo_direccion_y_dependencias(
         return real_import(name)
 
     monkeypatch.setattr(scaler_module.importlib, "import_module", block_pandas)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         scaler_module._import_pandas()
 
     def block_numpy(name: str) -> Any:
@@ -494,7 +494,7 @@ def test_helpers_privados_de_redondeo_direccion_y_dependencias(
         return real_import(name)
 
     monkeypatch.setattr(scaler_module.importlib, "import_module", block_numpy)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         scaler_module._import_numpy()
 
     def block_dependency_versions(name: str) -> Any:
@@ -503,7 +503,7 @@ def test_helpers_privados_de_redondeo_direccion_y_dependencias(
         return real_import(name)
 
     monkeypatch.setattr(scaler_module.importlib, "import_module", block_dependency_versions)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         scaler_module._dependency_versions(PointsScaler())
 
 
@@ -511,7 +511,7 @@ def test_import_scorecard_liviano_y_exports_perezosos() -> None:
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.scorecard as scorecard
+        import bayesrisk.scorecard as scorecard
 
         blocked = [
             name for name in ("pandas", "statsmodels", "sklearn", "scipy", "optbinning")
@@ -542,8 +542,8 @@ def test_reexport_scorecard_sin_sklearn_falla_con_missing_dependency() -> None:
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.scorecard
-        from nikodym.core.exceptions import MissingDependencyError
+        import bayesrisk.scorecard
+        from bayesrisk.core.exceptions import MissingDependencyError
 
 
         class BlockSklearn:
@@ -556,9 +556,9 @@ def test_reexport_scorecard_sin_sklearn_falla_con_missing_dependency() -> None:
 
         sys.meta_path.insert(0, BlockSklearn())
         try:
-            nikodym.scorecard.Scorecard
+            bayesrisk.scorecard.Scorecard
         except MissingDependencyError as exc:
-            assert "instale nikodym[scoring]" in str(exc)
+            assert "instale bayesrisk[scoring]" in str(exc)
         else:
             raise AssertionError("Scorecard no tradujo la ausencia de sklearn")
         print("ok")
@@ -591,7 +591,7 @@ def test_import_transformer_sin_sklearn_cubre_rama_top_level(
     module_path = transformer_module.__file__
     assert module_path is not None
     spec = importlib.util.spec_from_file_location(
-        "nikodym.scorecard._missing_sklearn_transformer_test",
+        "bayesrisk.scorecard._missing_sklearn_transformer_test",
         module_path,
     )
     assert spec is not None
@@ -599,7 +599,7 @@ def test_import_transformer_sin_sklearn_cubre_rama_top_level(
     loader = spec.loader
     assert loader is not None
 
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         loader.exec_module(module)
 
 

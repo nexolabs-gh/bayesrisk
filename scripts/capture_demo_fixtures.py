@@ -1,9 +1,9 @@
 """Captura —desde una corrida F3 REAL— los 8 fixtures de la demo estática.
 
-La demo pública (``VITE_DEMO_MODE=true``, servida en ``demo.nikodym.cl`` sin backend) monta la app
-sobre fixtures enlatados en ``web/src/fixtures/demo/``. Este script los regenera corriendo el preset
-``f3-provisiones-consumo`` **de verdad** contra el backend FastAPI, vía ``TestClient`` sobre
-:func:`nikodym.ui.server.create_app` (no hace falta levantar ``uvicorn``).
+La demo pública (``VITE_DEMO_MODE=true``, servida en ``demo.bayesadvisory.cl`` sin backend) monta la
+app sobre fixtures enlatados en ``web/src/fixtures/demo/``. Este script los regenera corriendo el
+preset ``f3-provisiones-consumo`` **de verdad** contra el backend FastAPI, vía ``TestClient`` sobre
+:func:`bayesrisk.ui.server.create_app` (no hace falta levantar ``uvicorn``).
 
 **Regla de oro (R1 del SDD-28):** los fixtures salen de una corrida real, nunca inventados ni
 editados a mano para que "salga bonito". Si un número no sale, se arregla la corrida (o el dataset,
@@ -13,8 +13,8 @@ o el preset), **no el fixture**. Por eso el script:
    superset del F1, no se duplica nada).
 2. **Verifica el número de negocio** sobre el ``results`` capturado (la trampa de calibración: si el
    método interno supera al estándar, la regla del máximo no muerde y el producto pierde titular) y
-   la **procedencia** de la corrida: lineage completo, árbol limpio y la versión de ``nikodym`` que
-   la firma (ver :func:`_verificar_lineage`).
+   la **procedencia** de la corrida: lineage completo, árbol limpio y la versión de ``bayesrisk``
+   que la firma (ver :func:`_verificar_lineage`).
 3. Solo si la verificación pasa, **escribe** los 8 archivos (escritura atómica: o salen los 8, o
    ninguno — el script nunca deja un set a medias con la historia equivocada).
 4. Re-verifica el **artefacto ya escrito** (3 secciones no nulas, capítulo del informe con la cifra
@@ -22,8 +22,8 @@ o el preset), **no el fixture**. Por eso el script:
    publique el caveat de working tree sucio): se verifica lo que la demo servirá, no el código que
    lo produjo.
 
-Los 8 fixtures y su endpoint de origen (contrato en ``src/nikodym/ui/routes.py``; shape que consume
-la demo, en ``web/src/lib/demo.ts``):
+Los 8 fixtures y su endpoint de origen (contrato en ``src/bayesrisk/ui/routes.py``; shape que
+consume la demo, en ``web/src/lib/demo.ts``):
 
     GET  /api/datasets                              -> datasets.json
     GET  /api/config/preset/f3-provisiones-consumo  -> preset.json
@@ -59,10 +59,10 @@ from pathlib import Path
 from runpy import run_path
 from typing import TYPE_CHECKING, Any
 
-import nikodym
-from nikodym.ui.runtime import TOKEN_HEADER, build_runtime
-from nikodym.ui.server import create_app
-from nikodym.ui.settings import UiConfig
+import bayesrisk
+from bayesrisk.ui.runtime import TOKEN_HEADER, build_runtime
+from bayesrisk.ui.server import create_app
+from bayesrisk.ui.settings import UiConfig
 
 _VERIFY_SYMBOLS = run_path(str(Path(__file__).with_name("verify_demo_prose_artifacts.py")))
 verify_demo_family = _VERIFY_SYMBOLS["verify_demo_family"]
@@ -73,7 +73,7 @@ if TYPE_CHECKING:
 PRESET_ID = "f3-provisiones-consumo"
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _FIXTURES_DIR = _PROJECT_ROOT / "web" / "src" / "fixtures" / "demo"
-_CAPTURE_WORKDIR_NAME = ".nikodym-demo-fixtures-f3"
+_CAPTURE_WORKDIR_NAME = ".bayesrisk-demo-fixtures-f3"
 
 # G5 (SDD-28 §11): el informe no puede declarar que las PROVISIONES "corresponden a fases
 # posteriores" cuando el capítulo de provisiones ya existe. El criterio NO es "grep del literal
@@ -92,7 +92,7 @@ _NEGACION_PROVISIONES_RE = re.compile(r"provisi\w+[^.]{0,160}?fases?\s+posterior
 # La versión esperada se lee del ATRIBUTO del árbol, nunca de un literal congelado: un freeze
 # escrito a mano caduca en el próximo bump y obligaría a editar los tres capturadores para publicar
 # una versión nueva.
-NIKODYM_VERSION = nikodym.__version__
+BAYESRISK_VERSION = bayesrisk.__version__
 _LINEAGE_REQUIRED_FIELDS = (
     "config_hash",
     "data_hash",
@@ -172,15 +172,15 @@ def _verificar_lineage(results: dict[str, Any], fixture: str) -> None:
     1.10.0. **Ninguna cifra de negocio se mueve por eso**, de modo que el resto del verificador pasa
     en verde y el defecto sólo se ve leyendo el Anexo del informe ya publicado.
 
-    La versión esperada se lee de ``nikodym.__version__`` —el atributo del árbol— y NO de un literal
-    congelado: un freeze escrito a mano caduca en el próximo bump y obligaría a editar los tres
-    capturadores para publicar una versión nueva.
+    La versión esperada se lee de ``bayesrisk.__version__`` —el atributo del árbol— y NO de un
+    literal congelado: un freeze escrito a mano caduca en el próximo bump y obligaría a editar los
+    tres capturadores para publicar una versión nueva.
     """
     lineage = results.get("lineage")
     assert isinstance(lineage, dict), (
         f"{fixture} no trae bloque 'lineage': la demo publicaría la corrida sin procedencia "
         "(config_hash, data_hash, git_sha). Recaptura contra un backend que lo serialice; si el "
-        "árbol se actualizó, corre antes `uv sync --reinstall-package nikodym`."
+        "árbol se actualizó, corre antes `uv sync --reinstall-package bayesrisk`."
     )
     faltantes = [campo for campo in _LINEAGE_REQUIRED_FIELDS if _lineage_vacio(lineage.get(campo))]
     assert not faltantes, (
@@ -197,11 +197,11 @@ def _verificar_lineage(results: dict[str, Any], fixture: str) -> None:
     assert isinstance(versiones, dict), (
         f"{fixture}: library_versions no es un objeto ({type(versiones).__name__})."
     )
-    declarada = versiones.get("nikodym")
-    assert declarada == NIKODYM_VERSION, (
-        f"{fixture}: el lineage firma la corrida con nikodym {declarada!r} y el árbol va en "
-        f"{NIKODYM_VERSION!r}. `importlib.metadata` sirve la versión cacheada del editable "
-        "install: corre `uv sync --reinstall-package nikodym` ANTES de capturar y repite la "
+    declarada = versiones.get("bayesrisk")
+    assert declarada == BAYESRISK_VERSION, (
+        f"{fixture}: el lineage firma la corrida con bayesrisk {declarada!r} y el árbol va en "
+        f"{BAYESRISK_VERSION!r}. `importlib.metadata` sirve la versión cacheada del editable "
+        "install: corre `uv sync --reinstall-package bayesrisk` ANTES de capturar y repite la "
         "captura entera "
         "(el fixture NO se edita a mano)."
     )
@@ -426,8 +426,8 @@ def main() -> None:
         f"{_clp(numeros['sobrecosto'])}; el informe no niega las provisiones (G5) ✅"
     )
     print(
-        f"[verify]  lineage completo · git_dirty=false · nikodym={NIKODYM_VERSION} "
-        "(= nikodym.__version__) · informe sin caveat de árbol sucio ✅"
+        f"[verify]  lineage completo · git_dirty=false · bayesrisk={BAYESRISK_VERSION} "
+        "(= bayesrisk.__version__) · informe sin caveat de árbol sucio ✅"
     )
     print(f"✅ {len(written)} fixtures escritos en {_FIXTURES_DIR.relative_to(Path.cwd())}:")
     for name, size in written:

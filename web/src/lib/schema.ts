@@ -1,5 +1,5 @@
 /**
- * Carga del JSON-Schema de `NikodymConfig` para el motor de formulario.
+ * Carga del JSON-Schema de `BayesRiskConfig` para el motor de formulario.
  *
  * En runtime hace fetch real a `GET /api/schema` (SDD-23 §4.2). Desde **B23.4c** el backend
  * ya devuelve el schema **completo** (materializa los dominios instalados vía

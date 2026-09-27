@@ -9,14 +9,14 @@ from typing import Any
 
 import pytest
 
-from nikodym.core.audit import AuditEvent
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.config.schema import RunConfig
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.core.lineage import LineageBundle
-from nikodym.core.study import Study
-from nikodym.tracking import TrackingConfig, TrackingError, TrackingRecorder, TrackingSink
+from bayesrisk.core.audit import AuditEvent
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.config.schema import RunConfig
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.core.study import Study
+from bayesrisk.tracking import TrackingConfig, TrackingError, TrackingRecorder, TrackingSink
 
 _TS = datetime(2026, 6, 25, 12, 0, 0, tzinfo=UTC)
 
@@ -142,7 +142,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123",
         root_seed=42,
         uv_lock_hash="uvhash",
-        library_versions={"nikodym": "0.1.0"},
+        library_versions={"bayesrisk": "0.1.0"},
         determinism_caveats=[],
         created_at=_TS,
         schema_version="1.0.0",
@@ -151,7 +151,7 @@ def _lineage() -> LineageBundle:
 
 def _study() -> Study:
     """Study finalizado en memoria con lineage y métricas."""
-    study = Study(NikodymConfig(name="riesgo", tracking=TrackingConfig()))
+    study = Study(BayesRiskConfig(name="riesgo", tracking=TrackingConfig()))
     study.run_context.status = "done"
     study.run_context.run_id = "study-run"
     study.run_context.lineage = _lineage()
@@ -232,7 +232,7 @@ def test_recorder_cubre_context_manager_y_ramas_de_metricas(
     assert ("log_metric", ("nested.auc", 0.7, None)) in fake.calls
     assert ("end_run", "FAILED") in fake.calls
 
-    sin_lineage = Study(NikodymConfig())
+    sin_lineage = Study(BayesRiskConfig())
     TrackingRecorder(TrackingConfig(), mlflow_module=fake).start_run(sin_lineage)
 
     broken_start = TrackingRecorder(
@@ -242,7 +242,7 @@ def test_recorder_cubre_context_manager_y_ramas_de_metricas(
     )
     broken_start.start_run(_study())
 
-    from nikodym.tracking import recorder as recorder_mod
+    from bayesrisk.tracking import recorder as recorder_mod
 
     assert recorder_mod._stringify(None) == ""
     assert recorder_mod._stringify({"b": 2, "a": 1}) == '{"a":1,"b":2}'
@@ -250,7 +250,7 @@ def test_recorder_cubre_context_manager_y_ramas_de_metricas(
     def available(extra: str, *modules: str) -> tuple[Any, ...]:
         return (fake,)
 
-    monkeypatch.setattr("nikodym.tracking.recorder.require_extra", available)
+    monkeypatch.setattr("bayesrisk.tracking.recorder.require_extra", available)
     imported = TrackingRecorder(TrackingConfig())
     imported.ensure_run(run_name="importado")
     assert imported._mlflow_module is fake
@@ -319,7 +319,7 @@ def test_recorder_flatten_config_serializa_listas_y_dicts(
     monkeypatch.setattr(_schema_mod, "_DATA_CONFIG_CLS", None)
     fake = _FakeMLflow()
     recorder = TrackingRecorder(TrackingConfig(), mlflow_module=fake)
-    cfg = NikodymConfig(
+    cfg = BayesRiskConfig(
         run=RunConfig(steps=["data"]),
         data={"load": {"source": "clientes.parquet", "cols": ["a", "b"]}},
     )
@@ -340,7 +340,7 @@ def test_recorder_start_run_reusado_y_timestamp_helpers() -> None:
     first = recorder.start_run(study)
     second = recorder.start_run(study)
 
-    from nikodym.tracking import recorder as recorder_mod
+    from bayesrisk.tracking import recorder as recorder_mod
 
     assert second == first
     assert fake.started == 1
@@ -353,7 +353,7 @@ def test_recorder_enabled_false_es_noop_sin_mlflow() -> None:
     recorder = TrackingRecorder(TrackingConfig(enabled=False))
 
     handle = recorder.ensure_run(run_name="no-op")
-    recorder.log_config(NikodymConfig())
+    recorder.log_config(BayesRiskConfig())
     recorder.log_metrics({"metrics": {"auc": 0.8}})
     recorder.end_run()
 
@@ -390,12 +390,14 @@ def test_recorder_mlflow_ausente_degrada_o_falla(
     def missing(extra: str, *modules: str) -> tuple[Any, ...]:
         raise MissingDependencyError("falta mlflow")
 
-    monkeypatch.setattr("nikodym.tracking.recorder.require_extra", missing)
+    monkeypatch.setattr("bayesrisk.tracking.recorder.require_extra", missing)
     warnings: list[str] = []
 
     recorder = TrackingRecorder(TrackingConfig(), warning_sink=warnings.append)
     recorder.ensure_run(run_name="sin-extra")
-    assert warnings == ["abrir run MLflow requiere el extra tracking: instala `nikodym[tracking]`."]
+    assert warnings == [
+        "abrir run MLflow requiere el extra tracking: instala `bayesrisk[tracking]`."
+    ]
 
     estricto = TrackingRecorder(TrackingConfig(fail_on_tracking_error=True))
     with pytest.raises(TrackingError, match="requiere el extra tracking"):
@@ -446,7 +448,7 @@ def test_tracking_sink_run_end_failed_sin_study() -> None:
 def test_tracking_sink_run_end_sin_lineage_y_evento_desconocido() -> None:
     """Ramas sin lineage y evento no estándar son no-op seguros."""
     fake = _FakeMLflow()
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.run_context.status = "done"
     study.results["metrics"] = {"auc": 0.5}
     sink = TrackingSink(TrackingRecorder(TrackingConfig(), mlflow_module=fake), study=study)

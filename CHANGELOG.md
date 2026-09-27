@@ -3,7 +3,75 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/);
 el proyecto sigue [SemVer](https://semver.org/lang/es/): desde 1.0, el pipeline de scorecard (F1)
 es API estable; las superficies que aún crecen (modelado ML, provisiones, forward-looking,
-contratos transversales) quedan marcadas como experimentales, fuera de la garantía SemVer 1.x.
+contratos transversales) quedan marcadas como experimentales, fuera de la garantía SemVer 2.x.
+Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
+entradas anteriores conservan el nombre con el que se publicaron.
+
+## [No publicado]
+
+**nikodym ahora se llama bayesrisk.** Esta versión es **equivalente funcional a nikodym 1.20.0**:
+con la misma configuración da los mismos resultados, bit a bit, y el mismo `config_hash`. Medido
+sobre la proyección canónica completa de dos corridas —el preset de scorecard y una cartera real de
+49.999 préstamos—: cero diferencias de cálculo; sólo cambian los nombres. Es una versión mayor
+porque cambia el nombre de la distribución; ninguna API cambia de comportamiento.
+
+### Cómo migrar
+
+Una línea:
+
+```python
+import bayesrisk  # antes: import nikodym
+```
+
+e instalar con los mismos *extras*: `pip install "bayesrisk[scoring,report,ui]"`. La guía completa
+está en [Migrar desde nikodym](https://docs.bayesadvisory.cl/migrar-desde-nikodym/).
+
+### Cambiado
+
+- **Paquete, distribución e imports**: `bayesrisk`. La interfaz local se abre con `bayesrisk-ui`
+  (o `python -m bayesrisk.ui`).
+- **Clases con la marca**: `BayesRiskConfig`, `BayesRiskBaseConfig`, `BayesRiskError`,
+  `BayesRiskClassifier`, `BayesRiskTransformer` y `BaseBayesRiskEstimator`. Los nombres anteriores
+  (`NikodymConfig`, `NikodymError`…) siguen funcionando en toda la serie 2.x: son el mismo objeto.
+- **Nombres que cambian en lo que la librería escribe**: la clave `bayesrisk` de `library_versions`
+  en el linaje y en `environment.json` (antes `nikodym`; al cargar un estudio viejo se compara con
+  la versión de bayesrisk); `bayesrisk_version` en el linaje de `apply` y en los estimadores
+  guardados con `save`; el tema del informe `bayesrisk` (un config con `theme: nikodym` sigue siendo
+  válido y se lee igual); la clave `bayesrisk:` del encabezado del informe editable `.qmd`; la clase
+  CSS `bayesrisk-summary` de los resúmenes en un notebook.
+- **Carpetas por defecto**: `bayesrisk-runs` en `bayesrisk.Scorecard` y `.bayesrisk_ui` en la
+  interfaz. Para seguir con las anteriores: `run_dir="nikodym-runs"` y
+  `bayesrisk-ui --workdir .nikodym_ui`.
+- **Marca**: bayesrisk, de Bayes Advisory. Documentación en <https://docs.bayesadvisory.cl> y demo
+  en <https://demo.bayesadvisory.cl>.
+- **Garantía de estabilidad**: pasa a la serie 2.x; el pipeline de scorecard no rompe hasta un 3.0.
+  Los tres alias deprecados que avisaban que se retirarían «en 2.0» —`model.engine="glm_binomial"`,
+  `report.formats` con `"html"` y `selection.priority_order` con `"gini"`— se siguen aceptando igual
+  y ahora avisan que se retiran en 3.0: esta versión no retira nada.
+
+### Sin cambios, a propósito
+
+- **Ningún número, ningún `config_hash`, ningún `data_hash`.** Las identidades internas que llevan la
+  palabra «nikodym» —la personalización del hash que reparte las filas entre muestras, el prefijo de
+  `data_hash`, los formatos y hashes del *bundle* del scorecard y del lote, la versión del prompt de
+  la narración— se conservan tal cual: cambiarlas habría movido resultados o hashes publicados.
+- **Tu registro de MLflow**: los tags `nikodym.*` y los nombres por defecto `nikodym-study` y
+  `nikodym-model` se mantienen, para que repetir una corrida no registre un modelo duplicado.
+- **Lo que ya guardaste sigue cargando**: los estudios y estimadores guardados con `joblib` cargan
+  con bayesrisk y nikodym 1.21 instalados juntos, y los *bundles* del scorecard de nikodym 1.19 y
+  1.20 se aplican con bayesrisk 2.0 sin reentrenar (misma fuente de dependencias).
+
+### nikodym 1.21.0, el último release con ese nombre
+
+Capa de compatibilidad sin código propio: depende de `bayesrisk>=2.0,<3`, reexporta todo, avisa una
+sola vez con un `DeprecationWarning` y mantiene funcionando `import nikodym`, sus submódulos,
+`nikodym-ui`, `python -m nikodym.ui` y los pickles de nikodym ≤ 1.20. Trae los mismos *extras* que
+bayesrisk, así que `pip install "nikodym[scoring]"` sigue instalando lo mismo. No recibirá mejoras.
+
+### Sabido
+
+- La poda de opciones que se aprobó para «un 2.0» no entra en esta versión, que es equivalente
+  funcional por diseño: queda para la próxima versión mayor.
 
 ## [1.20.0] — 2026-09-27
 

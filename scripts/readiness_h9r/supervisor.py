@@ -179,10 +179,10 @@ CALIBRATION_START_DISABLED_REASON = (
 )
 _SUPERVISOR_ABORT_EXIT_CODE = 0xE9
 _CAPABILITY_ENVIRONMENT = {
-    "worker": "NIKODYM_H9R_WORKER_CAPABILITY",
-    "adapter": "NIKODYM_H9R_ADAPTER_CAPABILITY",
-    "candidate": "NIKODYM_H9R_CANDIDATE_CAPABILITY",
-    "ui-client": "NIKODYM_H9R_UI_CLIENT_CAPABILITY",
+    "worker": "BAYESRISK_H9R_WORKER_CAPABILITY",
+    "adapter": "BAYESRISK_H9R_ADAPTER_CAPABILITY",
+    "candidate": "BAYESRISK_H9R_CANDIDATE_CAPABILITY",
+    "ui-client": "BAYESRISK_H9R_UI_CLIENT_CAPABILITY",
 }
 _PRE_START_TYPED_CLASSIFICATIONS = frozenset(
     {
@@ -671,7 +671,7 @@ def _captured_trust_anchor(capture: _LaunchSourceCapture) -> Iterator[Path]:
     """Entrega a validadores path-based una copia exclusiva de los bytes ya capturados."""
     if capture.json_value is not None:
         raise ContractError("trust anchor capturado no puede ser JSON")
-    with tempfile.TemporaryDirectory(prefix="nikodym-h9r-trust-") as raw_directory:
+    with tempfile.TemporaryDirectory(prefix="bayesrisk-h9r-trust-") as raw_directory:
         directory = _require_plain_directory(Path(raw_directory), context="trust-snapshot.parent")
         snapshot = directory / "authority-public.pem"
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
@@ -1074,9 +1074,9 @@ from pathlib import Path
 
 candidate_root = Path(sys.argv[1]).resolve()
 sys.path.insert(0, str(candidate_root))
-import nikodym
+import bayesrisk
 
-distribution = importlib.metadata.distribution("nikodym")
+distribution = importlib.metadata.distribution("bayesrisk")
 files = list(distribution.files or [])
 metadata_rel = [
     str(item)
@@ -1089,13 +1089,13 @@ record_rel = [
     if str(item).replace("\\", "/").endswith(".dist-info/RECORD")
 ]
 if len(metadata_rel) != 1 or len(record_rel) != 1:
-    raise RuntimeError("distribution nikodym no expone METADATA/RECORD exactos")
+    raise RuntimeError("distribution bayesrisk no expone METADATA/RECORD exactos")
 metadata_path = Path(distribution.locate_file(metadata_rel[0])).resolve()
 record_path = Path(distribution.locate_file(record_rel[0])).resolve()
-package_path = Path(nikodym.__file__).resolve()
+package_path = Path(bayesrisk.__file__).resolve()
 record_rows = list(csv.reader(record_path.read_text(encoding="utf-8", newline="").splitlines()))
 payload = {
-    "distribution": "nikodym",
+    "distribution": "bayesrisk",
     "version": distribution.version,
     "distribution_root": str(Path(distribution.locate_file("")).resolve()),
     "dist_info_path": str(metadata_path.parent),
@@ -1214,7 +1214,7 @@ def _probe_candidate_runtime(
         if remaining <= 0:
             raise ContractError("deadline del probe candidato agotado antes de crear el proceso")
         timeout = min(timeout, remaining)
-    with tempfile.TemporaryDirectory(prefix="nikodym-h9r-probe-pycache-") as cache:
+    with tempfile.TemporaryDirectory(prefix="bayesrisk-h9r-probe-pycache-") as cache:
         completed = _run_candidate_probe_in_job(
             [
                 str(python_executable),
@@ -1240,7 +1240,7 @@ def _probe_candidate_runtime(
         )
     if completed.returncode != 0:
         raise ContractError(
-            "runtime candidato no importa nikodym de forma aislada: "
+            "runtime candidato no importa bayesrisk de forma aislada: "
             f"returncode={completed.returncode}; stderr={completed.stderr[-2000:]!r}"
         )
     lines = [line for line in completed.stdout.splitlines() if line.strip()]
@@ -1265,7 +1265,11 @@ def _probe_candidate_runtime(
         "imported_package_sha256",
         "no_site",
     }
-    if set(probe) != required or probe["distribution"] != "nikodym" or probe["no_site"] is not True:
+    if (
+        set(probe) != required
+        or probe["distribution"] != "bayesrisk"
+        or probe["no_site"] is not True
+    ):
         raise ContractError("probe de runtime no tiene campos/distribución exactos")
     tree_root = installed_tree_root.resolve()
     distribution_root = Path(str(probe["distribution_root"])).resolve()
@@ -1279,7 +1283,7 @@ def _probe_candidate_runtime(
         ("dist-info", dist_info_path),
         ("METADATA", metadata_path),
         ("RECORD", record_path),
-        ("import nikodym", imported_path),
+        ("import bayesrisk", imported_path),
     ):
         if not _path_is_within(path, tree_root) or not path.exists():
             raise ContractError(f"runtime {name} escapa o falta en installed_tree")
@@ -1310,7 +1314,7 @@ def _probe_candidate_runtime(
     imported_relative = imported_path.relative_to(tree_root).as_posix()
     imported_rows = [row for row in rows if str(row[0]).replace("\\", "/") == imported_relative]
     if len(imported_rows) != 1 or not imported_rows[0][1].startswith("sha256="):
-        raise ContractError("RECORD no liga exactamente el módulo nikodym importado")
+        raise ContractError("RECORD no liga exactamente el módulo bayesrisk importado")
     import base64
 
     encoded = imported_rows[0][1].removeprefix("sha256=")
@@ -1326,11 +1330,11 @@ def _probe_candidate_runtime(
             names = wheel.namelist()
             metadata_names = [name for name in names if name.endswith(".dist-info/METADATA")]
             record_names = [name for name in names if name.endswith(".dist-info/RECORD")]
-            package_names = [name for name in names if name == "nikodym/__init__.py"]
+            package_names = [name for name in names if name == "bayesrisk/__init__.py"]
             if (
                 len(metadata_names) != 1
                 or len(record_names) != 1
-                or package_names != ["nikodym/__init__.py"]
+                or package_names != ["bayesrisk/__init__.py"]
             ):
                 raise ContractError("wheel no contiene METADATA/RECORD/package exactos")
             wheel_metadata = wheel.read(metadata_names[0])
@@ -1340,14 +1344,14 @@ def _probe_candidate_runtime(
     from email.parser import BytesParser
 
     metadata = BytesParser().parsebytes(wheel_metadata)
-    if str(metadata.get("Name", "")).casefold().replace("_", "-") != "nikodym":
-        raise ContractError("wheel METADATA no identifica distribución nikodym")
+    if str(metadata.get("Name", "")).casefold().replace("_", "-") != "bayesrisk":
+        raise ContractError("wheel METADATA no identifica distribución bayesrisk")
     if metadata.get("Version") != probe["version"]:
         raise ContractError("wheel y distribution instalada difieren en versión")
     if sha256_bytes(wheel_metadata) != probe["metadata_sha256"]:
         raise ContractError("METADATA instalada no coincide byte a byte con wheel")
     if wheel_import_sha != probe["imported_package_sha256"]:
-        raise ContractError("import nikodym no coincide byte a byte con wheel")
+        raise ContractError("import bayesrisk no coincide byte a byte con wheel")
     import tomllib
 
     try:
@@ -1359,17 +1363,17 @@ def _probe_candidate_runtime(
     raw_packages = lock_value.get("package")
     if not isinstance(raw_packages, list):
         raise ContractError("lock candidato no enumera [[package]]")
-    nikodym_packages = [
+    bayesrisk_packages = [
         package
         for package in raw_packages
         if isinstance(package, dict)
-        and str(package.get("name", "")).casefold().replace("_", "-") == "nikodym"
+        and str(package.get("name", "")).casefold().replace("_", "-") == "bayesrisk"
     ]
-    if len(nikodym_packages) != 1:
-        raise ContractError("lock no contiene exactamente un package nikodym")
-    locked_package = cast(dict[str, Any], nikodym_packages[0])
+    if len(bayesrisk_packages) != 1:
+        raise ContractError("lock no contiene exactamente un package bayesrisk")
+    locked_package = cast(dict[str, Any], bayesrisk_packages[0])
     if locked_package.get("version") != probe["version"]:
-        raise ContractError("lock y runtime difieren en versión nikodym")
+        raise ContractError("lock y runtime difieren en versión bayesrisk")
 
     def locked_hashes(value: Any, *, key: str | None = None) -> set[str]:
         observed: set[str] = set()
@@ -1392,7 +1396,7 @@ def _probe_candidate_runtime(
         "probe_schema_version": RUNTIME_PROVENANCE_SCHEMA_VERSION,
         "isolation_flags": ["-I", "-B", "-S"],
         "no_site": True,
-        "distribution": "nikodym",
+        "distribution": "bayesrisk",
         "version": str(probe["version"]),
         "distribution_root": str(distribution_root),
         "dist_info_path": str(dist_info_path),
@@ -1444,7 +1448,7 @@ def _validate_declared_runtime_provenance(
     if (
         value["isolation_flags"] != ["-I", "-B", "-S"]
         or value["no_site"] is not True
-        or value["distribution"] != "nikodym"
+        or value["distribution"] != "bayesrisk"
     ):
         raise ContractError("candidate.runtime.provenance no acredita aislamiento/distribución")
     if not isinstance(value["version"], str) or not value["version"]:
@@ -1625,8 +1629,8 @@ def validate_candidate_manifest_passive(
         raise ContractError("candidate runtime environment no tiene campos exactos")
     if environment_value["schema_version"] != CANDIDATE_ENVIRONMENT_SCHEMA_VERSION:
         raise ContractError("candidate runtime environment usa otro schema")
-    if environment_value["distribution"] != "nikodym":
-        raise ContractError("candidate runtime environment no identifica nikodym")
+    if environment_value["distribution"] != "bayesrisk":
+        raise ContractError("candidate runtime environment no identifica bayesrisk")
     expected_environment = {
         "source_sha": source_sha,
         "python_executable_relative_path": manifest["runtime"]["python_executable"][
@@ -2644,7 +2648,7 @@ def _owned_geometry_scratch(*, workdir: Path, attempt_id_value: str) -> Iterator
     if _is_reparse_or_symlink(parent):
         raise ContractError("geometry scratch no puede vivir bajo reparse point")
     nonce = secrets.token_hex(32)
-    root = parent / f".nikodym-h9r-geometry-{attempt_id_value[:16]}-{nonce}"
+    root = parent / f".bayesrisk-h9r-geometry-{attempt_id_value[:16]}-{nonce}"
     marker = root / ".owner.json"
     scan = root / "scan"
     payload = {
@@ -5687,8 +5691,8 @@ def _run_authorized_attempt_inner(
     worker_environment[_CAPABILITY_ENVIRONMENT["worker"]] = worker_capability_secret
     worker_environment[_CAPABILITY_ENVIRONMENT["adapter"]] = adapter_capability_secret
     worker_environment[_CAPABILITY_ENVIRONMENT["candidate"]] = candidate_capability_secret
-    worker_environment["NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST"] = str(snapshot["path"])
-    worker_environment["NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256"] = str(snapshot["sha256"])
+    worker_environment["BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST"] = str(snapshot["path"])
+    worker_environment["BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256"] = str(snapshot["sha256"])
     client_environment = dict(worker_environment)
     client_environment.pop(_CAPABILITY_ENVIRONMENT["worker"], None)
     client_environment.pop(_CAPABILITY_ENVIRONMENT["adapter"], None)
@@ -7498,11 +7502,11 @@ def run_worker(request_path: Path, capability_commitment_sha256: str) -> int:
         environment = dict(os.environ)
         environment.update(
             {
-                "NIKODYM_H9R_ATTEMPT_ID": attempt,
-                "NIKODYM_H9R_BOUNDARY_JSONL": str(boundary_path),
-                "NIKODYM_H9R_FILESYSTEM_JSONL": str(filesystem_path),
-                "NIKODYM_H9R_NATIVE_POOLS_JSONL": str(pools_path),
-                "NIKODYM_H9R_OUTPUT_ROOT": str(paths["outputs"]),
+                "BAYESRISK_H9R_ATTEMPT_ID": attempt,
+                "BAYESRISK_H9R_BOUNDARY_JSONL": str(boundary_path),
+                "BAYESRISK_H9R_FILESYSTEM_JSONL": str(filesystem_path),
+                "BAYESRISK_H9R_NATIVE_POOLS_JSONL": str(pools_path),
+                "BAYESRISK_H9R_OUTPUT_ROOT": str(paths["outputs"]),
             }
         )
         raw_launch = _require_mapping(request.get("adapter_launch"), context="adapter_launch")

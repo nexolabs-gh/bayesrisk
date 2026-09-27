@@ -15,9 +15,9 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.provisioning.cmf.results as cmf_results
-from nikodym.provisioning.cmf.matrices import CmfMatrixBundle, load_cmf_matrices
-from nikodym.provisioning.cmf.results import (
+import bayesrisk.provisioning.cmf.results as cmf_results
+from bayesrisk.provisioning.cmf.matrices import CmfMatrixBundle, load_cmf_matrices
+from bayesrisk.provisioning.cmf.results import (
     CmfPortfolioSummary,
     CmfProvisionCard,
     CmfProvisionRecord,
@@ -257,9 +257,9 @@ def test_cmf_provision_result_valida_dataframes() -> None:
 def test_cmf_results_import_liviano_y_exports_publicos() -> None:
     code = (
         "import sys;"
-        "import nikodym.provisioning.cmf.results;"
+        "import bayesrisk.provisioning.cmf.results;"
         "blocked=[m for m in "
-        "('nikodym.data','pandera','pyarrow','pandas','nikodym.tracking','mlflow') "
+        "('bayesrisk.data','pandera','pyarrow','pandas','bayesrisk.tracking','mlflow') "
         "if m in sys.modules];"
         "assert not blocked, blocked"
     )

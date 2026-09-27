@@ -4,7 +4,7 @@
  * Cero lógica de dominio, como el resto de `lib/`: aquí se filtra el catálogo que publica el
  * backend, se comparan nombres de columna y se arma el cuerpo de la petición. Quién decide qué
  * resultado acepta un trabajo, y en qué campo del config se escribe cada respuesta, es el catálogo
- * de `nikodym/ui/jobs.py` — que vive en el backend precisamente para que lo consuma también el
+ * de `bayesrisk/ui/jobs.py` — que vive en el backend precisamente para que lo consuma también el
  * preflight, que es Python (D-JOB-3/15).
  */
 

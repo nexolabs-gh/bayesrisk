@@ -1,6 +1,6 @@
 # Aterrizar una norma local
 
-Nikodym implementa **estándares comunes**: PD, LGD y EAD, validación de modelos, IFRS 9/ECL,
+bayesrisk implementa **estándares comunes**: PD, LGD y EAD, validación de modelos, IFRS 9/ECL,
 forward-looking y stress testing. Ninguna de esas piezas asume un país.
 
 Lo que ningún motor estándar puede darte es **tu** norma: cada supervisor tabula sus propios
@@ -79,7 +79,7 @@ caminos para llegar.
 **Desde la interfaz.** Levántala pidiendo explícitamente los casos de referencia:
 
 ```bash
-nikodym-ui --casos-de-referencia
+bayesrisk-ui --casos-de-referencia
 ```
 
 La primera pantalla añade el bloque **«Normativa local · casos de referencia»** con «Provisiones
@@ -95,7 +95,7 @@ arranca. El catálogo no te lo ofrece; no te lo esconde.
 explícitamente—:
 
 ```python
-from nikodym.ui.presets import get_preset
+from bayesrisk.ui.presets import get_preset
 
 preset = get_preset("f3-provisiones-consumo")
 ```

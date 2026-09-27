@@ -1822,7 +1822,7 @@ function DefItem({
  * narración que la puerta guiada imprime en consola y pinta en el notebook.
  *
  * CERO lógica de dominio y CERO formato propio: las líneas, las alertas y las celdas llegan ya
- * escritas por `nikodym.guided.summaries` (la misma función que `StageSummary.text()` y
+ * escritas por `bayesrisk.guided.summaries` (la misma función que `StageSummary.text()` y
  * `_repr_html_`), así que la pantalla no puede decir una cifra distinta de la del notebook. Con
  * `error` se dice por qué no hay resumen, en vez de esconder el hueco.
  */
@@ -2416,7 +2416,7 @@ function ProvisioningHeadlineCard({
                 : "El método interno supera al estándar"}
             </p>
             <span className="rounded-full border border-amber-400/30 bg-amber-400/[0.06] px-2 py-0.5 text-[0.68rem] font-medium text-amber-200/90">
-              Experimental · fuera de garantía SemVer 1.x
+              Experimental · fuera de garantía SemVer 2.x
             </span>
           </div>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -2704,7 +2704,7 @@ function Ifrs9HeadlineCard({
               Provisiones IFRS 9 — pérdida esperada (ECL)
             </p>
             <span className="rounded-full border border-amber-400/30 bg-amber-400/[0.06] px-2 py-0.5 text-[0.68rem] font-medium text-amber-200/90">
-              Experimental · fuera de garantía SemVer 1.x
+              Experimental · fuera de garantía SemVer 2.x
             </span>
           </div>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">

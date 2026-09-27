@@ -15,29 +15,29 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import BaseModel, ConfigDict
 
-import nikodym.report as report_pkg
-from nikodym.core.config import NikodymConfig
-from nikodym.core.lineage import LineageBundle
-from nikodym.core.study import Study
-from nikodym.data.card import DataCardSection
-from nikodym.report import document
-from nikodym.report.builder import CANONICAL_SECTION_ORDER, ReportBuilder
-from nikodym.report.config import (
+import bayesrisk.report as report_pkg
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.core.study import Study
+from bayesrisk.data.card import DataCardSection
+from bayesrisk.report import document
+from bayesrisk.report.builder import CANONICAL_SECTION_ORDER, ReportBuilder
+from bayesrisk.report.config import (
     AiNarrationConfig,
     DocumentStructureConfig,
     ReportConfig,
     SectionPolicyConfig,
 )
-from nikodym.report.exceptions import ReportInputError
-from nikodym.report.prose import (
+from bayesrisk.report.exceptions import ReportInputError
+from bayesrisk.report.prose import (
     _results_provisioning,
     context_body,
     executive_view,
     limitations_body,
     provisions_intro,
 )
-from nikodym.report.results import ReportInputBundle
-from nikodym.validation.results import (
+from bayesrisk.report.results import ReportInputBundle
+from bayesrisk.validation.results import (
     BacktestRecord,
     CalibrationTestRecord,
     DiscriminationRecord,
@@ -434,17 +434,17 @@ def test_card_con_tipo_invalido_lanza_report_input_error() -> None:
 
 def test_collect_sin_lineage_lanza_report_input_error() -> None:
     """El bundle requiere ``LineageBundle`` disponible antes de reportar."""
-    study = Study(_nikodym_config())
+    study = Study(_bayesrisk_config())
 
     with pytest.raises(ReportInputError, match="LineageBundle"):
         ReportBuilder.from_config(ReportConfig()).collect(study)
 
 
 def test_report_builder_lazy_export_y_nucleo_liviano_por_subprocess() -> None:
-    """``import nikodym.report`` no arrastra renderizadores ni SDK IA."""
+    """``import bayesrisk.report`` no arrastra renderizadores ni SDK IA."""
     code = (
         "import sys;"
-        "import nikodym.report as report;"
+        "import bayesrisk.report as report;"
         "blocked=[m for m in ('jinja2','matplotlib','plotly','anthropic','pandas') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"
@@ -468,7 +468,7 @@ def _study_completo(
     governance: dict[str, Any] | None = None,
 ) -> Study:
     """Construye un ``Study`` mínimo con cards F1 y artefactos tabulares."""
-    study = Study(_nikodym_config(governance=governance))
+    study = Study(_bayesrisk_config(governance=governance))
     study.run_context.lineage = _lineage()
     overrides = {} if card_overrides is None else card_overrides
     for domain, key in _CARD_ARTIFACTS:
@@ -531,7 +531,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "0.1.0"},
+        library_versions={"bayesrisk": "0.1.0"},
         determinism_caveats=["working tree controlado"],
         created_at=datetime(2026, 6, 24, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",
@@ -700,14 +700,14 @@ def _validation_result() -> ValidationResult:
     )
 
 
-def _nikodym_config(*, governance: dict[str, Any] | None = None) -> NikodymConfig:
+def _bayesrisk_config(*, governance: dict[str, Any] | None = None) -> BayesRiskConfig:
     """Config raíz con parámetros REALES de binning y selección.
 
     La prosa de Metodología los lee del config de la corrida (``bundle.pipeline_params``), así que
     el fixture debe traerlos: son justamente lo que el informe tiene que saber redactar. Con
     ``governance`` declarada, el informe gana el capítulo «Ficha del modelo» (D-SC-13).
     """
-    return NikodymConfig.model_validate(
+    return BayesRiskConfig.model_validate(
         {
             **({"governance": governance} if governance is not None else {}),
             "binning": {
@@ -762,10 +762,10 @@ def test_capitulo_de_provisiones_es_condicional_a_su_card() -> None:
 
 def test_data_y_validation_reales_se_proyectan_literalmente_y_sin_mutar_upstream() -> None:
     """Oracle independiente: DTOs reales creados fuera de report pasan sin recalcular números."""
-    from nikodym.ui.presets import standard_preset
+    from bayesrisk.ui.presets import standard_preset
 
     study = _study_completo()
-    study.config = NikodymConfig.model_validate(standard_preset()["config"])
+    study.config = BayesRiskConfig.model_validate(standard_preset()["config"])
     data_card = _data_card()
     validation = _validation_result()
     study.artifacts.set("data", "data_card", data_card)
@@ -919,9 +919,9 @@ def test_capitulo_ifrs9_es_condicional_a_su_card() -> None:
 
 def test_ficha_ifrs9_y_anexo_c_comparten_config_y_cards_f4() -> None:
     """F4 publica la ficha source-backed y las dos cards crudas en el Anexo C."""
-    from nikodym.ui.presets import ifrs9_preset
+    from bayesrisk.ui.presets import ifrs9_preset
 
-    study = Study(NikodymConfig.model_validate(ifrs9_preset()["config"]))
+    study = Study(BayesRiskConfig.model_validate(ifrs9_preset()["config"]))
     study.run_context.lineage = _lineage()
     study.artifacts.set(
         "survival",
@@ -983,12 +983,12 @@ def test_ficha_ifrs9_y_anexo_c_comparten_config_y_cards_f4() -> None:
 
 def test_anexo_c_publica_config_f3_real_sin_inventar_dominios_en_f1_f4() -> None:
     """El Anexo C cubre los tres configs F3 reales y no los fabrica en otros presets."""
-    from nikodym.ui.presets import ifrs9_preset, provisiones_preset, standard_preset
+    from bayesrisk.ui.presets import ifrs9_preset, provisiones_preset, standard_preset
 
     builder = ReportBuilder.from_config(
         ReportConfig(sections=SectionPolicyConfig(required_sections=()))
     )
-    f3_study = Study(NikodymConfig.model_validate(provisiones_preset()["config"]))
+    f3_study = Study(BayesRiskConfig.model_validate(provisiones_preset()["config"]))
     f3_study.run_context.lineage = _lineage()
     f3_bundle = builder.collect(f3_study)
     f3_by_id = {section.id: section for section in f3_bundle.sections}
@@ -1022,7 +1022,7 @@ def test_anexo_c_publica_config_f3_real_sin_inventar_dominios_en_f1_f4() -> None
         "appendix_parameters.provisioning",
     }
     for preset in (standard_preset(), ifrs9_preset()):
-        control_study = Study(NikodymConfig.model_validate(preset["config"]))
+        control_study = Study(BayesRiskConfig.model_validate(preset["config"]))
         control_study.run_context.lineage = _lineage()
         control_ids = {section.id for section in builder.collect(control_study).sections}
         assert forbidden.isdisjoint(control_ids)
@@ -1033,14 +1033,14 @@ def test_ficha_ifrs9_informe_admite_fuente_no_survival(
     term_source: Literal["forward", "markov"],
 ) -> None:
     """El informe usa el DTO común sin inventar referencias survival para otras fuentes."""
-    from nikodym.provisioning.ifrs9.config import (
+    from bayesrisk.provisioning.ifrs9.config import (
         IfrsPdConfig,
         IfrsProvisioningConfig,
         IfrsScenarioConfig,
     )
 
     study = Study(
-        NikodymConfig(
+        BayesRiskConfig(
             provisioning_ifrs9=IfrsProvisioningConfig(
                 pd=IfrsPdConfig(term_structure_source=term_source, pit_mode="ttc_only"),
                 scenarios=IfrsScenarioConfig(source="single"),
@@ -1188,7 +1188,7 @@ def test_prosa_use_internal_no_afirma_que_supera_al_estandar() -> None:
     body = " ".join(provisions_intro(bundle) + _results_provisioning(bundle))
 
     assert "queda por debajo del estándar" in body
-    assert "Nikodym no verifica esa condición" in body
+    assert "bayesrisk no verifica esa condición" in body
     assert "ya provisiona por encima" not in body
     assert "sin tomar el máximo" in body
 
@@ -1354,14 +1354,14 @@ def test_las_etapas_de_construccion_son_las_que_se_apoyan_en_la_particion() -> N
     venir del paso de datos de esta corrida. El día que eso cambie, este gate se pone rojo y la
     redacción del capítulo de Contexto hay que revisarla.
     """
-    from nikodym.binning.step import BinningStep
-    from nikodym.calibration.step import CalibrationStep
-    from nikodym.model.step import ModelStep
-    from nikodym.performance.step import PerformanceStep
-    from nikodym.report.prose import CONSTRUCTION_DOMAINS
-    from nikodym.scorecard.step import ScorecardStep
-    from nikodym.selection.step import SelectionStep
-    from nikodym.stability.step import StabilityStep
+    from bayesrisk.binning.step import BinningStep
+    from bayesrisk.calibration.step import CalibrationStep
+    from bayesrisk.model.step import ModelStep
+    from bayesrisk.performance.step import PerformanceStep
+    from bayesrisk.report.prose import CONSTRUCTION_DOMAINS
+    from bayesrisk.scorecard.step import ScorecardStep
+    from bayesrisk.selection.step import SelectionStep
+    from bayesrisk.stability.step import StabilityStep
 
     directos = (BinningStep, SelectionStep, ModelStep)
     for step in directos:
@@ -1523,7 +1523,7 @@ def test_con_gobernanza_la_ficha_es_el_capitulo_2_y_se_escribe_desde_lo_declarad
         assert rotulo in cuerpo, rotulo
     # Los slugs no se imprimen crudos: se traducen.
     assert "en_validacion" not in cuerpo and "en validación" in cuerpo
-    assert "nikodym." not in cuerpo
+    assert "bayesrisk." not in cuerpo
     # Y la remisión describe el contrato sin afirmar que exista un archivo ni fijar una fecha.
     assert "quedan en la ficha del modelo" in cuerpo
     assert "model_card" not in cuerpo and ".json" not in cuerpo and "2026-" not in cuerpo
@@ -1554,11 +1554,11 @@ def test_la_ficha_del_informe_no_fija_fechas_ni_metricas_aunque_las_haya() -> No
 
 def test_una_gobernanza_cruda_se_valida_y_nada_se_inventa() -> None:
     """🔴 Hallazgo de la revisión adversarial de la 1.14.0: un `dict` de gobernanza (el config raíz
-    lo deja crudo si nadie importó `nikodym.governance`) se proyectaba con defaults propios —un
-    propósito vacío, «nikodym-model», 12 meses— y el capítulo podía atribuir a la institución lo
+    lo deja crudo si nadie importó `bayesrisk.governance`) se proyectaba con defaults propios —un
+    propósito vacío, «bayesrisk-model», 12 meses— y el capítulo podía atribuir a la institución lo
     que nunca declaró. Ahora se valida con `GovernanceConfig` y se proyecta de ahí."""
-    from nikodym.report.builder import _governance_declaration
-    from nikodym.report.exceptions import ReportInputError
+    from bayesrisk.report.builder import _governance_declaration
+    from bayesrisk.report.exceptions import ReportInputError
 
     validada = _governance_declaration(_GOBERNANZA_DECLARADA)
     assert validada is not None and validada.purpose == _GOBERNANZA_DECLARADA["purpose"]
@@ -1574,13 +1574,13 @@ def test_una_gobernanza_cruda_se_valida_y_nada_se_inventa() -> None:
 
 
 def test_la_proyeccion_de_gobernanza_no_depende_del_orden_de_imports() -> None:
-    """En un proceso fresco que importa SOLO `nikodym.report` (nunca `nikodym.governance`), el
+    """En un proceso fresco que importa SOLO `bayesrisk.report` (nunca `bayesrisk.governance`), el
     config raíz deja `governance` como `dict`, y aun así el capítulo dice lo declarado."""
     codigo = (
         "import json, sys\n"
-        "from nikodym.core.config import NikodymConfig\n"
-        "from nikodym.report.builder import _governance_declaration\n"
-        "cfg = NikodymConfig.model_validate({'governance': json.loads(sys.argv[1])})\n"
+        "from bayesrisk.core.config import BayesRiskConfig\n"
+        "from bayesrisk.report.builder import _governance_declaration\n"
+        "cfg = BayesRiskConfig.model_validate({'governance': json.loads(sys.argv[1])})\n"
         "d = _governance_declaration(cfg.governance)\n"
         "print(json.dumps({'tipo': type(cfg.governance).__name__, 'purpose': d.purpose, "
         "'model_name': d.model_name, 'meses': d.review_period_months}))\n"

@@ -13,9 +13,9 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-import nikodym.markov.term_structure as term_module
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.markov.config import (
+import bayesrisk.markov.term_structure as term_module
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.markov.config import (
     MarkovConfig,
     MarkovDynamicsConfig,
     MarkovEstimationConfig,
@@ -23,14 +23,14 @@ from nikodym.markov.config import (
     MarkovStateConfig,
     MarkovValidationConfig,
 )
-from nikodym.markov.exceptions import (
+from bayesrisk.markov.exceptions import (
     InvalidGeneratorError,
     MarkovEmbeddingError,
     MarkovInputError,
     MarkovTransformError,
     NonStochasticMatrixError,
 )
-from nikodym.markov.term_structure import (
+from bayesrisk.markov.term_structure import (
     aalen_johansen,
     chapman_kolmogorov,
     diagnose_embedding,
@@ -660,10 +660,10 @@ def test_aalen_johansen_defensas_de_eventos_y_pesos() -> None:
 def test_term_structure_import_liviano_sin_dependencias_nuevas() -> None:
     code = (
         "import sys;"
-        "import nikodym.markov.config;"
+        "import bayesrisk.markov.config;"
         "baseline=set(sys.modules);"
-        "import nikodym.markov.term_structure;"
-        "blocked=[m for m in ('pandas','scipy','nikodym.markov.transition') "
+        "import bayesrisk.markov.term_structure;"
+        "blocked=[m for m in ('pandas','scipy','bayesrisk.markov.transition') "
         "if m in sys.modules and m not in baseline];"
         "assert not blocked, blocked"
     )
@@ -730,5 +730,5 @@ def test_helpers_defensivos_privados_y_dependencias_faltantes(
         term_module._import_numpy()
     with pytest.raises(MissingDependencyError, match="pandas"):
         term_module._import_pandas()
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[markov\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[markov\]"):
         term_module._import_scipy_linalg()

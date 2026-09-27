@@ -13,7 +13,7 @@ consumidor lo contemple:
   un config que tenía diecisiete: sobre un ``dict`` no hay ``Field`` que consultar, y calló.
 
 Los tres se arreglaron **donde dolía**. Este gate ataca la clase: para cada superficie pública que
-consume un `NikodymConfig`, exige que su respuesta sea **la misma** con la sección tipada y con la
+consume un `BayesRiskConfig`, exige que su respuesta sea **la misma** con la sección tipada y con la
 sección opaca. Ninguno de los tres defectos habría sobrevivido a esta comprobación.
 
 No es un gate de estilo: es la única defensa que no depende de que quien escriba el consumidor
@@ -27,19 +27,19 @@ import pathlib
 
 import pytest
 
-import nikodym
-from nikodym.core.config import NikodymConfig, config_hash
-from nikodym.core.config.schema import cargar_configs_de_dominio
-from nikodym.core.study import _DOMAIN_CONFIG_CLASSES
-from nikodym.ui.presets import get_preset
-from nikodym.ui.routes import config_to_yaml
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+from bayesrisk.core.config.schema import cargar_configs_de_dominio
+from bayesrisk.core.study import _DOMAIN_CONFIG_CLASSES
+from bayesrisk.ui.presets import get_preset
+from bayesrisk.ui.routes import config_to_yaml
 
-#: Consumidores públicos de `NikodymConfig` y cómo tratan una sección opaca.
+#: Consumidores públicos de `BayesRiskConfig` y cómo tratan una sección opaca.
 #:
 #: `comprobado` — este gate corre la función en los dos estados y compara la respuesta.
 #: `exento: <razón>` — no se corre aquí, con el motivo escrito. Una exención sin razón no existe.
 #:
-#: El registro cubre lo que el censo puede ver: funciones cuya **firma** declara `NikodymConfig`.
+#: El registro cubre lo que el censo puede ver: funciones cuya **firma** declara `BayesRiskConfig`.
 #: Las superficies REST reciben el config como `Any` —son el borde HTTP— así que no aparecen aquí;
 #: `config_to_yaml` tiene su propio test más abajo por esa razón, no por olvido.
 POLITICA: dict[str, str] = {
@@ -75,9 +75,9 @@ COLUMNAS = (
 
 
 def _consumidores_publicos() -> set[str]:
-    """Funciones públicas de `src/nikodym` que reciben un `NikodymConfig` en su firma."""
+    """Funciones públicas de `src/bayesrisk` que reciben un `BayesRiskConfig` en su firma."""
     encontrados: set[str] = set()
-    raiz = pathlib.Path(__file__).resolve().parents[2] / "src" / "nikodym"
+    raiz = pathlib.Path(__file__).resolve().parents[2] / "src" / "bayesrisk"
     for ruta in raiz.rglob("*.py"):
         try:
             arbol = ast.parse(ruta.read_text(encoding="utf-8"))
@@ -90,14 +90,14 @@ def _consumidores_publicos() -> set[str]:
                 continue
             for arg in [*nodo.args.args, *nodo.args.kwonlyargs]:
                 anotacion = ast.unparse(arg.annotation) if arg.annotation else ""
-                if "NikodymConfig" in anotacion:
+                if "BayesRiskConfig" in anotacion:
                     encontrados.add(nodo.name)
                     break
     return encontrados
 
 
 @pytest.fixture
-def par_tipado_y_opaco() -> tuple[NikodymConfig, NikodymConfig]:
+def par_tipado_y_opaco() -> tuple[BayesRiskConfig, BayesRiskConfig]:
     """El mismo config en sus dos estados: con `binning` tipada y con `binning` opaca.
 
     Se fuerza con ``model_copy`` y no con el constructor: dentro de la suite las capas de dominio
@@ -111,11 +111,11 @@ def par_tipado_y_opaco() -> tuple[NikodymConfig, NikodymConfig]:
     crudo = get_preset("f1-estandar-consumo")["config"]
 
     # Sin esto la sección llega opaca IGUAL: la raíz sólo coacciona los dominios que el mapa
-    # canónico haya materializado, y tener `nikodym.binning` importado no basta. Medido al escribir
-    # este gate, y merece decirse: el estado opaco no es un caso raro de procesos mínimos — es el
-    # DEFAULT mientras nadie pida el schema o valide por la API.
+    # canónico haya materializado, y tener `bayesrisk.binning` importado no basta. Medido al
+    # escribir este gate, y merece decirse: el estado opaco no es un caso raro de procesos mínimos —
+    # es el DEFAULT mientras nadie pida el schema o valide por la API.
     cargar_configs_de_dominio()
-    tipado = NikodymConfig.model_validate(crudo)
+    tipado = BayesRiskConfig.model_validate(crudo)
 
     seccion = dict(crudo["binning"])
     seccion.pop("min_bin_n_event", None)  # default omitido: sin esto el caso es trivial
@@ -127,7 +127,7 @@ def par_tipado_y_opaco() -> tuple[NikodymConfig, NikodymConfig]:
 
 
 def test_config_hash_no_depende_de_la_opacidad(
-    par_tipado_y_opaco: tuple[NikodymConfig, NikodymConfig],
+    par_tipado_y_opaco: tuple[BayesRiskConfig, BayesRiskConfig],
 ) -> None:
     """El defecto de 1.8.0. La identidad de una corrida no puede depender de los imports."""
     tipado, opaco = par_tipado_y_opaco
@@ -136,13 +136,13 @@ def test_config_hash_no_depende_de_la_opacidad(
 
 
 def test_check_dataset_no_depende_de_la_opacidad(
-    par_tipado_y_opaco: tuple[NikodymConfig, NikodymConfig],
+    par_tipado_y_opaco: tuple[BayesRiskConfig, BayesRiskConfig],
 ) -> None:
     """El defecto del 2026-07-28: sobre un ``dict`` no hay `Field`, y el preflight callaba."""
     tipado, opaco = par_tipado_y_opaco
 
-    esperado = nikodym.check_dataset(tipado, COLUMNAS)
-    obtenido = nikodym.check_dataset(opaco, COLUMNAS)
+    esperado = bayesrisk.check_dataset(tipado, COLUMNAS)
+    obtenido = bayesrisk.check_dataset(opaco, COLUMNAS)
 
     assert obtenido.compatible == esperado.compatible
     assert obtenido.uninspected == esperado.uninspected
@@ -156,10 +156,10 @@ def test_columnas_producidas_no_depende_de_la_opacidad() -> None:
     que hacer opaca ``binning`` dejaría las dos respuestas idénticas **por vacuidad** y el test
     daría verde sin tocar el defecto. El ancla de abajo es lo que lo impide.
     """
-    from nikodym.core.dataset_check import columnas_producidas_por_seccion
+    from bayesrisk.core.dataset_check import columnas_producidas_por_seccion
 
     crudo = get_preset("f1-estandar-consumo")["config"]
-    tipado = NikodymConfig.model_validate(crudo)
+    tipado = BayesRiskConfig.model_validate(crudo)
     opaco = tipado.model_copy(update={"data": dict(crudo["data"])})
     assert isinstance(opaco.data, dict), "precondición: la sección debe quedar opaca"
 
@@ -172,13 +172,13 @@ def test_columnas_producidas_no_depende_de_la_opacidad() -> None:
 
 
 def test_check_pipeline_no_depende_de_la_opacidad(
-    par_tipado_y_opaco: tuple[NikodymConfig, NikodymConfig],
+    par_tipado_y_opaco: tuple[BayesRiskConfig, BayesRiskConfig],
 ) -> None:
     """Si un config es ejecutable, lo es con la capa importada y sin ella."""
     tipado, opaco = par_tipado_y_opaco
 
     artifacts = [("data", "frame")]
-    assert nikodym.check_pipeline(opaco, artifacts=artifacts) == nikodym.check_pipeline(
+    assert bayesrisk.check_pipeline(opaco, artifacts=artifacts) == bayesrisk.check_pipeline(
         tipado, artifacts=artifacts
     )
 
@@ -216,7 +216,7 @@ def test_todo_consumidor_publico_declara_su_politica_ante_una_seccion_opaca() ->
     sin_politica = sorted(_consumidores_publicos() - set(POLITICA))
 
     assert not sin_politica, (
-        f"Consumidores públicos de NikodymConfig sin política declarada: {sin_politica}. "
+        f"Consumidores públicos de BayesRiskConfig sin política declarada: {sin_politica}. "
         "Una sección de dominio puede llegarles como `dict` opaco (el proceso no importó esa "
         "capa) y responder distinto sin avisar. Añádelos a POLITICA: 'comprobado' con su test, "
         "o 'exento: <razón>'."

@@ -1,6 +1,6 @@
 """Deriva —y VERIFICA corriendo— el delta de provisiones del preset ``f3-provisiones-consumo``.
 
-``nikodym.ui`` es *domain-agnostic* (SDD-23 §3.3): un test AST veta importar módulos de dominio
+``bayesrisk.ui`` es *domain-agnostic* (SDD-23 §3.3): un test AST veta importar módulos de dominio
 desde ``ui/``. Por eso el preset se sirve como **dict literal JSON-able**, no se construye con
 ``ProvisioningConfig(...)`` dentro de ``ui/``. Este script vive **fuera** de ``ui/``, construye las
 secciones de provisiones con los objetos Pydantic de dominio, las vuelca con
@@ -26,13 +26,13 @@ import tempfile
 from copy import deepcopy
 from pathlib import Path
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.provisioning.cmf.config import CmfProvisioningConfig
-from nikodym.provisioning.config import ProvisioningConfig
-from nikodym.provisioning.internal.config import InternalProvisioningConfig
-from nikodym.ui import datasets
-from nikodym.ui.presets import _STANDARD_CONFIG
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.provisioning.cmf.config import CmfProvisioningConfig
+from bayesrisk.provisioning.config import ProvisioningConfig
+from bayesrisk.provisioning.internal.config import InternalProvisioningConfig
+from bayesrisk.ui import datasets
+from bayesrisk.ui.presets import _STANDARD_CONFIG
 
 DATASET_ID = "provisiones_consumo"
 
@@ -70,14 +70,14 @@ def compose_config() -> dict:
 
 def verify(cfg: dict) -> None:
     """Corre la cadena entera y comprueba que el número tiene sentido de NEGOCIO."""
-    NikodymConfig.model_validate(cfg)
+    BayesRiskConfig.model_validate(cfg)
     with tempfile.TemporaryDirectory() as tmp:
         source = datasets.materialize(DATASET_ID, workdir=Path(tmp))
         run_cfg = deepcopy(cfg)
         run_cfg["data"]["load"]["source"] = str(source)
         # El informe al tmp: sin esto la corrida escribe en ``./reports`` y ensucia el repo.
         run_cfg["report"]["output_dir"] = str(Path(tmp) / "reports")
-        study = nikodym.run(NikodymConfig.model_validate(run_cfg))
+        study = bayesrisk.run(BayesRiskConfig.model_validate(run_cfg))
 
     assert study.run_context.status == "done", f"la corrida falló: {study.run_context.status}"
     orch = study.artifacts.get("provisioning", "card")

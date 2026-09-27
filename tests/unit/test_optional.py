@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.utils import optional
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.utils import optional
 
 _PYPROJECT = Path(__file__).resolve().parents[2] / "pyproject.toml"
 
@@ -20,7 +20,7 @@ def test_require_extra_returns_imported_modules() -> None:
 
 def test_require_extra_missing_raises_with_install_hint() -> None:
     """Un módulo ausente levanta MissingDependencyError con la línea de instalación del extra."""
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[xgboost\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[xgboost\]"):
         optional.require_extra("xgboost", "modulo_que_no_existe_xyz")
 
 
@@ -131,9 +131,9 @@ def test_la_matriz_no_promete_que_all_los_agrega_todos() -> None:
     with _PYPROJECT.open("rb") as handle:
         opcionales = tomllib.load(handle)["project"]["optional-dependencies"]
     en_all = {
-        dep.removeprefix("nikodym[").removesuffix("]")
+        dep.removeprefix("bayesrisk[").removesuffix("]")
         for dep in opcionales["all"]
-        if dep.startswith("nikodym[")
+        if dep.startswith("bayesrisk[")
     }
     fuera = _extras_del_pyproject() - en_all - {"all"}
     assert fuera == {"pdf"}, (

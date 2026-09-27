@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Aplica el tema ANTES del paint (evita flash): elección guardada o, si no hay,
+         el default de la casa = oscuro navy. El toggle persiste en localStorage. -->
+    <script>
+      ;(function () {
+        try {
+          var t = localStorage.getItem("bayesrisk-theme")
+          if (t !== "light") document.documentElement.classList.add("dark")
+        } catch (e) {
+          document.documentElement.classList.add("dark")
+        }
+      })()
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Token efímero de la sesión local: el launcher (`bayesrisk-ui`) sustituye este placeholder EN
+      MEMORIA al servir el index, y la respuesta va con `Cache-Control: no-store`. El archivo en
+      disco conserva siempre el literal. Debe aparecer exactamente UNA vez: el preflight cuenta las
+      ocurrencias y falla antes de bind si no. En la demo estática nadie lo sustituye, y el front
+      trata el literal como "sin token" (ver `sessionToken()` en `src/lib/api.ts`).
+    -->
+    <meta name="bayesrisk-token" content="__BAYESRISK_TOKEN__" />
+    <!--
+      La descripción se lee sola (buscador, previsualización de un link), así que la salvedad viaja
+      dentro de ella: el motor calcula IFRS 9, CMF y stress, pero la interfaz llega al scorecard y a
+      las provisiones (los otros dominios se usan desde Python). Debe casar con el hero de la landing.
+    -->
+    <meta
+      name="description"
+      content="Motor de riesgo de crédito en Python (Apache-2.0). PD, LGD y EAD, validación de modelos, provisiones IFRS 9/ECL, stress testing y forward-looking; cada corrida entrega el informe de validación que la respalda. La normativa local se aterriza encima."
+    />
+    <title>bayesrisk</title>
+    <script type="module" crossorigin src="/assets/index-xr-M3nl8.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CETat6oX.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

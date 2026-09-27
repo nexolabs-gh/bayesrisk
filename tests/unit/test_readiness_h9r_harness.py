@@ -221,9 +221,9 @@ def _preflight_material(tmp_path: Path, *, cap_id: str = "C4") -> dict[str, Any]
         root.mkdir(parents=True)
     input_path = input_root / "input.bin"
     bundle = bundle_root / "bundle.bin"
-    installed_file = installed_root / "nikodym-test-only.txt"
+    installed_file = installed_root / "bayesrisk-test-only.txt"
     adapter = installed_root / "h9r-adapter.py"
-    dist_info = installed_root / "nikodym-test.dist-info"
+    dist_info = installed_root / "bayesrisk-test.dist-info"
     dist_info.mkdir()
     metadata = dist_info / "METADATA"
     record = dist_info / "RECORD"
@@ -236,8 +236,8 @@ def _preflight_material(tmp_path: Path, *, cap_id: str = "C4") -> dict[str, Any]
         (input_path, b"input-harness-test-only"),
         (bundle, b"bundle-harness-test-only"),
         (installed_file, b"installed-harness-test-only"),
-        (metadata, b"Metadata-Version: 2.1\nName: nikodym\nVersion: 0.test-only\n\n"),
-        (record, b"nikodym-test-only.txt,,\r\n"),
+        (metadata, b"Metadata-Version: 2.1\nName: bayesrisk\nVersion: 0.test-only\n\n"),
+        (record, b"bayesrisk-test-only.txt,,\r\n"),
     ):
         path.write_bytes(payload)
 
@@ -251,7 +251,7 @@ def _preflight_material(tmp_path: Path, *, cap_id: str = "C4") -> dict[str, Any]
     environment_path = runtime_root / "environment.json"
     environment = {
         "schema_version": CANDIDATE_ENVIRONMENT_SCHEMA_VERSION,
-        "distribution": "nikodym",
+        "distribution": "bayesrisk",
         "source_sha": source_sha,
         "python_executable_relative_path": runtime_python.relative_to(
             candidate_artifacts
@@ -265,10 +265,10 @@ def _preflight_material(tmp_path: Path, *, cap_id: str = "C4") -> dict[str, Any]
         "probe_schema_version": "nikodym.readiness.h9r.runtime-provenance.v1",
         "isolation_flags": ["-I", "-B", "-S"],
         "no_site": True,
-        "distribution": "nikodym",
+        "distribution": "bayesrisk",
         "version": "0.test-only",
         "distribution_root": str(installed_root.resolve()),
-        "dist_info_path": str((installed_root / "nikodym-test.dist-info").resolve()),
+        "dist_info_path": str((installed_root / "bayesrisk-test.dist-info").resolve()),
         "metadata_sha256": sha256_file(metadata),
         "record_sha256": sha256_file(record),
         "record_entries": 1,
@@ -951,7 +951,7 @@ def test_preflight_retiene_el_lease_con_sink_y_lo_libera_verificado_sin_sink(
     tmp_path: Path,
 ) -> None:
     material = _preflight_material(tmp_path)
-    leased_file = _installed_tree_root(material) / "nikodym-test-only.txt"
+    leased_file = _installed_tree_root(material) / "bayesrisk-test-only.txt"
     _run_test_preflight(material)
     with leased_file.open("ab"):
         pass  # sin sink, run_preflight liberó el lease antes de retornar
@@ -974,7 +974,7 @@ def test_preflight_fail_closed_con_escritor_vivo_es_rechazo_tipado_sin_start(
 ) -> None:
     material = _preflight_material(tmp_path)
     tree_root = _installed_tree_root(material)
-    victim = tree_root / "nikodym-test-only.txt"
+    victim = tree_root / "bayesrisk-test-only.txt"
     sibling = tree_root / "h9r-adapter.py"
     unit_path = tmp_path / "unit.json"
     _write_json(unit_path, material["unit"])
@@ -1250,7 +1250,7 @@ def test_cli_preflight_publica_censo_del_lease_y_rechaza_fail_closed(tmp_path: P
             "tree_empty_monotonic_ns": int(census["release_completed_monotonic_ns"]),
         },
     )
-    leased_file = _installed_tree_root(material) / "nikodym-test-only.txt"
+    leased_file = _installed_tree_root(material) / "bayesrisk-test-only.txt"
     with leased_file.open("ab"):
         pass  # tras publicar la evidencia no queda ningún handle vivo
     rejection_output = tmp_path / "preflight-rejected.json"
@@ -1380,7 +1380,7 @@ def test_golden_rechaza_ruta_no_portable_o_suffix_incoherente(
 def test_subcomandos_internos_cerrados_sin_fingerprint_humano(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("NIKODYM_H9R_ADAPTER_CAPABILITY", "1" * 64)
+    monkeypatch.setenv("BAYESRISK_H9R_ADAPTER_CAPABILITY", "1" * 64)
     with pytest.raises(ContractError, match="fingerprint humano durable"):
         consume_launch_capability(
             role="adapter",
@@ -1876,39 +1876,39 @@ def test_config_cerrado_rechaza_modulo_comando_y_output_root(tmp_path: Path) -> 
 
 def test_probe_runtime_liga_wheel_lock_record_e_import_aislado(tmp_path: Path) -> None:
     tree = tmp_path / "installed"
-    package = tree / "nikodym"
-    dist_info = tree / "nikodym-9.9.9.dist-info"
+    package = tree / "bayesrisk"
+    dist_info = tree / "bayesrisk-9.9.9.dist-info"
     package.mkdir(parents=True)
     dist_info.mkdir()
     imported = package / "__init__.py"
     imported.write_bytes(b"__version__ = '9.9.9'\n")
-    metadata_bytes = b"Metadata-Version: 2.1\nName: nikodym\nVersion: 9.9.9\n\n"
+    metadata_bytes = b"Metadata-Version: 2.1\nName: bayesrisk\nVersion: 9.9.9\n\n"
     metadata = dist_info / "METADATA"
     metadata.write_bytes(metadata_bytes)
     imported_sha = sha256_file(imported)
     imported_b64 = base64.urlsafe_b64encode(bytes.fromhex(imported_sha)).decode().rstrip("=")
     record_bytes = (
-        f"nikodym/__init__.py,sha256={imported_b64},{imported.stat().st_size}\r\n"
-        "nikodym-9.9.9.dist-info/METADATA,,\r\n"
-        "nikodym-9.9.9.dist-info/RECORD,,\r\n"
+        f"bayesrisk/__init__.py,sha256={imported_b64},{imported.stat().st_size}\r\n"
+        "bayesrisk-9.9.9.dist-info/METADATA,,\r\n"
+        "bayesrisk-9.9.9.dist-info/RECORD,,\r\n"
     ).encode()
     record = dist_info / "RECORD"
     record.write_bytes(record_bytes)
-    wheel = tmp_path / "nikodym-9.9.9-py3-none-any.whl"
+    wheel = tmp_path / "bayesrisk-9.9.9-py3-none-any.whl"
     with zipfile.ZipFile(wheel, "w") as archive:
-        archive.writestr("nikodym/__init__.py", imported.read_bytes())
-        archive.writestr("nikodym-9.9.9.dist-info/METADATA", metadata_bytes)
-        archive.writestr("nikodym-9.9.9.dist-info/RECORD", record_bytes)
+        archive.writestr("bayesrisk/__init__.py", imported.read_bytes())
+        archive.writestr("bayesrisk-9.9.9.dist-info/METADATA", metadata_bytes)
+        archive.writestr("bayesrisk-9.9.9.dist-info/RECORD", record_bytes)
     lock = tmp_path / "uv.lock"
     lock.write_text(
         "[[package]]\n"
-        "name = 'nikodym'\n"
+        "name = 'bayesrisk'\n"
         "version = '9.9.9'\n"
-        f"wheels = [{{ url = 'file:///nikodym.whl', hash = 'sha256:{sha256_file(wheel)}' }}]\n",
+        f"wheels = [{{ url = 'file:///bayesrisk.whl', hash = 'sha256:{sha256_file(wheel)}' }}]\n",
         encoding="ascii",
     )
     probe = {
-        "distribution": "nikodym",
+        "distribution": "bayesrisk",
         "version": "9.9.9",
         "distribution_root": str(tree.resolve()),
         "dist_info_path": str(dist_info.resolve()),
@@ -1917,9 +1917,9 @@ def test_probe_runtime_liga_wheel_lock_record_e_import_aislado(tmp_path: Path) -
         "record_path": str(record.resolve()),
         "record_sha256": sha256_file(record),
         "record_rows": [
-            ["nikodym/__init__.py", f"sha256={imported_b64}", str(imported.stat().st_size)],
-            ["nikodym-9.9.9.dist-info/METADATA", "", ""],
-            ["nikodym-9.9.9.dist-info/RECORD", "", ""],
+            ["bayesrisk/__init__.py", f"sha256={imported_b64}", str(imported.stat().st_size)],
+            ["bayesrisk-9.9.9.dist-info/METADATA", "", ""],
+            ["bayesrisk-9.9.9.dist-info/RECORD", "", ""],
         ],
         "imported_package_path": str(imported.resolve()),
         "imported_package_sha256": imported_sha,
@@ -1948,7 +1948,7 @@ def test_probe_runtime_liga_wheel_lock_record_e_import_aislado(tmp_path: Path) -
         assert provenance["record_entries"] == 3
         assert provenance["wheel_sha256"] == sha256_file(wheel)
         lock.write_text(
-            "[[package]]\nname = 'nikodym'\nversion = '9.9.9'\nwheels = []\n",
+            "[[package]]\nname = 'bayesrisk'\nversion = '9.9.9'\nwheels = []\n",
             encoding="utf-8",
         )
         with pytest.raises(ContractError, match="lock no contiene"):

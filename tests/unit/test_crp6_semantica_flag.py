@@ -34,23 +34,23 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.markers import governable_warnings, is_declared_warning
-from nikodym.core.study import Study
-from nikodym.forward.config import ForwardConfig
-from nikodym.forward.exceptions import ForwardScenarioError
-from nikodym.provisioning.ifrs9 import IfrsProvisioningConfig, IfrsProvisioningEngine
-from nikodym.provisioning.ifrs9.config import (
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.markers import governable_warnings, is_declared_warning
+from bayesrisk.core.study import Study
+from bayesrisk.forward.config import ForwardConfig
+from bayesrisk.forward.exceptions import ForwardScenarioError
+from bayesrisk.provisioning.ifrs9 import IfrsProvisioningConfig, IfrsProvisioningEngine
+from bayesrisk.provisioning.ifrs9.config import (
     IfrsEadConfig,
     IfrsLgdConfig,
     IfrsPdConfig,
     IfrsScenarioConfig,
 )
-from nikodym.provisioning.ifrs9.exceptions import IfrsConfigError, IfrsFaltaDatoError
-from nikodym.survival.config import SurvivalConfig
-from nikodym.survival.exceptions import SurvivalFaltaDatoError
-from nikodym.validation.config import ValidationConfig
-from nikodym.validation.exceptions import ValidationConfigError
+from bayesrisk.provisioning.ifrs9.exceptions import IfrsConfigError, IfrsFaltaDatoError
+from bayesrisk.survival.config import SurvivalConfig
+from bayesrisk.survival.exceptions import SurvivalFaltaDatoError
+from bayesrisk.validation.config import ValidationConfig
+from bayesrisk.validation.exceptions import ValidationConfigError
 
 # ───────────────────────────────── fixtures mínimas de IFRS 9 ─────────────────────────────────
 
@@ -315,7 +315,7 @@ def _survival_config(
 
 def _run_survival(cfg: SurvivalConfig) -> Any:
     """Corre la cadena ``data → survival`` y devuelve el resultado publicado."""
-    study = Study(NikodymConfig(survival=cfg))
+    study = Study(BayesRiskConfig(survival=cfg))
     study.artifacts.set("data", "frame", _survival_frame())
     study.run(steps=["survival"])
     return study.artifacts.get("survival", "result")

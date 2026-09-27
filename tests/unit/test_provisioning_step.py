@@ -5,8 +5,8 @@ Cubre el contrato del step y su registro, los ``requires`` dinámicos (CT-1) seg
 cuatro claves y el audit trail (§9), la resolución de la fecha de cálculo heredada, el CT-1
 (``ArtifactNotFoundError`` si falta un ``result`` requerido), el *passthrough* de un solo motor, la
 integración end-to-end sobre AMBOS motores (``Study.run`` real cmf + ifrs9 + provisioning con golden
-del máximo) y el import liviano (``import nikodym.core`` no arrastra provisioning; ``import
-nikodym.provisioning`` registra el step sin cargar pandas).
+del máximo) y el import liviano (``import bayesrisk.core`` no arrastra provisioning; ``import
+bayesrisk.provisioning`` registra el step sin cargar pandas).
 """
 
 from __future__ import annotations
@@ -25,42 +25,42 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.provisioning as prov_pkg
-import nikodym.provisioning.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.provisioning import (
+import bayesrisk.core.study as study_module
+import bayesrisk.provisioning as prov_pkg
+import bayesrisk.provisioning.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.provisioning import (
     PROVISIONING_ARTIFACTS,
     ProvisioningConfig,
     ProvisioningStep,
     ProvisionOrchestrationResult,
 )
-from nikodym.provisioning.cmf.config import CmfProvisioningConfig
-from nikodym.provisioning.cmf.matrices import CmfMatrixBundle, load_cmf_matrices
-from nikodym.provisioning.cmf.results import (
+from bayesrisk.provisioning.cmf.config import CmfProvisioningConfig
+from bayesrisk.provisioning.cmf.matrices import CmfMatrixBundle, load_cmf_matrices
+from bayesrisk.provisioning.cmf.results import (
     CmfProvisionCard,
     CmfProvisionRecord,
     CmfProvisionResult,
 )
-from nikodym.provisioning.exceptions import ProvisioningInputError
-from nikodym.provisioning.ifrs9.config import (
+from bayesrisk.provisioning.exceptions import ProvisioningInputError
+from bayesrisk.provisioning.ifrs9.config import (
     IfrsEadConfig,
     IfrsLgdConfig,
     IfrsPdConfig,
     IfrsProvisioningConfig,
     IfrsScenarioConfig,
 )
-from nikodym.provisioning.ifrs9.results import (
+from bayesrisk.provisioning.ifrs9.results import (
     IfrsEclRecord,
     IfrsProvisionCard,
     IfrsProvisionResult,
     IfrsStageRecord,
 )
-from nikodym.provisioning.internal.config import InternalProvisioningConfig
+from bayesrisk.provisioning.internal.config import InternalProvisioningConfig
 
 ROOT_SEED = 20_260_703
 # Golden CMF: exposición 1.000.000, categoría A1 -> provisión 360.00000 (SDD-15 §11).
@@ -197,13 +197,13 @@ def test_core_study_cablea_provisioning() -> None:
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order.index("provisioning_ifrs9") < order.index("provisioning")
     assert order.index("provisioning_cmf") < order.index("provisioning")
-    assert study_module._DOMAIN_MODULES["provisioning"] == "nikodym.provisioning"
+    assert study_module._DOMAIN_MODULES["provisioning"] == "bayesrisk.provisioning"
     assert study_module._DOMAIN_CONFIG_CLASSES["provisioning"] == (
-        "nikodym.provisioning.config",
+        "bayesrisk.provisioning.config",
         "ProvisioningConfig",
     )
 
-    study = Study(NikodymConfig(provisioning=ProvisioningConfig()))
+    study = Study(BayesRiskConfig(provisioning=ProvisioningConfig()))
     assert study._default_step_names() == ["provisioning"]
     assert isinstance(study._resolve_step("provisioning"), ProvisioningStep)
 
@@ -509,18 +509,18 @@ def test_load_engine_result_ramas() -> None:
 
 
 def test_import_liviano_subprocess() -> None:
-    """``import nikodym.core`` no arrastra provisioning; importarlo registra el step sin pandas."""
+    """``import bayesrisk.core`` no arrastra provisioning; importarlo lo registra sin pandas."""
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.core
+        import bayesrisk.core
         assert not [
-            m for m in ("nikodym.provisioning", "pandas", "pandera", "pyarrow")
+            m for m in ("bayesrisk.provisioning", "pandas", "pandera", "pyarrow")
             if m in sys.modules
-        ], [m for m in sys.modules if m.startswith("nikodym.provisioning")]
+        ], [m for m in sys.modules if m.startswith("bayesrisk.provisioning")]
 
-        import nikodym.provisioning
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.provisioning
+        from bayesrisk.core.registry import REGISTRY
         assert REGISTRY.resolve("provisioning", "standard").__name__ == "ProvisioningStep"
         blocked = [
             m for m in ("pandas", "pandera", "pyarrow", "scipy", "statsmodels")
@@ -551,7 +551,7 @@ def _study_with_results(
     ifrs9: IfrsProvisionResult | None,
 ) -> Study:
     """``Study`` con los ``result`` de los motores preinyectados según corresponda."""
-    study = Study(NikodymConfig(provisioning=cfg))
+    study = Study(BayesRiskConfig(provisioning=cfg))
     if cmf is not None:
         study.artifacts.set("provisioning_cmf", "result", cmf)
     if ifrs9 is not None:
@@ -604,7 +604,7 @@ def _study_tres_motores() -> Study:
             "warning_codes": [(), ()],
         }
     )
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         provisioning_cmf=CmfProvisioningConfig(),
         provisioning_ifrs9=_ifrs9_step_config(),
         # Comparativo ENTRE MARCOS CONTABLES: se declara, porque la fuente B de fábrica es el
@@ -647,7 +647,7 @@ def _study_estandar_e_interno(*, pd_frame: pd.DataFrame | None = None, rule: str
             {"pd_calibrated": [0.02, 0.10]}, index=pd.Index(["op1", "op2"], name="loan_id")
         )
     )
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         provisioning_cmf=CmfProvisioningConfig(),
         # `portfolio_col` va EXPLÍCITO y no por default: desde D-JUR-8 los dos motores traen
         # defaults distintos (`cmf_portfolio` el estándar, `portfolio` el interno), así que una

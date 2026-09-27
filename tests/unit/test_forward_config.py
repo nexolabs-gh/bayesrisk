@@ -1,4 +1,4 @@
-"""Tests de ``ForwardConfig`` (SDD-20 §5) e integración con ``NikodymConfig``."""
+"""Tests de ``ForwardConfig`` (SDD-20 §5) e integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -12,18 +12,18 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.forward as forward_pkg  # importa la capa: puebla el hook
-from nikodym.core import study as study_module
-from nikodym.core.config import (
+import bayesrisk.forward as forward_pkg  # importa la capa: puebla el hook
+from bayesrisk.core import study as study_module
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.forward.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.forward.config import (
     ForwardConfig,
     ForwardInputConfig,
     ForwardValidationConfig,
@@ -34,7 +34,7 @@ from nikodym.forward.config import (
     ScenarioDefinitionConfig,
     TtcReversionConfig,
 )
-from nikodym.forward.exceptions import (
+from bayesrisk.forward.exceptions import (
     ForwardConfigError,
     ForwardError,
     ForwardFitError,
@@ -106,7 +106,7 @@ def _cfg(**overrides: object) -> ForwardConfig:
 
 def _manual_default_hash() -> str:
     """Recalcula el golden sin llamar a ``config_hash``."""
-    payload = NikodymConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
+    payload = BayesRiskConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -211,9 +211,9 @@ def test_forwardinput_defaults_golden_con_macro_explicita() -> None:
     }
 
 
-def test_round_trip_yaml_forwardconfig_y_nikodymconfig() -> None:
+def test_round_trip_yaml_forwardconfig_y_bayesriskconfig() -> None:
     """Serializar y recargar ``forward`` por YAML preserva igualdad exacta."""
-    cfg = NikodymConfig(
+    cfg = BayesRiskConfig(
         forward=_cfg(macro=MacroModelConfig(kind="sarima", seasonal_order=(1, 0, 0, 4)))
     )
     text = dump_config(cfg)
@@ -225,14 +225,14 @@ def test_round_trip_yaml_forwardconfig_y_nikodymconfig() -> None:
     assert ForwardConfig.model_validate(raw_forward) == cfg.forward
 
 
-def test_nikodymconfig_forward_instancia_y_dict_coaccionan() -> None:
+def test_bayesriskconfig_forward_instancia_y_dict_coaccionan() -> None:
     """Instancias y dicts en ``forward`` se coaccionan por el hook cargado."""
     forward = _cfg()
-    cfg = NikodymConfig(forward=forward)
+    cfg = BayesRiskConfig(forward=forward)
     assert isinstance(cfg.forward, ForwardConfig)
     assert cfg.forward is forward
 
-    dict_cfg = NikodymConfig(
+    dict_cfg = BayesRiskConfig(
         forward={
             "input": {
                 "macro_source": {"type": "dataframe", "variable_cols": ["unemployment"]},
@@ -252,41 +252,41 @@ def test_nikodymconfig_forward_instancia_y_dict_coaccionan() -> None:
     assert dict_cfg.forward.input.macro_source.variable_cols == ("unemployment",)
 
 
-def test_nikodymconfig_forward_none_explicito() -> None:
+def test_bayesriskconfig_forward_none_explicito() -> None:
     """``forward=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(forward=None).forward is None
+    assert BayesRiskConfig(forward=None).forward is None
 
 
-def test_nikodymconfig_forward_core_only_acepta_blob_json(
+def test_bayesriskconfig_forward_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``forward`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_FORWARD_CONFIG_CLS", None)
-    cfg = NikodymConfig(forward={"input": {"pd_basis_assumption": "pit"}})
+    cfg = BayesRiskConfig(forward={"input": {"pd_basis_assumption": "pit"}})
     assert cfg.forward == {"input": {"pd_basis_assumption": "pit"}}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_forward_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_forward_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``forward`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_FORWARD_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(forward=blob)
+        BayesRiskConfig(forward=blob)
 
 
 def test_config_hash_default_con_forward_none_golden_no_tautologico() -> None:
     """El golden por defecto incluye ``forward=None`` con cálculo independiente."""
     assert _manual_default_hash() == GOLDEN_DEFAULT_CONFIG_HASH
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_forward_no_es_infra_section_y_cambia_hash() -> None:
     """``forward`` entra al ``config_hash`` global y sus parámetros mueven identidad."""
-    base = config_hash(NikodymConfig(forward=_cfg()))
-    variado = config_hash(NikodymConfig(forward=_cfg(macro=MacroModelConfig(horizon_periods=18))))
+    base = config_hash(BayesRiskConfig(forward=_cfg()))
+    variado = config_hash(BayesRiskConfig(forward=_cfg(macro=MacroModelConfig(horizon_periods=18))))
     assert "forward" not in INFRA_SECTIONS
     assert variado != base
 
@@ -569,8 +569,8 @@ def test_weight_cero_con_signo_no_mueve_config_hash() -> None:
     )
 
     assert negative_zero.scenarios[2].weight == 0.0
-    assert config_hash(NikodymConfig(forward=_cfg(scenarios=negative_zero))) == config_hash(
-        NikodymConfig(forward=_cfg(scenarios=positive_zero))
+    assert config_hash(BayesRiskConfig(forward=_cfg(scenarios=negative_zero))) == config_hash(
+        BayesRiskConfig(forward=_cfg(scenarios=positive_zero))
     )
 
 
@@ -640,7 +640,7 @@ def test_forward_public_api_minimo() -> None:
     assert "ForwardConfig" in forward_pkg.__all__
 
 
-def test_forward_errors_descienden_de_nikodym_error() -> None:
+def test_forward_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``forward`` cuelgan de la raíz propia de la librería."""
     for error_cls in (
         ForwardError,
@@ -653,20 +653,20 @@ def test_forward_errors_descienden_de_nikodym_error() -> None:
         MacroProjectionError,
         SatelliteModelError,
     ):
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
         with pytest.raises(ForwardError, match="fallo forward"):
             raise error_cls("fallo forward")
 
 
 def test_import_forward_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.forward`` registra hook sin arrastrar forecasting pesado."""
+    """``import bayesrisk.forward`` registra hook sin arrastrar forecasting pesado."""
     code = (
-        "import nikodym.forward, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.forward.config import ForwardConfig;"
+        "import bayesrisk.forward, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.forward.config import ForwardConfig;"
         "bloqueados=[m for m in ('statsmodels','pmdarima','pandas','scipy') if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(forward={"
+        "cfg=BayesRiskConfig(forward={"
         "'input': {'macro_source': {'type': 'dataframe', 'variable_cols': ['gdp']}, "
         "'pd_basis_assumption': 'pit'},"
         "'satellite': {'factor_cols': ['gdp']},"
@@ -682,21 +682,21 @@ def test_import_forward_liviano_y_registra_hook_en_proceso_fresco() -> None:
 def test_core_valida_forward_como_blob_opaco_sin_importar_forward() -> None:
     """El core acepta ``forward`` JSON/dict sin importar la capa forward."""
     code = (
-        "from nikodym.core.config import NikodymConfig, dump_config;"
+        "from bayesrisk.core.config import BayesRiskConfig, dump_config;"
         "import sys;"
-        "assert 'nikodym.forward' not in sys.modules;"
-        "cfg=NikodymConfig(forward={'input': {'pd_basis_assumption': 'pit'}});"
+        "assert 'bayesrisk.forward' not in sys.modules;"
+        "cfg=BayesRiskConfig(forward={'input': {'pd_basis_assumption': 'pit'}});"
         "assert cfg.forward == {'input': {'pd_basis_assumption': 'pit'}};"
         "texto=dump_config(cfg);"
         "assert 'forward:' in texto;"
-        "assert 'nikodym.forward' not in sys.modules"
+        "assert 'bayesrisk.forward' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_import_core_no_arrastra_forward_en_proceso_fresco() -> None:
-    """``import nikodym.core`` mantiene el hook forward sin importar la capa."""
-    code = "import nikodym.core, sys; assert 'nikodym.forward' not in sys.modules"
+    """``import bayesrisk.core`` mantiene el hook forward sin importar la capa."""
+    code = "import bayesrisk.core, sys; assert 'bayesrisk.forward' not in sys.modules"
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
@@ -705,14 +705,14 @@ def test_core_study_cablea_forward_en_orden_por_defecto() -> None:
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order.index("markov") < order.index("forward")
     assert order.index("survival") < order.index("forward") < order.index("provisioning_cmf")
-    assert study_module._DOMAIN_MODULES["forward"] == "nikodym.forward"
+    assert study_module._DOMAIN_MODULES["forward"] == "bayesrisk.forward"
     assert study_module._DOMAIN_CONFIG_CLASSES["forward"] == (
-        "nikodym.forward.config",
+        "bayesrisk.forward.config",
         "ForwardConfig",
     )
 
 
-def test_dump_load_nikodymconfig_con_forward_idempotente() -> None:
+def test_dump_load_bayesriskconfig_con_forward_idempotente() -> None:
     """``dump_config``/``loads_config`` preservan la sección ``forward`` cableada."""
-    cfg = NikodymConfig(forward=_cfg())
+    cfg = BayesRiskConfig(forward=_cfg())
     assert loads_config(dump_config(cfg)) == cfg

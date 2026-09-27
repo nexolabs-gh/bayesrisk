@@ -1,6 +1,6 @@
 """Congela el baseline W0 de readiness sin implementar superficies W1.
 
-El arnés mide únicamente caminos que ya existen en Nikodym y proxies explícitos. Cada medición
+El arnés mide únicamente caminos que ya existen en bayesrisk y proxies explícitos. Cada medición
 pesada corre en un proceso aislado, con ``PYTHONHASHSEED=0`` y timeout. Las celdas que no pueden
 medirse por ausencia de superficie o de hardware se publican como ``no_medible``; nunca se
 convierten en PASS ni rebajan el envelope S2 aprobado por H9=B.
@@ -120,7 +120,7 @@ def _rss_bytes() -> int:
 
 def _package_versions() -> dict[str, str]:
     versions: dict[str, str] = {}
-    for package in ("nikodym", "numpy", "pandas", "pyarrow", "scikit-learn", "pydantic"):
+    for package in ("bayesrisk", "numpy", "pandas", "pyarrow", "scikit-learn", "pydantic"):
         try:
             versions[package] = metadata.version(package)
         except metadata.PackageNotFoundError:
@@ -129,7 +129,7 @@ def _package_versions() -> dict[str, str]:
 
 
 def _ui_settings(workdir: Path) -> Any:
-    from nikodym.ui.settings import UiConfig
+    from bayesrisk.ui.settings import UiConfig
 
     return UiConfig(
         deploy_mode="local",
@@ -144,10 +144,10 @@ def _ui_settings(workdir: Path) -> Any:
 def _probe_contract_census() -> dict[str, Any]:
     import inspect
 
-    import nikodym
-    from nikodym.ui import jobs
-    from nikodym.ui.routes import run_pipeline
-    from nikodym.ui.serializers import serialize_study
+    import bayesrisk
+    from bayesrisk.ui import jobs
+    from bayesrisk.ui.routes import run_pipeline
+    from bayesrisk.ui.serializers import serialize_study
 
     pairs = [
         (point["path"], option["value"], option)
@@ -171,9 +171,9 @@ def _probe_contract_census() -> dict[str, Any]:
         "option_pairs": len(options),
         "option_pairs_unique": len(set(identities)),
         "option_states": dict(sorted(counts.items())),
-        "public_apply_exported": hasattr(nikodym, "apply"),
-        "ui_upload_max_mib": _ui_settings(Path(".nikodym_ui")).upload_max_mb,
-        "ui_run_calls_nikodym_directly": "nikodym.run(" in run_source,
+        "public_apply_exported": hasattr(bayesrisk, "apply"),
+        "ui_upload_max_mib": _ui_settings(Path(".bayesrisk_ui")).upload_max_mb,
+        "ui_run_calls_bayesrisk_directly": "bayesrisk.run(" in run_source,
         "ui_run_is_coroutine": inspect.iscoroutinefunction(run_pipeline),
         "ui_results_pagination": bool(
             {"page", "page_size", "cursor"} & serializer_parameters.keys()
@@ -200,7 +200,7 @@ def _frame_for_profile(profile_name: str) -> Any:
 
 
 def _probe_frame_hash(profile_name: str) -> dict[str, Any]:
-    from nikodym.data.hashing import data_hash
+    from bayesrisk.data.hashing import data_hash
 
     frame = _frame_for_profile(profile_name)
     started = time.perf_counter()
@@ -213,7 +213,7 @@ def _probe_frame_hash(profile_name: str) -> dict[str, Any]:
         "kind": "current_component_proxy",
         "status": "proxy",
         "profile": profile_name,
-        "surface": "nikodym.data.hashing.data_hash",
+        "surface": "bayesrisk.data.hashing.data_hash",
         "rows": int(frame.shape[0]),
         "variables": int(frame.shape[1]),
         "observed_cardinality": int(frame.iloc[:, 0].nunique()),
@@ -229,8 +229,8 @@ def _probe_frame_hash(profile_name: str) -> dict[str, Any]:
 def _client(workdir: Path) -> Any:
     from fastapi.testclient import TestClient
 
-    from nikodym.ui.runtime import TOKEN_HEADER, build_runtime
-    from nikodym.ui.server import create_app
+    from bayesrisk.ui.runtime import TOKEN_HEADER, build_runtime
+    from bayesrisk.ui.server import create_app
 
     runtime = build_runtime(port=8000, workdir=workdir)
     app = create_app(_ui_settings(workdir), runtime)
@@ -242,9 +242,9 @@ def _client(workdir: Path) -> Any:
 
 
 def _run_preset(preset_id: str) -> dict[str, Any]:
-    from nikodym.ui import datasets
+    from bayesrisk.ui import datasets
 
-    with tempfile.TemporaryDirectory(prefix="nikodym-w0-preset-") as temp:
+    with tempfile.TemporaryDirectory(prefix="bayesrisk-w0-preset-") as temp:
         workdir = Path(temp)
         with _client(workdir) as client:
             preset = client.get(f"/api/config/preset/{preset_id}")
@@ -335,7 +335,7 @@ def _score_s0_frame(workdir: Path) -> Any:
     import numpy as np
     import pandas as pd
 
-    from nikodym.ui import datasets
+    from bayesrisk.ui import datasets
 
     base_path = datasets.materialize("consumo_comportamiento", workdir=workdir)
     base = pd.read_parquet(base_path).reset_index()
@@ -354,9 +354,9 @@ def _score_s0_frame(workdir: Path) -> Any:
 def _probe_score_train_s0() -> dict[str, Any]:
     import io
 
-    from nikodym.ui.presets import standard_preset
+    from bayesrisk.ui.presets import standard_preset
 
-    with tempfile.TemporaryDirectory(prefix="nikodym-w0-s0-") as temp:
+    with tempfile.TemporaryDirectory(prefix="bayesrisk-w0-s0-") as temp:
         workdir = Path(temp)
         frame = _score_s0_frame(workdir)
         descriptor = standard_preset()
@@ -407,7 +407,7 @@ def _probe_score_train_s0() -> dict[str, Any]:
                 "kind": "current_surface",
                 "status": "measured",
                 "profile": "S0-smoke",
-                "surface": "upload→nikodym.run(F1)→results+HTML",
+                "surface": "upload→bayesrisk.run(F1)→results+HTML",
                 "input_rows": int(frame.shape[0]),
                 "input_columns_total": int(frame.shape[1]),
                 "feature_variables": len(config["binning"]["feature_columns"]),
@@ -580,7 +580,7 @@ def _run_parent(output: Path) -> int:
             "W0 exige un commit limpio para congelar evidencia; hay cambios tracked:\n" + dirty
         )
     total_memory = _total_memory_bytes()
-    with tempfile.TemporaryDirectory(prefix="nikodym-w0-run-") as temp:
+    with tempfile.TemporaryDirectory(prefix="bayesrisk-w0-run-") as temp:
         temp_root = Path(temp)
         measurements: list[dict[str, Any]] = []
         for probe in PROBES:

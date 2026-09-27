@@ -136,7 +136,7 @@ export function bandColor(band: string): string {
  * «esto va mal» en la misma pantalla se leerían como dos significados.
  *
  * ⚠️ Sólo el color se comparte. Las PALABRAS son otras y tienen su propia fuente única
- * (`nikodym.validation.results.VALIDATION_STATUS_LABELS`, espejada en `results-format.ts`): una
+ * (`bayesrisk.validation.results.VALIDATION_STATUS_LABELS`, espejada en `results-format.ts`): una
  * banda de PSI no es un estado de validación, y confundirlos sería exactamente el defecto que
  * D-SC-11 vino a cerrar. Accesibilidad: el color nunca va solo; la palabra lo acompaña siempre.
  */

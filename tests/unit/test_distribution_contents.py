@@ -31,28 +31,30 @@ validate_distribution = _MODULE.validate_distribution
 validate_candidate_set = _MODULE.validate_candidate_set
 
 _VERSION = "1.6.0"
-_DIST_INFO = f"nikodym-{_VERSION}.dist-info"
+_DIST_INFO = f"bayesrisk-{_VERSION}.dist-info"
 
 # Semántica canónica del index (enmienda B2.2, E-B2.2-6): el candidate debe distribuirla byte a
 # byte igual que la que el checker importa, o el gate aplicaría reglas distintas de las que viajan
 # al usuario. Los fixtures la incluyen leyéndola del árbol, nunca transcrita.
-_SEMANTICS_BYTES = _POLICY.parents[1].joinpath("src/nikodym/ui/_static_index.py").read_bytes()
-_SEMANTICS_IN_WHEEL = "nikodym/ui/_static_index.py"
-_SEMANTICS_IN_SDIST = "src/nikodym/ui/_static_index.py"
-_BUILD_MANIFEST_BYTES = _POLICY.parents[1].joinpath("src/nikodym/_build_manifest.json").read_bytes()
-_BUILD_MANIFEST_IN_WHEEL = "nikodym/_build_manifest.json"
-_BUILD_MANIFEST_IN_SDIST = "src/nikodym/_build_manifest.json"
+_SEMANTICS_BYTES = _POLICY.parents[1].joinpath("src/bayesrisk/ui/_static_index.py").read_bytes()
+_SEMANTICS_IN_WHEEL = "bayesrisk/ui/_static_index.py"
+_SEMANTICS_IN_SDIST = "src/bayesrisk/ui/_static_index.py"
+_BUILD_MANIFEST_BYTES = (
+    _POLICY.parents[1].joinpath("src/bayesrisk/_build_manifest.json").read_bytes()
+)
+_BUILD_MANIFEST_IN_WHEEL = "bayesrisk/_build_manifest.json"
+_BUILD_MANIFEST_IN_SDIST = "src/bayesrisk/_build_manifest.json"
 
 # Launcher B2.2: el wheel debe traer el módulo y DECLARAR el console script. Un `entry_points.txt`
 # presente pero vacío satisface la lista de obligatorios y deja al usuario sin el comando.
-_LAUNCHER_IN_WHEEL = "nikodym/ui/__main__.py"
-_LAUNCHER_IN_SDIST = "src/nikodym/ui/__main__.py"
-_ENTRY_POINTS = b"[console_scripts]\nnikodym-ui = nikodym.ui.__main__:main\n"
+_LAUNCHER_IN_WHEEL = "bayesrisk/ui/__main__.py"
+_LAUNCHER_IN_SDIST = "src/bayesrisk/ui/__main__.py"
+_ENTRY_POINTS = b"[console_scripts]\nbayesrisk-ui = bayesrisk.ui.__main__:main\n"
 
 
 def _metadata(
     version: str = _VERSION,
-    name: str = "nikodym",
+    name: str = "bayesrisk",
     *,
     metadata_version: str = "2.4",
     license_expression: str = "Apache-2.0",
@@ -87,7 +89,7 @@ def _wheel_metadata(
 def _wheel(
     tmp_path: Path,
     files: dict[str, bytes],
-    name: str = f"nikodym-{_VERSION}-py3-none-any.whl",
+    name: str = f"bayesrisk-{_VERSION}-py3-none-any.whl",
     *,
     regenerate_record: bool = True,
 ) -> Path:
@@ -128,7 +130,7 @@ def _minimal_static(prefix: str) -> dict[str, bytes]:
 
 
 def _minimal_wheel() -> dict[str, bytes]:
-    return _minimal_static("nikodym/ui/static") | {
+    return _minimal_static("bayesrisk/ui/static") | {
         _BUILD_MANIFEST_IN_WHEEL: _BUILD_MANIFEST_BYTES,
         _SEMANTICS_IN_WHEEL: _SEMANTICS_BYTES,
         _LAUNCHER_IN_WHEEL: b'"""launcher"""\n',
@@ -141,14 +143,14 @@ def _minimal_wheel() -> dict[str, bytes]:
 
 
 def _minimal_sdist() -> dict[str, bytes]:
-    return _minimal_static("src/nikodym/ui/static") | {
+    return _minimal_static("src/bayesrisk/ui/static") | {
         _BUILD_MANIFEST_IN_SDIST: _BUILD_MANIFEST_BYTES,
         _SEMANTICS_IN_SDIST: _SEMANTICS_BYTES,
         _LAUNCHER_IN_SDIST: b'"""launcher"""\n',
         "PKG-INFO": _metadata(),
         "pyproject.toml": b"[build-system]",
         "LICENSE": _LICENSE_BYTES,
-        "README.md": b"# Nikodym",
+        "README.md": b"# bayesrisk",
         "CHANGELOG.md": b"# Changelog",
     }
 
@@ -159,7 +161,7 @@ def _sdist(
     root: str | None = None,
     name: str | None = None,
 ) -> Path:
-    root = root or f"nikodym-{_VERSION}"
+    root = root or f"bayesrisk-{_VERSION}"
     path = tmp_path / (name or f"{root}.tar.gz")
     with tarfile.open(path, "w:gz") as archive:
         for name, content in files.items():
@@ -176,7 +178,7 @@ def _provenance(
     *,
     outputs: list[dict[str, object]] | None = None,
 ) -> Path:
-    prefix = "nikodym/ui/static/" if kind == "wheel" else "src/nikodym/ui/static/"
+    prefix = "bayesrisk/ui/static/" if kind == "wheel" else "src/bayesrisk/ui/static/"
     if outputs is None:
         outputs = [
             {
@@ -209,17 +211,17 @@ def test_wheel_minimo_cumple_b21(tmp_path: Path) -> None:
 
 
 def test_todo_archivo_de_datos_del_paquete_esta_en_la_allowlist() -> None:
-    """Un archivo que no sea `.py` añadido bajo `src/nikodym` tiene que estar en la allowlist.
+    """Un archivo que no sea `.py` añadido bajo `src/bayesrisk` tiene que estar en la allowlist.
 
     🔴 Los demás tests de este módulo construyen wheels SINTÉTICOS: validan el validador, no el
     artefacto real, así que añadir un archivo al paquete pasaba en local y sólo lo acusaba el job
     `Build` del CI, que construye el wheel de verdad (pasó con las fuentes del informe de la capa
-    C: `Ruta fuera de allowlist: nikodym/report/templates/fonts/LICENSE-Roboto.txt`). Este gate
+    C: `Ruta fuera de allowlist: bayesrisk/report/templates/fonts/LICENSE-Roboto.txt`). Este gate
     censa el árbol y comprueba las dos allowlists —wheel y sdist— sin construir nada.
     """
     _matches_segments = _MODULE._matches_segments
     politica = json.loads(_POLICY.read_text(encoding="utf-8"))
-    paquete = _POLICY.parents[1] / "src" / "nikodym"
+    paquete = _POLICY.parents[1] / "src" / "bayesrisk"
     datos = [
         archivo
         for archivo in sorted(paquete.rglob("*"))
@@ -230,7 +232,7 @@ def test_todo_archivo_de_datos_del_paquete_esta_en_la_allowlist() -> None:
     assert datos, "el censo no puede medir cero: el paquete sí trae archivos de datos"
     fuera: list[str] = []
     for archivo in datos:
-        relativa = archivo.relative_to(_POLICY.parents[1]).as_posix()  # src/nikodym/...
+        relativa = archivo.relative_to(_POLICY.parents[1]).as_posix()  # src/bayesrisk/...
         en_wheel = relativa.removeprefix("src/")
         for clave, ruta in (("wheel", en_wheel), ("sdist", relativa)):
             if not any(_matches_segments(ruta, patron) for patron in politica[clave]["allowed"]):
@@ -242,11 +244,11 @@ def test_todo_archivo_de_datos_del_paquete_esta_en_la_allowlist() -> None:
     "name",
     [
         "web/index.html",
-        "nikodym/ui/static/demo.pdf",
-        "nikodym/ui/static/fixtures/demo/results.json",
-        "nikodym/ui/static/assets/extra.bin",
-        "nikodym/ui/static/assets/nested/rogue.js",
-        "nikodym/WEB/secret.py",
+        "bayesrisk/ui/static/demo.pdf",
+        "bayesrisk/ui/static/fixtures/demo/results.json",
+        "bayesrisk/ui/static/assets/extra.bin",
+        "bayesrisk/ui/static/assets/nested/rogue.js",
+        "bayesrisk/WEB/secret.py",
     ],
 )
 def test_wheel_rechaza_rutas_fuera_de_contrato(tmp_path: Path, name: str) -> None:
@@ -261,16 +263,16 @@ def test_wheel_rechaza_rutas_fuera_de_contrato(tmp_path: Path, name: str) -> Non
 )
 def test_artefactos_rechazan_directorios_nunca_publicables(tmp_path: Path, directory: str) -> None:
     # `privado` es el repo git separado con detalle institucional y `secrets/` está vetado por
-    # `.gitignore`; ambos entran como `*.py` bajo `nikodym/**`, que la allowlist sí permite, así que
-    # sólo `forbidden_parts` los para. `/privado/` está anclado a la raíz en `.gitignore`: un
-    # `src/nikodym/privado/` ni siquiera queda ignorado por git.
-    wheel_files = _minimal_wheel() | {f"nikodym/{directory}/notas.py": b"# institucional\n"}
+    # `.gitignore`; ambos entran como `*.py` bajo `bayesrisk/**`, que la allowlist sí permite, así
+    # que sólo `forbidden_parts` los para. `/privado/` está anclado a la raíz en `.gitignore`: un
+    # `src/bayesrisk/privado/` ni siquiera queda ignorado por git.
+    wheel_files = _minimal_wheel() | {f"bayesrisk/{directory}/notas.py": b"# institucional\n"}
     wheel_directory = tmp_path / f"wheel-{directory}"
     wheel_directory.mkdir()
     with pytest.raises(DistributionContentError, match="Ruta prohibida"):
         _validate(wheel_directory, _wheel(wheel_directory, wheel_files), wheel_files, "wheel")
 
-    sdist_files = _minimal_sdist() | {f"src/nikodym/{directory}/notas.py": b"# institucional\n"}
+    sdist_files = _minimal_sdist() | {f"src/bayesrisk/{directory}/notas.py": b"# institucional\n"}
     sdist_directory = tmp_path / f"sdist-{directory}"
     sdist_directory.mkdir()
     with pytest.raises(DistributionContentError, match="Ruta prohibida"):
@@ -279,7 +281,7 @@ def test_artefactos_rechazan_directorios_nunca_publicables(tmp_path: Path, direc
 
 def test_wheel_rechaza_recurso_local_ausente(tmp_path: Path) -> None:
     files = _minimal_wheel()
-    del files["nikodym/ui/static/favicon.svg"]
+    del files["bayesrisk/ui/static/favicon.svg"]
     with pytest.raises(DistributionContentError, match="Recurso local"):
         _validate(tmp_path, _wheel(tmp_path, files), files, "wheel")
 
@@ -315,14 +317,14 @@ def test_wheel_rechaza_recurso_local_ausente(tmp_path: Path) -> None:
 )
 def test_wheel_rechaza_recurso_generico_traversal_o_externo(tmp_path: Path, html: bytes) -> None:
     files = _minimal_wheel()
-    files["nikodym/ui/static/index.html"] = html
+    files["bayesrisk/ui/static/index.html"] = html
     with pytest.raises(DistributionContentError):
         _validate(tmp_path, _wheel(tmp_path, files), files, "wheel")
 
 
 def test_html_con_mayor_que_citado_y_enlaces_deliberados_pasa(tmp_path: Path) -> None:
     files = _minimal_wheel()
-    files["nikodym/ui/static/index.html"] = (
+    files["bayesrisk/ui/static/index.html"] = (
         b'<a title="1 > 0" href="https://docs.test/">docs</a>'
         b'<a href="data:text/plain,documentacion">data deliberado</a>'
         b'<area href="https://docs.test/map"><link rel="canonical" '
@@ -385,7 +387,7 @@ def test_archivos_rechazan_directorios_explicitos(tmp_path: Path) -> None:
 
     sdist = tmp_path / "explicit-directory.tar.gz"
     with tarfile.open(sdist, "w:gz") as archive:
-        directory = tarfile.TarInfo(f"nikodym-{_VERSION}")
+        directory = tarfile.TarInfo(f"bayesrisk-{_VERSION}")
         directory.type = tarfile.DIRTYPE
         archive.addfile(directory)
     with pytest.raises(DistributionContentError, match="Directorio explícito"):
@@ -445,9 +447,9 @@ def test_wheel_rechaza_identidad_o_metadata_incoherente(
 @pytest.mark.parametrize(
     "name",
     [
-        "nikodym-9.9.9-py3-none-any.whl",
-        "nikodym-1.6.0-1-py3-none-any.whl",
-        "nikodym-1.6.0-cp312-cp312-manylinux.whl",
+        "bayesrisk-9.9.9-py3-none-any.whl",
+        "bayesrisk-1.6.0-1-py3-none-any.whl",
+        "bayesrisk-1.6.0-cp312-cp312-manylinux.whl",
         "candidate.whl",
     ],
 )
@@ -486,10 +488,10 @@ def test_wheel_rechaza_metadata_interna_no_universal(
     ("metadata", "message"),
     [
         (_metadata(metadata_version="2.3"), "Metadata-Version incoherente"),
-        (_metadata(name="Nikodym"), "Name incoherente"),
+        (_metadata(name="BayesRisk"), "Name incoherente"),
         (_metadata(license_expression="MIT"), "License-Expression incoherente"),
         (_metadata(license_file="COPYING"), "License-File incoherente"),
-        (_metadata() + b"Name: nikodym\n", "exactamente un Name"),
+        (_metadata() + b"Name: bayesrisk\n", "exactamente un Name"),
         (_metadata() + b"License-Expression: Apache-2.0\n", "exactamente un License-Expression"),
         (_metadata() + b"License-File: LICENSE\n", "exactamente un License-File"),
     ],
@@ -626,7 +628,7 @@ def test_sdist_rechaza_symlink_y_fifo(tmp_path: Path) -> None:
     for kind in [tarfile.SYMTYPE, tarfile.FIFOTYPE]:
         path = tmp_path / f"candidate-{kind!r}.tar.gz"
         with tarfile.open(path, "w:gz") as archive:
-            info = tarfile.TarInfo(f"nikodym-{_VERSION}/special")
+            info = tarfile.TarInfo(f"bayesrisk-{_VERSION}/special")
             info.type = kind
             if kind == tarfile.SYMTYPE:
                 info.linkname = "../../escape"
@@ -639,7 +641,7 @@ def test_sdist_rechaza_entrada_duplicada(tmp_path: Path) -> None:
     path = tmp_path / "duplicate.tar.gz"
     with tarfile.open(path, "w:gz") as archive:
         for content in [b"a", b"b"]:
-            info = tarfile.TarInfo(f"nikodym-{_VERSION}/duplicate")
+            info = tarfile.TarInfo(f"bayesrisk-{_VERSION}/duplicate")
             info.size = len(content)
             archive.addfile(info, io.BytesIO(content))
     with pytest.raises(DistributionContentError, match="duplicada"):
@@ -668,8 +670,8 @@ def test_sdist_rechaza_metadata_o_documento_requerido_ausente(
     ("root", "metadata", "message"),
     [
         ("otra-1.6.0", _metadata(), "raíz sdist"),
-        ("nikodym-1.6.0", _metadata(version="9.9.9"), "Version incoherente"),
-        ("nikodym-1.6.0", _metadata(name="otro"), "Name incoherente"),
+        ("bayesrisk-1.6.0", _metadata(version="9.9.9"), "Version incoherente"),
+        ("bayesrisk-1.6.0", _metadata(name="otro"), "Name incoherente"),
     ],
 )
 def test_sdist_rechaza_identidad_incoherente(
@@ -687,8 +689,8 @@ def test_sdist_rechaza_basename_incoherente(tmp_path: Path) -> None:
             _sdist(
                 tmp_path,
                 _minimal_sdist(),
-                root=f"nikodym-{_VERSION}",
-                name="nikodym-9.9.9.tar.gz",
+                root=f"bayesrisk-{_VERSION}",
+                name="bayesrisk-9.9.9.tar.gz",
             )
         )
 
@@ -699,7 +701,7 @@ def test_procedencia_liga_bytes_y_conjunto_exacto_de_static(tmp_path: Path) -> N
     valid_path = _provenance(tmp_path, files, "wheel")
     validate_distribution(artifact, _POLICY, valid_path)
 
-    mutated = files | {"nikodym/ui/static/assets/app.js": b"mutated"}
+    mutated = files | {"bayesrisk/ui/static/assets/app.js": b"mutated"}
     with pytest.raises(DistributionContentError, match="mutado"):
         validate_distribution(_wheel(tmp_path, mutated), _POLICY, valid_path)
 
@@ -807,7 +809,7 @@ def test_candidate_set_exige_uno_de_cada_y_misma_version(tmp_path: Path) -> None
         with pytest.raises(DistributionContentError, match="exactamente 1 wheel"):
             validate_candidate_set(artifacts, _POLICY, provenance)
     mismatched_files = _minimal_sdist() | {"PKG-INFO": _metadata(version="1.6.1")}
-    mismatched_sdist = _sdist(tmp_path, mismatched_files, root="nikodym-1.6.1")
+    mismatched_sdist = _sdist(tmp_path, mismatched_files, root="bayesrisk-1.6.1")
     with pytest.raises(DistributionContentError, match="Versiones candidate incoherentes"):
         validate_candidate_set([wheel, mismatched_sdist], _POLICY, provenance)
 
@@ -839,7 +841,7 @@ def test_candidate_set_exige_metadata_completa_identica(tmp_path: Path) -> None:
 
 
 def test_rebuild_desde_sdist_exige_mismo_mapa_y_bytes(tmp_path: Path) -> None:
-    direct_files = _minimal_wheel() | {"nikodym/__init__.py": b"direct"}
+    direct_files = _minimal_wheel() | {"bayesrisk/__init__.py": b"direct"}
     sdist_files = _minimal_sdist()
     provenance = _provenance(tmp_path, direct_files, "wheel")
     direct_directory = tmp_path / "direct"
@@ -851,7 +853,7 @@ def test_rebuild_desde_sdist_exige_mismo_mapa_y_bytes(tmp_path: Path) -> None:
     sdist = _sdist(tmp_path, sdist_files)
     validate_candidate_set([rebuilt, sdist], _POLICY, provenance, direct)
 
-    changed_files = direct_files | {"nikodym/__init__.py": b"changed"}
+    changed_files = direct_files | {"bayesrisk/__init__.py": b"changed"}
     changed = _wheel(rebuilt_directory, changed_files)
     with pytest.raises(DistributionContentError, match=r"reconstruido.*difiere"):
         validate_candidate_set([changed, sdist], _POLICY, provenance, direct)
@@ -870,8 +872,8 @@ def test_wheel_sin_launcher_no_se_promueve(tmp_path: Path) -> None:
     [
         b"",
         b"[console_scripts]\n",
-        b"[console_scripts]\nnikodym-ui = nikodym.ui.otro:main\n",
-        b"[gui_scripts]\nnikodym-ui = nikodym.ui.__main__:main\n",
+        b"[console_scripts]\nbayesrisk-ui = bayesrisk.ui.otro:main\n",
+        b"[gui_scripts]\nbayesrisk-ui = bayesrisk.ui.__main__:main\n",
     ],
 )
 def test_entry_points_presente_pero_sin_declaracion_falla(
@@ -891,7 +893,7 @@ def test_entry_points_presente_pero_sin_declaracion_falla(
         lambda policy: policy.pop("forbidden_parts"),
         lambda policy: policy.update(extra=True),
         lambda policy: policy.update(wheel=[]),
-        lambda policy: policy["wheel"].update(allowed="nikodym/**"),
+        lambda policy: policy["wheel"].update(allowed="bayesrisk/**"),
         lambda policy: policy["wheel"].update(required=[1]),
         lambda policy: policy["wheel"].update(required=["outside/not-allowed"]),
         lambda policy: policy["wheel"].update(extra=[]),
@@ -917,7 +919,7 @@ def test_checker_usa_la_semantica_del_paquete_sin_copia_propia() -> None:
     mañana, y esa deriva silenciosa sobre un control de seguridad es justo lo que B2.1 pagó tres
     veces.
     """
-    from nikodym.ui import _static_index
+    from bayesrisk.ui import _static_index
 
     assert _MODULE.resolve_local_resources is _static_index.resolve_local_resources
     assert _MODULE.UiStaticIndexError is _static_index.UiStaticIndexError

@@ -3,7 +3,7 @@
  *
  * El proyecto marca sus avisos declarados con dos códigos —`FALTA-DATO-*` (la carencia es del
  * motor) y `DATO-INSTITUCIONAL-*` (el dato lo aporta la institución)—. Son un CONTRATO INTERNO:
- * viven en `src/nikodym/core/markers.py`, viajan en `warning_codes` y sirven para que el motor y la
+ * viven en `src/bayesrisk/core/markers.py`, viajan en `warning_codes` y sirven para que el motor y la
  * UI se entiendan. Al lector de la landing o del panel de resultados no le dicen nada: le dicen que
  * está leyendo el roadmap de otra persona.
  *

@@ -23,10 +23,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.provisioning.exceptions import LgdError
-from nikodym.provisioning.internal.config import (
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.provisioning.exceptions import LgdError
+from bayesrisk.provisioning.internal.config import (
     InternalLgdBetaRegression,
     InternalLgdFractionalResponse,
     InternalLgdGroupHistorical,
@@ -35,25 +35,25 @@ from nikodym.provisioning.internal.config import (
     InternalLgdWorkout,
     InternalProvisioningConfig,
 )
-from nikodym.provisioning.internal.engine import (
+from bayesrisk.provisioning.internal.engine import (
     InternalProvisioningEngine,
     _lgd_modelada,
     _parse_rows,
     _severity_by_row,
 )
-from nikodym.provisioning.internal.exceptions import (
+from bayesrisk.provisioning.internal.exceptions import (
     InternalConfigError,
     InternalInputError,
 )
-from nikodym.provisioning.internal.step import _procedencia_de_la_lgd
-from nikodym.provisioning.lgd import LgdEngine, LgdSpec
-from nikodym.report.prose import (
+from bayesrisk.provisioning.internal.step import _procedencia_de_la_lgd
+from bayesrisk.provisioning.lgd import LgdEngine, LgdSpec
+from bayesrisk.report.prose import (
     _INTERNAL_LGD_AJUSTADAS,
     _INTERNAL_LGD_LABELS,
     _internal_lgd_paragraphs,
 )
-from nikodym.ui.datasets import materialize
-from nikodym.ui.presets import get_preset
+from bayesrisk.ui.datasets import materialize
+from bayesrisk.ui.presets import get_preset
 
 AS_OF = "2026-02-28"
 
@@ -557,8 +557,8 @@ def test_aceptacion_una_corrida_completa_con_la_rama_modelada(
             # emitió por la razón correcta.
             "sections": {"required_sections": []},
         }
-        return nikodym.run(
-            NikodymConfig.model_validate(config),
+        return bayesrisk.run(
+            BayesRiskConfig.model_validate(config),
             artifacts={("calibration", "calibrated_pd_frame"): pd_frame},
             run_dir=trabajo / f"corrida-{salida}",
         )

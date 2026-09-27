@@ -2,7 +2,7 @@
 
 Cubre el contrato CT-1 exacto (``requires`` según ``pd_source`` y las cinco claves ``provides``), el
 cableado de ``core.study`` (orden, módulos y config classes), la ejecución **real** vía
-``Study.run()`` y el import liviano (``import nikodym.provisioning.internal`` registra el step sin
+``Study.run()`` y el import liviano (``import bayesrisk.provisioning.internal`` registra el step sin
 cargar pandas).
 """
 
@@ -21,21 +21,21 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.provisioning.internal as internal_pkg
-import nikodym.provisioning.internal.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.provisioning.internal import (
+import bayesrisk.core.study as study_module
+import bayesrisk.provisioning.internal as internal_pkg
+import bayesrisk.provisioning.internal.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.provisioning.internal import (
     INTERNAL_PROVISIONING_ARTIFACTS,
     InternalProvisioningConfig,
     InternalProvisioningStep,
 )
-from nikodym.provisioning.internal.exceptions import InternalConfigError, InternalInputError
-from nikodym.provisioning.internal.results import InternalProvisionCard, InternalProvisionResult
+from bayesrisk.provisioning.internal.exceptions import InternalConfigError, InternalInputError
+from bayesrisk.provisioning.internal.results import InternalProvisionCard, InternalProvisionResult
 
 ROOT_SEED = 20_260_713
 AS_OF = "2026-01-31"
@@ -89,7 +89,7 @@ def _study(
 ) -> Study:
     """``Study`` con ``data.frame`` y la PD calibrada preinyectados."""
     config = cfg or _cfg()
-    root = NikodymConfig(provisioning_internal=config) if active_config else NikodymConfig()
+    root = BayesRiskConfig(provisioning_internal=config) if active_config else BayesRiskConfig()
     study = Study(root)
     study.artifacts.set("data", "frame", _frame() if frame is None else frame)
     study.artifacts.set("calibration", "calibrated_pd_frame", _pd_frame())
@@ -150,13 +150,15 @@ def test_core_study_cablea_provisioning_internal_en_orden_por_defecto() -> None:
     assert order.index("calibration") < order.index("provisioning_internal")
     assert order.index("provisioning_cmf") < order.index("provisioning_internal")
     assert order.index("provisioning_internal") < order.index("provisioning")
-    assert study_module._DOMAIN_MODULES["provisioning_internal"] == "nikodym.provisioning.internal"
+    assert (
+        study_module._DOMAIN_MODULES["provisioning_internal"] == "bayesrisk.provisioning.internal"
+    )
     assert study_module._DOMAIN_CONFIG_CLASSES["provisioning_internal"] == (
-        "nikodym.provisioning.internal.config",
+        "bayesrisk.provisioning.internal.config",
         "InternalProvisioningConfig",
     )
 
-    study = Study(NikodymConfig(provisioning_internal=_cfg()))
+    study = Study(BayesRiskConfig(provisioning_internal=_cfg()))
 
     assert study._default_step_names() == ["provisioning_internal"]
     assert isinstance(study._resolve_step("provisioning_internal"), InternalProvisioningStep)
@@ -229,7 +231,7 @@ def test_study_run_es_determinista_byte_a_byte() -> None:
 def test_pd_source_model_corre_contra_el_artefacto_crudo() -> None:
     """Con ``pd_source='model'`` el step lee ``model.raw_pd_frame``."""
     cfg = _cfg(pd_source="model", pd_column="pd_raw")
-    study = Study(NikodymConfig(provisioning_internal=cfg))
+    study = Study(BayesRiskConfig(provisioning_internal=cfg))
     study.artifacts.set("data", "frame", _frame())
     study.artifacts.set("model", "raw_pd_frame", _pd_frame("pd_raw"))
 
@@ -277,7 +279,7 @@ def test_execute_publica_copias_defensivas_y_audita_decisiones() -> None:
 
 
 def test_step_usa_el_config_del_study_y_cae_al_propio_si_no_hay_seccion() -> None:
-    """El step prefiere ``NikodymConfig.provisioning_internal`` y usa el suyo como respaldo."""
+    """El step prefiere ``BayesRiskConfig.provisioning_internal`` y usa el suyo como respaldo."""
     study = _study(active_config=False)
     result = _execute(study)
     assert result.card.total_internal_provision == EXPECTED_PROVISION
@@ -366,22 +368,22 @@ def test_lazy_export_desconocido_levanta_attributeerror() -> None:
 
 
 def test_import_provisioning_internal_es_liviano_subprocess() -> None:
-    """``import nikodym.provisioning.internal`` registra el step sin cargar tabulares pesados."""
+    """``import bayesrisk.provisioning.internal`` registra el step sin cargar tabulares pesados."""
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.provisioning.internal
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.provisioning.internal
+        from bayesrisk.core.registry import REGISTRY
 
         resolved = REGISTRY.resolve("provisioning_internal", "standard")
         assert resolved.__name__ == "InternalProvisioningStep", resolved
         blocked = [name for name in ("pandas", "pandera", "pyarrow") if name in sys.modules]
         assert blocked == [], blocked
-        assert "nikodym.provisioning.internal.engine" not in sys.modules
-        assert "nikodym.provisioning.internal.results" not in sys.modules
+        assert "bayesrisk.provisioning.internal.engine" not in sys.modules
+        assert "bayesrisk.provisioning.internal.results" not in sys.modules
 
-        from nikodym.core.config import NikodymConfig
-        cfg = NikodymConfig(provisioning_internal={"grouping": "provided", "group_col": "g"})
+        from bayesrisk.core.config import BayesRiskConfig
+        cfg = BayesRiskConfig(provisioning_internal={"grouping": "provided", "group_col": "g"})
         assert type(cfg.provisioning_internal).__name__ == "InternalProvisioningConfig"
         print("ok")
         """

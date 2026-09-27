@@ -2,7 +2,7 @@
 
 Decisión de producto de Cami (2026-08-04), tras cerrar que la normativa local de cada país sale
 del alcance de la librería: **una jurisdicción nunca va en la propuesta de valor; va en la
-evidencia.** El argumento no es de imagen sino de alcance — nada impide hoy usar Nikodym fuera de
+evidencia.** El argumento no es de imagen sino de alcance — nada impide hoy usar bayesrisk fuera de
 Chile (F1 e IFRS 9 son estándar y el cálculo de ``provisioning/internal`` es neutro), así que lo que
 reducía el alcance percibido era el **titular**, no la arquitectura.
 
@@ -14,10 +14,10 @@ qué parámetros no son oficiales: ocultarlo ahí sería la mentira contraria.
 
 🔴 El corte NO puede ser «hasta el primer bloque destacado», que fue el primer criterio y era el
 equivocado: ``>`` y ``!!!`` son justamente los marcadores con que Markdown **destaca**, así que
-cortar ahí le regalaba al copy el banner más visible de la página — un ``> ## Nikodym es el motor de
-la CMF para la banca chilena`` justo bajo el titular pasaba en verde, medido. El titular llega hasta
-el primer encabezado de sección o hasta la primera **salvedad** (``!!! warning`` / ``!!! danger``),
-que es donde de verdad empieza la evidencia.
+cortar ahí le regalaba al copy el banner más visible de la página — un ``> ## bayesrisk es el motor
+de la CMF para la banca chilena`` justo bajo el titular pasaba en verde, medido. El titular llega
+hasta el primer encabezado de sección o hasta la primera **salvedad** (``!!! warning`` / ``!!!
+danger``), que es donde de verdad empieza la evidencia.
 
 No sustituye al criterio humano: un titular puede volverse Chile-only sin escribir «Chile». Lo que
 cierra es la regresión mecánica, que es la que ocurre sola al editar copy meses después.
@@ -34,7 +34,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from nikodym.ui.jobs import list_jobs
+from bayesrisk.ui.jobs import list_jobs
 
 _RAIZ = Path(__file__).resolve().parents[2]
 _README = _RAIZ / "README.md"
@@ -109,7 +109,7 @@ def test_el_corte_del_titular_no_es_vacuo() -> None:
 
     # El bloque DESTACADO de la portada tiene que quedar DENTRO. Es donde más se ve y fue el hueco
     # del primer criterio: sin este ancla, el gate volvería a cortar antes de tiempo sin avisar.
-    assert "Estado: 1.x (estable)" in _titular(_README.read_text(encoding="utf-8"))
+    assert "Estado: 2.x (estable)" in _titular(_README.read_text(encoding="utf-8"))
     assert "release estable" in _titular(_PORTADA_DOCS.read_text(encoding="utf-8"))
     # Y la SALVEDAD tiene que quedar fuera: ahí nombrar el país es obligatorio.
     assert "no son oficiales" not in _titular(_PORTADA_DOCS.read_text(encoding="utf-8"))
@@ -197,7 +197,7 @@ def test_la_pagina_del_caso_de_referencia_existe_y_esta_en_el_nav() -> None:
     assert _ofensores(texto), "la página del caso de referencia no nombra ninguna jurisdicción"
     # La fecha de verificación tiene que estar A LA VISTA: es lo que convierte «congelado» en una
     # afirmación comprobable en vez de una excusa.
-    manifest = _RAIZ / "src" / "nikodym" / "provisioning" / "cmf" / "data" / "manifest.json"
+    manifest = _RAIZ / "src" / "bayesrisk" / "provisioning" / "cmf" / "data" / "manifest.json"
     manifiesto = json.loads(manifest.read_text(encoding="utf-8"))
     extraccion = manifiesto["extraction_date"]
     assert extraccion in texto, (
@@ -242,7 +242,7 @@ def _frases_del_schema() -> dict[str, list[str]]:
     """Títulos y descripciones publicados, agrupados por la sección a la que pertenecen.
 
     Se mide sobre el **fixture** y no sobre ``schema_payload()`` a propósito: el payload vive en
-    ``nikodym.ui`` y arrastra el extra ``[ui]``, así que un gate montado sobre él **se salta** en
+    ``bayesrisk.ui`` y arrastra el extra ``[ui]``, así que un gate montado sobre él **se salta** en
     los jobs mínimos del CI — y un skip se lee igual que un verde. El gate G7 ya obliga a que el
     fixture sea idéntico al payload, así que medir aquí no pierde nada.
     """
@@ -417,13 +417,13 @@ def test_el_default_de_una_seccion_neutra_no_nombra_una_jurisdiccion(seccion: st
 # el cálculo», que es otra clase y se vigila atando cada frase a su aritmética.
 #
 # ⚠️ Y los dos módulos se pueden medir sin el extra ``[ui]``, verificado bloqueando
-# ``starlette``/``fastapi``/``uvicorn`` en el importador: ``nikodym/ui/__init__.py`` es liviano a
+# ``starlette``/``fastapi``/``uvicorn`` en el importador: ``bayesrisk/ui/__init__.py`` es liviano a
 # propósito y lo declara en su docstring, y ``report/prose.py`` sólo importa ``decimal`` y
-# ``nikodym``. Por eso aquí sí se mide la **fuente** y no un fixture, al contrario que el barrido
+# ``bayesrisk``. Por eso aquí sí se mide la **fuente** y no un fixture, al contrario que el barrido
 # del formulario de arriba — y no es incoherencia: allí el payload arrastraba el extra, aquí no.
 
-_PROSE = _RAIZ / "src" / "nikodym" / "report" / "prose.py"
-_JOBS = _RAIZ / "src" / "nikodym" / "ui" / "jobs.py"
+_PROSE = _RAIZ / "src" / "bayesrisk" / "report" / "prose.py"
+_JOBS = _RAIZ / "src" / "bayesrisk" / "ui" / "jobs.py"
 
 # Un identificador en snake_case es una clave de dict o un literal de enum del motor, nunca copy.
 # Sin este corte, `"cmf"` y `"cmf_only"` —el valor con que el orquestador nombra su propia rama—
@@ -724,7 +724,7 @@ def test_un_trabajo_neutro_no_nombra_ninguna_jurisdiccion(trabajo: str) -> None:
 #
 # 1. **El docstring del paquete raíz** decía «librería de riesgo de crédito (scoring, ML,
 #    provisiones **CMF** e IFRS 9)». Es la portada del paquete **por código**: medido ejecutando,
-#    `nikodym.__doc__` y `help(nikodym)` la publican como primera línea. Es hermana exacta de
+#    `bayesrisk.__doc__` y `help(bayesrisk)` la publican como primera línea. Es hermana exacta de
 #    `project.description` —que ya estaba en este gate desde el 2026-08-04— y se escapó por no
 #    estar en la lista de superficies.
 # 2. **El panel de resultados de la aplicación** rotulaba «Provisiones — la regla del máximo (CMF
@@ -744,7 +744,7 @@ def test_un_trabajo_neutro_no_nombra_ninguna_jurisdiccion(trabajo: str) -> None:
 # corrigieron a mano; la clase «afirmación normativa sin norma detrás» necesita otro mecanismo, y un
 # vocabulario inflado con falsos positivos se aprende a ignorar, que es peor que no tenerlo.
 
-_INIT_PAQUETE = _RAIZ / "src" / "nikodym" / "__init__.py"
+_INIT_PAQUETE = _RAIZ / "src" / "bayesrisk" / "__init__.py"
 
 # Atributos de un componente cuyo valor literal se pinta como texto. `title` y `description` son los
 # de `ResultsSection`; los otros tres entran porque son copy visible de la misma clase.
@@ -836,7 +836,7 @@ def test_el_copy_literal_del_front_no_nombra_ninguna_jurisdiccion() -> None:
 
 
 def test_la_portada_del_paquete_por_codigo_no_nombra_ninguna_jurisdiccion() -> None:
-    """El docstring de ``nikodym`` es lo que imprime ``help(nikodym)``: portada, no implementación.
+    """El docstring de ``bayesrisk`` es lo que imprime ``help(bayesrisk)``: portada.
 
     Hermana exacta de ``project.description`` —que este gate ya vigila— y se escapó de la limpieza
     del 2026-08-04 por no estar en la lista de superficies. Se lee por AST y no importando el
@@ -844,7 +844,7 @@ def test_la_portada_del_paquete_por_codigo_no_nombra_ninguna_jurisdiccion() -> N
     """
     arbol = ast.parse(_INIT_PAQUETE.read_text(encoding="utf-8"))
     docstring = ast.get_docstring(arbol)
-    assert docstring, "el paquete `nikodym` perdió su docstring: `help(nikodym)` saldría vacío"
+    assert docstring, "el paquete `bayesrisk` perdió su docstring: `help(bayesrisk)` saldría vacío"
     titular = docstring.splitlines()[0]
     assert "riesgo de crédito" in titular, (
         "la primera línea del docstring dejó de describir el producto: este gate no está mirando "
@@ -852,5 +852,5 @@ def test_la_portada_del_paquete_por_codigo_no_nombra_ninguna_jurisdiccion() -> N
     )
     assert not _ofensores(titular), (
         f"el docstring del paquete nombra {', '.join(_ofensores(titular))} en su primera línea, "
-        "que es lo que imprime `help(nikodym)`. Una jurisdicción no va en la propuesta de valor."
+        "que es lo que imprime `help(bayesrisk)`. Una jurisdicción no va en la propuesta de valor."
     )

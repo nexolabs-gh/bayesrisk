@@ -20,11 +20,11 @@ from _ui_f1 import (
     write_near_unique_cohort_parquet,
 )
 
-import nikodym
-from nikodym.core.study import Study
-from nikodym.ui import runs
-from nikodym.ui.exceptions import UiError, UiRunNotFoundError
-from nikodym.ui.serializers import EDA_MAX_PUBLISHED_PERIODS, serialize_study
+import bayesrisk
+from bayesrisk.core.study import Study
+from bayesrisk.ui import runs
+from bayesrisk.ui.exceptions import UiError, UiRunNotFoundError
+from bayesrisk.ui.serializers import EDA_MAX_PUBLISHED_PERIODS, serialize_study
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def f1_study(fake_binning_process: object, tmp_path: Path) -> Study:
     del fake_binning_process
     parquet = tmp_path / "cartera.parquet"
     write_behavior_parquet(parquet)
-    return nikodym.run(full_f1_config(str(parquet)))
+    return bayesrisk.run(full_f1_config(str(parquet)))
 
 
 # ─────────────────────────────── save / load_results ───────────────────────────────
@@ -68,13 +68,13 @@ def test_save_sin_reporte_no_escribe_html(f1_study: Study, tmp_path: Path) -> No
 def test_save_con_reporte_persiste_html(f1_study: Study, tmp_path: Path) -> None:
     """Con un artefacto de reporte con ``html_path`` existente, ``save`` escribe ``report.html``."""
     html_file = tmp_path / "reporte.html"
-    html_file.write_text("<h1>Reporte Nikodym</h1>", encoding="utf-8")
+    html_file.write_text("<h1>Reporte bayesrisk</h1>", encoding="utf-8")
     f1_study.artifacts.set("report", "result", types.SimpleNamespace(html_path=str(html_file)))
 
     workdir = tmp_path / "wd"
     run_id = runs.save(f1_study, workdir=workdir, governance=None)
 
-    assert runs.load_report(run_id, workdir=workdir) == "<h1>Reporte Nikodym</h1>"
+    assert runs.load_report(run_id, workdir=workdir) == "<h1>Reporte bayesrisk</h1>"
 
 
 def test_save_sin_pdf_no_escribe_pdf(f1_study: Study, tmp_path: Path) -> None:
@@ -88,7 +88,7 @@ def test_save_sin_pdf_no_escribe_pdf(f1_study: Study, tmp_path: Path) -> None:
 def test_save_con_pdf_persiste_pdf(f1_study: Study, tmp_path: Path) -> None:
     """Con un artefacto de reporte con ``pdf_path`` existente, ``save`` escribe ``report.pdf``."""
     pdf_file = tmp_path / "reporte.pdf"
-    pdf_file.write_bytes(b"%PDF-1.7 nikodym")
+    pdf_file.write_bytes(b"%PDF-1.7 bayesrisk")
     f1_study.artifacts.set(
         "report", "result", types.SimpleNamespace(html_path=None, pdf_path=str(pdf_file))
     )
@@ -96,7 +96,7 @@ def test_save_con_pdf_persiste_pdf(f1_study: Study, tmp_path: Path) -> None:
     workdir = tmp_path / "wd"
     run_id = runs.save(f1_study, workdir=workdir, governance=None)
 
-    assert runs.load_report_pdf(run_id, workdir=workdir) == b"%PDF-1.7 nikodym"
+    assert runs.load_report_pdf(run_id, workdir=workdir) == b"%PDF-1.7 bayesrisk"
 
 
 def test_save_sin_base_editable_no_escribe_qmd_ni_docx(f1_study: Study, tmp_path: Path) -> None:
@@ -149,7 +149,7 @@ def test_save_persiste_el_qmd_con_su_carpeta_de_figuras(f1_study: Study, tmp_pat
 def test_save_persiste_el_docx(f1_study: Study, tmp_path: Path) -> None:
     """Con un artefacto de reporte con ``docx_path`` existente, ``save`` escribe ``report.docx``."""
     docx_file = tmp_path / "reporte.docx"
-    docx_file.write_bytes(b"PK\x03\x04 nikodym")
+    docx_file.write_bytes(b"PK\x03\x04 bayesrisk")
     f1_study.artifacts.set(
         "report", "result", types.SimpleNamespace(html_path=None, docx_path=str(docx_file))
     )
@@ -157,7 +157,7 @@ def test_save_persiste_el_docx(f1_study: Study, tmp_path: Path) -> None:
     workdir = tmp_path / "wd"
     run_id = runs.save(f1_study, workdir=workdir, governance=None)
 
-    assert runs.load_report_docx(run_id, workdir=workdir) == b"PK\x03\x04 nikodym"
+    assert runs.load_report_docx(run_id, workdir=workdir) == b"PK\x03\x04 bayesrisk"
 
 
 def test_la_tabla_completa_de_la_tasa_queda_como_archivo_de_la_corrida_si_se_recorto(
@@ -170,7 +170,7 @@ def test_la_tabla_completa_de_la_tasa_queda_como_archivo_de_la_corrida_si_se_rec
 
     parquet = tmp_path / "cartera.parquet"
     write_near_unique_cohort_parquet(parquet)
-    study = nikodym.run(eda_only_config(str(parquet)))
+    study = bayesrisk.run(eda_only_config(str(parquet)))
     assert study.run_context.status == "done", study.run_context.error
 
     workdir = tmp_path / "wd"
@@ -215,7 +215,7 @@ def test_el_archivo_de_la_tasa_neutraliza_las_cohortes_que_excel_leeria_como_for
     }
     frame[NEAR_UNIQUE_COHORT_COL] = frame[NEAR_UNIQUE_COHORT_COL].map(lambda v: venenosas.get(v, v))
     frame.to_parquet(parquet)
-    study = nikodym.run(eda_only_config(str(parquet)))
+    study = bayesrisk.run(eda_only_config(str(parquet)))
     assert study.run_context.status == "done", study.run_context.error
 
     workdir = tmp_path / "wd"
@@ -255,7 +255,7 @@ def test_el_archivo_de_la_tasa_conserva_el_texto_interno_de_una_cohorte(tmp_path
         lambda v: "x;=HYPERLINK(1)" if v == "ID-00000" else v
     )
     frame.to_parquet(parquet)
-    study = nikodym.run(eda_only_config(str(parquet)))
+    study = bayesrisk.run(eda_only_config(str(parquet)))
     assert study.run_context.status == "done", study.run_context.error
     workdir = tmp_path / "wd"
     run_id = runs.save(study, workdir=workdir, governance=None)
@@ -280,7 +280,7 @@ def test_un_fallo_al_escribir_el_csv_no_deja_la_corrida_publicada_a_medias(
 
     parquet = tmp_path / "cartera.parquet"
     write_near_unique_cohort_parquet(parquet)
-    study = nikodym.run(eda_only_config(str(parquet)))
+    study = bayesrisk.run(eda_only_config(str(parquet)))
     assert study.run_context.status == "done", study.run_context.error
     workdir = tmp_path / "wd"
     run_id = study.run_context.run_id
@@ -317,7 +317,7 @@ def test_un_fallo_despues_del_csv_no_deja_una_corrida_huerfana_con_el_archivo_gr
 
     parquet = tmp_path / "cartera.parquet"
     write_near_unique_cohort_parquet(parquet)
-    study = nikodym.run(eda_only_config(str(parquet)))
+    study = bayesrisk.run(eda_only_config(str(parquet)))
     assert study.run_context.status == "done", study.run_context.error
     workdir = tmp_path / "wd"
     run_id = study.run_context.run_id
@@ -481,7 +481,7 @@ def test_sin_recorte_no_hay_archivo_de_la_tasa(
     """El archivo existe si y sólo si la respuesta se recortó: con pocas cohortes el payload ya
     trae la tabla entera y no se duplica en disco (``eda_default_rate_path`` → ``None``)."""
     del fake_binning_process
-    from nikodym.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
+    from bayesrisk.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
 
     parquet = tmp_path / "cartera.parquet"
     write_behavior_parquet(parquet)
@@ -493,7 +493,7 @@ def test_sin_recorte_no_hay_archivo_de_la_tasa(
             )
         }
     )
-    study = nikodym.run(config)
+    study = bayesrisk.run(config)
     assert study.run_context.status == "done", study.run_context.error
 
     workdir = tmp_path / "wd"

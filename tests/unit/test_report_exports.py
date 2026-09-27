@@ -21,10 +21,10 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from nikodym.report.config import ReportConfig, SectionPolicyConfig, XlsxExportConfig
-from nikodym.report.document import PER_OBSERVATION_TABLES
-from nikodym.report.exceptions import ReportDependencyError, ReportExportError
-from nikodym.report.exports import (
+from bayesrisk.report.config import ReportConfig, SectionPolicyConfig, XlsxExportConfig
+from bayesrisk.report.document import PER_OBSERVATION_TABLES
+from bayesrisk.report.exceptions import ReportDependencyError, ReportExportError
+from bayesrisk.report.exports import (
     _XLSX_MISSING_MSG,
     DATA_EXPORT_FORMATS,
     _openpyxl_disponible,
@@ -589,7 +589,7 @@ class _SinOpenpyxl:
 
 
 def _sin_extra_excel(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Deja el proceso como una instalación sin ``nikodym[excel]`` (ausencia real, no simulada)."""
+    """Deja el proceso como una instalación sin ``bayesrisk[excel]`` (ausencia real)."""
     for modulo in [
         name for name in sys.modules if name == "openpyxl" or name.startswith("openpyxl.")
     ]:
@@ -666,7 +666,7 @@ def test_sin_openpyxl_y_fail_if_unavailable_la_corrida_se_detiene(
     _sin_extra_excel(monkeypatch)
     config = ReportConfig(formats=("csv", "xlsx"), xlsx=XlsxExportConfig(fail_if_unavailable=True))
 
-    with pytest.raises(ReportDependencyError, match="nikodym\\[excel\\]"):
+    with pytest.raises(ReportDependencyError, match="bayesrisk\\[excel\\]"):
         write_data_exports(_tables(), config=config, output_dir=str(tmp_path))
 
 
@@ -705,7 +705,7 @@ def test_openpyxl_presente_pero_roto_con_fail_if_unavailable_relanza(
     _openpyxl_presente_pero_roto(monkeypatch)
     config = ReportConfig(formats=("xlsx",), xlsx=XlsxExportConfig(fail_if_unavailable=True))
 
-    with pytest.raises(ReportDependencyError, match="nikodym\\[excel\\]"):
+    with pytest.raises(ReportDependencyError, match="bayesrisk\\[excel\\]"):
         write_data_exports(_tables(), config=config, output_dir=str(tmp_path))
 
 

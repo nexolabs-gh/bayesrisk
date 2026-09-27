@@ -1,0 +1,69 @@
+"""Jerarquía de excepciones de la capa ``ui`` (SDD-23 §4.3).
+
+Toda excepción propia de la UI desciende de :class:`UiError` y, por tanto, de
+:class:`~bayesrisk.core.exceptions.BayesRiskError`: ``except BayesRiskError`` captura cualquier
+fallo de la librería sin enumerar clases. Los mensajes van en **español** e indican la acción, el
+artefacto afectado y la causa; los identificadores/API se mantienen en inglés técnico.
+"""
+
+from __future__ import annotations
+
+from bayesrisk.core.exceptions import BayesRiskError
+
+__all__ = [
+    "UiArtifactError",
+    "UiDatasetError",
+    "UiDependencyError",
+    "UiError",
+    "UiLaunchError",
+    "UiRunNotFoundError",
+    "UiSerializationError",
+    "UiStaticIndexError",
+]
+
+
+class UiError(BayesRiskError):
+    """Raíz de las excepciones de la capa ``ui`` (subclase de ``BayesRiskError``)."""
+
+
+class UiDatasetError(UiError):
+    """Dataset sintético desconocido, subida inválida o ruta fuera del ``workdir``."""
+
+
+class UiArtifactError(UiError):
+    """El insumo externo declarado en la petición no se puede aceptar (→ 422, D-PUE-2/D-PUE-6).
+
+    Es **entrada del usuario**, no un dataset ausente, y por eso no comparte código con
+    :class:`UiDatasetError`: una clave que ningún trabajo disponible admite, una petición
+    malformada o un archivo cuyo número de filas no cuadra con la cartera son cosas que el usuario
+    puede corregir, y responder 404 le diría que algo no existe cuando lo que pasa es que no se
+    admite.
+    """
+
+
+class UiRunNotFoundError(UiError):
+    """``run_id`` desconocido, inválido o cuya ruta escaparía del ``workdir`` (→ 404)."""
+
+
+class UiSerializationError(UiError):
+    """Artefacto no serializable a JSON (p. ej. un no-finito colado); falla ruidoso defensivo."""
+
+
+class UiDependencyError(UiError):
+    """Falta el extra ``[ui]`` (fastapi/uvicorn); el mensaje pide ``instale bayesrisk[ui]``."""
+
+
+class UiLaunchError(UiError):
+    """El launcher no puede arrancar: build incompleto, placeholder ausente o puerto ocupado.
+
+    Falla **antes** de bind y antes de abrir el navegador: un backend a medias que parezca una UI
+    sana es un fallo, no una degradación aceptable (SDD-23 §8).
+    """
+
+
+class UiStaticIndexError(UiError):
+    """El ``index.html`` de la SPA referencia un recurso externo, inseguro o fuera de ``static/``.
+
+    La levanta la semántica canónica de :mod:`bayesrisk.ui._static_index`, compartida por el gate de
+    distribución y por el preflight del launcher.
+    """

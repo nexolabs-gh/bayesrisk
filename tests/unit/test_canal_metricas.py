@@ -16,19 +16,19 @@ from typing import Any
 import pytest
 from _ui_f1 import full_f1_config, write_behavior_parquet
 
-import nikodym
-from nikodym.core.exceptions import ConfigError
-from nikodym.core.study import Study
-from nikodym.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
-from nikodym.eda.step import EdaStep
-from nikodym.governance.config import GovernanceConfig
-from nikodym.governance.exceptions import GovernanceError
-from nikodym.governance.model_card import ModelCardBuilder
-from nikodym.performance.config import PerformanceConfig
-from nikodym.performance.step import PerformanceStep
-from nikodym.stability.config import StabilityConfig
-from nikodym.stability.step import StabilityStep
-from nikodym.testing.metrics import (
+import bayesrisk
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.core.study import Study
+from bayesrisk.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
+from bayesrisk.eda.step import EdaStep
+from bayesrisk.governance.config import GovernanceConfig
+from bayesrisk.governance.exceptions import GovernanceError
+from bayesrisk.governance.model_card import ModelCardBuilder
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.performance.step import PerformanceStep
+from bayesrisk.stability.config import StabilityConfig
+from bayesrisk.stability.step import StabilityStep
+from bayesrisk.testing.metrics import (
     DECLARED_METRICS,
     DOMAINS_WITHOUT_METRICS,
     is_declared_metric,
@@ -36,7 +36,7 @@ from nikodym.testing.metrics import (
     orchestrable_domains,
     resolves_declared_metric,
 )
-from nikodym.tracking.recorder import _metric_items
+from bayesrisk.tracking.recorder import _metric_items
 
 
 @pytest.fixture(autouse=True)
@@ -54,7 +54,7 @@ def fuente_f1(tmp_path: Path) -> str:
 
 
 def _corrida_f1(fuente: str, *, min_rows_por_particion: int | None = None) -> Study:
-    """Corre el pipeline F1 completo por la puerta pública ``nikodym.run``."""
+    """Corre el pipeline F1 completo por la puerta pública ``bayesrisk.run``."""
     config = full_f1_config(fuente)
     if min_rows_por_particion is not None:
         config = config.model_copy(
@@ -64,7 +64,7 @@ def _corrida_f1(fuente: str, *, min_rows_por_particion: int | None = None) -> St
                 )
             }
         )
-    return nikodym.run(config)
+    return bayesrisk.run(config)
 
 
 def _corrida_f1_con_estabilidad(fuente: str) -> Study:
@@ -91,7 +91,7 @@ def _corrida_f1_con_estabilidad(fuente: str) -> Study:
             "stability": StabilityConfig(psi_bins=2, csi_bins=2, temporal_axis="none"),
         }
     )
-    return nikodym.run(config)
+    return bayesrisk.run(config)
 
 
 # ─────────────────── 1. el canal se llena de verdad, sobre la puerta pública ───────────────────
@@ -127,7 +127,7 @@ def test_canal_se_llena_con_las_claves_declaradas_por_dominio(fuente_f1: str) ->
     for clave in metricas:
         dominio, _, nombre = clave.partition(".")
         assert is_declared_metric(dominio, nombre), (
-            f"'{clave}' no está declarada en nikodym.testing.metrics. Publicar una métrica que "
+            f"'{clave}' no está declarada en bayesrisk.testing.metrics. Publicar una métrica que "
             "nadie declaró la imprime en cada model card sin que ningún SDD la respalde."
         )
 
@@ -147,7 +147,7 @@ def test_borrar_el_productor_de_un_dominio_nombra_ese_dominio(
     Lo que se vigila no es «hubo un rojo» sino que el rojo IDENTIFICA al dominio mudo. Un gate que
     sólo dijera «faltan métricas» obligaría a bisecar ocho pasos para saber cuál dejó de producir.
     """
-    from nikodym.calibration.step import CalibrationStep
+    from bayesrisk.calibration.step import CalibrationStep
 
     monkeypatch.delattr(CalibrationStep, "metrics")
     study = _corrida_f1(fuente_f1, min_rows_por_particion=4)
@@ -202,12 +202,12 @@ def test_el_nucleo_rechaza_una_clave_con_punto_del_dominio(
 ) -> None:
     """El prefijo lo pone ``core``: un dominio que lo componga rompe la corrida (D-GOB-2).
 
-    Se comprueba sobre el ``Study`` devuelto y no con ``pytest.raises``: ``nikodym.run`` **captura**
-    el ``NikodymError`` y devuelve el estudio parcial con ``status="failed"`` (``api.py``), que es
-    el contrato público. Medido, no supuesto: exigir la excepción aquí habría dado un verde falso
-    sobre un camino que la puerta pública no recorre.
+    Se comprueba sobre el ``Study`` devuelto y no con ``pytest.raises``: ``bayesrisk.run``
+    **captura** el ``BayesRiskError`` y devuelve el estudio parcial con ``status="failed"``
+    (``api.py``), que es el contrato público. Medido, no supuesto: exigir la excepción aquí habría
+    dado un verde falso sobre un camino que la puerta pública no recorre.
     """
-    from nikodym.scorecard.step import ScorecardStep
+    from bayesrisk.scorecard.step import ScorecardStep
 
     monkeypatch.setattr(
         ScorecardStep,
@@ -360,7 +360,7 @@ def test_todo_dominio_orquestable_esta_clasificado() -> None:
     assert not sin_clasificar, (
         "Dominios orquestables que no declaran su lista de métricas ni su razón para no tenerla: "
         f"{sin_clasificar}. Añadirlos a DECLARED_METRICS o a DOMAINS_WITHOUT_METRICS "
-        "(nikodym/testing/metrics.py) con su motivo escrito."
+        "(bayesrisk/testing/metrics.py) con su motivo escrito."
     )
 
     solapados = set(DECLARED_METRICS) & set(DOMAINS_WITHOUT_METRICS)
@@ -418,7 +418,7 @@ def test_publicar_cero_en_lugar_de_la_ausencia_es_rojo(fuente_f1: str) -> None:
     trae ``None``— y comprueba que el gate anterior se pondría rojo. Sin este control, aquel test
     pasaría igual si alguien cambiara la omisión por un cero.
     """
-    from nikodym.performance.step import PerformanceStep
+    from bayesrisk.performance.step import PerformanceStep
 
     original = PerformanceStep.metrics
 
@@ -460,7 +460,7 @@ def test_nan_e_infinito_se_omiten_igual_que_la_ausencia(
     en una reducción de dominio), y ``governance`` lo rechazaría con ``GovernanceError`` en
     ejecución, así que la omisión tiene que estar vigilada aquí.
     """
-    from nikodym.model.step import ModelStep
+    from bayesrisk.model.step import ModelStep
 
     monkeypatch.setattr(
         ModelStep,
@@ -493,7 +493,7 @@ def test_un_valor_de_tipo_equivocado_no_se_silencia(
     nada sin que nadie se entere, mientras que ``governance`` levantaría después con un mensaje que
     no nombra al culpable. Aquí el error lo nombra.
     """
-    from nikodym.data.step import DataStep
+    from bayesrisk.data.step import DataStep
 
     monkeypatch.setattr(DataStep, "metrics", lambda self, study: {"n_rows": True})
     study = _corrida_f1(fuente_f1)

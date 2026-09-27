@@ -6,10 +6,10 @@ Dos contratos conviven aquí porque son el mismo defecto visto por sus dos caras
 —``discrete_hazard``, ``cox_aft`` y ``step``— y ``"desarrollo"``, dos. Comparar strings no sirve
 para vigilarlo: dos literales iguales pasan cualquier ``==`` y se separan en el momento en que
 alguien edita uno. Por eso los asserts son de **identidad** (``is``). Un segundo bloque ata
-``survival`` a ``nikodym.data.partition``, que es quien *escribe* la columna: ``survival`` no puede
-importarla en top-level sin arrastrar pandas a su grafo de importación (ver el docstring de
-``nikodym.survival.partition``), así que la atadura se paga aquí, donde importar pandas es gratis, y
-se mide en los dos sentidos.
+``survival`` a ``bayesrisk.data.partition``, que es quien *escribe* la columna: ``survival`` no
+puede importarla en top-level sin arrastrar pandas a su grafo de importación (ver el docstring de
+``bayesrisk.survival.partition``), así que la atadura se paga aquí, donde importar pandas es gratis,
+y se mide en los dos sentidos.
 
 **Alcance del ajuste.** ``_fit_mask`` tenía **dos** salidas mudas —sin columna de partición, y con
 columna pero sin ninguna fila ``desarrollo``— y las dos ajustaban sobre la población completa. La
@@ -27,21 +27,21 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nikodym.data.partition import PARTITION_COL as DATA_PARTITION_COL
-from nikodym.data.partition import Partition
-from nikodym.survival import cox_aft as cox_module
-from nikodym.survival import discrete_hazard as dh_module
-from nikodym.survival import partition as partition_module
-from nikodym.survival import step as step_module
-from nikodym.survival.config import (
+from bayesrisk.data.partition import PARTITION_COL as DATA_PARTITION_COL
+from bayesrisk.data.partition import Partition
+from bayesrisk.survival import cox_aft as cox_module
+from bayesrisk.survival import discrete_hazard as dh_module
+from bayesrisk.survival import partition as partition_module
+from bayesrisk.survival import step as step_module
+from bayesrisk.survival.config import (
     CoxAftConfig,
     SurvivalConfig,
     SurvivalInputConfig,
 )
-from nikodym.survival.cox_aft import AFTSurvivalModel, CoxPHSurvivalModel
-from nikodym.survival.discrete_hazard import DiscreteTimeHazardModel
-from nikodym.survival.exceptions import SurvivalInputError
-from nikodym.survival.partition import (
+from bayesrisk.survival.cox_aft import AFTSurvivalModel, CoxPHSurvivalModel
+from bayesrisk.survival.discrete_hazard import DiscreteTimeHazardModel
+from bayesrisk.survival.exceptions import SurvivalInputError
+from bayesrisk.survival.partition import (
     PARTITION_COL,
     PARTITION_DESARROLLO,
     SCOPE_DESARROLLO,

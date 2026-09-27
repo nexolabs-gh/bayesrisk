@@ -18,13 +18,13 @@ import pandas as pd
 import pytest
 from scipy import stats
 
-import nikodym.validation.backtesting as bt
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.validation.backtesting import (
+import bayesrisk.validation.backtesting as bt
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.validation.backtesting import (
     binomial_realised_vs_predicted,
     ttest_realised_vs_predicted,
 )
-from nikodym.validation.exceptions import BacktestError, ValidationDataError
+from bayesrisk.validation.exceptions import BacktestError, ValidationDataError
 
 # ─────────────────────────── t-test LGD/EAD ────────────────────────────
 
@@ -320,14 +320,14 @@ def test_ttest_error_accionable_si_falta_scipy(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr(bt.importlib, "import_module", fake_import)
 
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[scoring\]"):
         ttest_realised_vs_predicted(np.array([0.5, 0.6, 0.7, 0.8]), np.full(4, 0.4))
 
 
 def test_import_backtesting_no_arrastra_scipy_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.validation.backtesting as bt;"
+        "import bayesrisk.validation.backtesting as bt;"
         "blocked=[m for m in ('scipy','sklearn','statsmodels') if m in sys.modules];"
         "assert not blocked, blocked;"
         "assert callable(bt.ttest_realised_vs_predicted);"

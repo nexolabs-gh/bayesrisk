@@ -1,15 +1,15 @@
 # Política de seguridad
 
-Nikodym se usa para calcular provisiones y evaluar riesgo de crédito en instituciones financieras.
+bayesrisk se usa para calcular provisiones y evaluar riesgo de crédito en instituciones financieras.
 Un defecto de seguridad —o un error de cálculo silencioso— puede tener consecuencias regulatorias
 para quien lo usa. Tomamos los reportes en serio y agradecemos que nos los hagan llegar.
 
 ## Cómo reportar una vulnerabilidad
 
 **No abras un issue público** para un problema de seguridad. Escríbenos a **admin@nxlabs.cl** con
-el asunto `[seguridad] nikodym`, incluyendo:
+el asunto `[seguridad] bayesrisk`, incluyendo:
 
-- la versión de `nikodym` y de Python,
+- la versión de `bayesrisk` y de Python,
 - qué observaste y cómo reproducirlo (idealmente un fragmento de código mínimo),
 - por qué crees que tiene impacto de seguridad.
 
@@ -44,7 +44,7 @@ hay soporte retroactivo de versiones anteriores: la vía de corrección es actua
 **Dentro de alcance**: ejecución de código no deseada al procesar un config, un dataset o un
 artefacto de corrida; escritura fuera del `workdir` declarado; filtración de datos del usuario en
 artefactos que se comparten (informe, export, logs); dependencias con vulnerabilidades conocidas
-que Nikodym alcance en un flujo real.
+que bayesrisk alcance en un flujo real.
 
 **Fuera de alcance**: la capa opcional de narración por IA cuando el usuario la habilita y le
 entrega su propia clave (esos datos salen hacia el proveedor que el usuario eligió; la prosa del
@@ -53,7 +53,7 @@ a partir de los resultados, que requieren validación humana —el propio inform
 
 ## Nota sobre datos
 
-Nikodym es una librería: **corre dentro de tu infraestructura y no envía tus datos a ninguna
+bayesrisk es una librería: **corre dentro de tu infraestructura y no envía tus datos a ninguna
 parte**. El paquete no contiene telemetría de ningún tipo, y el pipeline de cálculo no abre
 conexiones de red por sí solo.
 

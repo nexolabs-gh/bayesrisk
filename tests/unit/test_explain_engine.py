@@ -19,10 +19,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.explain.config import ExplainConfig
-from nikodym.explain.engine import ExplanationBundle, UnifiedExplainer
-from nikodym.explain.exceptions import ExplainDataError, ExplainExplainerError
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.explain.config import ExplainConfig
+from bayesrisk.explain.engine import ExplanationBundle, UnifiedExplainer
+from bayesrisk.explain.exceptions import ExplainDataError, ExplainExplainerError
 
 
 # ── fakes de shap y del challenger ───────────────────────────────────────────────────────────────
@@ -562,9 +562,9 @@ def test_explanation_bundle_defaults() -> None:
 
 
 def test_import_engine_liviano_no_arrastra_shap_ni_tabulares() -> None:
-    """``import nikodym.explain.engine`` no arrastra shap/matplotlib/sklearn/pandas/numpy."""
+    """``import bayesrisk.explain.engine`` no arrastra shap/matplotlib/sklearn/pandas/numpy."""
     code = (
-        "import nikodym.explain.engine, sys;"
+        "import bayesrisk.explain.engine, sys;"
         "bloqueados=[m for m in ('shap','matplotlib','sklearn','pandas','numpy') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados"

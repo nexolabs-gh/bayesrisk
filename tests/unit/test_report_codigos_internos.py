@@ -23,13 +23,13 @@ from typing import Any, Final
 
 import pytest
 
-from nikodym.core.lineage import LineageBundle
-from nikodym.core.markers import DECLARED_MARKERS
-from nikodym.report.builder import ReportBuilder
-from nikodym.report.config import ReportConfig
-from nikodym.report.prose import _DECLARED_WARNING_SIN_TEXTO, _declared_warning_prose
-from nikodym.report.renderer import HtmlReportRenderer
-from nikodym.report.results import ReportInputBundle
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.core.markers import DECLARED_MARKERS
+from bayesrisk.report.builder import ReportBuilder
+from bayesrisk.report.config import ReportConfig
+from bayesrisk.report.prose import _DECLARED_WARNING_SIN_TEXTO, _declared_warning_prose
+from bayesrisk.report.renderer import HtmlReportRenderer
+from bayesrisk.report.results import ReportInputBundle
 
 #: Cualquiera de las dos marcas, con o sin sufijo de familia. Mismo criterio que el gate de docs:
 #: la marca pelada cuenta, porque «declaradas como FALTA-DATO» es igual de opaco para el lector.
@@ -79,7 +79,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "1.11.0"},
+        library_versions={"bayesrisk": "1.11.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 8, 26, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",
@@ -160,7 +160,7 @@ def test_no_queda_ningun_codigo_val_retirado_en_el_motor() -> None:
     documentar un código que ya no se emite."""
     from pathlib import Path
 
-    paquete = Path(__file__).resolve().parents[2] / "src" / "nikodym"
+    paquete = Path(__file__).resolve().parents[2] / "src" / "bayesrisk"
     retirados = re.compile(r"FALTA-DATO-VAL-[123]\b")
     ofensores = [
         f"{modulo.relative_to(paquete)}:{n}"
@@ -259,9 +259,9 @@ def test_la_misma_frase_repetida_no_se_duplica(informe: str) -> None:
 
 
 def test_la_ficha_del_modelo_no_imprime_tags_ni_slugs_de_gobernanza() -> None:
-    """D-SC-15: los tags `nikodym.*`, «SR 11-7», «effective challenge» y los `Literal` de
+    """D-SC-15: los tags `bayesrisk.*`, «SR 11-7», «effective challenge» y los `Literal` de
     `motor`/`fase`/`estado_validacion` no llegan crudos a la prosa del capítulo nuevo."""
-    from nikodym.report.results import GovernanceDeclaration
+    from bayesrisk.report.results import GovernanceDeclaration
 
     cfg = ReportConfig(sections={"missing_policy": "skip"})
     bundle = ReportInputBundle(
@@ -283,7 +283,7 @@ def test_la_ficha_del_modelo_no_imprime_tags_ni_slugs_de_gobernanza() -> None:
     bundle = bundle.model_copy(update={"sections": ReportBuilder(cfg).build_sections(bundle)})
     html = HtmlReportRenderer(cfg).render(bundle)
     capitulo = next(s for s in _cuerpo(html) if 'data-section-id="model_card"' in s)
-    for crudo in ("nikodym.", "SR 11-7", "effective challenge", "en_validacion", "originacion"):
+    for crudo in ("bayesrisk.", "SR 11-7", "effective challenge", "en_validacion", "originacion"):
         assert crudo not in capitulo, crudo
     for palabra in ("provisiones IFRS 9", "originación", "en validación"):
         assert palabra in capitulo, palabra

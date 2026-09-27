@@ -1,15 +1,15 @@
 # Provisiones sin normativa local
 
-Nikodym trae un motor de provisiones que **no conoce ninguna tabla de supervisor**. Calcula la
+bayesrisk trae un motor de provisiones que **no conoce ninguna tabla de supervisor**. Calcula la
 pérdida esperada sobre los grupos que tú defines, con tu probabilidad de incumplimiento y tu
 severidad, y publica el resultado con trazabilidad completa.
 
 Esta guía lo demuestra corriendo, de punta a punta, sin una sola línea de norma de ningún país.
 
-!!! note "Estabilidad (SemVer 1.x)"
+!!! note "Estabilidad (SemVer 2.x)"
     La sección `provisioning_internal` es **experimental**, igual que el resto de provisiones del
     paquete: está implementada, testeada y con preset e informe propios, pero queda **fuera de la
-    garantía SemVer 1.x** —el contrato puede crecer o cambiar antes de una versión 2.0—. La parte estable
+    garantía SemVer 2.x** —el contrato puede crecer o cambiar antes de una versión 3.0—. La parte estable
     del camino es el pipeline de scorecard F1 que produce la PD.
 
 ## Qué hace y qué no
@@ -58,24 +58,24 @@ ninguna norma define.
 ```python
 from pathlib import Path
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.ui.datasets import materialize
-from nikodym.ui.presets import get_preset
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.ui.datasets import materialize
+from bayesrisk.ui.presets import get_preset
 
 preset = get_preset("f5-provision-interna-generica")
 config = dict(preset["config"])
 
 # El preset no trae ruta de datos: apúntala a tu archivo (.csv, .parquet o .xlsx).
 # Aquí se materializa el conjunto de ejemplo del propio catálogo.
-origen = materialize(preset["dataset_id"], workdir=Path("nikodym-runs"))
+origen = materialize(preset["dataset_id"], workdir=Path("bayesrisk-runs"))
 config["data"] = {**config["data"], "load": {**config["data"]["load"], "source": str(origen)}}
 
 # `run_dir` es donde queda la evidencia de la corrida: el audit-trail, el entorno y —si
 # declaras la sección `governance`— el model card. Sin él la corrida no escribe nada.
-study = nikodym.run(
-    NikodymConfig.model_validate(config),
-    run_dir=Path("nikodym-runs") / "provision-interna",
+study = bayesrisk.run(
+    BayesRiskConfig.model_validate(config),
+    run_dir=Path("bayesrisk-runs") / "provision-interna",
 )
 
 card = study.artifacts.get("provisioning_internal", "card")
@@ -104,7 +104,7 @@ en el documento, así que si las quieres completas hay que pedirlas: añade `csv
 descarga de la interfaz—.
 
 El informe **no nombra ninguna jurisdicción**, y tampoco afirma una moneda que no le hayas
-declarado. Si quieres que la publique, decláralo en el config antes de `nikodym.run(...)`:
+declarado. Si quieres que la publique, decláralo en el config antes de `bayesrisk.run(...)`:
 
 <!-- provision-neutra-moneda:start -->
 ```python
@@ -128,13 +128,13 @@ columna**.
     Si tu supervisor exige constituir el **máximo** entre su método estándar y el método interno,
     esa comparación **hoy no es expresable en la configuración**. El comparador de provisiones sólo
     admite como fuentes los tres motores que trae el paquete
-    (`ProvisioningSource`, `src/nikodym/provisioning/config.py:64`) y además exige que las dos sean
+    (`ProvisioningSource`, `src/bayesrisk/provisioning/config.py:64`) y además exige que las dos sean
     **distintas**, así que no hay forma de apuntar una de ellas a un cálculo tuyo. La salida es
-    correr el método interno con Nikodym, calcular tu método estándar por fuera y quedarte con el
+    correr el método interno con bayesrisk, calcular tu método estándar por fuera y quedarte con el
     máximo en tu propio proceso —con la salvedad del recuadro de arriba: ese último paso no queda
     en el rastro de auditoría del informe—.
 
-Si prefieres no hacer ese trabajo, lo hace **Nexo Labs** como integración. La librería
+Si prefieres no hacer ese trabajo, lo hace **Bayes Advisory** como integración. La librería
 seguirá siendo gratuita y completa: lo que se paga es el aterrizaje, no el motor.
 
 !!! note "¿Y si mi país necesita un motor propio?"

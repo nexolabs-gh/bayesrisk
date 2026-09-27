@@ -6,10 +6,10 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from nikodym.core.exceptions import DataValidationError
-from nikodym.data import schema as schema_module
-from nikodym.data.config import ColumnSpec, SchemaConfig
-from nikodym.data.schema import SchemaValidator
+from bayesrisk.core.exceptions import DataValidationError
+from bayesrisk.data import schema as schema_module
+from bayesrisk.data.config import ColumnSpec, SchemaConfig
+from bayesrisk.data.schema import SchemaValidator
 
 
 def _cfg(*columns: ColumnSpec, **kwargs: object) -> SchemaConfig:

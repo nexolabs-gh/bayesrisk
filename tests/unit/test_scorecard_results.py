@@ -12,14 +12,14 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.scorecard.results as scorecard_results
-from nikodym.scorecard.config import (
+import bayesrisk.scorecard.results as scorecard_results
+from bayesrisk.scorecard.config import (
     RoundingMethod as ConfigRoundingMethod,
 )
-from nikodym.scorecard.config import (
+from bayesrisk.scorecard.config import (
     ScoreDirection as ConfigScoreDirection,
 )
-from nikodym.scorecard.results import (
+from bayesrisk.scorecard.results import (
     ScorecardBinPoint,
     ScorecardCardSection,
     ScorecardResult,
@@ -195,7 +195,7 @@ def test_scorecard_result_valida_consistencia_y_dataframe() -> None:
 def test_scorecard_results_lazy_exports_y_nucleo_liviano_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.scorecard as scorecard;"
+        "import bayesrisk.scorecard as scorecard;"
         "blocked=[m for m in ('pandas','statsmodels','sklearn','scipy','optbinning') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"

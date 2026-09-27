@@ -28,9 +28,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.provisioning.ifrs9.engine as engine_module
-from nikodym.provisioning.ifrs9 import IfrsProvisioningEngine, LgdEngine
-from nikodym.provisioning.ifrs9.config import (
+import bayesrisk.provisioning.ifrs9.engine as engine_module
+from bayesrisk.provisioning.ifrs9 import IfrsProvisioningEngine, LgdEngine
+from bayesrisk.provisioning.ifrs9.config import (
     IfrsEadConfig,
     IfrsLgdConfig,
     IfrsPdConfig,
@@ -38,12 +38,12 @@ from nikodym.provisioning.ifrs9.config import (
     IfrsScenarioConfig,
     IfrsStagingConfig,
 )
-from nikodym.provisioning.ifrs9.exceptions import (
+from bayesrisk.provisioning.ifrs9.exceptions import (
     IfrsEclError,
     IfrsLgdError,
     IfrsStagingError,
 )
-from nikodym.provisioning.ifrs9.results import IfrsProvisionResult
+from bayesrisk.provisioning.ifrs9.results import IfrsProvisionResult
 
 
 def _frame(**overrides: Any) -> pd.DataFrame:

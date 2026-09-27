@@ -1,4 +1,4 @@
-"""Tests de ``TuningConfig`` (SDD-13 §5) e integración con ``NikodymConfig``.
+"""Tests de ``TuningConfig`` (SDD-13 §5) e integración con ``BayesRiskConfig``.
 
 Cubre defaults golden, validaciones de determinismo/pruner, la resolución del espacio de búsqueda
 contra el backend de ``ml`` (cross-check de claves y tipos), el movimiento aditivo del
@@ -19,23 +19,23 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.tuning as tuning_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.tuning as tuning_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.ml.config import MLConfig
-from nikodym.tuning import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.ml.config import MLConfig
+from bayesrisk.tuning import (
     TuningConfig,
     TuningObjectiveConfig,
     TuningSamplerConfig,
     TuningValidationConfig,
 )
-from nikodym.tuning.config import _kinds_admitidos
-from nikodym.tuning.exceptions import TuningConfigError, TuningSearchSpaceError
-from nikodym.tuning.search_space import (
+from bayesrisk.tuning.config import _kinds_admitidos
+from bayesrisk.tuning.exceptions import TuningConfigError, TuningSearchSpaceError
+from bayesrisk.tuning.search_space import (
     CategoricalSpec,
     FloatSpec,
     IntSpec,
@@ -291,45 +291,45 @@ def test_config_random_forest_n_trials_bajo() -> None:
     }
 
 
-# ─────────────────────────── integración con NikodymConfig ───────────────────────────
+# ─────────────────────────── integración con BayesRiskConfig ───────────────────────────
 
 
-def test_nikodymconfig_tuning_instancia_pasa() -> None:
+def test_bayesriskconfig_tuning_instancia_pasa() -> None:
     """Una instancia `TuningConfig` se acepta y queda tipada."""
-    cfg = NikodymConfig(tuning=TuningConfig())
+    cfg = BayesRiskConfig(tuning=TuningConfig())
     assert isinstance(cfg.tuning, TuningConfig)
 
 
-def test_nikodymconfig_tuning_dict_coacciona() -> None:
+def test_bayesriskconfig_tuning_dict_coacciona() -> None:
     """Con el hook poblado, un dict se coacciona a TuningConfig."""
-    cfg = NikodymConfig(tuning={"optimizer": {"n_trials": 10}})
+    cfg = BayesRiskConfig(tuning={"optimizer": {"n_trials": 10}})
     assert isinstance(cfg.tuning, TuningConfig)
     assert cfg.tuning.optimizer.n_trials == 10
 
 
-def test_nikodymconfig_tuning_none_explicito() -> None:
+def test_bayesriskconfig_tuning_none_explicito() -> None:
     """`tuning=None` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(tuning=None).tuning is None
+    assert BayesRiskConfig(tuning=None).tuning is None
 
 
-def test_nikodymconfig_tuning_core_only_acepta_blob_json(
+def test_bayesriskconfig_tuning_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, `tuning` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_TUNING_CONFIG_CLS", None)
-    cfg = NikodymConfig(tuning={"optimizer": {"n_trials": 25}})
+    cfg = BayesRiskConfig(tuning={"optimizer": {"n_trials": 25}})
     assert cfg.tuning == {"optimizer": {"n_trials": 25}}
 
 
 @pytest.mark.parametrize("blob", [{"cols": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_tuning_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_tuning_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, `tuning` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_TUNING_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(tuning=blob)
+        BayesRiskConfig(tuning=blob)
 
 
 # ─────────────────────────── config_hash ───────────────────────────
@@ -337,18 +337,18 @@ def test_nikodymconfig_tuning_core_only_rechaza_json_no_canonico(
 
 def test_config_hash_default_con_tuning_none_golden() -> None:
     """El golden por defecto incluye la clave computacional `tuning=None`."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_config_hash_se_movio_por_seccion_tuning() -> None:
     """Añadir `tuning` movió el golden respecto al valor previo (no es regresión)."""
     assert GOLDEN_DEFAULT_CONFIG_HASH != GOLDEN_PREVIO_SIN_TUNING
-    assert config_hash(NikodymConfig()) != GOLDEN_PREVIO_SIN_TUNING
+    assert config_hash(BayesRiskConfig()) != GOLDEN_PREVIO_SIN_TUNING
 
 
 def test_config_hash_es_puramente_aditivo_sobre_tuning() -> None:
     """Quitar `tuning:null` y `explain:null` (B14.1) reproduce el hash previo (aditivo)."""
-    payload = NikodymConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
+    payload = BayesRiskConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
     assert payload["tuning"] is None
     assert payload["explain"] is None
     del payload["tuning"]
@@ -375,8 +375,8 @@ def test_tuning_no_esta_en_infra_sections() -> None:
 )
 def test_cambiar_tuning_mueve_config_hash(tuning: TuningConfig) -> None:
     """Cambiar sampler/n_trials/métrica/espacio mueve el config_hash global (computacional)."""
-    base = config_hash(NikodymConfig())
-    variado = config_hash(NikodymConfig(tuning=tuning))
+    base = config_hash(BayesRiskConfig())
+    variado = config_hash(BayesRiskConfig(tuning=tuning))
     assert variado != base
 
 
@@ -399,17 +399,17 @@ def test_round_trip_yaml_preserva_tuning() -> None:
 
 
 def test_import_tuning_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """`import nikodym.tuning` registra el hook sin arrastrar optuna/ML/tabulares."""
+    """`import bayesrisk.tuning` registra el hook sin arrastrar optuna/ML/tabulares."""
     code = (
-        "import nikodym.tuning, nikodym.core, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.tuning import TuningConfig;"
+        "import bayesrisk.tuning, bayesrisk.core, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.tuning import TuningConfig;"
         "bloqueados=[m for m in "
         "('optuna','numpy','pandas','scipy','sklearn','xgboost','lightgbm','catboost',"
-        "'nikodym.ml','nikodym.tuning.results') "
+        "'bayesrisk.ml','bayesrisk.tuning.results') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(tuning={'optimizer': {'n_trials': 7}});"
+        "cfg=BayesRiskConfig(tuning={'optimizer': {'n_trials': 7}});"
         "assert isinstance(cfg.tuning, TuningConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -418,11 +418,11 @@ def test_import_tuning_liviano_y_registra_hook_en_proceso_fresco() -> None:
 def test_core_valida_tuning_como_blob_opaco_sin_importar_la_capa() -> None:
     """El core acepta `tuning` JSON/dict sin importar la capa de tuning."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(tuning={'optimizer': {'n_trials': 7}});"
+        "cfg=BayesRiskConfig(tuning={'optimizer': {'n_trials': 7}});"
         "assert cfg.tuning == {'optimizer': {'n_trials': 7}};"
-        "assert 'nikodym.tuning' not in sys.modules"
+        "assert 'bayesrisk.tuning' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 

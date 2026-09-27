@@ -1,4 +1,4 @@
-"""Tests de ``ScorecardConfig`` (SDD-09 §5) y su integración con ``NikodymConfig``."""
+"""Tests de ``ScorecardConfig`` (SDD-09 §5) y su integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -12,23 +12,23 @@ import yaml
 from hypothesis import given, settings
 from pydantic import ValidationError
 
-import nikodym.scorecard  # importa la capa: puebla el hook _SCORECARD_CONFIG_CLS
-from nikodym.core.config import (
+import bayesrisk.scorecard  # importa la capa: puebla el hook _SCORECARD_CONFIG_CLS
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import ConfigError
-from nikodym.scorecard.config import PointOverrideConfig, ScorecardConfig
-from nikodym.scorecard.exceptions import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.scorecard.config import PointOverrideConfig, ScorecardConfig
+from bayesrisk.scorecard.exceptions import (
     ScorecardError,
     ScorecardFitError,
     ScorecardTransformError,
 )
-from nikodym.testing.strategies import _config_cls_for_domain, nikodym_config_strategy
+from bayesrisk.testing.strategies import _config_cls_for_domain, bayesrisk_config_strategy
 
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 
@@ -90,45 +90,45 @@ def test_round_trip_yaml_scorecardconfig() -> None:
     assert ScorecardConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_scorecard_instancia() -> None:
-    """Pasar una instancia ``ScorecardConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_scorecard_instancia() -> None:
+    """Pasar una instancia ``ScorecardConfig`` a ``BayesRiskConfig`` la conserva."""
     scorecard = ScorecardConfig()
-    cfg = NikodymConfig(scorecard=scorecard)
+    cfg = BayesRiskConfig(scorecard=scorecard)
     assert isinstance(cfg.scorecard, ScorecardConfig)
     assert cfg.scorecard is scorecard
 
 
-def test_nikodymconfig_scorecard_dict_coacciona() -> None:
+def test_bayesriskconfig_scorecard_dict_coacciona() -> None:
     """Un dict en ``scorecard`` se coacciona a ``ScorecardConfig`` por el hook cargado."""
-    cfg = NikodymConfig(scorecard={"pdo": 25.0, "rounding_method": "none"})
+    cfg = BayesRiskConfig(scorecard={"pdo": 25.0, "rounding_method": "none"})
     assert isinstance(cfg.scorecard, ScorecardConfig)
     assert cfg.scorecard.pdo == 25.0
     assert cfg.scorecard.rounding_method == "none"
 
 
-def test_nikodymconfig_scorecard_none_explicito() -> None:
+def test_bayesriskconfig_scorecard_none_explicito() -> None:
     """``scorecard=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(scorecard=None).scorecard is None
+    assert BayesRiskConfig(scorecard=None).scorecard is None
 
 
-def test_nikodymconfig_scorecard_core_only_acepta_blob_json(
+def test_bayesriskconfig_scorecard_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``scorecard`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_SCORECARD_CONFIG_CLS", None)
-    cfg = NikodymConfig(scorecard={"pdo": 20.0, "target_odds": 50.0})
+    cfg = BayesRiskConfig(scorecard={"pdo": 20.0, "target_odds": 50.0})
     assert cfg.scorecard == {"pdo": 20.0, "target_odds": 50.0}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_scorecard_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_scorecard_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``scorecard`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_SCORECARD_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(scorecard=blob)
+        BayesRiskConfig(scorecard=blob)
 
 
 @pytest.mark.parametrize(
@@ -143,16 +143,16 @@ def test_nikodymconfig_scorecard_core_only_rechaza_json_no_canonico(
 )
 def test_config_hash_cambia_al_variar_scorecard(scorecard: ScorecardConfig) -> None:
     """``scorecard`` no es INFRA: escala, dirección y redondeo cambian la identidad."""
-    base = config_hash(NikodymConfig(scorecard=ScorecardConfig()))
-    variado = config_hash(NikodymConfig(scorecard=scorecard))
+    base = config_hash(BayesRiskConfig(scorecard=ScorecardConfig()))
+    variado = config_hash(BayesRiskConfig(scorecard=scorecard))
     assert "scorecard" not in INFRA_SECTIONS
     assert variado != base
 
 
 @settings(max_examples=12, deadline=None)
-@given(cfg=nikodym_config_strategy(sections=["scorecard"]))
-def test_nikodym_config_strategy_genera_configs_scorecard_validos(
-    cfg: NikodymConfig,
+@given(cfg=bayesrisk_config_strategy(sections=["scorecard"]))
+def test_bayesrisk_config_strategy_genera_configs_scorecard_validos(
+    cfg: BayesRiskConfig,
 ) -> None:
     """La estrategia pública genera configs raíz válidos con ``scorecard`` activo."""
     assert isinstance(cfg.scorecard, ScorecardConfig)
@@ -244,7 +244,7 @@ def test_campos_scorecard_tienen_metadatos_ui() -> None:
             assert {"ui_widget", "ui_group", "ui_order"} <= set(extra)
 
 
-def test_scorecard_errors_descienden_de_nikodym_error() -> None:
+def test_scorecard_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``scorecard`` cuelgan de la raíz propia de la capa."""
     for error_cls in (ScorecardError, ScorecardFitError, ScorecardTransformError):
         with pytest.raises(ScorecardError, match="fallo scorecard"):
@@ -252,28 +252,28 @@ def test_scorecard_errors_descienden_de_nikodym_error() -> None:
 
 
 def test_import_scorecard_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.scorecard`` registra el hook sin arrastrar scoring ni stack tabular."""
+    """``import bayesrisk.scorecard`` registra el hook sin arrastrar scoring ni stack tabular."""
     code = (
-        "import nikodym.scorecard, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.scorecard.config import ScorecardConfig;"
+        "import bayesrisk.scorecard, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.scorecard.config import ScorecardConfig;"
         "bloqueados=[m for m in ('statsmodels','sklearn','scipy','pandas','optbinning') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(scorecard={'pdo': 25.0});"
+        "cfg=BayesRiskConfig(scorecard={'pdo': 25.0});"
         "assert isinstance(cfg.scorecard, ScorecardConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_core_valida_scorecard_como_blob_opaco_sin_importar_scorecard() -> None:
-    """El core acepta ``scorecard`` JSON/dict sin importar ``nikodym.scorecard``."""
+    """El core acepta ``scorecard`` JSON/dict sin importar ``bayesrisk.scorecard``."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(scorecard={'pdo': 20.0});"
+        "cfg=BayesRiskConfig(scorecard={'pdo': 20.0});"
         "assert cfg.scorecard == {'pdo': 20.0};"
-        "assert 'nikodym.scorecard' not in sys.modules"
+        "assert 'bayesrisk.scorecard' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -282,22 +282,22 @@ def test_scorecard_getattr_desconocido_levanta_attributeerror() -> None:
     """La reexportación perezosa falla con ``AttributeError`` para nombres desconocidos."""
     atributo = "no_existe"
     with pytest.raises(AttributeError, match="no_existe"):
-        getattr(nikodym.scorecard, atributo)
+        getattr(bayesrisk.scorecard, atributo)
 
 
 def test_scorecard_getattr_carga_export_perezoso(monkeypatch: pytest.MonkeyPatch) -> None:
     """La ruta positiva de ``__getattr__`` carga y cachea un símbolo bajo demanda."""
     atributo = "ScorecardConfigLazy"
     monkeypatch.setitem(
-        nikodym.scorecard._LAZY_EXPORTS,
+        bayesrisk.scorecard._LAZY_EXPORTS,
         atributo,
-        ("nikodym.scorecard.config", "ScorecardConfig"),
+        ("bayesrisk.scorecard.config", "ScorecardConfig"),
     )
     try:
-        assert getattr(nikodym.scorecard, atributo) is ScorecardConfig
-        assert getattr(nikodym.scorecard, atributo) is ScorecardConfig
+        assert getattr(bayesrisk.scorecard, atributo) is ScorecardConfig
+        assert getattr(bayesrisk.scorecard, atributo) is ScorecardConfig
     finally:
-        monkeypatch.delattr(nikodym.scorecard, atributo, raising=False)
+        monkeypatch.delattr(bayesrisk.scorecard, atributo, raising=False)
 
 
 def test_config_cls_for_domain_resuelve_scorecard() -> None:
@@ -307,4 +307,4 @@ def test_config_cls_for_domain_resuelve_scorecard() -> None:
 
 def test_config_hash_default_con_scorecard_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``scorecard`` con valor None."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH

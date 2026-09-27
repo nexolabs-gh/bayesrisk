@@ -23,7 +23,7 @@ _DARWIN_RESOURCE_PROBE_UNSUPPORTED = pytest.mark.skipif(
 
 def _driver() -> ModuleType:
     path = Path(__file__).resolve().parents[2] / "scripts" / "measure_readiness_w1.py"
-    spec = importlib.util.spec_from_file_location("nikodym_readiness_w1_driver", path)
+    spec = importlib.util.spec_from_file_location("bayesrisk_readiness_w1_driver", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -42,12 +42,12 @@ class _FakeDistribution:
 def test_hash_metadata_compara_wheel_e_instalacion_y_detecta_drift(tmp_path: Path) -> None:
     driver = _driver()
     members = {
-        "nikodym/__init__.py": b"__version__ = '1.0'\n",
-        "nikodym-1.0.dist-info/METADATA": b"Name: nikodym\nVersion: 1.0\n",
-        "nikodym-1.0.dist-info/WHEEL": b"Wheel-Version: 1.0\n",
-        "nikodym-1.0.dist-info/licenses/LICENSE": b"Apache-2.0\n",
+        "bayesrisk/__init__.py": b"__version__ = '1.0'\n",
+        "bayesrisk-1.0.dist-info/METADATA": b"Name: bayesrisk\nVersion: 1.0\n",
+        "bayesrisk-1.0.dist-info/WHEEL": b"Wheel-Version: 1.0\n",
+        "bayesrisk-1.0.dist-info/licenses/LICENSE": b"Apache-2.0\n",
     }
-    wheel = tmp_path / "nikodym-1.0-py3-none-any.whl"
+    wheel = tmp_path / "bayesrisk-1.0-py3-none-any.whl"
     with zipfile.ZipFile(wheel, "w") as archive:
         for name, content in members.items():
             archive.writestr(name, content)
@@ -64,15 +64,15 @@ def test_hash_metadata_compara_wheel_e_instalacion_y_detecta_drift(tmp_path: Pat
     expected = driver._wheel_metadata_hash(wheel)
     assert driver._installed_metadata_hash(distribution) == expected
 
-    (install / "nikodym-1.0.dist-info" / "METADATA").write_text(
-        "Name: nikodym\nVersion: 9.9\n", encoding="utf-8"
+    (install / "bayesrisk-1.0.dist-info" / "METADATA").write_text(
+        "Name: bayesrisk\nVersion: 9.9\n", encoding="utf-8"
     )
     assert driver._installed_metadata_hash(distribution) != expected
 
 
-def test_driver_no_importa_nikodym_al_cargar() -> None:
+def test_driver_no_importa_bayesrisk_al_cargar() -> None:
     module = _driver()
-    assert "nikodym" not in module.__dict__
+    assert "bayesrisk" not in module.__dict__
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="API nativa específica de Windows")
@@ -151,7 +151,7 @@ def test_perfil_s2_conserva_contrato_h9_b_literal() -> None:
 def test_config_desactiva_cutoff_solo_para_x000_y_conserva_global(
     tmp_path: Path,
 ) -> None:
-    from nikodym.binning.transformer import WoEBinner, _build_binning_fit_params
+    from bayesrisk.binning.transformer import WoEBinner, _build_binning_fit_params
 
     driver = _driver()
     config = driver._config(driver.PROFILES["S0-smoke"], report_dir=tmp_path)
@@ -189,12 +189,12 @@ def test_override_x000_cruza_cutoff_real_y_conserva_special(
         import numpy as np
         import pandas as pd
 
-        from nikodym.binning.exceptions import BinningFitError
-        from nikodym.binning.transformer import WoEBinner
-        from nikodym.data.special import MaskedFrame
+        from bayesrisk.binning.exceptions import BinningFitError
+        from bayesrisk.binning.transformer import WoEBinner
+        from bayesrisk.data.special import MaskedFrame
 
         driver_path = Path(sys.argv[1])
-        spec = importlib.util.spec_from_file_location("nikodym_readiness_w1_fixture", driver_path)
+        spec = importlib.util.spec_from_file_location("bayesrisk_readiness_w1_fixture", driver_path)
         assert spec is not None and spec.loader is not None
         driver = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(driver)
@@ -288,7 +288,7 @@ def test_supervisor_s3_ejecucion_normal_atestigua_limites_y_capturas(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     driver = _driver()
-    monkeypatch.setenv("COV_CORE_SOURCE", "nikodym")
+    monkeypatch.setenv("COV_CORE_SOURCE", "bayesrisk")
     monkeypatch.setenv("COVERAGE_PROCESS_START", "configurada-por-el-runner")
     evidence = _run_probe(driver, tmp_path, "probe-normal")
 

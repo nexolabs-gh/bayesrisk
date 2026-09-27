@@ -5,20 +5,20 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any, cast
 
-from nikodym.data.config import MissingConfig
-from nikodym.report.prose import (
+from bayesrisk.data.config import MissingConfig
+from bayesrisk.report.prose import (
     conclusions_body,
     context_body,
     executive_view,
     methodology_body,
     results_body,
 )
-from nikodym.report.renderer import _band_class
-from nikodym.report.results import ReportInputBundle
-from nikodym.selection.config import SelectionConfig, StabilitySelectionConfig
-from nikodym.stability.config import StabilityConfig
-from nikodym.stability.results import BAND_LABELS
-from nikodym.validation.config import StabilityValidationConfig
+from bayesrisk.report.renderer import _band_class
+from bayesrisk.report.results import ReportInputBundle
+from bayesrisk.selection.config import SelectionConfig, StabilitySelectionConfig
+from bayesrisk.stability.config import StabilityConfig
+from bayesrisk.stability.results import BAND_LABELS
+from bayesrisk.validation.config import StabilityValidationConfig
 
 
 def _bundle(

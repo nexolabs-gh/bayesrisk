@@ -14,13 +14,13 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-import nikodym.report as report_pkg
-import nikodym.report.ai as ai_module
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.core.lineage import LineageBundle
-from nikodym.report.ai import AIClient, AINarrator, AIRequest, AIResponse, RuleBasedNarrator
-from nikodym.report.config import AiNarrationConfig
-from nikodym.report.results import ReportInputBundle, ReportSection
+import bayesrisk.report as report_pkg
+import bayesrisk.report.ai as ai_module
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.report.ai import AIClient, AINarrator, AIRequest, AIResponse, RuleBasedNarrator
+from bayesrisk.report.config import AiNarrationConfig
+from bayesrisk.report.results import ReportInputBundle, ReportSection
 
 _EXPECTED_SECTION_IDS: tuple[str, ...] = (
     "context",
@@ -368,17 +368,17 @@ def test_ai_narrator_env_con_sdk_ausente_lanza_missing_dependency(
     monkeypatch.setenv("ANTHROPIC_API_KEY", "key-test")
     monkeypatch.setattr(ai_module.importlib, "import_module", fake_import)
 
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[ai\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[ai\]"):
         AINarrator(
             AiNarrationConfig(enabled=True, provider="anthropic"),
         ).enrich(_bundle())
 
 
 def test_report_ai_lazy_exports_y_nucleo_liviano_por_subprocess() -> None:
-    """``import nikodym.report`` y sus exports IA no arrastran ``anthropic``."""
+    """``import bayesrisk.report`` y sus exports IA no arrastran ``anthropic``."""
     code = (
         "import sys;"
-        "import nikodym.report as report;"
+        "import bayesrisk.report as report;"
         "assert 'anthropic' not in sys.modules;"
         "assert all(name in report.__all__ for name in "
         "('AIClient','AIRequest','AIResponse','RuleBasedNarrator','AINarrator'));"
@@ -454,7 +454,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "0.1.0"},
+        library_versions={"bayesrisk": "0.1.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 6, 24, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",

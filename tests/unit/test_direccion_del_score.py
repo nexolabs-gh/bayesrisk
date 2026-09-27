@@ -26,14 +26,14 @@ from typing import Any
 
 import pytest
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.dataset_check import METODO_CONVENCION_SCORE, ContextoConfig, check_dataset
-from nikodym.core.exceptions import ConfigError
-from nikodym.performance.config import PerformanceConfig
-from nikodym.performance.step import PerformanceStep
-from nikodym.scorecard.config import ScorecardConfig
-from nikodym.stability.config import StabilityConfig
-from nikodym.stability.step import StabilityStep
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.dataset_check import METODO_CONVENCION_SCORE, ContextoConfig, check_dataset
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.performance.step import PerformanceStep
+from bayesrisk.scorecard.config import ScorecardConfig
+from bayesrisk.stability.config import StabilityConfig
+from bayesrisk.stability.step import StabilityStep
 
 _INVERSA = "higher_is_higher_risk"
 _DIRECTA = "higher_is_lower_risk"
@@ -80,7 +80,7 @@ def test_el_contexto_transporta_la_orientacion_sin_interpretarla() -> None:
 
 
 def _requisitos_de_direccion(
-    config: NikodymConfig, columnas: tuple[frozenset[str], tuple[str, ...]]
+    config: BayesRiskConfig, columnas: tuple[frozenset[str], tuple[str, ...]]
 ) -> list[str]:
     """Los avisos de orientación que el preflight emite, por su ruta."""
     nombres, indices = columnas
@@ -99,7 +99,7 @@ def test_el_preflight_avisa_antes_de_correr(
     """Cara positiva: con la tarjeta activa y la sección al revés, se avisa en la pantalla."""
     crudo = copy.deepcopy(preset_f1)
     crudo[seccion]["score_direction"] = _INVERSA
-    config = NikodymConfig.model_validate(crudo)
+    config = BayesRiskConfig.model_validate(crudo)
 
     assert _requisitos_de_direccion(config, columnas_f1) == [f"{seccion}.score_direction"]
 
@@ -108,7 +108,7 @@ def test_el_preflight_calla_cuando_las_tres_coinciden(
     preset_f1: dict[str, Any], columnas_f1: tuple[frozenset[str], tuple[str, ...]]
 ) -> None:
     """Un aviso que se dispara de más se aprende a ignorar: el preset de fábrica no lo dispara."""
-    config = NikodymConfig.model_validate(copy.deepcopy(preset_f1))
+    config = BayesRiskConfig.model_validate(copy.deepcopy(preset_f1))
     assert _requisitos_de_direccion(config, columnas_f1) == []
 
 
@@ -127,7 +127,7 @@ def test_el_preflight_calla_sin_tarjeta_activa(
         crudo[apagada] = None
     crudo["performance"]["score_direction"] = _INVERSA
     crudo["stability"]["score_direction"] = _INVERSA
-    config = NikodymConfig.model_validate(crudo)
+    config = BayesRiskConfig.model_validate(crudo)
 
     assert _requisitos_de_direccion(config, columnas_f1) == []
 
@@ -136,7 +136,7 @@ def test_el_barrido_del_preflight_no_es_vacuo(
     preset_f1: dict[str, Any], columnas_f1: tuple[frozenset[str], tuple[str, ...]]
 ) -> None:
     """Un gate que recorre cero da verde y no prueba nada: pasó ya dos veces en este repo."""
-    config = NikodymConfig.model_validate(copy.deepcopy(preset_f1))
+    config = BayesRiskConfig.model_validate(copy.deepcopy(preset_f1))
     assert config.scorecard is not None
     assert config.performance is not None
     assert config.stability is not None
@@ -173,7 +173,7 @@ def test_la_guarda_detiene_solo_cuando_hay_ficha_que_contradecir(
     externos— el mismo config **no** se detiene. Es «Validar un modelo existente», y sin esta mitad
     el gate se pondría verde con el trabajo P2 roto.
 
-    ⚠️ Se ejercita el paso y no `nikodym.run`: **ajustar el binning real dentro de pytest tumba el
+    ⚠️ Se ejercita el paso y no `bayesrisk.run`: **ajustar el binning real dentro de pytest tumba el
     runner** —el solver de OptBinning revienta al cargar sus binarios nativos, crash duro y no
     fallo—, así que la corrida de punta a punta está medida fuera y anclada en §1.1 de la enmienda.
     """
@@ -255,7 +255,7 @@ def _frame_pd_calibrada() -> Any:
 
 def _ficha_scorecard(direccion: str) -> Any:
     """La ficha que publica el paso `scorecard`, con la orientación con que construyó el puntaje."""
-    from nikodym.scorecard.results import ScorecardCardSection
+    from bayesrisk.scorecard.results import ScorecardCardSection
 
     return ScorecardCardSection(
         pdo=20.0,
@@ -287,7 +287,7 @@ def _paso_y_study(
     La ficha se inyecta siempre con la orientación **directa**: es la tarjeta la que fija la verdad,
     y `direccion` es lo que la sección declara — que es donde vive la contradicción.
     """
-    from nikodym.core.study import Study
+    from bayesrisk.core.study import Study
 
     if seccion == "performance":
         cfg = PerformanceConfig(
@@ -298,7 +298,7 @@ def _paso_y_study(
             evaluation_source=evaluation_source,
         )
         step: Any = PerformanceStep.from_config(cfg)
-        study = Study(NikodymConfig(performance=cfg))
+        study = Study(BayesRiskConfig(performance=cfg))
     else:
         cfg_s = StabilityConfig(
             comparisons=("dev_vs_holdout",),
@@ -309,7 +309,7 @@ def _paso_y_study(
             include_pd_stability=False,
         )
         step = StabilityStep.from_config(cfg_s)
-        study = Study(NikodymConfig(stability=cfg_s))
+        study = Study(BayesRiskConfig(stability=cfg_s))
 
     study.artifacts.set("scorecard", "score", _frame_score())
     study.artifacts.set("calibration", "calibrated_pd_frame", _frame_pd_calibrada())
@@ -326,7 +326,7 @@ def _paso_y_study(
 @pytest.fixture(scope="module")
 def preset_f1() -> dict[str, Any]:
     """El config del preset F1 tal cual, sin dataset apuntado (basta para el preflight)."""
-    presets = pytest.importorskip("nikodym.ui.presets")
+    presets = pytest.importorskip("bayesrisk.ui.presets")
     return dict(presets.standard_preset()["config"])
 
 
@@ -338,9 +338,9 @@ def columnas_f1(tmp_path_factory: pytest.TempPathFactory) -> tuple[frozenset[str
     Arrow lista el índice como una columna más, y el preset saldría incompatible con su propio
     dataset. Por eso se usa `_columnas_del_parquet`, que separa índice de columnas.
     """
-    datasets = pytest.importorskip("nikodym.ui.datasets")
-    presets = pytest.importorskip("nikodym.ui.presets")
-    from nikodym.ui.routes import _columnas_del_parquet
+    datasets = pytest.importorskip("bayesrisk.ui.datasets")
+    presets = pytest.importorskip("bayesrisk.ui.presets")
+    from bayesrisk.ui.routes import _columnas_del_parquet
 
     workdir = tmp_path_factory.mktemp("dir-score")
     ruta = datasets.materialize(presets.standard_preset()["dataset_id"], workdir=workdir)

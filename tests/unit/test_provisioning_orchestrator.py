@@ -17,38 +17,38 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.provisioning.orchestrator as orch
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.provisioning import (
+import bayesrisk.provisioning.orchestrator as orch
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.provisioning import (
     ProvisioningConfig,
     ProvisioningOrchestrator,
     ProvisionOrchestrationResult,
 )
-from nikodym.provisioning.cmf.matrices import CmfMatrixBundle, load_cmf_matrices
-from nikodym.provisioning.cmf.results import (
+from bayesrisk.provisioning.cmf.matrices import CmfMatrixBundle, load_cmf_matrices
+from bayesrisk.provisioning.cmf.results import (
     CmfProvisionCard,
     CmfProvisionRecord,
     CmfProvisionResult,
 )
-from nikodym.provisioning.exceptions import (
+from bayesrisk.provisioning.exceptions import (
     ProvisioningAlignmentError,
     ProvisioningConfigError,
     ProvisioningCoverageError,
     ProvisioningInputError,
 )
-from nikodym.provisioning.ifrs9.results import (
+from bayesrisk.provisioning.ifrs9.results import (
     IfrsEclRecord,
     IfrsProvisionCard,
     IfrsProvisionResult,
     IfrsStageRecord,
 )
-from nikodym.provisioning.internal.results import (
+from bayesrisk.provisioning.internal.results import (
     InternalProvisionCard,
     InternalProvisionRecord,
     InternalProvisionResult,
 )
-from nikodym.provisioning.segmentation import SchemeOwner, SegmentationScheme
+from bayesrisk.provisioning.segmentation import SchemeOwner, SegmentationScheme
 
 # ─────────────────────────── goldens del máximo (SDD §11) ───────────────────────────
 

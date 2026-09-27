@@ -1,4 +1,4 @@
-# Índice maestro de diseño — Nikodym RiskLib
+# Índice maestro de diseño — bayesrisk (hasta la 1.20, nikodym)
 
 | | |
 |---|---|
@@ -1106,6 +1106,14 @@ por módulo bajo SDD-31, la primera
 > que nunca se parte en pantalla (**implementado**: 874 celdas partidas → 0), una caja de 1.920 px
 > en pantallas grandes y un celular sin desplazamiento lateral. Revierte la excepción de `1.4.0`
 > («las tablas conservan el punto: volcado técnico»). Dos pasadas de Codex, tope alcanzado.
+
+> **Enmienda del renombre (2026-09-27; aprobada por Cami: su prompt es la aprobación del diseño).**
+> [`_ENMIENDA-RENOMBRE-BAYESRISK.md`](_ENMIENDA-RENOMBRE-BAYESRISK.md), D-REN-1…12: la librería pasa
+> a llamarse `bayesrisk` 2.0.0 (equivalente funcional a nikodym 1.20.0) y `nikodym` 1.21.0 queda como
+> capa de compatibilidad congelada; la consultora, Bayes Advisory. Sustituye la opción C del
+> 2026-09-03. **Lectura de este índice y de los SDD históricos desde ese renombre:** toda ruta
+> `nikodym.<x>` que citen se lee `bayesrisk.<x>`, y `NikodymConfig` es `BayesRiskConfig`; los
+> documentos no se reescriben. Dos pasadas de Codex sobre el documento, tope alcanzado.
 
 ## Tandas de producción
 

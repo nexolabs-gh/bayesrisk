@@ -157,8 +157,8 @@ describe("canonicalProjection — lo que se escribe al activar (D-FX-8)", () => 
 
   it("baja recursivamente por los submodelos", () => {
     expect(
-      canonicalProjection({ html: { render_charts: con(true), theme: con("nikodym") } }),
-    ).toEqual({ html: { render_charts: true, theme: "nikodym" } })
+      canonicalProjection({ html: { render_charts: con(true), theme: con("bayesrisk") } }),
+    ).toEqual({ html: { render_charts: true, theme: "bayesrisk" } })
   })
 
   it("sin catálogo devuelve un objeto vacío, no un objeto inventado", () => {

@@ -25,11 +25,17 @@ from _ui_client import build_test_runtime, ui_client
 from _ui_f1 import failing_config, full_f1_config, write_behavior_parquet
 from fastapi.testclient import TestClient
 
-from nikodym.core.config import NikodymConfig, ReproConfig, config_hash, dump_config, loads_config
-from nikodym.core.config.effective_defaults import EFFECTIVE_DEFAULTS_VERSION
-from nikodym.ui import datasets as datasets_module
-from nikodym.ui.server import create_app
-from nikodym.ui.settings import UiConfig
+from bayesrisk.core.config import (
+    BayesRiskConfig,
+    ReproConfig,
+    config_hash,
+    dump_config,
+    loads_config,
+)
+from bayesrisk.core.config.effective_defaults import EFFECTIVE_DEFAULTS_VERSION
+from bayesrisk.ui import datasets as datasets_module
+from bayesrisk.ui.server import create_app
+from bayesrisk.ui.settings import UiConfig
 
 
 @pytest.fixture
@@ -56,11 +62,11 @@ def _patch_materialize(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(datasets_module, "materialize", materialize)
 
 
-def _f1_config() -> NikodymConfig:
+def _f1_config() -> BayesRiskConfig:
     """Config F1 (data→binning→model→scorecard→calibration) para el endpoint de validación."""
-    from nikodym.binning.config import BinningConfig
-    from nikodym.calibration.config import CalibrationConfig
-    from nikodym.data.config import (
+    from bayesrisk.binning.config import BinningConfig
+    from bayesrisk.calibration.config import CalibrationConfig
+    from bayesrisk.data.config import (
         CohortSplitConfig,
         ColumnSpec,
         DataConfig,
@@ -71,15 +77,15 @@ def _f1_config() -> NikodymConfig:
         SchemaConfig,
         TargetConfig,
     )
-    from nikodym.model.config import (
+    from bayesrisk.model.config import (
         IvContributionConfig,
         ModelConfig,
         SignPolicyConfig,
         StepwiseConfig,
     )
-    from nikodym.scorecard.config import ScorecardConfig
+    from bayesrisk.scorecard.config import ScorecardConfig
 
-    return NikodymConfig(
+    return BayesRiskConfig(
         repro=ReproConfig(seed=20_240_628),
         data=DataConfig(
             load=LoadingConfig(source="cartera.parquet"),
@@ -136,7 +142,7 @@ def test_endpoint_schema(client: TestClient) -> None:
         "effective_defaults",
         "disabled_methodology_values",
     }
-    assert cuerpo["section_order"] == list(NikodymConfig.model_fields)
+    assert cuerpo["section_order"] == list(BayesRiskConfig.model_fields)
     assert cuerpo["effective_defaults"]["version"] == EFFECTIVE_DEFAULTS_VERSION
     assert cuerpo["effective_defaults"]["sections"]["report"]["document"]["placeholders"] == {
         "has_default": True,
@@ -334,22 +340,22 @@ def test_import_ui_liviano_fastapi_perezoso() -> None:
         import sys
         from pathlib import Path
 
-        import nikodym
-        import nikodym.core.config
-        import nikodym.ui
-        import nikodym.ui.datasets
-        import nikodym.ui.settings
-        import nikodym.ui.routes
-        import nikodym.ui.server
+        import bayesrisk
+        import bayesrisk.core.config
+        import bayesrisk.ui
+        import bayesrisk.ui.datasets
+        import bayesrisk.ui.settings
+        import bayesrisk.ui.routes
+        import bayesrisk.ui.server
 
         # Importar la lógica pura (incluido server) NO arrastra fastapi/uvicorn (import perezoso).
         for m in ("fastapi", "uvicorn"):
             assert m not in sys.modules, "fuga tras imports puros: " + m
 
         # Recién construir la app trae fastapi.
-        from nikodym.ui.runtime import build_runtime
-        from nikodym.ui.server import create_app
-        from nikodym.ui.settings import UiConfig
+        from bayesrisk.ui.runtime import build_runtime
+        from bayesrisk.ui.server import create_app
+        from bayesrisk.ui.settings import UiConfig
         create_app(UiConfig(), build_runtime(port=8000, workdir=Path(".")))
         assert "fastapi" in sys.modules, "create_app no cargó fastapi"
         print("ok")
@@ -469,13 +475,13 @@ def test_report_pdf_presente_200_application_pdf(client_tmp: TestClient, tmp_pat
     run_id = "b" * 32
     run_dir = tmp_path / "runs" / run_id
     run_dir.mkdir(parents=True)
-    (run_dir / "report.pdf").write_bytes(b"%PDF-1.7 nikodym")
+    (run_dir / "report.pdf").write_bytes(b"%PDF-1.7 bayesrisk")
 
     respuesta = client_tmp.get(f"/api/report/{run_id}/pdf")
     assert respuesta.status_code == 200
     assert respuesta.headers["content-type"].startswith("application/pdf")
     assert respuesta.headers["content-disposition"] == 'attachment; filename="reporte-modelo.pdf"'
-    assert respuesta.content == b"%PDF-1.7 nikodym"
+    assert respuesta.content == b"%PDF-1.7 bayesrisk"
 
 
 def test_report_pdf_sin_reporte_404(client_tmp: TestClient) -> None:
@@ -540,7 +546,7 @@ def test_report_docx_presente_200_ooxml(client_tmp: TestClient, tmp_path: Path) 
     run_id = "d" * 32
     run_dir = tmp_path / "runs" / run_id
     run_dir.mkdir(parents=True)
-    (run_dir / "report.docx").write_bytes(b"PK\x03\x04 nikodym")
+    (run_dir / "report.docx").write_bytes(b"PK\x03\x04 bayesrisk")
 
     respuesta = client_tmp.get(f"/api/report/{run_id}/docx")
 
@@ -549,7 +555,7 @@ def test_report_docx_presente_200_ooxml(client_tmp: TestClient, tmp_path: Path) 
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
     assert respuesta.headers["content-disposition"] == 'attachment; filename="reporte-modelo.docx"'
-    assert respuesta.content == b"PK\x03\x04 nikodym"
+    assert respuesta.content == b"PK\x03\x04 bayesrisk"
 
 
 def test_eda_default_rate_presente_200_csv(client_tmp: TestClient, tmp_path: Path) -> None:

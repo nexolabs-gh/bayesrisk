@@ -168,14 +168,14 @@ export interface BinningResult {
 
 /**
  * Banda diagnóstica del IV (`IvBand` del backend). El slug es el dato; su palabra en español
- * la resuelve `ivBandLabel`, espejo de `nikodym.binning.results.IV_BAND_LABELS`.
+ * la resuelve `ivBandLabel`, espejo de `bayesrisk.binning.results.IV_BAND_LABELS`.
  */
 export type IvBand = "none" | "weak" | "medium" | "strong" | "suspicious"
 
 /**
  * Motivo de la decisión sobre una variable candidata (`SelectionDecisionReason` del backend).
  * `included` es el único que no excluye. Su palabra en español la resuelve `selectionReasonLabel`,
- * espejo de `nikodym.selection.results.REASON_LABELS`.
+ * espejo de `bayesrisk.selection.results.REASON_LABELS`.
  */
 export type SelectionDecisionReason =
   | "included"
@@ -359,7 +359,7 @@ export interface EdaResult {
 /**
  * Estado técnico agregado de la validación formal (`OverallStatus` del backend). El slug es el
  * dato; su palabra la resuelve `validationStatusLabel`, espejo de
- * `nikodym.validation.results.VALIDATION_STATUS_LABELS`.
+ * `bayesrisk.validation.results.VALIDATION_STATUS_LABELS`.
  */
 export type ValidationOverallStatus = "pass" | "warn" | "fail" | "not_evaluable"
 
@@ -377,7 +377,7 @@ export type ValidationDecision = "pass" | "fail" | "not_evaluable"
  * Por qué un Hosmer-Lemeshow quedó sin veredicto (`HlNotEvaluableReason` del backend, D-VAL-17):
  * la muestra entera bajo el mínimo, el grupo de PD más chico bajo el mínimo, un grupo degenerado
  * (vacío o con PD media 0/1) o un estadístico que desbordó con PD extremas. Su palabra la resuelve
- * `hlNotEvaluableReasonLabel`, espejo de `nikodym.validation.results.HL_NOT_EVALUABLE_REASON_LABELS`.
+ * `hlNotEvaluableReasonLabel`, espejo de `bayesrisk.validation.results.HL_NOT_EVALUABLE_REASON_LABELS`.
  */
 export type HlNotEvaluableReason =
   | "partition_below_min"
@@ -976,7 +976,7 @@ export interface InternalProvisioningResult {
 //
 // Dominio IFRS 9 / ECL de tres etapas (`provisioning_ifrs9`). Refleja el SHAPE REAL del preset
 // F4 `f4-ifrs9-retail` (verificado contra una corrida real serializada por `ui/serializers`).
-// Es EXPERIMENTAL (fuera de la garantía SemVer 1.x). Los MONTOS vienen SIN moneda a propósito
+// Es EXPERIMENTAL (fuera de la garantía SemVer 2.x). Los MONTOS vienen SIN moneda a propósito
 // (cartera genérica LatAm): la UI los formatea con un símbolo de moneda parametrizable, NO CLP
 // (ver `MONEY`/`formatMoney` en `results-format`). El serializer emite la clave `null` cuando el
 // dominio no corrió (p. ej. la corrida F3 de CMF/interno). La UI usa guard-por-presencia (CERO
@@ -1107,7 +1107,7 @@ export interface Ifrs9DetailRow {
  * `ecl_term_structure` y `detail_sample`. `sicr_triggers` mapea gatillo→conteo de operaciones.
  * `falta_dato` documenta los supuestos conocidos (p. ej. `FALTA-DATO-IFRS-4` = EAD constante por
  * período). `scenarios`/`scenario_weights`/`dependency_versions`/`metric_sections` se tipan laxos
- * (no explotados en detalle por la UI). EXPERIMENTAL: fuera de la garantía SemVer 1.x.
+ * (no explotados en detalle por la UI). EXPERIMENTAL: fuera de la garantía SemVer 2.x.
  */
 export interface Ifrs9ProvisioningResult {
   as_of_date: string

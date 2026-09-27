@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.core.markers import DECLARED_MARKERS
+from bayesrisk.core.markers import DECLARED_MARKERS
 
 #: Raíz del sitio público de mkdocs (`mkdocs.yml` → `docs_dir`).
 _DOCS_SITE = Path(__file__).resolve().parents[2] / "docs_site"
@@ -97,7 +97,7 @@ _CODIGO_CON_FAMILIA = re.compile(
 
 #: Raíz del paquete. Se barren sólo los `.py`: un `rglob` sobre todo `src/` tocaría el bundle
 #: minificado de `ui/static/assets/`, que devuelve ruido y ningún código legible.
-_PAQUETE = Path(__file__).resolve().parents[2] / "src" / "nikodym"
+_PAQUETE = Path(__file__).resolve().parents[2] / "src" / "bayesrisk"
 
 
 def _codigos_del_motor() -> set[str]:

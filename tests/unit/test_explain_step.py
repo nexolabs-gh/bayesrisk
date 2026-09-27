@@ -25,19 +25,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.core.study as study_module
-import nikodym.explain as explain_pkg
-import nikodym.explain.step as step_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig, config_hash
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.steps import ContextoDeResolucion
-from nikodym.core.study import Study
-from nikodym.explain.config import ExplainConfig, LocalScopeConfig, MLExplainerConfig
-from nikodym.explain.exceptions import ExplainConfigError, ExplainDataError
-from nikodym.explain.step import EXPLAIN_ARTIFACTS, ExplainStep
-from nikodym.ml.config import MLConfig
+import bayesrisk.core.study as study_module
+import bayesrisk.explain as explain_pkg
+import bayesrisk.explain.step as step_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.steps import ContextoDeResolucion
+from bayesrisk.core.study import Study
+from bayesrisk.explain.config import ExplainConfig, LocalScopeConfig, MLExplainerConfig
+from bayesrisk.explain.exceptions import ExplainConfigError, ExplainDataError
+from bayesrisk.explain.step import EXPLAIN_ARTIFACTS, ExplainStep
+from bayesrisk.ml.config import MLConfig
 
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 _FEATURES = ("f0__woe", "f1__woe")
@@ -199,7 +199,7 @@ def _study(
 ) -> Study:
     """Construye un ``Study`` con el sink en memoria y los artefactos aguas arriba inyectados."""
     ml_cfg = MLConfig(feature_source=feature_source) if with_ml else None
-    study = Study(NikodymConfig(explain=explain_cfg, ml=ml_cfg))
+    study = Study(BayesRiskConfig(explain=explain_cfg, ml=ml_cfg))
     study.set_audit_sink(InMemoryAuditSink())
     woe = _woe_frame()
     study.artifacts.set("data", "labels", SimpleNamespace(target_col="target"))
@@ -255,25 +255,25 @@ def test_registro_contrato_orden_hash_e_import_liviano() -> None:
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order[order.index("ml") + 1] == "explain"
     assert order.index("explain") > order.index("scorecard")
-    assert study_module._DOMAIN_MODULES["explain"] == "nikodym.explain"
+    assert study_module._DOMAIN_MODULES["explain"] == "bayesrisk.explain"
     assert study_module._DOMAIN_CONFIG_CLASSES["explain"] == (
-        "nikodym.explain.config",
+        "bayesrisk.explain.config",
         "ExplainConfig",
     )
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
-    assert NikodymConfig().explain is None
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert BayesRiskConfig().explain is None
 
 
 def test_import_guard_no_arrastra_pesados() -> None:
-    """``import nikodym.explain`` no deja shap/matplotlib/numba/llvmlite/sklearn/pandas/numpy."""
+    """``import bayesrisk.explain`` no deja shap/matplotlib/numba/llvmlite/sklearn/pandas/numpy."""
     code = (
-        "import nikodym.core, sys;"
-        "assert 'nikodym.explain' not in sys.modules;"
-        "import nikodym.explain;"
+        "import bayesrisk.core, sys;"
+        "assert 'bayesrisk.explain' not in sys.modules;"
+        "import bayesrisk.explain;"
         "blocked=[m for m in ('shap','matplotlib','numba','llvmlite','sklearn','pandas','numpy') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'ExplainStep' in nikodym.explain.__all__"
+        "assert 'ExplainStep' in bayesrisk.explain.__all__"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -282,7 +282,7 @@ def test_emit_reenvia_al_sink() -> None:
     """``emit`` reenvía un evento al sink inyectado (el step puede actuar como AuditSink)."""
     from datetime import UTC, datetime
 
-    from nikodym.core.audit import AuditEvent
+    from bayesrisk.core.audit import AuditEvent
 
     step = ExplainStep.from_config(ExplainConfig())
     sink = InMemoryAuditSink()
@@ -434,7 +434,7 @@ def test_targets_ml_sin_shap_levanta_missing_dependency() -> None:
     """``targets='ml'`` sin el extra ``[explain]`` ⇒ ``MissingDependencyError`` con el extra."""
     sys.modules.pop("shap", None)
     study = _study(ExplainConfig(targets="ml"))
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[explain\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[explain\]"):
         study.run_step("explain")
 
 
@@ -511,7 +511,7 @@ def test_targets_ml_sin_seccion_ml_levanta_config_error(monkeypatch: pytest.Monk
     """``targets='ml'`` con artefactos ml pero **sin** sección ``ml`` ⇒ ``ExplainConfigError``."""
     _install_fake_shap(monkeypatch)
     woe = _woe_frame()
-    study = Study(NikodymConfig(explain=ExplainConfig(targets="ml")))  # ml section None
+    study = Study(BayesRiskConfig(explain=ExplainConfig(targets="ml")))  # ml section None
     study.set_audit_sink(InMemoryAuditSink())
     study.artifacts.set("data", "labels", SimpleNamespace(target_col="target"))
     study.artifacts.set("data", "splits", SimpleNamespace(partition_col="partition"))
@@ -634,7 +634,7 @@ def test_scope_particion_vacia_levanta(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_baseline_particion_vacia_levanta(monkeypatch: pytest.MonkeyPatch) -> None:
     """Una partición de baseline del scorecard sin filas ⇒ ``ExplainDataError``."""
     _install_fake_shap(monkeypatch)
-    from nikodym.explain.config import ScorecardExplainConfig
+    from bayesrisk.explain.config import ScorecardExplainConfig
 
     cfg = ExplainConfig(
         targets="both", scorecard=ScorecardExplainConfig(baseline_partition="inexistente")
@@ -646,7 +646,7 @@ def test_baseline_particion_vacia_levanta(monkeypatch: pytest.MonkeyPatch) -> No
 def test_publish_local_false_no_publica_locales(monkeypatch: pytest.MonkeyPatch) -> None:
     """Con ``output.publish_local=False`` no se publican explicaciones locales, sólo globales."""
     _install_fake_shap(monkeypatch)
-    from nikodym.explain.config import ExplainOutputConfig
+    from bayesrisk.explain.config import ExplainOutputConfig
 
     cfg = ExplainConfig(targets="ml", output=ExplainOutputConfig(publish_local=False))
     result = _study(cfg).run_step("explain")
@@ -657,7 +657,7 @@ def test_publish_local_false_no_publica_locales(monkeypatch: pytest.MonkeyPatch)
 def test_emit_figures_false_omite_png(monkeypatch: pytest.MonkeyPatch) -> None:
     """Con ``emit_figures=False`` la sección dependence trae descriptores pero no PNG."""
     _install_fake_shap(monkeypatch)
-    from nikodym.explain.config import ExplainOutputConfig
+    from bayesrisk.explain.config import ExplainOutputConfig
 
     cfg = ExplainConfig(targets="ml", output=ExplainOutputConfig(emit_figures=False))
     result = _study(cfg).run_step("explain")
@@ -692,7 +692,7 @@ def test_determinismo_caveat_modelo_no_reproducible(monkeypatch: pytest.MonkeyPa
 def test_top_n_mayor_que_features_se_acota(monkeypatch: pytest.MonkeyPatch) -> None:
     """``top_n`` > nº features se acota con ``log_decision`` (no error, §5/§8)."""
     _install_fake_shap(monkeypatch)
-    from nikodym.explain.config import ReasonCodesConfig
+    from bayesrisk.explain.config import ReasonCodesConfig
 
     cfg = ExplainConfig(targets="ml", reason_codes=ReasonCodesConfig(top_n=10))
     study = _study(cfg)
@@ -754,12 +754,12 @@ def test_validate_features_columnas_faltantes() -> None:
 
 def test_pd_hat_by_index_variantes() -> None:
     """``_pd_hat_by_index`` retorna ``None`` sin ``pd_frame``, con no-tabular o sin columna PD."""
-    sin_frame = Study(NikodymConfig())
+    sin_frame = Study(BayesRiskConfig())
     assert step_module._pd_hat_by_index(sin_frame, ExplainConfig(), pd) is None
-    no_tabular = Study(NikodymConfig())
+    no_tabular = Study(BayesRiskConfig())
     no_tabular.artifacts.set("ml", "pd_frame", object())
     assert step_module._pd_hat_by_index(no_tabular, ExplainConfig(), pd) is None
-    sin_columna = Study(NikodymConfig())
+    sin_columna = Study(BayesRiskConfig())
     sin_columna.artifacts.set("ml", "pd_frame", pd.DataFrame({"x": [1]}))
     assert step_module._pd_hat_by_index(sin_columna, ExplainConfig(), pd) is None
 
@@ -767,10 +767,10 @@ def test_pd_hat_by_index_variantes() -> None:
 def test_scorecard_consistencia_ramas() -> None:
     """``_scorecard_points_consistency``: tabla sin trazabilidad y result sin escalamiento."""
     sin_columnas = pd.DataFrame({"foo": [1]})
-    resultado = step_module._scorecard_points_consistency(sin_columnas, Study(NikodymConfig()))
+    resultado = step_module._scorecard_points_consistency(sin_columnas, Study(BayesRiskConfig()))
     assert resultado["verified"] is False
     tabla = _scorecard_table(factor=20.0, offset=600.0, alpha=0.8)
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.artifacts.set(
         "scorecard", "result", SimpleNamespace()
     )  # sin points_columns/factor/offset
@@ -786,7 +786,7 @@ def test_require_present_por_feature_source_re_derivada(monkeypatch: pytest.Monk
     # selection.* (ausente) y falla ruidoso en `_require_present`. Esa red es lo que impidió que
     # D-REQ-1 llegara a corromper un resultado, y por eso sigue medida aquí.
     study = Study(
-        NikodymConfig(
+        BayesRiskConfig(
             explain=ExplainConfig(targets="ml"), ml=MLConfig(feature_source="selection_woe")
         )
     )
@@ -818,18 +818,18 @@ def test_kernel_no_determinista_marca_caveat(monkeypatch: pytest.MonkeyPatch) ->
 def test_explain_config_from_study_variantes() -> None:
     """``_explain_config_from_study`` acepta config del store, respaldo o dict validable."""
     fallback = ExplainConfig(targets="scorecard")
-    vacio = Study(NikodymConfig())
+    vacio = Study(BayesRiskConfig())
     assert step_module._explain_config_from_study(vacio, fallback=fallback) is fallback
-    con_dict = Study(NikodymConfig())
+    con_dict = Study(BayesRiskConfig())
     con_dict.config = SimpleNamespace(explain={"targets": "ml"})  # type: ignore[assignment]
     assert step_module._explain_config_from_study(con_dict, fallback=fallback).targets == "ml"
 
 
 def test_ml_config_from_study_variantes() -> None:
     """``_ml_config_from_study`` devuelve None sin ``ml`` y valida un dict como ``MLConfig``."""
-    vacio = Study(NikodymConfig())
+    vacio = Study(BayesRiskConfig())
     assert step_module._ml_config_from_study(vacio) is None
-    con_dict = Study(NikodymConfig())
+    con_dict = Study(BayesRiskConfig())
     con_dict.config = SimpleNamespace(ml={"feature_source": "selection_woe"})  # type: ignore[assignment]
     assert step_module._ml_config_from_study(con_dict).feature_source == "selection_woe"
 

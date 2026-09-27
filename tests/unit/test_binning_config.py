@@ -1,4 +1,4 @@
-"""Tests de ``BinningConfig`` (SDD-06 §5) y su integración con ``NikodymConfig``."""
+"""Tests de ``BinningConfig`` (SDD-06 §5) y su integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -11,13 +11,13 @@ import yaml
 from hypothesis import given, settings
 from pydantic import ValidationError
 
-import nikodym.binning  # importa la capa: puebla el hook _BINNING_CONFIG_CLS
-from nikodym.binning.config import BinningConfig, VariableBinningConfig
-from nikodym.binning.exceptions import BinningError, BinningFitError, BinningTransformError
-from nikodym.core.config import INFRA_SECTIONS, NikodymConfig, config_hash, loads_config
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import ConfigError
-from nikodym.testing.strategies import _config_cls_for_domain, nikodym_config_strategy
+import bayesrisk.binning  # importa la capa: puebla el hook _BINNING_CONFIG_CLS
+from bayesrisk.binning.config import BinningConfig, VariableBinningConfig
+from bayesrisk.binning.exceptions import BinningError, BinningFitError, BinningTransformError
+from bayesrisk.core.config import INFRA_SECTIONS, BayesRiskConfig, config_hash, loads_config
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.testing.strategies import _config_cls_for_domain, bayesrisk_config_strategy
 
 
 @pytest.fixture(autouse=True)
@@ -90,62 +90,62 @@ def test_round_trip_yaml_binningconfig() -> None:
     assert BinningConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_binning_instancia() -> None:
-    """Pasar una instancia ``BinningConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_binning_instancia() -> None:
+    """Pasar una instancia ``BinningConfig`` a ``BayesRiskConfig`` la conserva."""
     binning = BinningConfig()
-    cfg = NikodymConfig(binning=binning)
+    cfg = BayesRiskConfig(binning=binning)
     assert isinstance(cfg.binning, BinningConfig)
     assert cfg.binning is binning
 
 
-def test_nikodymconfig_binning_dict_coacciona() -> None:
+def test_bayesriskconfig_binning_dict_coacciona() -> None:
     """Un dict en ``binning`` se coacciona a ``BinningConfig`` por el hook cargado."""
-    cfg = NikodymConfig(binning={"max_n_bins": 7})
+    cfg = BayesRiskConfig(binning={"max_n_bins": 7})
     assert isinstance(cfg.binning, BinningConfig)
     assert cfg.binning.max_n_bins == 7
 
 
-def test_nikodymconfig_binning_none_explicito() -> None:
+def test_bayesriskconfig_binning_none_explicito() -> None:
     """``binning=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(binning=None).binning is None
+    assert BayesRiskConfig(binning=None).binning is None
 
 
-def test_nikodymconfig_binning_core_only_acepta_blob_json(
+def test_bayesriskconfig_binning_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``binning`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_BINNING_CONFIG_CLS", None)
-    cfg = NikodymConfig(binning={"max_n_bins": 8, "monotonic_trend": "auto_asc_desc"})
+    cfg = BayesRiskConfig(binning={"max_n_bins": 8, "monotonic_trend": "auto_asc_desc"})
     assert cfg.binning == {"max_n_bins": 8, "monotonic_trend": "auto_asc_desc"}
 
 
-def test_nikodymconfig_binning_core_only_rechaza_set(
+def test_bayesriskconfig_binning_core_only_rechaza_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``binning`` rechaza sets porque romperían el ``config_hash``."""
     monkeypatch.setattr(_schema_mod, "_BINNING_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(binning={"columnas": {"a", "b"}})
+        BayesRiskConfig(binning={"columnas": {"a", "b"}})
 
 
 def test_config_hash_cambia_al_variar_max_n_bins_binning() -> None:
     """``binning`` no es INFRA: cambiar ``max_n_bins`` cambia la identidad computacional."""
-    base = config_hash(NikodymConfig(binning=BinningConfig()))
-    variado = config_hash(NikodymConfig(binning=BinningConfig(max_n_bins=10)))
+    base = config_hash(BayesRiskConfig(binning=BinningConfig()))
+    variado = config_hash(BayesRiskConfig(binning=BinningConfig(max_n_bins=10)))
     assert "binning" not in INFRA_SECTIONS
     assert variado != base
 
 
 def test_config_hash_cambia_al_variar_monotonic_trend_binning() -> None:
     """Cambiar monotonía de ``binning`` también cambia el ``config_hash``."""
-    base = config_hash(NikodymConfig(binning=BinningConfig()))
-    variado = config_hash(NikodymConfig(binning=BinningConfig(monotonic_trend="ascending")))
+    base = config_hash(BayesRiskConfig(binning=BinningConfig()))
+    variado = config_hash(BayesRiskConfig(binning=BinningConfig(monotonic_trend="ascending")))
     assert variado != base
 
 
 @settings(max_examples=12, deadline=None)
-@given(cfg=nikodym_config_strategy(sections=["binning"]))
-def test_nikodym_config_strategy_genera_configs_binning_validos(cfg: NikodymConfig) -> None:
+@given(cfg=bayesrisk_config_strategy(sections=["binning"]))
+def test_bayesrisk_config_strategy_genera_configs_binning_validos(cfg: BayesRiskConfig) -> None:
     """La estrategia pública genera configs raíz válidos con sección ``binning`` activa."""
     assert isinstance(cfg.binning, BinningConfig)
     assert cfg.binning.type == "standard"
@@ -197,7 +197,7 @@ def test_campos_binning_tienen_metadatos_ui() -> None:
             assert {"ui_widget", "ui_group", "ui_order"} <= set(extra)
 
 
-def test_binning_errors_descienden_de_nikodym_error() -> None:
+def test_binning_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``binning`` cuelgan de la raíz propia de la capa."""
     for error_cls in (BinningError, BinningFitError, BinningTransformError):
         with pytest.raises(BinningError, match="fallo binning"):
@@ -205,28 +205,28 @@ def test_binning_errors_descienden_de_nikodym_error() -> None:
 
 
 def test_import_binning_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.binning`` registra el hook sin arrastrar scoring ni stack tabular."""
+    """``import bayesrisk.binning`` registra el hook sin arrastrar scoring ni stack tabular."""
     code = (
-        "import nikodym.binning, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.binning.config import BinningConfig;"
+        "import bayesrisk.binning, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.binning.config import BinningConfig;"
         "bloqueados=[m for m in ('optbinning','sklearn','pandas','pandera','pyarrow') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(binning={'max_n_bins': 6});"
+        "cfg=BayesRiskConfig(binning={'max_n_bins': 6});"
         "assert isinstance(cfg.binning, BinningConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_core_valida_binning_como_blob_opaco_sin_importar_binning() -> None:
-    """El core acepta ``binning`` JSON/dict sin importar ``nikodym.binning``."""
+    """El core acepta ``binning`` JSON/dict sin importar ``bayesrisk.binning``."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(binning={'max_n_bins': 8});"
+        "cfg=BayesRiskConfig(binning={'max_n_bins': 8});"
         "assert cfg.binning == {'max_n_bins': 8};"
-        "assert 'nikodym.binning' not in sys.modules"
+        "assert 'bayesrisk.binning' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -235,22 +235,22 @@ def test_binning_getattr_desconocido_levanta_attributeerror() -> None:
     """La reexportación perezosa falla con ``AttributeError`` para nombres desconocidos."""
     atributo = "no_existe"
     with pytest.raises(AttributeError, match="no_existe"):
-        getattr(nikodym.binning, atributo)
+        getattr(bayesrisk.binning, atributo)
 
 
 def test_binning_getattr_carga_export_perezoso(monkeypatch: pytest.MonkeyPatch) -> None:
     """La ruta positiva de ``__getattr__`` carga y cachea un símbolo bajo demanda."""
     atributo = "BinningConfigLazy"
     monkeypatch.setitem(
-        nikodym.binning._LAZY_EXPORTS,
+        bayesrisk.binning._LAZY_EXPORTS,
         atributo,
-        ("nikodym.binning.config", "BinningConfig"),
+        ("bayesrisk.binning.config", "BinningConfig"),
     )
     try:
-        assert getattr(nikodym.binning, atributo) is BinningConfig
-        assert getattr(nikodym.binning, atributo) is BinningConfig
+        assert getattr(bayesrisk.binning, atributo) is BinningConfig
+        assert getattr(bayesrisk.binning, atributo) is BinningConfig
     finally:
-        monkeypatch.delattr(nikodym.binning, atributo, raising=False)
+        monkeypatch.delattr(bayesrisk.binning, atributo, raising=False)
 
 
 def test_config_cls_for_domain_resuelve_binning() -> None:

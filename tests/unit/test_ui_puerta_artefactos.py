@@ -17,11 +17,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.schema import cargar_configs_de_dominio
-from nikodym.ui import datasets as datasets_module
-from nikodym.ui import routes
-from nikodym.ui.exceptions import UiArtifactError
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.schema import cargar_configs_de_dominio
+from bayesrisk.ui import datasets as datasets_module
+from bayesrisk.ui import routes
+from bayesrisk.ui.exceptions import UiArtifactError
 
 _PD_CLAVE = ["calibration", "calibrated_pd_frame"]
 _SCORE_CLAVE = ["scorecard", "score"]
@@ -402,7 +402,9 @@ def test_el_preflight_no_avisa_cuando_la_llave_esta_en_los_dos(
 def _config_de_validar_un_modelo() -> dict[str, object]:
     """Config con `performance` activo y las secciones que lo alimentan APAGADAS."""
     cargar_configs_de_dominio()
-    return NikodymConfig.model_validate({"performance": {}}).model_dump(mode="json", by_alias=True)
+    return BayesRiskConfig.model_validate({"performance": {}}).model_dump(
+        mode="json", by_alias=True
+    )
 
 
 def test_sin_las_claves_el_veredicto_dice_que_no_se_puede() -> None:
@@ -615,7 +617,7 @@ def _cliente(tmp_path: Path, **ajustes: object):  # type: ignore[no-untyped-def]
     pytest.importorskip("httpx2")
     from _ui_client import ui_client
 
-    from nikodym.ui.settings import UiConfig
+    from bayesrisk.ui.settings import UiConfig
 
     return ui_client(UiConfig(workdir=str(tmp_path), **ajustes))  # type: ignore[arg-type]
 
@@ -767,7 +769,7 @@ def test_una_corrida_real_con_emparejamiento_llega_a_done(tmp_path: Path) -> Non
     pytest.importorskip("httpx2")
     from _ui_client import ui_client
 
-    from nikodym.ui.settings import UiConfig
+    from bayesrisk.ui.settings import UiConfig
 
     n = 40
     ids = [f"OP-{i:02d}" for i in range(n)]

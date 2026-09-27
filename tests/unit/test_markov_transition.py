@@ -13,10 +13,10 @@ import pytest
 from numpy.testing import assert_allclose
 from pandas.testing import assert_frame_equal
 
-import nikodym.markov.transition as transition_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import MissingDependencyError, NotFittedError
-from nikodym.markov.config import (
+import bayesrisk.markov.transition as transition_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import MissingDependencyError, NotFittedError
+from bayesrisk.markov.config import (
     MarkovConfig,
     MarkovDynamicsConfig,
     MarkovEstimationConfig,
@@ -24,14 +24,14 @@ from nikodym.markov.config import (
     MarkovStateConfig,
     MarkovValidationConfig,
 )
-from nikodym.markov.exceptions import (
+from bayesrisk.markov.exceptions import (
     InvalidGeneratorError,
     MarkovFitError,
     MarkovInputError,
     MarkovTransformError,
     NonStochasticMatrixError,
 )
-from nikodym.markov.transition import TransitionMatrixEstimator
+from bayesrisk.markov.transition import TransitionMatrixEstimator
 
 _TRANSITION_COLUMNS = [
     "period",
@@ -628,12 +628,12 @@ def test_projection_mode_no_homogeneo_falla_explicito() -> None:
 def test_imports_perezosos_y_dependencias_faltantes(monkeypatch: pytest.MonkeyPatch) -> None:
     code = (
         "import sys;"
-        "import nikodym.markov.config;"
+        "import bayesrisk.markov.config;"
         "baseline=set(sys.modules);"
-        "import nikodym.markov.transition;"
+        "import bayesrisk.markov.transition;"
         "blocked=[m for m in ('pandas','scipy') if m in sys.modules and m not in baseline];"
         "assert not blocked, blocked;"
-        "assert 'nikodym.markov.term_structure' not in sys.modules"
+        "assert 'bayesrisk.markov.term_structure' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -648,5 +648,5 @@ def test_imports_perezosos_y_dependencias_faltantes(monkeypatch: pytest.MonkeyPa
         transition_module._import_pandas()
     with pytest.raises(MissingDependencyError, match="numpy"):
         transition_module._import_numpy()
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[markov\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[markov\]"):
         transition_module._import_expm()

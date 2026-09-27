@@ -4,7 +4,7 @@ Modelo mental mínimo para leer el resto de la documentación.
 
 ## El config declarativo *es* el experimento
 
-Toda corrida se describe con un único objeto `NikodymConfig` (Pydantic v2): esquema de datos,
+Toda corrida se describe con un único objeto `BayesRiskConfig` (Pydantic v2): esquema de datos,
 partición, binning, selección de variables, modelo, scorecard, calibración, desempeño y
 estabilidad. No hay estado oculto ni parámetros dispersos por el código: **el config es la
 verdad**, y la misma estructura que se edita a mano es la que se serializa a YAML/JSON y la que
@@ -12,7 +12,7 @@ consume la UI. De ahí la propiedad central: `(datos + config + semilla) → res
 
 ## `run` → `Study`
 
-`nikodym.run(config, run_dir=...)` es la superficie pública única de ejecución. Ensambla el
+`bayesrisk.run(config, run_dir=...)` es la superficie pública única de ejecución. Ensambla el
 *audit sink* y el inventario de modelos, corre el pipeline y devuelve un `Study`: el contenedor de
 la corrida con el `RunContext` (estado + lineage) y el `ArtifactStore` *namespaced* por dominio.
 Los resultados no viven en un `dict` plano sino en `study.artifacts.get(<dominio>, <clave>)` —

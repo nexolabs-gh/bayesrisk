@@ -1,7 +1,7 @@
 /**
- * Espejo en el front del contrato de marcas de `src/nikodym/core/markers.py`.
+ * Espejo en el front del contrato de marcas de `src/bayesrisk/core/markers.py`.
  *
- * `FALTA-DATO` es lo que debe Nikodym (brecha del motor) y `DATO-INSTITUCIONAL` lo que debe la
+ * `FALTA-DATO` es lo que debe bayesrisk (brecha del motor) y `DATO-INSTITUCIONAL` lo que debe la
  * institución. Son identificadores internos: viajan en `warning_codes` para que el motor y la UI se
  * entiendan, y **no se le muestran al lector** — a él se le explica la limitación en su idioma.
  *

@@ -1,6 +1,6 @@
 """Tests del launcher, el preflight y las guardas locales (enmienda B2.2, E-B2.2-1…9).
 
-Cubre lo que B2.2 promete al usuario: que `nikodym-ui` no arranca con un build incompleto, que la
+Cubre lo que B2.2 promete al usuario: que `bayesrisk-ui` no arranca con un build incompleto, que la
 SPA servida **funciona** (no sólo navega) y que las guardas rechazan lo que dicen rechazar.
 """
 
@@ -16,14 +16,14 @@ pytest.importorskip("httpx2")
 
 from _ui_client import TEST_PORT, TEST_TOKEN, build_test_runtime, ui_client
 
-from nikodym.ui import __main__ as launcher
-from nikodym.ui.exceptions import UiLaunchError
-from nikodym.ui.runtime import TOKEN_HEADER, TOKEN_PLACEHOLDER, preflight_static
-from nikodym.ui.settings import UiConfig
+from bayesrisk.ui import __main__ as launcher
+from bayesrisk.ui.exceptions import UiLaunchError
+from bayesrisk.ui.runtime import TOKEN_HEADER, TOKEN_PLACEHOLDER, preflight_static
+from bayesrisk.ui.settings import UiConfig
 
 _INDEX = (
     "<!doctype html><html><head>"
-    '<meta name="nikodym-token" content="{tokens}" />'
+    '<meta name="bayesrisk-token" content="{tokens}" />'
     '<link rel="icon" href="/favicon.svg" />'
     '<script type="module" src="/assets/app.js"></script>'
     "</head><body><div id=root></div></body></html>"
@@ -146,7 +146,7 @@ def _cliente(tmp_path: Path, static: Path, **kwargs: object) -> object:
     return ui_client(settings, runtime=runtime)
 
 
-@pytest.mark.parametrize("host", ["localhost:8000", "nikodym.cl", "127.0.0.1:9999", ""])
+@pytest.mark.parametrize("host", ["localhost:8000", "bayesadvisory.cl", "127.0.0.1:9999", ""])
 def test_host_distinto_del_bind_es_403(tmp_path: Path, static: Path, host: str) -> None:
     """`localhost` se rechaza a propósito: puede resolver a ::1 y habilita DNS rebinding."""
     client = _cliente(tmp_path, static)
@@ -164,8 +164,8 @@ def test_host_correcto_pasa(tmp_path: Path, static: Path) -> None:
 @pytest.mark.parametrize(
     ("headers", "esperado"),
     [
-        ({}, "Falta el X-Nikodym-Token"),
-        ({TOKEN_HEADER: "token-equivocado"}, "Falta el X-Nikodym-Token"),
+        ({}, "Falta el X-bayesrisk-Token"),
+        ({TOKEN_HEADER: "token-equivocado"}, "Falta el X-bayesrisk-Token"),
     ],
 )
 def test_mutadores_exigen_token(
@@ -228,7 +228,7 @@ def test_preflight_exige_token_aunque_no_ejecute(tmp_path: Path, static: Path) -
     )
 
     assert respuesta.status_code == 403
-    assert "Falta el X-Nikodym-Token" in respuesta.json()["detail"]
+    assert "Falta el X-bayesrisk-Token" in respuesta.json()["detail"]
     assert TEST_TOKEN not in respuesta.text
     # Y no llegó a escribir: la guarda corta antes del endpoint.
     assert list((tmp_path / "datasets").glob("*")) == []
@@ -521,7 +521,7 @@ def test_el_404_de_la_api_conserva_su_mensaje(tmp_path: Path, static: Path) -> N
 def test_el_launcher_sin_el_extra_ui_no_escupe_traceback(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
-    """`pip install nikodym` sin extras deja el ejecutable igual: debe fallar en español."""
+    """`pip install bayesrisk` sin extras deja el ejecutable igual: debe fallar en español."""
     import builtins
 
     real_import = builtins.__import__
@@ -537,4 +537,4 @@ def test_el_launcher_sin_el_extra_ui_no_escupe_traceback(
     codigo = launcher.main(["--port", "8125", "--no-open", "--workdir", str(tmp_path / "wd")])
 
     assert codigo == 2
-    assert "nikodym[ui]" in capsys.readouterr().err
+    assert "bayesrisk[ui]" in capsys.readouterr().err

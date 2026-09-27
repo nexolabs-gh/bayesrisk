@@ -1,7 +1,7 @@
 """Tests de ``UiConfig`` (SDD-23 §4.3, §5b, D-UI-3).
 
 Verifica la forma exacta del modelo de ajustes de la app y la regla dura D-UI-3: ``UiConfig`` no
-es una sección de ``NikodymConfig`` y no entra al ``config_hash``.
+es una sección de ``BayesRiskConfig`` y no entra al ``config_hash``.
 """
 
 from __future__ import annotations
@@ -9,8 +9,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from nikodym.core.config import INFRA_SECTIONS, NikodymConfig, ReproConfig, config_hash
-from nikodym.ui.settings import UiConfig
+from bayesrisk.core.config import INFRA_SECTIONS, BayesRiskConfig, ReproConfig, config_hash
+from bayesrisk.ui.settings import UiConfig
 
 
 def test_uiconfig_defaults_y_cotas() -> None:
@@ -25,7 +25,7 @@ def test_uiconfig_defaults_y_cotas() -> None:
     assert cfg.deploy_mode == "local"
     assert cfg.theme == "auto"
     assert cfg.upload_max_mb == 100
-    assert cfg.workdir == ".nikodym_ui"
+    assert cfg.workdir == ".bayesrisk_ui"
     assert cfg.exposed_sections == ()
     assert cfg.allow_live_execution is True
 
@@ -43,7 +43,7 @@ def test_uiconfig_valida_literales_y_rango() -> None:
 
 
 def test_uiconfig_frozen_y_extra_forbid() -> None:
-    """Hereda de ``NikodymBaseConfig``: inmutable y cerrado a campos desconocidos."""
+    """Hereda de ``BayesRiskBaseConfig``: inmutable y cerrado a campos desconocidos."""
     cfg = UiConfig()
     with pytest.raises(ValidationError):
         cfg.theme = "dark"  # type: ignore[misc]
@@ -51,15 +51,15 @@ def test_uiconfig_frozen_y_extra_forbid() -> None:
         UiConfig(campo_inexistente=1)  # type: ignore[call-arg]
 
 
-def test_ui_no_es_seccion_de_nikodymconfig() -> None:
-    """D-UI-3: no hay campo ``ui`` en ``NikodymConfig`` ni en las secciones de infraestructura."""
-    assert "ui" not in NikodymConfig.model_fields
+def test_ui_no_es_seccion_de_bayesriskconfig() -> None:
+    """D-UI-3: no hay campo ``ui`` en ``BayesRiskConfig`` ni en las secciones de infraestructura."""
+    assert "ui" not in BayesRiskConfig.model_fields
     assert "ui" not in INFRA_SECTIONS
 
 
 def test_uiconfig_fuera_del_config_hash() -> None:
     """D-UI-3: cambiar tema/modo/workdir NO altera el ``config_hash`` de ningún experimento."""
-    experimento = NikodymConfig(repro=ReproConfig(seed=7))
+    experimento = BayesRiskConfig(repro=ReproConfig(seed=7))
     hash_referencia = config_hash(experimento)
     for ajustes in (
         UiConfig(theme="dark"),

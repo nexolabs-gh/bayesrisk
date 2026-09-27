@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from nikodym.core.lineage import LineageBundle, RunContext
+from bayesrisk.core.lineage import LineageBundle, RunContext
 
 _CREATED = datetime(2026, 6, 24, 12, 0, 0, tzinfo=UTC)
 

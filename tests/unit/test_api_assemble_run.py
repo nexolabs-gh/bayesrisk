@@ -1,4 +1,4 @@
-"""Tests de ``nikodym.api.assemble_run`` (CT-4)."""
+"""Tests de ``bayesrisk.api.assemble_run`` (CT-4)."""
 
 from __future__ import annotations
 
@@ -7,20 +7,20 @@ from typing import Any
 
 import pytest
 
-import nikodym.api as api_module
-from nikodym.api import assemble_run
-from nikodym.audit import AuditConfig, JsonlAuditSink
-from nikodym.core.audit import FanOutSink, NullAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.governance import GovernanceConfig, NullInventory
-from nikodym.tracking import MLflowInventory, TrackingConfig, TrackingSink
+import bayesrisk.api as api_module
+from bayesrisk.api import assemble_run
+from bayesrisk.audit import AuditConfig, JsonlAuditSink
+from bayesrisk.core.audit import FanOutSink, NullAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.governance import GovernanceConfig, NullInventory
+from bayesrisk.tracking import MLflowInventory, TrackingConfig, TrackingSink
 
 
 def test_assemble_run_sin_infra_devuelve_noops() -> None:
     """Sin secciones infra explícitas, ``core`` recibe no-ops conscientes."""
-    sink, inventory = assemble_run(NikodymConfig())
+    sink, inventory = assemble_run(BayesRiskConfig())
 
     assert isinstance(sink, NullAuditSink)
     assert isinstance(inventory, NullInventory)
@@ -33,7 +33,7 @@ def test_assemble_run_compone_audit_y_tracking_en_fanout(tmp_path, monkeypatch) 
     ruta se resolvía contra el ``cwd`` —de ahí el ``chdir`` que este test hacía— y dos corridas
     lanzadas desde el mismo directorio concatenaban sus trails (SDD-03 §8).
     """
-    cfg = NikodymConfig(
+    cfg = BayesRiskConfig(
         audit=AuditConfig(trail_filename="audit.jsonl"),
         tracking=TrackingConfig(tracking_uri="file:///tmp/mlruns"),
     )
@@ -44,7 +44,7 @@ def test_assemble_run_compone_audit_y_tracking_en_fanout(tmp_path, monkeypatch) 
     assert [type(item) for item in sink.sinks] == [JsonlAuditSink, TrackingSink]
     assert isinstance(inventory, NullInventory)
     sink.emit(
-        __import__("nikodym.core.audit", fromlist=["AuditEvent"]).AuditEvent(
+        __import__("bayesrisk.core.audit", fromlist=["AuditEvent"]).AuditEvent(
             kind="run_end",
             step=None,
             payload={"status": "done"},
@@ -57,7 +57,7 @@ def test_assemble_run_compone_audit_y_tracking_en_fanout(tmp_path, monkeypatch) 
 def test_assemble_run_secciones_disabled_caen_a_null() -> None:
     """``enabled=False`` desactiva sinks sin tocar el inventario no-op."""
     sink, inventory = assemble_run(
-        NikodymConfig(
+        BayesRiskConfig(
             audit=AuditConfig(enabled=False),
             tracking=TrackingConfig(enabled=False),
         )
@@ -75,8 +75,8 @@ def test_assemble_run_publish_true_sin_extra_falla_ruidoso(
     def missing(extra: str, *modules: str) -> tuple[Any, ...]:
         raise MissingDependencyError("falta mlflow")
 
-    monkeypatch.setattr("nikodym.api.require_extra", missing)
-    cfg = NikodymConfig(
+    monkeypatch.setattr("bayesrisk.api.require_extra", missing)
+    cfg = BayesRiskConfig(
         governance=GovernanceConfig(
             purpose="Scorecard",
             publish_to_inventory=True,
@@ -103,7 +103,7 @@ def test_assemble_run_cierra_jsonl_si_falla_despues_de_abrirlo(
 
     monkeypatch.setattr(api_module, "JsonlAuditSink", _jsonl)
     monkeypatch.setattr(api_module, "require_extra", _boom)
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         audit=AuditConfig(trail_filename=str(tmp_path / "audit.jsonl")),
         governance=GovernanceConfig(purpose="F1", publish_to_inventory=True),
     )
@@ -122,8 +122,8 @@ def test_assemble_run_publish_true_resuelve_mlflow_inventory(
     def available(extra: str, *modules: str) -> tuple[Any, ...]:
         return (object(),)
 
-    monkeypatch.setattr("nikodym.api.require_extra", available)
-    cfg = NikodymConfig(
+    monkeypatch.setattr("bayesrisk.api.require_extra", available)
+    cfg = BayesRiskConfig(
         governance={
             "purpose": "Scorecard",
             "publish_to_inventory": True,
@@ -150,8 +150,8 @@ def test_assemble_run_coacciona_blobs_core_only(tmp_path, monkeypatch: pytest.Mo
     monkeypatch.setattr(_schema_mod, "_AUDIT_CONFIG_CLS", None)
     monkeypatch.setattr(_schema_mod, "_GOVERNANCE_CONFIG_CLS", None)
     monkeypatch.setattr(_schema_mod, "_TRACKING_CONFIG_CLS", None)
-    monkeypatch.setattr("nikodym.api.require_extra", available)
-    cfg = NikodymConfig(
+    monkeypatch.setattr("bayesrisk.api.require_extra", available)
+    cfg = BayesRiskConfig(
         audit={"trail_filename": "audit.jsonl"},
         governance={"purpose": "Scorecard", "publish_to_inventory": True},
         tracking={"registry_uri": "sqlite:///registry.db"},
@@ -162,7 +162,7 @@ def test_assemble_run_coacciona_blobs_core_only(tmp_path, monkeypatch: pytest.Mo
     assert isinstance(sink, FanOutSink)
     assert isinstance(inventory, MLflowInventory)
     sink.emit(
-        __import__("nikodym.core.audit", fromlist=["AuditEvent"]).AuditEvent(
+        __import__("bayesrisk.core.audit", fromlist=["AuditEvent"]).AuditEvent(
             kind="run_end",
             step=None,
             payload={"status": "done"},

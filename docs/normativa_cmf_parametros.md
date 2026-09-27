@@ -7,7 +7,7 @@
 | **Norma base** | Compendio de Normas Contables (CNC) para Bancos — **Capítulo B-1** ("Provisiones por riesgo de crédito") y **Capítulo B-3** ("Créditos contingentes") |
 | **Versión vigente del CNC** | Versión **2022** (aprobada por **Circular N° 2.243 / 20.12.2019**, vigente desde 01-01-2022), modificada para consumo por **Circular N° 2.346 / 06.03.2024** (vigente desde el cierre contable de **enero 2025**) |
 | **Emisor** | Comisión para el Mercado Financiero (CMF), ex SBIF |
-| **Propósito** | Parametrizar el módulo de provisiones regulatorias (modelo estándar) de Nikodym RiskLib |
+| **Propósito** | Parametrizar el módulo de provisiones regulatorias (modelo estándar) de bayesrisk |
 
 ---
 

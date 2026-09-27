@@ -5,7 +5,7 @@ fuente que el informe») y D-FLU-11 fila C. El informe abre, tras la portada, co
 condicional «Resumen de la corrida» que reproduce el resumen final —los dos estados, las cifras
 clave, qué revisar, las decisiones humanas con su motivo y dónde queda cada archivo— desde los
 MISMOS constructores que ``Scorecard.summary()`` y que la pestaña Resultados
-(:mod:`nikodym.guided.summaries`). Sin decisiones humanas el capítulo dice lo que dice la pantalla
+(:mod:`bayesrisk.guided.summaries`). Sin decisiones humanas el capítulo dice lo que dice la pantalla
 (``SIN_DECISIONES``); sin corrida (un bundle armado a mano) no hay capítulo; y un resumen que no
 se pueda armar no tumba el informe: el capítulo dice por qué no hay resumen.
 """
@@ -23,17 +23,17 @@ import pytest
 from _ui_f1 import write_stacked_behavior_parquet
 from test_guided_summaries import _ofensores
 
-from nikodym.guided import STAGE_LABELS, Scorecard
-from nikodym.guided.summaries import SIN_DECISIONES
-from nikodym.report.builder import ReportBuilder
-from nikodym.report.config import ReportConfig
-from nikodym.report.document import (
+from bayesrisk.guided import STAGE_LABELS, Scorecard
+from bayesrisk.guided.summaries import SIN_DECISIONES
+from bayesrisk.report.builder import ReportBuilder
+from bayesrisk.report.config import ReportConfig
+from bayesrisk.report.document import (
     CHAPTER_SPECS,
     EXECUTIVE_SUMMARY_ID,
     RESULT_DOMAINS,
 )
-from nikodym.report.renderer import HtmlReportRenderer
-from nikodym.report.results import ReportInputBundle
+from bayesrisk.report.renderer import HtmlReportRenderer
+from bayesrisk.report.results import ReportInputBundle
 
 MOTIVO = "dato no disponible en originación"
 _HAS_DOCX = importlib.util.find_spec("docx") is not None
@@ -48,7 +48,7 @@ def _corrida(raiz: Path, *, name: str, decidir: bool) -> Scorecard:
     """Una corrida completa de la puerta guiada con el doble de OptBinning (alcance de módulo)."""
     from conftest import FakeBinningProcess
 
-    import nikodym.binning.transformer as transformer_module
+    import bayesrisk.binning.transformer as transformer_module
 
     with pytest.MonkeyPatch.context() as parche:
         parche.setenv("PYTHONHASHSEED", "0")
@@ -243,7 +243,7 @@ def test_un_informe_regenerado_desde_un_study_recargado_dice_las_mismas_decision
     """Pasada 4 de Codex: el preámbulo se persiste con la corrida (`run_metadata.json`) y vuelve
     con `Study.load`, así que un informe regenerado desde el Study recargado dice las mismas
     decisiones humanas que el trail, la ficha y el informe original."""
-    from nikodym.core.study import Study
+    from bayesrisk.core.study import Study
 
     recargado = Study.load(corrida.project_dir / "run" / "study", trust=True)
     assert recargado.preamble == corrida.study.preamble
@@ -258,10 +258,10 @@ def test_el_preambulo_persistido_es_el_prefijo_que_llego_al_trail() -> None:
     """Pasada 5 de Codex: si el sink falla en el evento N, el trail trae un prefijo y
     `run_context.preamble` trae exactamente el mismo prefijo, nunca el preámbulo entero; y una
     corrida nueva sobre el mismo Study empieza sin el preámbulo de la anterior."""
-    from nikodym.audit.exceptions import AuditError
-    from nikodym.core.audit import AuditEvent
-    from nikodym.core.config import NikodymConfig
-    from nikodym.core.study import Study
+    from bayesrisk.audit.exceptions import AuditError
+    from bayesrisk.core.audit import AuditEvent
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.core.study import Study
 
     class SinkQueSeLlena:
         def __init__(self) -> None:
@@ -272,7 +272,7 @@ def test_el_preambulo_persistido_es_el_prefijo_que_llego_al_trail() -> None:
                 raise AuditError("disco lleno")
             self.events.append(event)
 
-    study = Study(NikodymConfig(), apply_global_seed=False)
+    study = Study(BayesRiskConfig(), apply_global_seed=False)
     sink = SinkQueSeLlena()
     study.set_audit_sink(sink)
     declaraciones = [
@@ -286,7 +286,7 @@ def test_el_preambulo_persistido_es_el_prefijo_que_llego_al_trail() -> None:
     assert en_el_trail == ["primera"]
     assert [p["regla"] for _paso, p in study.preamble] == en_el_trail
     # Una corrida nueva sobre el mismo Study arranca sin el preámbulo anterior.
-    limpio = Study(NikodymConfig(), apply_global_seed=False)
+    limpio = Study(BayesRiskConfig(), apply_global_seed=False)
     limpio.run_context.preamble = (("x", {"regla": "vieja", "accion": "a", "umbral": None}),)
     limpio.run(preamble=[])
     assert limpio.preamble == ()
@@ -298,7 +298,7 @@ def test_el_registro_de_auditoria_se_nombra_sin_su_ruta_absoluta(tmp_path: Path)
     (`audit.trail_filename` absoluto, `.trail-<token>.jsonl`) y la página la imprimía. `audit`
     es INFRA —no entra al `config_hash`— y lo que varía con ella no entra al documento: con una
     ruta absoluta la página no imprime ni la ruta ni el nombre."""
-    import nikodym
+    import bayesrisk
 
     fuente = tmp_path / "cartera.parquet"
     write_stacked_behavior_parquet(fuente, repeats=50)
@@ -312,13 +312,13 @@ def test_el_registro_de_auditoria_se_nombra_sin_su_ruta_absoluta(tmp_path: Path)
         run_dir=tmp_path / "corridas",
         min_iv=0.0,
     )
-    from nikodym.audit.config import AuditConfig
+    from bayesrisk.audit.config import AuditConfig
 
     provisional = tmp_path / ".trail-0123456789abcdef.jsonl"
     config = sc.config.model_copy(
         update={"audit": AuditConfig(enabled=True, trail_filename=str(provisional))}
     )
-    study = nikodym.run(config, run_dir=tmp_path / "corrida")
+    study = bayesrisk.run(config, run_dir=tmp_path / "corrida")
     assert study.run_context.status == "done", study.run_context.error
     html = Path(study.artifacts.get("report", "result").html_path).read_text(encoding="utf-8")
     seccion = _pagina_de(html)
@@ -335,7 +335,7 @@ def test_regenerar_un_informe_no_mezcla_las_rutas_del_anterior(corrida: Scorecar
     """Pasada 6 de Codex: un `Study` recargado conserva el artefacto `report.result` del informe
     ANTERIOR. Al regenerar con otro `output_dir`, «Dónde quedó cada archivo» tiene que decir las
     rutas de ESTE informe, una vez por rótulo, no dos destinos incompatibles."""
-    from nikodym.core.study import Study
+    from bayesrisk.core.study import Study
 
     recargado = Study.load(corrida.project_dir / "run" / "study", trust=True)
     otro = corrida.config.report.model_copy(update={"output_dir": "otro-destino"})
@@ -363,8 +363,8 @@ def test_con_pasos_despues_del_informe_la_pagina_no_afirma_lo_que_no_corrio(
     un insumo opcional del informe, así que `[…, "report", "validation"]` es válido y el informe
     se escribe ANTES de la validación. La página no puede afirmar entonces que cierra la corrida
     ni que la validación «no está en el config»: dice qué queda por correr y que no lo refleja."""
-    import nikodym
-    from nikodym.core.config import RunConfig
+    import bayesrisk
+    from bayesrisk.core.config import RunConfig
 
     fuente = tmp_path / "cartera.parquet"
     write_stacked_behavior_parquet(fuente, repeats=50)
@@ -381,7 +381,7 @@ def test_con_pasos_despues_del_informe_la_pagina_no_afirma_lo_que_no_corrio(
     pasos = [paso for paso in sc.steps if paso != "validation"]
     pasos.append("validation")  # la validación formal corre DESPUÉS del informe
     config = sc.config.model_copy(update={"run": RunConfig(steps=pasos)})
-    study = nikodym.run(config, run_dir=tmp_path / "corrida")
+    study = bayesrisk.run(config, run_dir=tmp_path / "corrida")
     assert study.run_context.status == "done", study.run_context.error
     assert study.artifacts.has("validation", "card")  # al final SÍ corrió: el informe no lo vio
     html = Path(study.artifacts.get("report", "result").html_path).read_text(encoding="utf-8")
@@ -418,8 +418,8 @@ def test_el_qmd_neutraliza_texto_hostil_en_la_pagina(
     editable van como texto literal de pandoc, nunca como HTML crudo ni enlaces."""
     import test_report_step as step_tests
 
-    import nikodym.guided.summaries as fuente
-    from nikodym.report.step import ReportStep
+    import bayesrisk.guided.summaries as fuente
+    from bayesrisk.report.step import ReportStep
 
     hostil = '<img src=x onerror="alert(1)"> [x](http://mal) **negrita** # titulo'
 
@@ -463,7 +463,7 @@ def test_el_word_lleva_la_pagina_antes_del_resumen_ejecutivo(corrida: Scorecard)
 def _lineage() -> Any:
     from datetime import UTC, datetime
 
-    from nikodym.core.lineage import LineageBundle
+    from bayesrisk.core.lineage import LineageBundle
 
     return LineageBundle(
         git_sha="abc123",
@@ -472,7 +472,7 @@ def _lineage() -> Any:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "1.19.0"},
+        library_versions={"bayesrisk": "1.19.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 9, 21, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",
@@ -518,8 +518,8 @@ def test_un_resumen_que_no_se_puede_armar_no_tumba_el_informe(
     resumen, en vez de esconder el hueco o de perder el informe por una frase."""
     import test_report_step as step_tests
 
-    import nikodym.guided.summaries as fuente
-    from nikodym.report.step import ReportStep
+    import bayesrisk.guided.summaries as fuente
+    from bayesrisk.report.step import ReportStep
 
     def revienta(*_args: Any, **_kwargs: Any) -> Any:
         raise RuntimeError("la card llegó sin filas")

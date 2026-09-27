@@ -1,4 +1,4 @@
-"""Tests de ``ProvisioningConfig`` (SDD-17 §5) e integración con ``NikodymConfig``."""
+"""Tests de ``ProvisioningConfig`` (SDD-17 §5) e integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -11,16 +11,16 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.provisioning as provisioning_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.provisioning as provisioning_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.provisioning.config import ProvisioningConfig
-from nikodym.provisioning.exceptions import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.provisioning.config import ProvisioningConfig
+from bayesrisk.provisioning.exceptions import (
     ProvisioningAlignmentError,
     ProvisioningConfigError,
     ProvisioningCoverageError,
@@ -118,47 +118,47 @@ def test_round_trip_yaml_provisioningconfig() -> None:
     assert ProvisioningConfig.model_validate(yaml.safe_load(text)) == cfg
 
 
-# ─────────────────────────── integración NikodymConfig ───────────────────────────
+# ─────────────────────────── integración BayesRiskConfig ───────────────────────────
 
 
-def test_nikodymconfig_provisioning_instancia() -> None:
-    """Pasar una instancia ``ProvisioningConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_provisioning_instancia() -> None:
+    """Pasar una instancia ``ProvisioningConfig`` a ``BayesRiskConfig`` la conserva."""
     provisioning = ProvisioningConfig()
-    cfg = NikodymConfig(provisioning=provisioning)
+    cfg = BayesRiskConfig(provisioning=provisioning)
     assert isinstance(cfg.provisioning, ProvisioningConfig)
     assert cfg.provisioning is provisioning
 
 
-def test_nikodymconfig_provisioning_dict_coacciona() -> None:
+def test_bayesriskconfig_provisioning_dict_coacciona() -> None:
     """Un dict en ``provisioning`` se coacciona por el hook cargado."""
-    cfg = NikodymConfig(provisioning={"comparison_level": "operation"})
+    cfg = BayesRiskConfig(provisioning={"comparison_level": "operation"})
     assert isinstance(cfg.provisioning, ProvisioningConfig)
     assert cfg.provisioning.comparison_level == "operation"
 
 
-def test_nikodymconfig_provisioning_none_explicito() -> None:
+def test_bayesriskconfig_provisioning_none_explicito() -> None:
     """``provisioning=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(provisioning=None).provisioning is None
+    assert BayesRiskConfig(provisioning=None).provisioning is None
 
 
-def test_nikodymconfig_provisioning_core_only_acepta_blob_json(
+def test_bayesriskconfig_provisioning_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``provisioning`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_PROVISIONING_CONFIG_CLS", None)
-    cfg = NikodymConfig(provisioning={"comparison_level": "total"})
+    cfg = BayesRiskConfig(provisioning={"comparison_level": "total"})
     assert cfg.provisioning == {"comparison_level": "total"}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_provisioning_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_provisioning_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``provisioning`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_PROVISIONING_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(provisioning=blob)
+        BayesRiskConfig(provisioning=blob)
 
 
 # ─────────────────────────── validaciones de columnas ───────────────────────────
@@ -429,13 +429,13 @@ def test_tie_tolerance_cero_valido() -> None:
 
 def test_config_hash_default_con_provisioning_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``provisioning=None``."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_config_hash_se_movio_por_seccion_provisioning() -> None:
     """Añadir ``provisioning`` movió el golden respecto al valor previo (no es regresión)."""
     assert GOLDEN_DEFAULT_CONFIG_HASH != GOLDEN_PREVIO_SIN_PROVISIONING
-    assert config_hash(NikodymConfig()) != GOLDEN_PREVIO_SIN_PROVISIONING
+    assert config_hash(BayesRiskConfig()) != GOLDEN_PREVIO_SIN_PROVISIONING
 
 
 @pytest.mark.parametrize(
@@ -456,8 +456,8 @@ def test_config_hash_se_movio_por_seccion_provisioning() -> None:
 )
 def test_config_hash_cambia_al_variar_provisioning(provisioning: ProvisioningConfig) -> None:
     """``provisioning`` no es INFRA: fuentes/regla/nivel/cobertura/reconciliación mueven el hash."""
-    base = config_hash(NikodymConfig(provisioning=ProvisioningConfig()))
-    variado = config_hash(NikodymConfig(provisioning=provisioning))
+    base = config_hash(BayesRiskConfig(provisioning=ProvisioningConfig()))
+    variado = config_hash(BayesRiskConfig(provisioning=provisioning))
     assert "provisioning" not in INFRA_SECTIONS
     assert variado != base
 
@@ -482,7 +482,7 @@ def test_provisioning_public_api_minimo() -> None:
     assert "ProvisioningConfig" in provisioning_pkg.__all__
 
 
-def test_provisioning_errors_descienden_de_nikodym_error() -> None:
+def test_provisioning_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``provisioning`` cuelgan de la raíz propia de la librería."""
     for error_cls in (
         ProvisioningError,
@@ -491,7 +491,7 @@ def test_provisioning_errors_descienden_de_nikodym_error() -> None:
         ProvisioningAlignmentError,
         ProvisioningCoverageError,
     ):
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
     assert issubclass(ProvisioningAlignmentError, ProvisioningInputError)
 
 
@@ -499,16 +499,16 @@ def test_provisioning_errors_descienden_de_nikodym_error() -> None:
 
 
 def test_import_provisioning_config_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.provisioning.config`` registra hook sin arrastrar stack pesado."""
+    """``import bayesrisk.provisioning.config`` registra hook sin arrastrar stack pesado."""
     code = (
-        "import nikodym.provisioning.config, nikodym.core, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.provisioning.config import ProvisioningConfig;"
+        "import bayesrisk.provisioning.config, bayesrisk.core, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.provisioning.config import ProvisioningConfig;"
         "bloqueados=[m for m in "
-        "('nikodym.data','pandera','pyarrow','pandas','nikodym.tracking','mlflow') "
+        "('bayesrisk.data','pandera','pyarrow','pandas','bayesrisk.tracking','mlflow') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(provisioning={'comparison_level': 'operation'});"
+        "cfg=BayesRiskConfig(provisioning={'comparison_level': 'operation'});"
         "assert isinstance(cfg.provisioning, ProvisioningConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -517,10 +517,10 @@ def test_import_provisioning_config_liviano_y_registra_hook_en_proceso_fresco() 
 def test_core_valida_provisioning_como_blob_opaco_sin_importar_la_capa() -> None:
     """El core acepta ``provisioning`` JSON/dict sin importar la capa de orquestación."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(provisioning={'comparison_level': 'total'});"
+        "cfg=BayesRiskConfig(provisioning={'comparison_level': 'total'});"
         "assert cfg.provisioning == {'comparison_level': 'total'};"
-        "assert 'nikodym.provisioning' not in sys.modules"
+        "assert 'bayesrisk.provisioning' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)

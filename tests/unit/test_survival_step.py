@@ -13,15 +13,15 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.survival as survival_pkg
-import nikodym.survival.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.survival.config import (
+import bayesrisk.core.study as study_module
+import bayesrisk.survival as survival_pkg
+import bayesrisk.survival.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.survival.config import (
     CoxAftConfig,
     DiscreteHazardConfig,
     SurvivalConfig,
@@ -29,9 +29,9 @@ from nikodym.survival.config import (
     SurvivalMethod,
     SurvivalTimeGridConfig,
 )
-from nikodym.survival.exceptions import SurvivalConfigError, SurvivalInputError
-from nikodym.survival.results import SurvivalCard, SurvivalDiagnostics, SurvivalResult
-from nikodym.survival.step import SURVIVAL_ARTIFACTS, SurvivalStep
+from bayesrisk.survival.exceptions import SurvivalConfigError, SurvivalInputError
+from bayesrisk.survival.results import SurvivalCard, SurvivalDiagnostics, SurvivalResult
+from bayesrisk.survival.step import SURVIVAL_ARTIFACTS, SurvivalStep
 
 ROOT_SEED = 20_260_629
 
@@ -95,12 +95,12 @@ def test_from_config_registro_reexport_contrato_orden_e_import_liviano() -> None
     )
 
     code = (
-        "import nikodym.core, sys;"
-        "assert 'nikodym.survival' not in sys.modules;"
-        "import nikodym.survival;"
+        "import bayesrisk.core, sys;"
+        "assert 'bayesrisk.survival' not in sys.modules;"
+        "import bayesrisk.survival;"
         "blocked=[m for m in ('pandas','lifelines','statsmodels','sksurv') if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'SurvivalStep' in nikodym.survival.__all__"
+        "assert 'SurvivalStep' in bayesrisk.survival.__all__"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -158,7 +158,7 @@ def test_standalone_pd_source_none_corre_sin_model_y_publica_artifacts() -> None
     frame = _hazard_frame()
     frame["mora_actual"] = [float(position % 4) for position in range(len(frame.index))]
     frame["partition"] = ["desarrollo"] * 80 + ["holdout"] * 20 + ["oot"] * 20
-    study = Study(NikodymConfig(survival=cfg))
+    study = Study(BayesRiskConfig(survival=cfg))
     study.artifacts.set("data", "frame", frame)
     sink = InMemoryAuditSink()
     study.set_audit_sink(sink)
@@ -188,7 +188,7 @@ def test_standalone_sin_columna_partition_ajusta_sobre_todas_las_filas() -> None
     cfg = _cfg(pd_source="none", pd_role="none", covariate_cols=("mora_actual",))
     frame = _hazard_frame()
     frame["mora_actual"] = [float(position % 4) for position in range(len(frame.index))]
-    study = Study(NikodymConfig(survival=cfg))
+    study = Study(BayesRiskConfig(survival=cfg))
     study.artifacts.set("data", "frame", frame)
 
     study.run(steps=["survival"])
@@ -226,7 +226,7 @@ def test_ct1_y_calibration_condicional_conserva_partition_de_model_raw() -> None
     """CT-1 falla claro y ``pd_source='calibration'`` exige/calza su artefacto condicional."""
     cfg = _cfg()
     step = SurvivalStep.from_config(cfg)
-    study = Study(NikodymConfig(survival=cfg))
+    study = Study(BayesRiskConfig(survival=cfg))
 
     with pytest.raises(ArtifactNotFoundError, match=r"\('data', 'frame'\)"):
         step.execute(study, np.random.default_rng(ROOT_SEED))
@@ -354,7 +354,7 @@ def test_kaplan_meier_y_helpers_defensivos_del_step() -> None:
             pd_frame.iloc[:-1],
             cfg=_cfg(),
         )
-    broken_calibration_study = Study(NikodymConfig(survival=_cfg(pd_source="calibration")))
+    broken_calibration_study = Study(BayesRiskConfig(survival=_cfg(pd_source="calibration")))
     broken_calibration_study.artifacts.set(
         "calibration",
         "calibrated_pd_frame",
@@ -396,7 +396,7 @@ def test_dependencias_ramas_modelo_publicacion_y_versiones(monkeypatch: pytest.M
         return real_import(name)
 
     monkeypatch.setattr(step_module.importlib, "import_module", blocked_import)
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[scoring\]"):
         step_module._require_method_dependency("discrete_hazard")
     # 🔴 `kaplan_meier` ya NO exige lifelines, y este test lo aseveraba: el gate era más estricto
     # que el motor —su estimador calcula la curva y Greenwood con numpy, y lo dice en su docstring—,
@@ -405,7 +405,7 @@ def test_dependencias_ramas_modelo_publicacion_y_versiones(monkeypatch: pytest.M
     # exigiendo.
     step_module._require_method_dependency("kaplan_meier")
     for metodo in ("cox_ph", "aft"):
-        with pytest.raises(MissingDependencyError, match=r"nikodym\[survival\]"):
+        with pytest.raises(MissingDependencyError, match=r"bayesrisk\[survival\]"):
             step_module._require_method_dependency(metodo)
     with pytest.raises(MissingDependencyError, match="pandas"):
         step_module._import_pandas()
@@ -468,7 +468,7 @@ def test_dependencias_ramas_modelo_publicacion_y_versiones(monkeypatch: pytest.M
         card=card,
         model_copy=lambda deep: SimpleNamespace(card=card, deep=deep),
     )
-    publish_study = Study(NikodymConfig())
+    publish_study = Study(BayesRiskConfig())
     SurvivalStep.from_config(_cfg())._publish_artifacts(publish_study, fake_result)
     assert publish_study.artifacts.get("survival", "term_structure") is None
 
@@ -511,7 +511,7 @@ def _cfg(
 
 def _study(cfg: SurvivalConfig, *, frame: pd.DataFrame, pd_frame: pd.DataFrame) -> Study:
     """Construye un ``Study`` con artefactos survival preinyectados."""
-    study = Study(NikodymConfig(survival=cfg))
+    study = Study(BayesRiskConfig(survival=cfg))
     study.artifacts.set("data", "frame", frame)
     study.artifacts.set("model", "raw_pd_frame", pd_frame)
     return study

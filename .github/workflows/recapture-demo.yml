@@ -93,14 +93,14 @@ jobs:
       # `importlib.metadata` sirve la versión CACHEADA de la instalación, no la del árbol. Sin este
       # paso la demo se publica firmada con la versión anterior: ya pasó —informes de la demo que
       # decían 1.8.0 con la librería en 1.10.0— y ninguna cifra de negocio lo delata.
-      - name: Reinstalar nikodym para que el lineage firme la versión del árbol
+      - name: Reinstalar bayesrisk para que el lineage firme la versión del árbol
         run: |
-          uv sync --reinstall-package nikodym --locked \
+          uv sync --reinstall-package bayesrisk --locked \
             --extra ui --extra scoring --extra report --extra docx --extra pdf
-          uv run --no-sync python -c "import importlib.metadata as m, nikodym; \
-            assert m.version('nikodym') == nikodym.__version__, \
-            f\"metadata={m.version('nikodym')} != arbol={nikodym.__version__}\"; \
-            print('version coherente:', nikodym.__version__)"
+          uv run --no-sync python -c "import importlib.metadata as m, bayesrisk; \
+            assert m.version('bayesrisk') == bayesrisk.__version__, \
+            f\"metadata={m.version('bayesrisk')} != arbol={bayesrisk.__version__}\"; \
+            print('version coherente:', bayesrisk.__version__)"
 
       - name: Capturar
         env:

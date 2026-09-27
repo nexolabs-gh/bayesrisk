@@ -1,8 +1,8 @@
 """Mide el fundamento productivo W1 desde un wheel instalado fuera del checkout.
 
-El driver no importa Nikodym al cargar. Debe ejecutarse desde un venv clean-room, con cwd y
-``nikodym.__file__`` fuera del repositorio, y recibe los bytes exactos del wheel que se instalaron.
-S0 es ejecutable en CI/local; S1/S2 sólo cuentan como PASS si el hardware satisface H9.
+El driver no importa bayesrisk al cargar. Debe ejecutarse desde un venv clean-room, con cwd y
+``bayesrisk.__file__`` fuera del repositorio, y recibe los bytes exactos del wheel que se
+instalaron. S0 es ejecutable en CI/local; S1/S2 sólo cuentan como PASS si el hardware satisface H9.
 """
 
 from __future__ import annotations
@@ -93,9 +93,9 @@ S3_EXPECTED_CLASSIFICATION: Final[dict[str, dict[str, str]]] = {
     "batch_rows": {"4999999": "accepted", "5000000": "accepted", "5000001": "rejected"},
 }
 _S3_MEMORY_EXIT_CODE: Final = 86
-_S3_MEMORY_MARKER: Final = "NIKODYM_S3_MEMORY_LIMIT"
+_S3_MEMORY_MARKER: Final = "BAYESRISK_S3_MEMORY_LIMIT"
 _S3_CPU_EXIT_CODE: Final = 87
-_S3_CPU_MARKER: Final = "NIKODYM_S3_CPU_LIMIT"
+_S3_CPU_MARKER: Final = "BAYESRISK_S3_CPU_LIMIT"
 _S3_TAIL_BYTES: Final = 4_096
 _COVERAGE_AUTOSTART_ENV_PREFIXES: Final = ("COV_CORE_", "COVERAGE_")
 
@@ -876,10 +876,10 @@ def _hardware(workdir: Path) -> dict[str, Any]:
 def _installed_tree_hash(distribution: Any) -> str:
     digest = hashlib.sha256(b"nikodym.wheel-tree.v1\0")
     selected = sorted(
-        file for file in (distribution.files or ()) if file.parts and file.parts[0] == "nikodym"
+        file for file in (distribution.files or ()) if file.parts and file.parts[0] == "bayesrisk"
     )
     if not selected:
-        raise RuntimeError("la distribución instalada no enumera archivos nikodym")
+        raise RuntimeError("la distribución instalada no enumera archivos bayesrisk")
     for relative in selected:
         path = Path(distribution.locate_file(relative))
         if not path.is_file():
@@ -895,10 +895,10 @@ def _wheel_tree_hash(wheel: Path) -> str:
         selected = sorted(
             name
             for name in archive.namelist()
-            if name.startswith("nikodym/") and not name.endswith("/")
+            if name.startswith("bayesrisk/") and not name.endswith("/")
         )
         if not selected:
-            raise RuntimeError("el wheel no contiene el paquete nikodym")
+            raise RuntimeError("el wheel no contiene el paquete bayesrisk")
         for relative in selected:
             digest.update(relative.encode() + b"\0")
             digest.update(hashlib.sha256(archive.read(relative)).digest())
@@ -946,14 +946,14 @@ def _installed_metadata_hash(distribution: Any) -> str:
 def _cleanroom_identity(wheel: Path, sdist: Path, *, source_sha: str) -> dict[str, Any]:
     from importlib import metadata
 
-    import nikodym
-    from nikodym.core.build import (
+    import bayesrisk
+    from bayesrisk.core.build import (
         build_uv_lock_hash,
         installed_distribution_hash,
         runtime_environment_hash,
     )
 
-    module = Path(nikodym.__file__).resolve()
+    module = Path(bayesrisk.__file__).resolve()
     checkout_sha = _command_text(["git", "-C", str(ROOT), "rev-parse", "HEAD"])
     checkout_status = _command_text(["git", "-C", str(ROOT), "status", "--porcelain"])
     if checkout_sha != source_sha:
@@ -969,11 +969,11 @@ def _cleanroom_identity(wheel: Path, sdist: Path, *, source_sha: str) -> dict[st
     if raw_pythonpath:
         raise RuntimeError("clean-room requiere PYTHONPATH vacío")
     if module.is_relative_to(ROOT):
-        raise RuntimeError(f"clean-room importó Nikodym desde el checkout: {module}")
+        raise RuntimeError(f"clean-room importó bayesrisk desde el checkout: {module}")
     if "site-packages" not in module.parts:
-        raise RuntimeError(f"Nikodym no se resolvió desde site-packages: {module}")
-    distribution = metadata.distribution("nikodym")
-    expected_sdist_name = f"nikodym-{distribution.version}.tar.gz"
+        raise RuntimeError(f"bayesrisk no se resolvió desde site-packages: {module}")
+    distribution = metadata.distribution("bayesrisk")
+    expected_sdist_name = f"bayesrisk-{distribution.version}.tar.gz"
     if sdist.name != expected_sdist_name:
         raise RuntimeError(
             f"sdist no corresponde a la versión instalada: {sdist.name} != {expected_sdist_name}"
@@ -993,8 +993,8 @@ def _cleanroom_identity(wheel: Path, sdist: Path, *, source_sha: str) -> dict[st
         "sdist_name": sdist.name,
         "sdist_bytes": sdist.stat().st_size,
         "sdist_sha256": _sha256(sdist),
-        "nikodym_version": distribution.version,
-        "nikodym_file": str(module),
+        "bayesrisk_version": distribution.version,
+        "bayesrisk_file": str(module),
         "wheel_tree_hash": wheel_tree_hash,
         "installed_tree_hash": installed_tree_hash,
         "installed_matches_wheel": True,
@@ -1067,9 +1067,9 @@ def _training_frame(profile: dict[str, int]) -> Any:
 
 
 def _config(profile: dict[str, int], *, report_dir: Path) -> Any:
-    from nikodym.core.config import NikodymConfig
-    from nikodym.core.config.schema import cargar_configs_de_dominio
-    from nikodym.ui.presets import standard_preset
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.core.config.schema import cargar_configs_de_dominio
+    from bayesrisk.ui.presets import standard_preset
 
     cargar_configs_de_dominio()
     raw = standard_preset()["config"]
@@ -1130,7 +1130,7 @@ def _config(profile: dict[str, int], *, report_dir: Path) -> Any:
         "calibration",
         "performance",
     ]
-    return NikodymConfig.model_validate(raw)
+    return BayesRiskConfig.model_validate(raw)
 
 
 def _write_batch(path: Path, profile: dict[str, int]) -> dict[str, Any]:
@@ -1351,11 +1351,11 @@ def _negative_contracts(
 ) -> dict[str, Any]:
     from unittest.mock import patch
 
-    from nikodym.binning.transformer import WoEBinner
-    from nikodym.calibration.calibrator import PDCalibrator
-    from nikodym.scorecard.bundle import FittedScorecardBundle
-    from nikodym.scorecard.exceptions import ScorecardBundleError
-    from nikodym.scorecard.scaler import PointsScaler
+    from bayesrisk.binning.transformer import WoEBinner
+    from bayesrisk.calibration.calibrator import PDCalibrator
+    from bayesrisk.scorecard.bundle import FittedScorecardBundle
+    from bayesrisk.scorecard.exceptions import ScorecardBundleError
+    from bayesrisk.scorecard.scaler import PointsScaler
 
     def explode(*args: Any, **kwargs: Any) -> None:
         del args, kwargs
@@ -1385,8 +1385,8 @@ async def _body_case(limit: int, *, declared: int | None, sent: int) -> dict[str
     from fastapi import FastAPI, Request
     from starlette.responses import JSONResponse
 
-    from nikodym.ui.security import install_body_limit
-    from nikodym.ui.settings import UiConfig
+    from bayesrisk.ui.security import install_body_limit
+    from bayesrisk.ui.settings import UiConfig
 
     app = FastAPI()
     consumed = 0
@@ -1406,7 +1406,7 @@ async def _body_case(limit: int, *, declared: int | None, sent: int) -> dict[str
             deploy_mode="local",
             theme="auto",
             upload_max_mb=limit // MIB,
-            workdir=str(Path.cwd() / ".nikodym-ui-limit"),
+            workdir=str(Path.cwd() / ".bayesrisk-ui-limit"),
             exposed_sections=(),
             allow_live_execution=True,
         ),
@@ -1485,12 +1485,12 @@ def _consume_request(request_path: Path) -> dict[str, Any]:
     """CR-02: load/apply/batch en un consumidor nuevo que sólo importa el wheel instalado."""
     import pandas as pd
 
-    import nikodym
-    from nikodym.scorecard.bundle import FittedScorecardBundle
+    import bayesrisk
+    from bayesrisk.scorecard.bundle import FittedScorecardBundle
 
-    module = Path(nikodym.__file__).resolve()
+    module = Path(bayesrisk.__file__).resolve()
     if module.is_relative_to(ROOT) or "site-packages" not in module.parts:
-        raise RuntimeError(f"el consumidor resolvió Nikodym fuera de site-packages: {module}")
+        raise RuntimeError(f"el consumidor resolvió bayesrisk fuera de site-packages: {module}")
     request = json.loads(request_path.read_text(encoding="utf-8"))
     bundle_path = Path(request["bundle_path"])
     sample_path = Path(request["sample_path"])
@@ -1549,7 +1549,7 @@ def _consume_request(request_path: Path) -> dict[str, Any]:
     )
     return {
         "pid": os.getpid(),
-        "nikodym_file": str(module),
+        "bayesrisk_file": str(module),
         "bundle_hash": loaded.bundle_hash,
         "final_features": final_features,
         "apply": {
@@ -1657,7 +1657,7 @@ def _run(
 ) -> dict[str, Any]:
     import pandas as pd
 
-    from nikodym.scorecard.bundle import fit_scorecard_bundle
+    from bayesrisk.scorecard.bundle import fit_scorecard_bundle
 
     profile = PROFILES[profile_name]
     hardware = _hardware(workdir)
@@ -1755,7 +1755,7 @@ def _run(
         "batch": consumer["batch"],
         "consumer_process": {
             "pid": consumer["pid"],
-            "nikodym_file": consumer["nikodym_file"],
+            "bayesrisk_file": consumer["bayesrisk_file"],
             **consumer["process"],
         },
         "ui_body_limit": body_limit,
@@ -1779,8 +1779,8 @@ def _run_s3_workload(
     import pyarrow as pa
     import pyarrow.parquet as pq
 
-    from nikodym.scorecard.bundle import FittedScorecardBundle, fit_scorecard_bundle
-    from nikodym.scorecard.exceptions import ScorecardBundleError
+    from bayesrisk.scorecard.bundle import FittedScorecardBundle, fit_scorecard_bundle
+    from bayesrisk.scorecard.exceptions import ScorecardBundleError
 
     identity = _cleanroom_identity(wheel, sdist, source_sha=source_sha)
 
@@ -1793,7 +1793,7 @@ def _run_s3_workload(
 
     def observed_fit(frame: Any, config: Any, *, rejection_fragment: str | None) -> str:
         try:
-            with patch("nikodym.api.run", stop_before_engine):
+            with patch("bayesrisk.api.run", stop_before_engine):
                 fit_scorecard_bundle(config, frame)
         except AcceptedPreflightError:
             if rejection_fragment is not None:
@@ -1982,7 +1982,7 @@ def _run_supervisor_probe(mode: str, request: dict[str, Any]) -> dict[str, Any]:
                     "        allocations.append(bytearray(size))",
                     "        allocated += size",
                     "except MemoryError:",
-                    "    print('NIKODYM_S3_MEMORY_CHILD_EARLY', file=sys.stderr, flush=True)",
+                    "    print('BAYESRISK_S3_MEMORY_CHILD_EARLY', file=sys.stderr, flush=True)",
                     "    os._exit(90)",
                     f"pathlib.Path({str(ready_path)!r}).write_text('ready\\n', encoding='utf-8')",
                     "time.sleep(30.0)",
@@ -2014,7 +2014,7 @@ def _run_supervisor_probe(mode: str, request: dict[str, Any]) -> dict[str, Any]:
         except MemoryError:
             print(_S3_MEMORY_MARKER, file=sys.stderr, flush=True)
             os._exit(_S3_MEMORY_EXIT_CODE)
-        print("NIKODYM_S3_MEMORY_LIMIT_BYPASSED", file=sys.stderr, flush=True)
+        print("BAYESRISK_S3_MEMORY_LIMIT_BYPASSED", file=sys.stderr, flush=True)
         os._exit(_S3_MEMORY_EXIT_CODE + 2)
     if mode == "probe-cpu":
         if os.name == "posix":

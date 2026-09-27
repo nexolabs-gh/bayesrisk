@@ -5,13 +5,13 @@ from typing import Any
 
 import pytest
 
-from nikodym.core.config import NikodymConfig, migrate, migration
-from nikodym.core.config.migration import _MIGRATORS, SCHEMA_VERSION, _parse
-from nikodym.core.exceptions import (
+from bayesrisk.core.config import BayesRiskConfig, migrate, migration
+from bayesrisk.core.config.migration import _MIGRATORS, SCHEMA_VERSION, _parse
+from bayesrisk.core.exceptions import (
+    BayesRiskError,
     ConfigError,
     ConfigVersionError,
     MigrationNotFoundError,
-    NikodymError,
 )
 
 
@@ -34,7 +34,7 @@ def test_registro_vacio_en_v1() -> None:
 
 def test_schema_version_coincide_con_default() -> None:
     """SCHEMA_VERSION coincide con el default del schema y con '1.0.0'."""
-    assert SCHEMA_VERSION == "1.0.0" == NikodymConfig().schema_version
+    assert SCHEMA_VERSION == "1.0.0" == BayesRiskConfig().schema_version
 
 
 def test_migrate_version_igual_pasa() -> None:
@@ -78,9 +78,9 @@ def test_comparacion_semver_no_lexicografica() -> None:
 
 
 @pytest.mark.parametrize("malformada", ["abc", "1.0.0a1", "v1.0.0", "", "1.0", "1.0.0.0", "1.0.x"])
-def test_migrate_version_malformada_levanta_nikodym_error(malformada: str) -> None:
+def test_migrate_version_malformada_levanta_bayesrisk_error(malformada: str) -> None:
     """Un schema_version no-SemVer levanta ConfigError, no un ValueError crudo."""
-    with pytest.raises(NikodymError):
+    with pytest.raises(BayesRiskError):
         migrate({"schema_version": malformada})
     with pytest.raises(ConfigError):
         migrate({"schema_version": malformada})

@@ -22,10 +22,10 @@ from __future__ import annotations
 
 import pytest
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.schema import cargar_configs_de_dominio
-from nikodym.core.dataset_check import columnas_producidas_por_seccion
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.schema import cargar_configs_de_dominio
+from bayesrisk.core.dataset_check import columnas_producidas_por_seccion
 
 #: Las columnas que trae el archivo del usuario. Ninguna se llama como una derivada, a propósito.
 _COLUMNAS_ARCHIVO = ("ingreso", "mora", "fecha_obs", "duracion")
@@ -47,7 +47,7 @@ _OFRECIBLES_POR_SECCION: dict[str, frozenset[str]] = {
 }
 
 
-def _config(**secciones: object) -> NikodymConfig:
+def _config(**secciones: object) -> BayesRiskConfig:
     """Config mínimo con ``data`` activa (la única que produce columnas hoy)."""
     cargar_configs_de_dominio()
     base: dict[str, object] = {
@@ -56,7 +56,7 @@ def _config(**secciones: object) -> NikodymConfig:
             "partition": {"strategy": {"type": "random"}},
         },
     }
-    return NikodymConfig.model_validate({**base, **secciones})
+    return BayesRiskConfig.model_validate({**base, **secciones})
 
 
 def test_lo_que_el_backend_publica_es_lo_que_el_oraculo_dice() -> None:
@@ -86,14 +86,14 @@ _CASOS: tuple[tuple[str, str, str, bool], ...] = (
 )
 
 
-def _construir(ruta: str, valor: str) -> NikodymConfig:
+def _construir(ruta: str, valor: str) -> BayesRiskConfig:
     if ruta == "survival.input.event_col":
         return _config(survival={"input": {"duration_col": "duracion", "event_col": valor}})
     if ruta == "data.schema.columns":
         cfg = _config()
         datos = cfg.model_dump(mode="json", by_alias=True)["data"]
         datos["schema"] = {"columns": [{"name": valor, "dtype": "float"}]}
-        return NikodymConfig.model_validate({"data": datos})
+        return BayesRiskConfig.model_validate({"data": datos})
     raise AssertionError(f"caso no cubierto: {ruta}")
 
 
@@ -102,7 +102,7 @@ def test_el_backend_y_el_oraculo_del_front_dicen_lo_mismo(
     ruta: str, seccion: str, valor: str, acusa: bool
 ) -> None:
     """Para cada caso, ``check_dataset`` acusa **si y sólo si** el front lo pintaría en rojo."""
-    veredicto = nikodym.check_dataset(_construir(ruta, valor), _COLUMNAS_ARCHIVO)
+    veredicto = bayesrisk.check_dataset(_construir(ruta, valor), _COLUMNAS_ARCHIVO)
     acusado_por_el_motor = any(
         m.kind == "missing_column" and m.declared == valor for m in veredicto.mismatches
     )
@@ -135,16 +135,16 @@ def test_el_indice_no_entra_en_lo_que_ofrece_un_campo_de_columna() -> None:
     cfg = _config()
     datos = cfg.model_dump(mode="json", by_alias=True)["data"]
     datos["schema"] = {"index_col": "loan_id"}
-    veredicto = nikodym.check_dataset(
-        NikodymConfig.model_validate({"data": datos}),
+    veredicto = bayesrisk.check_dataset(
+        BayesRiskConfig.model_validate({"data": datos}),
         _COLUMNAS_ARCHIVO,
         index_columns=("loan_id",),
     )
     assert [m.kind for m in veredicto.mismatches] == []
 
     # Control negativo: el mismo nombre como COLUMNA del archivo es un desajuste nombrado.
-    veredicto_malo = nikodym.check_dataset(
-        NikodymConfig.model_validate({"data": datos}),
+    veredicto_malo = bayesrisk.check_dataset(
+        BayesRiskConfig.model_validate({"data": datos}),
         (*_COLUMNAS_ARCHIVO, "loan_id"),
         index_columns=(),
     )
@@ -167,8 +167,8 @@ def test_unique_keys_no_acepta_el_indice_y_las_dos_superficies_lo_dicen_igual() 
     cfg = _config()
     datos = cfg.model_dump(mode="json", by_alias=True)["data"]
     datos["schema"] = {"index_col": "loan_id", "unique_keys": ["loan_id"]}
-    veredicto = nikodym.check_dataset(
-        NikodymConfig.model_validate({"data": datos}),
+    veredicto = bayesrisk.check_dataset(
+        BayesRiskConfig.model_validate({"data": datos}),
         _COLUMNAS_ARCHIVO,
         index_columns=("loan_id",),
     )
@@ -176,8 +176,8 @@ def test_unique_keys_no_acepta_el_indice_y_las_dos_superficies_lo_dicen_igual() 
     assert acusados == [("data.schema.unique_keys", "loan_id")], acusados
 
     # Y el ancla del otro lado: con el identificador como COLUMNA de verdad, no se acusa nada.
-    ok = nikodym.check_dataset(
-        NikodymConfig.model_validate({"data": {**datos, "schema": {"unique_keys": ["loan_id"]}}}),
+    ok = bayesrisk.check_dataset(
+        BayesRiskConfig.model_validate({"data": {**datos, "schema": {"unique_keys": ["loan_id"]}}}),
         (*_COLUMNAS_ARCHIVO, "loan_id"),
     )
     assert ok.mismatches == ()

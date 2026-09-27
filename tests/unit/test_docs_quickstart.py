@@ -2,7 +2,7 @@
 
 🔴 **Por qué existe.** D-GOB-7/8 (2026-09-02) encendieron ``audit`` en los cuatro presets y
 dejaron de escribir el audit-trail en el directorio de trabajo: desde entonces
-``nikodym.run(config)`` con el preset F1 y sin ``run_dir`` levanta ``ConfigError``. La ruptura
+``bayesrisk.run(config)`` con el preset F1 y sin ``run_dir`` levanta ``ConfigError``. La ruptura
 está declarada en el CHANGELOG, el docstring de ``run`` la explica y la guía de provisiones ya
 pasaba ``run_dir``. Pero el quickstart —el primer bloque de código que copia un lector, repetido en
 ``README.md``, en la portada del sitio, en «Empezar», en el tutorial y en tres guías— siguió
@@ -52,7 +52,7 @@ _TOPE_LINEAS_NOTEBOOK_MINIMO = 25
 
 _FENCE_PYTHON = re.compile(r"```python\n(.*?)\n```", re.DOTALL)
 _USA_PRESET = re.compile(r"standard_preset\(|get_preset\(")
-_LLAMA_RUN = re.compile(r"nikodym\.run\(")
+_LLAMA_RUN = re.compile(r"bayesrisk\.run\(")
 
 
 def _bloque(texto: str, nombre: str, origen: str) -> str:
@@ -68,7 +68,7 @@ def _quickstart_de(archivo: Path) -> str:
     codigo = _bloque(archivo.read_text(encoding="utf-8"), _BLOQUE_QUICKSTART, archivo.name)
     # Ancla anti-vacuidad: unos delimitadores que envuelvan la nada se leen igual que un ejemplo
     # correcto. El quickstart corre el preset F1 y lee un artefacto; sin eso no es el quickstart.
-    assert "standard_preset()" in codigo and "nikodym.run(" in codigo, (
+    assert "standard_preset()" in codigo and "bayesrisk.run(" in codigo, (
         f"{archivo.name}: el quickstart extraído perdió el preset o la corrida; el gate sería vacuo"
     )
     assert 'study.artifacts.get("performance", "discriminant_metrics")' in codigo
@@ -127,7 +127,7 @@ def test_el_tutorial_se_ejecuta_de_corrido(tmp_path: Path, monkeypatch: pytest.M
     texto = (_DOCS / "tutorial.md").read_text(encoding="utf-8")
     partes = [_bloque(texto, nombre, "tutorial.md") for nombre in _TUTORIAL]
     codigo = "\n".join(partes)
-    assert "materialize(" in codigo and "standard_preset()" in codigo and "nikodym.run(" in codigo
+    assert "materialize(" in codigo and "standard_preset()" in codigo and "bayesrisk.run(" in codigo
     espacio = _ejecutar(codigo, _DOCS / "tutorial.md", tmp_path, monkeypatch)
     assert espacio["study"].run_context.status == "done", espacio["study"].run_context.error
 
@@ -162,7 +162,7 @@ def test_el_primer_scorecard_cabe_en_el_tope_de_lineas_y_corre_hasta_el_final(
     espacio = _ejecutar(codigo, origen, tmp_path, monkeypatch)
     sc = espacio["sc"]
     assert sc.study.run_context.status == "done", sc.study.run_context.error
-    proyecto = tmp_path / "nikodym-runs" / "consumo_v01"
+    proyecto = tmp_path / "bayesrisk-runs" / "consumo_v01"
     assert (proyecto / "config.yaml").is_file()
     assert (proyecto / "run" / "audit_trail.jsonl").is_file()
     assert (proyecto / "reports" / "scorecard_report.html").is_file()
@@ -187,7 +187,7 @@ def test_ninguna_nota_para_la_version_publicada_cita_una_version_vieja() -> None
     """Las notas «Si instalaste desde PyPI» sólo pueden citar la versión que el paquete declara.
 
     🔴 Hallazgo de la revisión adversarial de S5 (2026-09-09): el sitio se construye desde `main`
-    y sus ejemplos describen el árbol, pero quien sigue «pip install nikodym» tiene la versión
+    y sus ejemplos describen el árbol, pero quien sigue «pip install bayesrisk» tiene la versión
     publicada. Mientras el sitio va por delante de PyPI, cada página que corre un preset con
     `run_dir` lleva una nota que dice cómo correrlo en la versión publicada; al cortar la release
     (1.13.0, 2026-09-12) las nueve notas se retiraron porque PyPI y el sitio coinciden. Si el
@@ -195,7 +195,7 @@ def test_ninguna_nota_para_la_version_publicada_cita_una_version_vieja() -> None
     obliga a retirarla en el mismo bump que la deja vieja: cero notas es válido; una nota con
     otra versión, no.
     """
-    import nikodym
+    import bayesrisk
 
     paginas = [*sorted(_DOCS.rglob("*.md")), _README]
     viejas = [
@@ -204,7 +204,7 @@ def test_ninguna_nota_para_la_version_publicada_cita_una_version_vieja() -> None
         for version in _NOTA_VERSION_PUBLICADA.findall(
             " ".join(pagina.read_text(encoding="utf-8").split())
         )
-        if version != nikodym.__version__
+        if version != bayesrisk.__version__
     ]
     assert viejas == [], f"notas que citan una versión que ya no es la publicada: {viejas}"
 
@@ -213,7 +213,7 @@ def test_todo_fragmento_que_corre_un_preset_dice_donde_queda_la_evidencia() -> N
     """Regla estática para los bloques que no se ejecutan (las guías repiten la receta).
 
     Un preset de fábrica trae la auditoría encendida, y sin ``run_dir`` la corrida no arranca. Un
-    fragmento que muestre el preset y llame a ``nikodym.run`` sin decir dónde va la evidencia
+    fragmento que muestre el preset y llame a ``bayesrisk.run`` sin decir dónde va la evidencia
     publica una llamada que falla en cuanto se copia.
     """
     fragmentos = _fragmentos_con_preset()

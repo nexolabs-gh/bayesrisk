@@ -119,15 +119,22 @@ def test_release_promueve_el_mismo_artefacto_que_ci_publica(
         if str(paso.get("uses", "")).startswith("actions/upload-artifact")
     }
     candidatos = {n for n in subidos if "distributions" in n}
-    assert len(candidatos) == 1, f"ci.yml ya no sube un único candidate: {sorted(subidos)}"
-    candidate = candidatos.pop()
+    # Renombre (D-REN-11): dos candidatos, cada uno de su distribución —bayesrisk y la capa de
+    # compatibilidad nikodym—, construidos e inspeccionados en el mismo job que firma.
+    assert candidatos == {
+        "candidate-distributions-with-evidence",
+        "candidate-compat-distributions",
+    }, f"ci.yml no sube exactamente los dos candidatos: {sorted(subidos)}"
 
     promote = _scripts(release["jobs"]["promote"])
-    assert candidate in promote, (
-        f"release.yml no descarga `{candidate}`, que es el artefacto que ci.yml firma como "
-        "publicable (runbook §9). Si ci.yml lo renombró, hay que renombrarlo en los dos sitios"
-    )
-    assert "gh run download" in promote
+    for candidate in sorted(candidatos):
+        assert candidate in promote, (
+            f"release.yml no descarga `{candidate}`, que es un artefacto que ci.yml firma como "
+            "publicable (runbook §9). Si ci.yml lo renombró, hay que renombrarlo en los dos sitios"
+        )
+    assert promote.count("gh run download") == 2
+    assert "scripts/check_compat_distribution.py" in promote
+    assert "scripts/check_compat_distribution.py" in _scripts(firmantes[0])
 
 
 def test_release_reejecuta_el_gate_de_contenidos_que_corre_ci(
@@ -171,7 +178,7 @@ def test_el_bundle_estatico_se_ata_al_arbol_versionado(release: dict[str, Any]) 
     atadura = [
         p
         for p in pasos
-        if "git" in str(p.get("run", "")) and "nikodym/ui/static" in str(p.get("run", ""))
+        if "git" in str(p.get("run", "")) and "bayesrisk/ui/static" in str(p.get("run", ""))
     ]
     assert len(atadura) == 1, (
         "no hay exactamente un paso que ate el bundle estático publicado al árbol versionado"
@@ -212,22 +219,35 @@ def test_publish_solo_recibe_los_bytes_que_promote_verifico(release: dict[str, A
     assert publish["permissions"]["id-token"] == "write"
 
     salidas = promote["outputs"]
-    for clave in ("wheel_name", "wheel_sha256", "sdist_name", "sdist_sha256"):
-        assert clave in salidas, f"promote no exporta `{clave}`"
-
-    cuerpo = _scripts(publish)
-    assert "sha256sum -c" in cuerpo, "publish no recomprueba los SHA-256 de lo que recibió"
-    for clave in ("WHEEL_SHA256", "SDIST_SHA256"):
-        assert clave in cuerpo, f"publish no consume `{clave}`"
-
-    referenciadas = {
-        m
-        for paso in publish["steps"]
-        for m in re.findall(r"needs\.promote\.outputs\.(\w+)", str(paso))
+    propias = {"wheel_name", "wheel_sha256", "sdist_name", "sdist_sha256", "version"}
+    de_compat = {
+        f"compat_{c}" for c in ("wheel_name", "wheel_sha256", "sdist_name", "sdist_sha256")
     }
-    assert referenciadas == set(salidas), (
-        f"publish consume {sorted(referenciadas)} pero promote exporta {sorted(salidas)}"
-    )
+    de_compat.add("compat_version")
+    assert set(salidas) == propias | de_compat, sorted(salidas)
+
+    # Renombre (D-REN-11): nikodym 1.21 se publica DESPUÉS de bayesrisk, desde su propio job, y
+    # cada job consume exactamente los bytes y la versión de SU distribución.
+    compat = release["jobs"]["publish-compat"]
+    assert compat["needs"] == ["promote", "publish"]
+    assert compat.get("environment") == "pypi"
+    assert compat["permissions"]["id-token"] == "write"
+    for job, esperadas in ((publish, propias), (compat, de_compat)):
+        cuerpo = _scripts(job)
+        assert "sha256sum -c" in cuerpo, "publish no recomprueba los SHA-256 de lo que recibió"
+        for clave in ("WHEEL_SHA256", "SDIST_SHA256"):
+            assert clave in cuerpo, f"publish no consume `{clave}`"
+        # Por archivo, antes y después de subir (pasada 2 de Codex sobre la enmienda).
+        assert "scripts/pypi_cotejar_publicacion.py --antes" in cuerpo
+        assert "scripts/pypi_cotejar_publicacion.py --despues" in cuerpo
+        referenciadas = {
+            m
+            for paso in job["steps"]
+            for m in re.findall(r"needs\.promote\.outputs\.(\w+)", str(paso))
+        }
+        assert referenciadas == esperadas, (
+            f"un job de publicación consume {sorted(referenciadas)}; esperado {sorted(esperadas)}"
+        )
 
 
 def test_ambos_workflows_siguen_disparando_en_los_mismos_tags(

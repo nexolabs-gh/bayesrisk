@@ -25,13 +25,13 @@ from pydantic import ValidationError
 
 pytest.importorskip("fastapi", reason="el catálogo de trabajos vive en la capa ui")
 
-from nikodym.api import check_pipeline
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.effective_defaults import (
+from bayesrisk.api import check_pipeline
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.effective_defaults import (
     DISCRIMINADOR,
     build_effective_defaults,
 )
-from nikodym.ui.jobs import list_jobs
+from bayesrisk.ui.jobs import list_jobs
 
 #: Relleno de las cuatro decisiones obligatorias (D-EJE-6).
 #:
@@ -223,7 +223,7 @@ def test_un_trabajo_disponible_produce_un_config_ejecutable(
         pytest.skip(f"«{job['label']}» no está disponible: {job['unavailable_reason']}")
 
     crudo = _con_decisiones_contestadas(_esqueleto(job, catalogo))
-    config = NikodymConfig.model_validate(crudo)
+    config = BayesRiskConfig.model_validate(crudo)
     veredicto = check_pipeline(config, artifacts=_claves_externas(job, crudo) or None)
 
     assert veredicto.executable, (
@@ -304,7 +304,7 @@ def test_un_override_construye_el_config(
         if not job["overrides"]:
             continue
         crudo = _con_decisiones_contestadas(_esqueleto(job, catalogo))
-        config = NikodymConfig.model_validate(crudo)
+        config = BayesRiskConfig.model_validate(crudo)
         volcado = config.model_dump(mode="json")
         for ruta, valor in job["overrides"]:
             assert _valor_en(volcado, ruta) == valor, (
@@ -416,7 +416,7 @@ def test_sembrar_governance_encendida_dejaria_los_diez_trabajos_sin_arrancar(
         assert "purpose" not in encendida["governance"], "la proyección no inventa el propósito"
         crudo = _con_decisiones_contestadas(encendida)
         with pytest.raises(ValidationError) as capturado:
-            NikodymConfig.model_validate(crudo)
+            BayesRiskConfig.model_validate(crudo)
         assert any(
             tuple(error["loc"])[:2] == ("governance", "purpose")
             for error in capturado.value.errors()

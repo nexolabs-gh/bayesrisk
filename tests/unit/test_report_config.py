@@ -1,4 +1,4 @@
-"""Tests de ``ReportConfig`` (SDD-26 §5) y su integración con ``NikodymConfig``."""
+"""Tests de ``ReportConfig`` (SDD-26 §5) y su integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -11,17 +11,17 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.report as report_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.report as report_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.report.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.report.config import (
     IMPLEMENTED_FORMATS,
     AiNarrationConfig,
     BasicReportFormat,
@@ -33,7 +33,7 @@ from nikodym.report.config import (
     SectionPolicyConfig,
     XlsxExportConfig,
 )
-from nikodym.report.exceptions import (
+from bayesrisk.report.exceptions import (
     ReportAIError,
     ReportDependencyError,
     ReportError,
@@ -73,7 +73,7 @@ def _report_defaults() -> dict[str, Any]:
         },
         "html": {
             "template_id": "scorecard_basic_v1",
-            "theme": "nikodym",
+            "theme": "bayesrisk",
             "embed_assets": True,
             "include_interactive_charts": False,
             "deterministic_ids": True,
@@ -165,45 +165,45 @@ def test_round_trip_yaml_reportconfig() -> None:
     assert ReportConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_report_instancia() -> None:
-    """Pasar una instancia ``ReportConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_report_instancia() -> None:
+    """Pasar una instancia ``ReportConfig`` a ``BayesRiskConfig`` la conserva."""
     report = ReportConfig()
-    cfg = NikodymConfig(report=report)
+    cfg = BayesRiskConfig(report=report)
     assert isinstance(cfg.report, ReportConfig)
     assert cfg.report is report
 
 
-def test_nikodymconfig_report_dict_coacciona() -> None:
+def test_bayesriskconfig_report_dict_coacciona() -> None:
     """Un dict en ``report`` se coacciona a ``ReportConfig`` por el hook cargado."""
-    cfg = NikodymConfig(report={"output_dir": "salidas", "ai": {"enabled": True}})
+    cfg = BayesRiskConfig(report={"output_dir": "salidas", "ai": {"enabled": True}})
     assert isinstance(cfg.report, ReportConfig)
     assert cfg.report.output_dir == "salidas"
     assert cfg.report.ai.enabled is True
 
 
-def test_nikodymconfig_report_none_explicito() -> None:
+def test_bayesriskconfig_report_none_explicito() -> None:
     """``report=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(report=None).report is None
+    assert BayesRiskConfig(report=None).report is None
 
 
-def test_nikodymconfig_report_core_only_acepta_blob_json(
+def test_bayesriskconfig_report_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``report`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_REPORT_CONFIG_CLS", None)
-    cfg = NikodymConfig(report={"output_dir": "salidas", "ai": {"enabled": True}})
+    cfg = BayesRiskConfig(report={"output_dir": "salidas", "ai": {"enabled": True}})
     assert cfg.report == {"output_dir": "salidas", "ai": {"enabled": True}}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_report_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_report_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``report`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_REPORT_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(report=blob)
+        BayesRiskConfig(report=blob)
 
 
 @pytest.mark.parametrize(
@@ -223,15 +223,15 @@ def test_nikodymconfig_report_core_only_rechaza_json_no_canonico(
 )
 def test_config_hash_no_cambia_al_variar_report(report: ReportConfig) -> None:
     """``report`` es INFRA: plantilla, output, formatos, PDF e IA no cambian identidad."""
-    base = config_hash(NikodymConfig(report=ReportConfig()))
-    variado = config_hash(NikodymConfig(report=report))
+    base = config_hash(BayesRiskConfig(report=ReportConfig()))
+    variado = config_hash(BayesRiskConfig(report=report))
     assert "report" in INFRA_SECTIONS
     assert variado == base == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_config_hash_default_no_cambia_al_importar_report() -> None:
     """Importar y cablear ``report`` no mueve el golden del config por defecto."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_report_en_infra_sections() -> None:
@@ -239,9 +239,9 @@ def test_report_en_infra_sections() -> None:
     assert "report" in INFRA_SECTIONS
 
 
-def test_dump_load_nikodymconfig_con_report_idempotente() -> None:
+def test_dump_load_bayesriskconfig_con_report_idempotente() -> None:
     """``dump_config``/``loads_config`` preservan la sección ``report`` cableada."""
-    cfg = NikodymConfig(
+    cfg = BayesRiskConfig(
         report=ReportConfig(
             output_dir="docs/reportes",
             formats=("pdf",),
@@ -326,7 +326,7 @@ def test_formato_sin_motor_es_rechazado(formato: str) -> None:
         ReportConfig(formats=(formato,))  # type: ignore[arg-type]
 
     with pytest.raises(ValidationError):
-        NikodymConfig(report={"formats": [formato]})
+        BayesRiskConfig(report={"formats": [formato]})
 
 
 def test_validador_es_la_red_si_alguien_amplia_el_literal_sin_cablear_el_motor() -> None:
@@ -418,7 +418,7 @@ def test_report_public_api_minimo() -> None:
     assert report_pkg.ReportError is ReportError
 
 
-def test_report_errors_descienden_de_nikodym_error() -> None:
+def test_report_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``report`` cuelgan de la raíz propia de la librería."""
     error_classes = (
         ReportError,
@@ -429,36 +429,36 @@ def test_report_errors_descienden_de_nikodym_error() -> None:
         ReportDependencyError,
     )
     for error_cls in error_classes:
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
         with pytest.raises(ReportError, match="fallo report"):
             raise error_cls("fallo report")
 
 
 def test_import_report_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.report`` registra el hook sin arrastrar renderizadores ni SDK IA."""
+    """``import bayesrisk.report`` registra el hook sin arrastrar renderizadores ni SDK IA."""
     code = (
-        "import nikodym.report, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.report.config import ReportConfig;"
+        "import bayesrisk.report, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.report.config import ReportConfig;"
         "bloqueados=[m for m in ('jinja2','matplotlib','plotly','anthropic') if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(report={'output_dir': 'salidas'});"
+        "cfg=BayesRiskConfig(report={'output_dir': 'salidas'});"
         "assert isinstance(cfg.report, ReportConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_core_valida_report_como_blob_opaco_sin_importar_report() -> None:
-    """El core acepta ``report`` JSON/dict sin importar ``nikodym.report``."""
+    """El core acepta ``report`` JSON/dict sin importar ``bayesrisk.report``."""
     code = (
-        "from nikodym.core.config import NikodymConfig, dump_config;"
+        "from bayesrisk.core.config import BayesRiskConfig, dump_config;"
         "import sys;"
-        "assert 'nikodym.report' not in sys.modules;"
-        "cfg=NikodymConfig(report={'output_dir': 'salidas', 'ai': {'enabled': True}});"
+        "assert 'bayesrisk.report' not in sys.modules;"
+        "cfg=BayesRiskConfig(report={'output_dir': 'salidas', 'ai': {'enabled': True}});"
         "assert cfg.report == {'output_dir': 'salidas', 'ai': {'enabled': True}};"
         "texto=dump_config(cfg);"
         "assert 'report:' in texto;"
-        "assert 'nikodym.report' not in sys.modules;"
+        "assert 'bayesrisk.report' not in sys.modules;"
         "bloqueados=[m for m in ('jinja2','matplotlib','plotly','anthropic') if m in sys.modules];"
         "assert not bloqueados, bloqueados"
     )

@@ -26,12 +26,12 @@ from typing import Any, Final
 
 import pandas as pd
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.hashing import config_hash
-from nikodym.core.config.schema import cargar_configs_de_dominio
-from nikodym.provisioning.internal.config import InternalProvisioningConfig
-from nikodym.provisioning.internal.engine import InternalProvisioningEngine
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.hashing import config_hash
+from bayesrisk.core.config.schema import cargar_configs_de_dominio
+from bayesrisk.provisioning.internal.config import InternalProvisioningConfig
+from bayesrisk.provisioning.internal.engine import InternalProvisioningEngine
 
 AS_OF: Final = "2026-01-31"
 _COLUMNAS_AMBIGUAS: Final = frozenset({"portfolio", "cmf_portfolio"})
@@ -41,7 +41,7 @@ _COLUMNAS_AMBIGUAS: Final = frozenset({"portfolio", "cmf_portfolio"})
 
 
 def _mismatches_de_ambiguedad(seccion: dict[str, Any], columnas: list[str]) -> list[Any]:
-    """Corre ``nikodym.check_dataset`` de verdad y filtra los avisos de invariante.
+    """Corre ``bayesrisk.check_dataset`` de verdad y filtra los avisos de invariante.
 
     🔴 Va por la **puerta pública** a propósito. Llamar ``requisitos_incumplidos`` a mano probaría
     que el método funciona y no que alguien lo llame: este repo ya se comió un arreglo que pasaba
@@ -50,8 +50,8 @@ def _mismatches_de_ambiguedad(seccion: dict[str, Any], columnas: list[str]) -> l
     de ahí el ``cargar_configs_de_dominio()``.
     """
     cargar_configs_de_dominio()
-    config = NikodymConfig.model_validate({"name": "amb", "provisioning_internal": seccion})
-    resultado = nikodym.check_dataset(config, columnas)
+    config = BayesRiskConfig.model_validate({"name": "amb", "provisioning_internal": seccion})
+    resultado = bayesrisk.check_dataset(config, columnas)
     return [m for m in resultado.mismatches if m.kind == "unmet_requirement"]
 
 
@@ -126,7 +126,7 @@ def test_el_aviso_no_mueve_el_config_hash_de_ningun_preset() -> None:
     en HEAD; enumerarlos a mano es lo que convierte este test en un oráculo y no en un espejo.
     """
     cargar_configs_de_dominio()
-    from nikodym.ui.presets import get_preset
+    from bayesrisk.ui.presets import get_preset
 
     esperados = {
         "f1-estandar-consumo": "1063d6cf",
@@ -134,7 +134,7 @@ def test_el_aviso_no_mueve_el_config_hash_de_ningun_preset() -> None:
         "f4-ifrs9-retail": "013e69dc",
     }
     for preset_id, prefijo in esperados.items():
-        config = NikodymConfig.model_validate(get_preset(preset_id)["config"])
+        config = BayesRiskConfig.model_validate(get_preset(preset_id)["config"])
         assert config_hash(config).startswith(prefijo), (
             f"el preset {preset_id} movió su config_hash: la enmienda debía ser hash-neutra"
         )

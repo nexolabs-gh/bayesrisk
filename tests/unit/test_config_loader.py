@@ -4,16 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.core.config import (
-    NikodymConfig,
+from bayesrisk.core.config import (
+    BayesRiskConfig,
     ReproConfig,
     config_hash,
     dump_config,
     load_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import ConfigError, ConfigVersionError
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import ConfigError, ConfigVersionError
 
 
 @pytest.fixture(autouse=True)
@@ -33,13 +33,13 @@ def _vista_core_solo(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_round_trip_string() -> None:
     """load(dump(c)) == c por valor (DoD F0 c)."""
-    cfg = NikodymConfig(name="estudio", repro=ReproConfig(seed=7))
+    cfg = BayesRiskConfig(name="estudio", repro=ReproConfig(seed=7))
     assert loads_config(dump_config(cfg)) == cfg
 
 
 def test_round_trip_fichero(tmp_path: Path) -> None:
     """El round-trip también vale desde un fichero en disco."""
-    cfg = NikodymConfig(repro=ReproConfig(seed=13))
+    cfg = BayesRiskConfig(repro=ReproConfig(seed=13))
     destino = tmp_path / "config.yaml"
     destino.write_text(dump_config(cfg), encoding="utf-8")
     assert load_config(destino) == cfg
@@ -47,19 +47,19 @@ def test_round_trip_fichero(tmp_path: Path) -> None:
 
 def test_round_trip_preserva_config_hash() -> None:
     """El round-trip preserva la identidad por config_hash."""
-    cfg = NikodymConfig(repro=ReproConfig(seed=99))
+    cfg = BayesRiskConfig(repro=ReproConfig(seed=99))
     assert config_hash(loads_config(dump_config(cfg))) == config_hash(cfg)
 
 
 def test_dump_orden_de_declaracion() -> None:
     """dump_config respeta el orden de declaración (schema_version antes que repro)."""
-    texto = dump_config(NikodymConfig())
+    texto = dump_config(BayesRiskConfig())
     assert texto.index("schema_version") < texto.index("repro")
 
 
 def test_load_yaml_vacio_da_defaults() -> None:
     """Un YAML vacío (None) se normaliza a {} y produce el config por defecto."""
-    assert loads_config("") == NikodymConfig()
+    assert loads_config("") == BayesRiskConfig()
 
 
 def test_load_campo_desconocido_envuelve_en_config_error() -> None:
@@ -100,7 +100,7 @@ def test_load_version_futura_via_loader() -> None:
 
 def test_round_trip_data_poblada() -> None:
     """Un config con data poblada sobrevive el round-trip por valor y por config_hash."""
-    cfg = NikodymConfig(data={"load": {"source": "x.parquet"}})
+    cfg = BayesRiskConfig(data={"load": {"source": "x.parquet"}})
     recargado = loads_config(dump_config(cfg))
     assert recargado == cfg
     assert config_hash(recargado) == config_hash(cfg)
@@ -108,5 +108,5 @@ def test_round_trip_data_poblada() -> None:
 
 def test_dump_unicode_sin_escapar() -> None:
     """Las tildes se serializan legibles (allow_unicode), no escapadas."""
-    texto = dump_config(NikodymConfig(name="estudio café"))
+    texto = dump_config(BayesRiskConfig(name="estudio café"))
     assert "café" in texto

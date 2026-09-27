@@ -9,11 +9,11 @@ from typing import Any
 
 import pytest
 
-from nikodym.audit import EnvironmentSnapshot
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.governance import InventoryEntry, ModelCard, ModelInventory, RegistryUnavailableError
-from nikodym.tracking import MLflowInventory, ModelNotFoundError, TrackingConfig, TrackingError
-from nikodym.tracking import inventory as inventory_mod
+from bayesrisk.audit import EnvironmentSnapshot
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.governance import InventoryEntry, ModelCard, ModelInventory, RegistryUnavailableError
+from bayesrisk.tracking import MLflowInventory, ModelNotFoundError, TrackingConfig, TrackingError
+from bayesrisk.tracking import inventory as inventory_mod
 
 _TS = datetime(2026, 6, 25, 12, 0, 0, tzinfo=UTC)
 
@@ -239,13 +239,13 @@ def test_mlflow_inventory_implementa_protocol_e_idempotencia() -> None:
 
 
 def test_mlflow_inventory_metrics_no_se_escriben_como_tags() -> None:
-    """Las metricas quedan en entry.metrics, no en tags ``nikodym.metric.*``."""
+    """Las metricas quedan en entry.metrics, no en tags ``bayesrisk.metric.*``."""
     entry = _entry()
     tags = inventory_mod._entry_tags(entry)
 
     assert entry.metrics == {"auc": 0.8}
     assert "nikodym.config_hash" in tags
-    assert not [key for key in tags if key.startswith("nikodym.metric.")]
+    assert not [key for key in tags if key.startswith("bayesrisk.metric.")]
 
 
 def test_mlflow_inventory_modelo_version_ausente() -> None:
@@ -292,7 +292,7 @@ def test_mlflow_inventory_extra_ausente_falla_ruidoso(
     def missing(extra: str, *modules: str) -> tuple[Any, ...]:
         raise MissingDependencyError("falta mlflow")
 
-    monkeypatch.setattr("nikodym.tracking.inventory.require_extra", missing)
+    monkeypatch.setattr("bayesrisk.tracking.inventory.require_extra", missing)
     inventory = MLflowInventory(TrackingConfig(registry_uri="sqlite:///registry.db"))
 
     with pytest.raises(TrackingError, match="requiere el extra"):
@@ -307,7 +307,7 @@ def test_mlflow_inventory_import_perezoso_exitoso(monkeypatch: pytest.MonkeyPatc
     def available(extra: str, *modules: str) -> tuple[Any, ...]:
         return (fake_mlflow,)
 
-    monkeypatch.setattr("nikodym.tracking.inventory.require_extra", available)
+    monkeypatch.setattr("bayesrisk.tracking.inventory.require_extra", available)
     inventory = MLflowInventory(
         TrackingConfig(
             tracking_uri="sqlite:///tracking.db",
@@ -324,7 +324,7 @@ def test_mlflow_inventory_import_perezoso_exitoso(monkeypatch: pytest.MonkeyPatc
 
     default_mlflow = _FakeMLflowModule(_FakeClient())
     monkeypatch.setattr(
-        "nikodym.tracking.inventory.require_extra",
+        "bayesrisk.tracking.inventory.require_extra",
         lambda extra, *modules: (default_mlflow,),
     )
     assert MLflowInventory(TrackingConfig()).list_versions("riesgo-consumo") == []

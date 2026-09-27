@@ -21,14 +21,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym
-from nikodym.binning.config import BinningConfig, VariableBinningConfig
-from nikodym.binning.exceptions import BinningFitError
-from nikodym.binning.transformer import WoEBinner
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import config_hash
+import bayesrisk
+from bayesrisk.binning.config import BinningConfig, VariableBinningConfig
+from bayesrisk.binning.exceptions import BinningFitError
+from bayesrisk.binning.transformer import WoEBinner
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import config_hash
 
-# Importar `nikodym` no arrastra OptBinning (import perezoso); ajustar sí.
+# Importar `bayesrisk` no arrastra OptBinning (import perezoso); ajustar sí.
 pytest.importorskip("optbinning")
 
 #: El mecanismo de German Credit, en pequeño: `RARO` es el único nivel bajo el 1 % y no tiene
@@ -227,7 +227,7 @@ def test_gate_la_cartera_con_una_categoria_rara_llega_al_final(
     """🔴 Test 1 en la suite (el de German Credit corre fuera, con el archivo de la UCI): la
     corrida termina `done`, la categórica sigue en el modelo de tramos, la card publica el corte
     efectivo y el resumen de «Tramos y WoE» lo dice en español."""
-    sc = nikodym.Scorecard(
+    sc = bayesrisk.Scorecard(
         _cartera_con_categoria_rara,
         target={"col": "bad_flag", "op": "==", "value": 1},
         id="loan_id",
@@ -257,7 +257,7 @@ def test_el_mismo_config_reproduce_el_mismo_corte_y_el_mismo_binning(
     el `config_hash` identifica lo declarado, así que no se mueve."""
     corridas = []
     for nombre in ("primera", "segunda"):
-        sc = nikodym.Scorecard(
+        sc = bayesrisk.Scorecard(
             _cartera_con_categoria_rara,
             target={"col": "bad_flag", "op": "==", "value": 1},
             id="loan_id",
@@ -305,7 +305,7 @@ def test_los_conteos_son_los_de_la_muestra_ajustada_no_los_del_archivo(tmp_path:
     en_archivo = datos[datos["proposito"] == "RARO"]
     assert (len(en_archivo), int(en_archivo["bad_flag"].sum())) == (9, 1)
 
-    sc = nikodym.Scorecard(
+    sc = bayesrisk.Scorecard(
         ruta,
         target={"col": "bad_flag", "op": "==", "value": 1},
         id="loan_id",

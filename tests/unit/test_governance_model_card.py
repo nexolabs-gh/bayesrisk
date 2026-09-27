@@ -1,4 +1,4 @@
-"""Tests del model card de ``nikodym.governance``."""
+"""Tests del model card de ``bayesrisk.governance``."""
 
 from __future__ import annotations
 
@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.audit import EnvironmentSnapshot, JsonlAuditSink
-from nikodym.core.audit import AuditEvent
-from nikodym.core.config import NikodymConfig
-from nikodym.core.lineage import LineageBundle
-from nikodym.core.study import Study
-from nikodym.data.card import DataCardSection
-from nikodym.governance import GovernanceConfig, GovernanceError, ModelCardBuilder
+from bayesrisk.audit import EnvironmentSnapshot, JsonlAuditSink
+from bayesrisk.core.audit import AuditEvent
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.core.study import Study
+from bayesrisk.data.card import DataCardSection
+from bayesrisk.governance import GovernanceConfig, GovernanceError, ModelCardBuilder
 
 _CREATED_AT = datetime(2026, 6, 25, 8, 0, 0, tzinfo=UTC)
 _EVENT_TS = datetime(2026, 6, 25, 9, 0, 0, tzinfo=UTC)
@@ -21,7 +21,7 @@ _REVIEW_NAIVE = datetime(2026, 1, 31, 10, 30, 0)
 _ENV = EnvironmentSnapshot(
     python_version="3.12.9",
     platform="macOS-15-arm64",
-    library_versions={"nikodym": "0.1.0", "pydantic": "2.13.0"},
+    library_versions={"bayesrisk": "0.1.0", "pydantic": "2.13.0"},
     uv_lock_hash="uvhash",
     captured_at=datetime(2026, 6, 25, 7, 0, 0, tzinfo=UTC),
 )
@@ -36,7 +36,7 @@ _GOLDEN_MODEL_CARD_JSON = (
     '"motivo":null,"regla":"iv_min","step":"binning","ts":"2026-06-25T09:00:00Z","umbral":0.02,'
     '"valor":0.01}],'
     '"determinism_caveats":["GBDT multihilo"],"environment":{"captured_at":"2026-06-25T07:00:00Z",'
-    '"library_versions":{"nikodym":"0.1.0","pydantic":"2.13.0"},"platform":"macOS-15-arm64",'
+    '"library_versions":{"bayesrisk":"0.1.0","pydantic":"2.13.0"},"platform":"macOS-15-arm64",'
     '"python_version":"3.12.9","uv_lock_hash":"uvhash"},"git_dirty":false,"git_sha":"abc123",'
     '"limitations":["uso interno","GBDT multihilo"],"metric_sections":{'
     '"fecha":"2026-06-25T09:00:00Z",'
@@ -110,7 +110,7 @@ def _lineage(
         config_hash="cfg123",
         root_seed=1234,
         uv_lock_hash=uv_lock_hash,
-        library_versions={"nikodym": "0.1.0"},
+        library_versions={"bayesrisk": "0.1.0"},
         determinism_caveats=caveats or ["GBDT multihilo"],
         created_at=_CREATED_AT,
         schema_version="1.0.0",
@@ -136,7 +136,7 @@ def _data_card() -> DataCardSection:
 
 def _study(status: str = "done") -> Study:
     """Study finalizado en memoria con resultados y artefactos deterministas."""
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.run_context.status = status  # type: ignore[assignment]
     study.run_context.run_id = "run-001"
     study.run_context.lineage = _lineage()
@@ -229,7 +229,7 @@ def test_model_card_publica_la_decision_anti_fuga_del_trail(tmp_path: Path) -> N
 
 def test_model_card_builder_run_fallido_sin_trail_ni_lineage_completo_advierte() -> None:
     """Un run fallido también produce card, marcando faltantes y sin decisiones."""
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.run_context.status = "failed"
     study.run_context.run_id = "run-failed"
     study.run_context.lineage = _lineage(
@@ -271,7 +271,7 @@ def test_model_card_builder_trail_ausente_advierte(tmp_path: Path) -> None:
 @pytest.mark.parametrize("status", ["created", "running"])
 def test_model_card_builder_rechaza_study_no_finalizado(status: str) -> None:
     """``created``/``running`` no tienen evidencia suficiente para model card."""
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.run_context.status = status  # type: ignore[assignment]
     with pytest.raises(GovernanceError, match="Study finalizado"):
         _builder().build(study)
@@ -279,7 +279,7 @@ def test_model_card_builder_rechaza_study_no_finalizado(status: str) -> None:
 
 def test_model_card_builder_rechaza_finalizado_sin_run_id() -> None:
     """Un status final sin ``run_id`` es inconsistente y falla ruidoso."""
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.run_context.status = "done"
     study.run_context.lineage = _lineage()
     with pytest.raises(GovernanceError, match="sin run_id"):

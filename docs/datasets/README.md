@@ -1,4 +1,4 @@
-# Datasets para Nikodym — qué existe, dónde está, y por qué testear con cada uno
+# Datasets para bayesrisk — qué existe, dónde está, y por qué testear con cada uno
 
 Relevado y descargado el **2026-07-25**. Cubre: scorecard, behavioral, IFRS 9, LGD, stress
 testing, Basilea, fairness, macro y Chile.
@@ -48,7 +48,7 @@ raw/
 
 **Leer antes de planificar trabajo apoyándose en una fila de `catalogo.csv`.** El catálogo se
 escribió mirando los datasets, no el código, y por eso varias justificaciones describen un caso de
-prueba que hoy **ningún motor de Nikodym puede correr**. No están mal como relevamiento —el dataset
+prueba que hoy **ningún motor de bayesrisk puede correr**. No están mal como relevamiento —el dataset
 es el correcto para ese caso— pero sí como plan: el caso exige antes una capacidad que no existe.
 
 Verificado contra el árbol el 2026-07-25, cada fila con `archivo:línea`:
@@ -60,7 +60,7 @@ Verificado contra el árbol el 2026-07-25, cada fila con `archivo:línea`:
 | `payoff_time` como riesgo competitivo (el argumento estrella de `mortgage.csv`) | No existe riesgo competitivo en la librería: `survival/config.py:61-66` define un único evento binario. El dataset sirve; el error que dice demostrar es hoy indistinguible para el motor. |
 | Panel longitudinal para IFRS 9 | El motor IFRS 9 es de corte: exige unicidad de fila (`ifrs9/engine.py:600-610`) y veta el perfil longitudinal en construcción (`ifrs9/config.py:285-318`). Hay que colapsar el panel antes. |
 | SBA prueba que el EL respeta mitigantes | No hay campo de garantía en el cálculo: `IfrsEadConfig` (`ifrs9/config.py:244-322`) no lo tiene, y `guarantee_treatment` es sólo un descriptor de salida (`cmf/results.py:90`). |
-| HMDA para fairness / disparate impact | No hay módulo de fairness en `src/nikodym/`. |
+| HMDA para fairness / disparate impact | No hay módulo de fairness en `src/bayesrisk/`. |
 | EBA Transparency como benchmark de densidad de RWA | No hay módulo de Basilea/RWA. |
 | Lending Club rechazados, **prioridad 1**, para reject inference | No hay reject inference, y está excluido por diseño: `docs/design/02-data.md:581` cita ESPECIFICACIONES §5.2 («sin reject inference en F1»). Es la discrepancia de prioridad más grande del catálogo. |
 | Berka obliga a Firth o calibración bayesiana | Ninguna de las dos existe: `model/config.py:22` y `calibration/config.py:24`. |
@@ -137,7 +137,7 @@ si tu monitoreo de PSI/CSI no dispara alertas en 2020Q2, está mal calibrado. Ta
 **Por qué testear con éste:** **es el único público con las solicitudes rechazadas.** Sin
 rechazados no puedes probar reject inference (parcelling, augmentation, Heckman) ni medir el
 sesgo de selección — que es el error conceptual más caro de un scorecard real, porque el modelo
-solo ve a quien ya fue aprobado. Si Nikodym vende un módulo de reject inference, este dataset
+solo ve a quien ya fue aprobado. Si bayesrisk vende un módulo de reject inference, este dataset
 es la única evidencia pública que lo respalda.
 
 ### `raw/scorecard/sba_national/SBAnational.csv` — 899.164 × 27, 1987–2014
@@ -343,7 +343,7 @@ crediticio.
 
 Con esto se prueban de verdad: disparate impact ratio, equal opportunity difference, y sobre todo
 **proxy discrimination** — que tu scorecard no discrimine indirectamente vía código postal o
-tipo de propiedad aunque no use raza como variable. Si Nikodym va a vender validación de modelos
+tipo de propiedad aunque no use raza como variable. Si bayesrisk va a vender validación de modelos
 a un banco chileno, esto es el diferenciador: nadie más lo tiene testeado.
 `raw/fairness/hmda_2024_RI_muestra.csv` (42k) es la versión chica para tests rápidos.
 

@@ -15,18 +15,18 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.markov.results as markov_results
-from nikodym.markov.config import (
+import bayesrisk.markov.results as markov_results
+from bayesrisk.markov.config import (
     EmbeddingPolicy as ConfigEmbeddingPolicy,
 )
-from nikodym.markov.config import (
+from bayesrisk.markov.config import (
     MarkovMethod as ConfigMarkovMethod,
 )
-from nikodym.markov.config import (
+from bayesrisk.markov.config import (
     ProjectionMode as ConfigProjectionMode,
 )
-from nikodym.markov.exceptions import MarkovTransformError
-from nikodym.markov.results import (
+from bayesrisk.markov.exceptions import MarkovTransformError
+from bayesrisk.markov.results import (
     EmbeddingDiagnostics,
     MarkovCard,
     MarkovDiagnostics,
@@ -531,18 +531,18 @@ def test_markov_result_acepta_conteos_opcionales_faltantes() -> None:
 def test_markov_results_import_liviano_y_exports_publicos() -> None:
     code = (
         "import sys;"
-        "import nikodym.markov.config;"
+        "import bayesrisk.markov.config;"
         "blocked=[m for m in "
-        "('numpy','pandas','scipy','nikodym.markov.transition') "
+        "('numpy','pandas','scipy','bayesrisk.markov.transition') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'nikodym.markov.step' in sys.modules;"
-        "import nikodym.markov.results;"
+        "assert 'bayesrisk.markov.step' in sys.modules;"
+        "import bayesrisk.markov.results;"
         "blocked=[m for m in "
-        "('numpy','pandas','scipy','nikodym.markov.transition') "
+        "('numpy','pandas','scipy','bayesrisk.markov.transition') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'EmbeddingDiagnostics' in nikodym.markov.results.__all__"
+        "assert 'EmbeddingDiagnostics' in bayesrisk.markov.results.__all__"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 

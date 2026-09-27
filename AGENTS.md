@@ -1,4 +1,4 @@
-# AGENTS.md — contrato operativo de Nikodym RiskLib
+# AGENTS.md — contrato operativo de bayesrisk
 
 > Fuente común y durable para todo agente que trabaje este checkout, cualquiera sea su rol. Este
 > archivo contiene reglas, no crónica.
@@ -61,14 +61,19 @@ que es reemplazable cuando cambie la versión del plugin.
 
 ## Proyecto y lenguaje
 
-Nikodym es una librería Python open-source, Apache-2.0, de riesgo de crédito: PD —scorecards, ML y
-survival—, LGD/EAD, validación, provisiones IFRS 9/ECL, forward-looking y stress testing, con
-informe reproducible y lineage. Paquete: `nikodym`.
+bayesrisk es una librería Python open-source, Apache-2.0, de riesgo de crédito: PD —scorecards, ML
+y survival—, LGD/EAD, validación, provisiones IFRS 9/ECL, forward-looking y stress testing, con
+informe reproducible y lineage. Paquete: `bayesrisk`. La construye y mantiene **Bayes Advisory**.
+
+Hasta la 1.20.0 se llamó `nikodym` (enmienda RENOMBRE-BAYESRISK, 2026-09-27). `nikodym` 1.21 es sólo
+la capa de compatibilidad congelada (`compat/nikodym/`): no recibe desarrollo; todo lo nuevo va en
+`bayesrisk`. Las identidades de hash y de formato que llevan la palabra «nikodym» están congeladas
+a propósito (D-REN-4): no se «corrigen».
 
 Todo el trabajo del proyecto —documentación, comentarios y comunicación— se hace en español; los
 términos técnicos conservan su forma original.
 
-La librería es el escaparate reputacional de Nikodym. La calidad verificable es requisito de
+La librería es el escaparate reputacional de Bayes Advisory. La calidad verificable es requisito de
 producto, no un extra.
 
 **Objetivo último (Cami, 2026-09-18):** ser la librería de referencia mundial para construir modelos
@@ -89,8 +94,9 @@ desde 2026-09-18») y la misión en [`docs/ESPECIFICACIONES.md`](docs/ESPECIFICA
   regla del máximo B-1 compara método estándar con método interno del banco, no CMF con IFRS 9.
 - No proponer covariables WoE para LGD. El WoE supervisado contra incumplimiento no se reutiliza
   como covariable de severidad; la LGD modelada consume el frame crudo.
-- El pipeline scorecard F1 es API estable bajo SemVer 1.x. Las superficies declaradas
-  experimentales pueden crecer de forma aditiva, no mediante rupturas silenciosas.
+- El pipeline scorecard F1 es API estable bajo SemVer (serie 2.x; la 1.x fue nikodym). Las
+  superficies declaradas experimentales pueden crecer de forma aditiva, no mediante rupturas
+  silenciosas.
 - `FALTA-DATO` significa deuda del motor; `DATO-INSTITUCIONAL`, información que sólo la institución
   puede fijar. El motor no inventa ninguna. Los consumidores usan `is_declared_warning()`, no los
   literales. Los códigos internos no van al copy público.
@@ -185,7 +191,8 @@ Esa autorización no amplía el objetivo de la sesión ni permite tomar decision
 
 ## Git, privacidad y cierre
 
-- Repo público: `nexolabs-gh/nikodym`, rama `main`. Todo commit es visible.
+- Repo público: `nexolabs-gh/nikodym` (el nombre del repositorio no cambió con el paquete), rama
+  `main`. Todo commit es visible.
 - `privado/` es otro repo Git, privado, con remoto propio. Nunca añadirlo al índice público. El
   `HANDOFF.md` de la raíz apunta a `privado/HANDOFF.md` y está ignorado en el público.
 - Antes de un push, cambiar `gh` a la cuenta `nexolabs-gh` como indica el runbook. Verificar ambos

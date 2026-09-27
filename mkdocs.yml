@@ -1,12 +1,12 @@
-site_name: Nikodym RiskLib
+site_name: bayesrisk
 site_description: >-
   Librería Python de riesgo de crédito: PD (scorecards, ML, survival), LGD y EAD, validación
   de modelos, provisiones IFRS 9/ECL, forward-looking y stress testing, con informe
   reproducible y su lineage.
-site_author: Nexo Labs
+site_author: Bayes Advisory
 repo_url: https://github.com/nexolabs-gh/nikodym
 repo_name: nexolabs-gh/nikodym
-site_url: https://docs.nikodym.cl/
+site_url: https://docs.bayesadvisory.cl/
 
 # El sitio de documentación vive en `docs_site/` para NO colisionar con `docs/`, que aloja el
 # diseño interno (SDDs en `docs/design/`, especificaciones, roadmap) y no es parte del sitio público.
@@ -48,13 +48,14 @@ extra_css:
 # consultora no compite con la documentación: `api.md` es referencia generada y `changelog.md` un
 # snippet incluido — prosa nuestra ahí sería intrusiva o se pisaría en el próximo build.
 copyright: >-
-  Nikodym RiskLib · Apache-2.0 · lo construye
-  <a href="https://www.nikodym.cl/?ref=docs">Nexo Labs</a> —
-  <a href="https://www.nikodym.cl/?ref=docs#contact">Proponer un caso</a>
+  bayesrisk · Apache-2.0 · lo construye
+  <a href="https://www.bayesadvisory.cl/?ref=docs">Bayes Advisory</a> —
+  <a href="https://www.bayesadvisory.cl/?ref=docs#contact">Proponer un caso</a>
 
 nav:
   - Inicio: index.md
   - Empezar: getting-started.md
+  - Migrar desde nikodym: migrar-desde-nikodym.md
   - Tutorial: tutorial.md
   - Conceptos: concepts.md
   - Guías:

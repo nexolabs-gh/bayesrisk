@@ -29,29 +29,29 @@ from test_eda_step import (
     _study_with_data,
 )
 
-import nikodym
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.study import Study
-from nikodym.data.config import RandomSplitConfig
-from nikodym.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
-from nikodym.eda.default_rate import (
+import bayesrisk
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import RandomSplitConfig
+from bayesrisk.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
+from bayesrisk.eda.default_rate import (
     _RESULT_COLUMNS,
     DEFAULT_RATE_NOT_EVALUABLE_REASON_LABELS,
     DefaultRateAnalyzer,
     DefaultRateResult,
     tasa_no_evaluable,
 )
-from nikodym.eda.exceptions import EdaError
-from nikodym.eda.stability import NOT_EVALUABLE_REASON_LABELS
-from nikodym.eda.step import EdaStep
-from nikodym.guided.summaries import SummaryContext, build_stage_summary
-from nikodym.performance.config import PerformanceConfig
-from nikodym.report import prose
-from nikodym.report.builder import ReportBuilder
-from nikodym.report.config import ReportConfig
-from nikodym.report.renderer import HtmlReportRenderer
-from nikodym.stability.config import StabilityConfig
+from bayesrisk.eda.exceptions import EdaError
+from bayesrisk.eda.stability import NOT_EVALUABLE_REASON_LABELS
+from bayesrisk.eda.step import EdaStep
+from bayesrisk.guided.summaries import SummaryContext, build_stage_summary
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.report import prose
+from bayesrisk.report.builder import ReportBuilder
+from bayesrisk.report.config import ReportConfig
+from bayesrisk.report.renderer import HtmlReportRenderer
+from bayesrisk.stability.config import StabilityConfig
 
 # ───────────────────────── la regla nueva ─────────────────────────
 
@@ -390,7 +390,7 @@ def _corrida_f1_sin_eje(tmp_path: Path) -> Study:
             "stability": StabilityConfig(psi_bins=2, csi_bins=2, temporal_axis="none"),
         }
     )
-    return nikodym.run(config, run_dir=str(tmp_path / "run"))
+    return bayesrisk.run(config, run_dir=str(tmp_path / "run"))
 
 
 def test_el_pipeline_f1_completo_termina_done_sin_eje_temporal(tmp_path: Path) -> None:
@@ -467,7 +467,7 @@ def test_el_informe_publica_la_causa_una_vez_y_ninguna_frase_falsa(tmp_path: Pat
     # desarrollo— y puede muestrearla, así que el informe no puede atribuir los perfiles ni la
     # calidad al archivo entero. Hallazgo de la revisión adversarial del rango, verificado: la
     # corrida de este test usa el default, así que describe 8 de las 30 filas del archivo.
-    from nikodym.data.partition import PARTITION_COL
+    from bayesrisk.data.partition import PARTITION_COL
 
     frame = study.artifacts.get("data", "frame")
     assert study.config.eda.analysis_partition == "desarrollo"
@@ -538,7 +538,7 @@ def test_la_rama_degradada_valida_la_poblacion_igual_que_la_normal(mutar: str, m
         analysis_partition="todas",
     )
     study = Study(
-        NikodymConfig(repro=ReproConfig(seed=20_240_626), data=_data_config_aleatorio(), eda=cfg)
+        BayesRiskConfig(repro=ReproConfig(seed=20_240_626), data=_data_config_aleatorio(), eda=cfg)
     )
     study.artifacts.set("data", "frame", frame)
     study.artifacts.set("data", "labels", _labels(_frame_sin_fecha()))

@@ -3,18 +3,18 @@
 import pytest
 from pydantic import ValidationError
 
-from nikodym.core.config import NikodymConfig, ReproConfig, RunConfig
-from nikodym.core.config import schema as _schema_mod
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig, RunConfig
+from bayesrisk.core.config import schema as _schema_mod
 
 
 @pytest.fixture(autouse=True)
 def _vista_core_solo(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fuerza la vista *core-only*: las secciones de dominio quedan como blobs opacos.
 
-    ``nikodym.data``/``nikodym.eda``/``nikodym.binning``/``nikodym.selection``/``nikodym.audit``/
-    ``nikodym.model``/``nikodym.scorecard``/``nikodym.calibration``/
-    ``nikodym.forward``/``nikodym.provisioning.cmf``/``nikodym.performance``/``nikodym.stability``/
-    ``nikodym.governance`` (importados por otros tests) pueblan hooks
+    ``bayesrisk.data``/``bayesrisk.eda``/``bayesrisk.binning``/``bayesrisk.selection``/``bayesrisk.audit``/
+    ``bayesrisk.model``/``bayesrisk.scorecard``/``bayesrisk.calibration``/
+    ``bayesrisk.forward``/``bayesrisk.provisioning.cmf``/``bayesrisk.performance``/``bayesrisk.stability``/
+    ``bayesrisk.governance`` (importados por otros tests) pueblan hooks
     *process-wide*; aquí se neutralizan para probar el núcleo en aislamiento.
     """
     monkeypatch.setattr(_schema_mod, "_DATA_CONFIG_CLS", None)
@@ -34,8 +34,8 @@ def _vista_core_solo(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_construye_sin_argumentos() -> None:
-    """NikodymConfig() construye sin kwargs con todos los defaults (DoD F0 a)."""
-    cfg = NikodymConfig()
+    """BayesRiskConfig() construye sin kwargs con todos los defaults (DoD F0 a)."""
+    cfg = BayesRiskConfig()
     assert cfg.schema_version == "1.0.0"
     assert cfg.name == "nikodym-study"
     assert cfg.repro.seed == 42
@@ -79,12 +79,12 @@ def test_run_defaults() -> None:
 def test_extra_forbid_levanta() -> None:
     """Un campo desconocido (typo) levanta ValidationError, no se descarta en silencio."""
     with pytest.raises(ValidationError):
-        NikodymConfig(campo_inexistente=1)
+        BayesRiskConfig(campo_inexistente=1)
 
 
 def test_frozen_reasignar_campo_levanta() -> None:
     """Reasignar un campo de un config frozen levanta ValidationError."""
-    cfg = NikodymConfig()
+    cfg = BayesRiskConfig()
     with pytest.raises(ValidationError):
         cfg.name = "otro"
 
@@ -99,43 +99,43 @@ def test_frozen_no_congela_lista_anidada() -> None:
 def test_cross_section_steps_inactivas_levanta() -> None:
     """run.steps no puede apuntar a una sección inactiva (None)."""
     with pytest.raises(ValidationError) as info:
-        NikodymConfig(run=RunConfig(steps=["data"]))
+        BayesRiskConfig(run=RunConfig(steps=["data"]))
     assert "secciones inactivas" in str(info.value)
 
 
 def test_cross_section_ok_cuando_seccion_activa() -> None:
     """Si la sección referida por steps está activa (no-None), no levanta."""
-    cfg = NikodymConfig(run=RunConfig(steps=["data"]), data={"x": 1})
+    cfg = BayesRiskConfig(run=RunConfig(steps=["data"]), data={"x": 1})
     assert cfg.run.steps == ["data"]
 
 
 def test_campos_tienen_title() -> None:
     """Cada campo de las secciones transversales declara title (contrato UI, SDD-05 §5.3)."""
-    for modelo in (NikodymConfig, ReproConfig, RunConfig):
+    for modelo in (BayesRiskConfig, ReproConfig, RunConfig):
         for nombre, campo in modelo.model_fields.items():
             assert campo.title is not None, f"{modelo.__name__}.{nombre} sin title"
 
 
 def test_data_acepta_dict_de_primitivas() -> None:
     """El placeholder data acepta un dict JSON-canónico de primitivas."""
-    cfg = NikodymConfig(data={"load": {"source": "x.parquet", "filas": 10}})
+    cfg = BayesRiskConfig(data={"load": {"source": "x.parquet", "filas": 10}})
     assert cfg.data == {"load": {"source": "x.parquet", "filas": 10}}
 
 
 def test_data_rechaza_set_no_determinista() -> None:
     """Un set en data se rechaza: su orden de iteración rompería el config_hash entre procesos."""
     with pytest.raises(ValidationError):
-        NikodymConfig(data={"a": {1, 2, 3}})
+        BayesRiskConfig(data={"a": {1, 2, 3}})
 
 
 def test_data_rechaza_objeto_no_serializable() -> None:
     """Un objeto sin serialización JSON en data se rechaza al construir, no al hashear."""
     with pytest.raises(ValidationError):
-        NikodymConfig(data={"o": object()})
+        BayesRiskConfig(data={"o": object()})
 
 
 @pytest.mark.parametrize("no_finito", [float("nan"), float("inf"), float("-inf")])
 def test_data_rechaza_float_no_finito(no_finito: float) -> None:
     """Un float no finito en data se rechaza (se corrompería a null en el round-trip)."""
     with pytest.raises(ValidationError):
-        NikodymConfig(data={"x": no_finito})
+        BayesRiskConfig(data={"x": no_finito})

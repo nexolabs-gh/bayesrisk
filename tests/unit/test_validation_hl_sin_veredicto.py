@@ -32,14 +32,14 @@ from datetime import UTC, datetime
 import pandas as pd
 import pytest
 
-from nikodym.core.lineage import LineageBundle
-from nikodym.report.builder import ReportBuilder
-from nikodym.report.config import ReportConfig
-from nikodym.report.renderer import HtmlReportRenderer, _table_view
-from nikodym.report.results import ReportInputBundle
-from nikodym.validation.config import CalibrationValidationConfig, ValidationConfig
-from nikodym.validation.evaluator import ValidationEvaluator
-from nikodym.validation.results import HL_NOT_EVALUABLE_REASON_LABELS, ValidationResult
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.report.builder import ReportBuilder
+from bayesrisk.report.config import ReportConfig
+from bayesrisk.report.renderer import HtmlReportRenderer, _table_view
+from bayesrisk.report.results import ReportInputBundle
+from bayesrisk.validation.config import CalibrationValidationConfig, ValidationConfig
+from bayesrisk.validation.evaluator import ValidationEvaluator
+from bayesrisk.validation.results import HL_NOT_EVALUABLE_REASON_LABELS, ValidationResult
 
 #: Las trece columnas que la tabla del documento pinta, en su orden (literal a propósito).
 _COLUMNAS_PINTADAS: tuple[str, ...] = (
@@ -122,7 +122,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "1.16.0"},
+        library_versions={"bayesrisk": "1.16.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 9, 14, 12, 0, tzinfo=UTC),
         schema_version="1.0.0",
@@ -278,7 +278,7 @@ def test_con_solo_estabilidad_evaluable_la_prosa_no_niega_la_evidencia(
     ejecutivo = _resumen_ejecutivo(html)
     assert "Sin pruebas de pasa o falla" in ejecutivo
     assert "Sin pruebas evaluables" not in ejecutivo
-    from nikodym.validation.results import VALIDATION_STATUS_LABELS
+    from bayesrisk.validation.results import VALIDATION_STATUS_LABELS
 
     assert VALIDATION_STATUS_LABELS[estado] in ejecutivo
 
@@ -362,7 +362,7 @@ def test_el_backtesting_sin_veredicto_se_cuenta_en_su_familia() -> None:
     """Un contraste realizado-vs-estimado que no se pudo correr (sin dispersión) figura en la
     tabla con ``not_evaluable``; su familia lo cuenta como sin veredicto en vez de llamarlo
     evaluado, y el capítulo no le atribuye una causa que el motor no publica."""
-    from nikodym.validation.config import BacktestingValidationConfig
+    from bayesrisk.validation.config import BacktestingValidationConfig
 
     n = 40
     detail = pd.DataFrame(
@@ -468,7 +468,7 @@ def test_el_word_conserva_las_trece_columnas_y_lleva_las_causas_en_prosa() -> No
     from docx.table import Table
     from docx.text.paragraph import Paragraph
 
-    from nikodym.report.docx import DocxReportRenderer
+    from bayesrisk.report.docx import DocxReportRenderer
 
     payload = DocxReportRenderer.from_config(
         ReportConfig(sections={"missing_policy": "skip"})
@@ -505,7 +505,7 @@ def test_el_word_conserva_las_trece_columnas_y_lleva_las_causas_en_prosa() -> No
 def test_el_pdf_lleva_las_causas_en_prosa_y_no_como_columna() -> None:
     from pypdf import PdfReader
 
-    from nikodym.report.pdf import render_pdf
+    from bayesrisk.report.pdf import render_pdf
 
     pdf = render_pdf(_html(_resultado()))
     paginas = [page.extract_text() for page in PdfReader(io.BytesIO(pdf)).pages]

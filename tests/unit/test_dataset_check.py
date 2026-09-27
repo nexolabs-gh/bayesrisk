@@ -1,7 +1,7 @@
 """Gate del preflight config contra dataset (`_ENMIENDA-PREFLIGHT-DATASET.md`, D-PRE-1…D-PRE-9).
 
 El caso que originó la capacidad se midió el 2026-07-28 contra `1.8.0` **instalado desde PyPI**,
-con `nikodym-ui` levantado fuera del checkout: un CSV con nombres de columna propios exige seis
+con `bayesrisk-ui` levantado fuera del checkout: un CSV con nombres de columna propios exige seis
 ediciones del preset F1 en seis lugares distintos, y el motor las revela **de a una** —cada corrida
 fallida destapa la siguiente—. Aquí se fija que salgan todas juntas y sin correr nada.
 
@@ -18,15 +18,15 @@ from __future__ import annotations
 
 import pytest
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.dataset_check import (
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.dataset_check import (
     CLAVE_ROL,
     ROL_DERIVADA,
     ROL_ENTRADA,
     ROLES,
     check_dataset,
 )
-from nikodym.ui.presets import get_preset
+from bayesrisk.ui.presets import get_preset
 
 #: Columnas del dataset del catálogo `consumo_comportamiento` **tal como las ve el motor**:
 #: `loan_id` no aparece porque vive en el índice del parquet, no entre las columnas.
@@ -56,12 +56,12 @@ COLUMNAS_PROPIAS = (
 
 
 @pytest.fixture
-def config_f1() -> NikodymConfig:
+def config_f1() -> BayesRiskConfig:
     """El preset F1 tal como lo sirve la UI, reconstruido."""
-    return NikodymConfig.model_validate(get_preset("f1-estandar-consumo")["config"])
+    return BayesRiskConfig.model_validate(get_preset("f1-estandar-consumo")["config"])
 
 
-def test_el_preset_contra_su_propio_dataset_no_acusa_nada(config_f1: NikodymConfig) -> None:
+def test_el_preset_contra_su_propio_dataset_no_acusa_nada(config_f1: BayesRiskConfig) -> None:
     """Control negativo: sin esto, un preflight que acusara siempre pasaría los demás tests."""
     veredicto = check_dataset(config_f1, COLUMNAS_CATALOGO)
 
@@ -71,7 +71,7 @@ def test_el_preset_contra_su_propio_dataset_no_acusa_nada(config_f1: NikodymConf
 
 
 def test_un_csv_con_nombres_propios_reporta_todos_los_desajustes_de_una_vez(
-    config_f1: NikodymConfig,
+    config_f1: BayesRiskConfig,
 ) -> None:
     """D-PRE-2: total, no corto-circuito. Es la razón de existir de la capacidad."""
     veredicto = check_dataset(config_f1, COLUMNAS_PROPIAS)
@@ -88,7 +88,7 @@ def test_un_csv_con_nombres_propios_reporta_todos_los_desajustes_de_una_vez(
     assert "binning.categorical_columns" in rutas
 
 
-def test_las_columnas_derivadas_no_se_exigen_al_dataset(config_f1: NikodymConfig) -> None:
+def test_las_columnas_derivadas_no_se_exigen_al_dataset(config_f1: BayesRiskConfig) -> None:
     """D-PRE-3: las produce el pipeline; exigirlas sería un falso positivo.
 
     Se comprueba contra el dataset de nombres propios —donde *nada* calza— porque es el escenario
@@ -111,7 +111,7 @@ def test_las_columnas_derivadas_no_se_exigen_al_dataset(config_f1: NikodymConfig
 
 
 def test_el_comodin_de_feature_columns_no_es_un_nombre_de_columna(
-    config_f1: NikodymConfig,
+    config_f1: BayesRiskConfig,
 ) -> None:
     """`feature_columns='*'` significa «todas las disponibles», no una columna llamada `*`."""
     veredicto = check_dataset(config_f1, COLUMNAS_PROPIAS)
@@ -120,7 +120,7 @@ def test_el_comodin_de_feature_columns_no_es_un_nombre_de_columna(
 
 
 def test_index_col_sobre_una_columna_corriente_tiene_diagnostico_propio(
-    config_f1: NikodymConfig,
+    config_f1: BayesRiskConfig,
 ) -> None:
     """D-PRE-6: un CSV no puede transportar un índice, y el mensaje debe decir eso y la salida."""
     # El mismo dataset del catálogo servido como CSV: `loan_id` pasa a ser columna corriente.
@@ -133,14 +133,14 @@ def test_index_col_sobre_una_columna_corriente_tiene_diagnostico_propio(
     assert "no puede transportar un índice" in indices[0].message
 
 
-def test_index_col_satisfecho_por_el_indice_no_se_reporta(config_f1: NikodymConfig) -> None:
+def test_index_col_satisfecho_por_el_indice_no_se_reporta(config_f1: BayesRiskConfig) -> None:
     """El sentido simétrico del anterior: con el índice puesto, no hay nada que decir."""
     veredicto = check_dataset(config_f1, COLUMNAS_CATALOGO)
 
     assert not [m for m in veredicto.mismatches if m.kind == "index_not_a_column"]
 
 
-def test_index_col_ausente_del_todo_se_reporta(config_f1: NikodymConfig) -> None:
+def test_index_col_ausente_del_todo_se_reporta(config_f1: BayesRiskConfig) -> None:
     """El TERCER caso de ``index_col``: ni índice ni columna.
 
     D-PRE-6 diseñó el campo «en sus dos sentidos» y este se quedó sin rama, así que el preflight
@@ -168,7 +168,7 @@ def test_index_col_ausente_del_todo_se_reporta(config_f1: NikodymConfig) -> None
 
 
 def test_declarar_los_indices_no_reintroduce_el_falso_positivo_del_catalogo(
-    config_f1: NikodymConfig,
+    config_f1: BayesRiskConfig,
 ) -> None:
     """El preset contra su propio dataset sigue limpio **con** los índices declarados.
 
@@ -182,7 +182,7 @@ def test_declarar_los_indices_no_reintroduce_el_falso_positivo_del_catalogo(
 
 
 def test_sin_declarar_los_indices_no_se_afirma_que_el_indice_falte(
-    config_f1: NikodymConfig,
+    config_f1: BayesRiskConfig,
 ) -> None:
     """``index_columns=None`` significa «no se sabe», no «no hay» — y callar es lo correcto.
 
@@ -197,7 +197,7 @@ def test_sin_declarar_los_indices_no_se_afirma_que_el_indice_falte(
 
 
 def test_una_seccion_opaca_que_coacciona_se_inspecciona_igual(
-    config_f1: NikodymConfig,
+    config_f1: BayesRiskConfig,
 ) -> None:
     """El camino normal: la coacción resuelve la opacidad y la sección se mira de verdad.
 
@@ -224,7 +224,7 @@ def test_una_seccion_opaca_que_coacciona_se_inspecciona_igual(
 
 
 def test_una_seccion_que_no_coacciona_impide_declarar_compatible(
-    config_f1: NikodymConfig,
+    config_f1: BayesRiskConfig,
 ) -> None:
     """D-PRE-9: no se afirma «todo bien» sobre lo que no se pudo mirar.
 
@@ -244,14 +244,14 @@ def test_una_seccion_que_no_coacciona_impide_declarar_compatible(
 
 
 def test_un_error_de_dominio_tampoco_vuelve_fallable_el_preflight(
-    config_f1: NikodymConfig,
+    config_f1: BayesRiskConfig,
 ) -> None:
     """D-ANC-10: `check_dataset` no puede reventar porque la coacción falle por la OTRA vía.
 
     Hermano del de arriba, que elige como sección inválida un **campo desconocido** — o sea la única
     familia que ``_coaccionar_secciones_opacas`` atrapaba, porque ``extra_forbidden`` sí es
     ``ValidationError``. Aquí la sección es estructuralmente válida y la rechaza el **validador del
-    dominio**, que levanta ``ConfigError``; pydantic no lo envuelve, porque ``NikodymError`` no
+    dominio**, que levanta ``ConfigError``; pydantic no lo envuelve, porque ``BayesRiskError`` no
     hereda de ``ValueError``. El preflight debe seguir contestando: declarar la sección
     ``uninspected`` es lo honesto, propagar la excepción a quien sólo preguntó es romperle la
     pantalla.
@@ -269,7 +269,7 @@ def test_un_error_de_dominio_tampoco_vuelve_fallable_el_preflight(
     assert veredicto.compatible is False
 
 
-def test_la_seccion_sin_inspeccionar_dice_por_que(config_f1: NikodymConfig) -> None:
+def test_la_seccion_sin_inspeccionar_dice_por_que(config_f1: BayesRiskConfig) -> None:
     """D-ANC-11: publicar QUÉ no se pudo mirar sin decir POR QUÉ no deja nada que corregir.
 
     Y el matiz que hace útil el dato: la coacción la hace ``model_validate`` del config **raíz**, o

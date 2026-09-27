@@ -180,8 +180,8 @@ Los analizadores también se usan sueltos, sobre cualquier tabla con un target b
 ```python
 import pandas as pd
 
-from nikodym.eda import DefaultRateAnalyzer, DefaultRateConfig, TemporalStabilityAnalyzer
-from nikodym.eda import TemporalStabilityConfig
+from bayesrisk.eda import DefaultRateAnalyzer, DefaultRateConfig, TemporalStabilityAnalyzer
+from bayesrisk.eda import TemporalStabilityConfig
 
 cartera = pd.DataFrame(
     {

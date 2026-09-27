@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from typing import Any, Final
 
-from nikodym.ui.routes import schema_payload
+from bayesrisk.ui.routes import schema_payload
 
 TOPE_ESENCIALES_POR_SECCION: Final = 6
 
@@ -189,9 +189,9 @@ def test_ninguna_seccion_muestra_mas_de_seis_esenciales_a_la_vez() -> None:
 
 def test_la_marca_no_es_una_hoja_del_config() -> None:
     """``ui_essential`` es metadato: no aparece como campo de ningún modelo (D-FLU-12)."""
-    from nikodym.core.config.schema import NikodymConfig
+    from bayesrisk.core.config.schema import BayesRiskConfig
 
-    assert "ui_essential" not in NikodymConfig.model_fields
+    assert "ui_essential" not in BayesRiskConfig.model_fields
     schema, _ = _schema()
     assert "ui_essential" not in schema.get("properties", {})
 

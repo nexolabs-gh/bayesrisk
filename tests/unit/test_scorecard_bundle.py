@@ -16,11 +16,11 @@ import pandas as pd
 import pytest
 from _ui_f1 import full_f1_config, write_behavior_parquet
 
-import nikodym.scorecard.bundle as bundle_module
-from nikodym.api import run
-from nikodym.data.config import MissingConfig, SpecialValueSpec
-from nikodym.scorecard.bundle import FittedScorecardBundle, fit_scorecard_bundle
-from nikodym.scorecard.exceptions import ScorecardBundleError
+import bayesrisk.scorecard.bundle as bundle_module
+from bayesrisk.api import run
+from bayesrisk.data.config import MissingConfig, SpecialValueSpec
+from bayesrisk.scorecard.bundle import FittedScorecardBundle, fit_scorecard_bundle
+from bayesrisk.scorecard.exceptions import ScorecardBundleError
 
 
 @pytest.fixture(autouse=True)
@@ -118,9 +118,9 @@ def test_apply_no_llama_fit_ignora_target_y_resuelve_por_nombre(
         del args, kwargs
         raise AssertionError("apply intentó ajustar estado")
 
-    from nikodym.binning.transformer import WoEBinner
-    from nikodym.calibration.calibrator import PDCalibrator
-    from nikodym.scorecard.scaler import PointsScaler
+    from bayesrisk.binning.transformer import WoEBinner
+    from bayesrisk.calibration.calibrator import PDCalibrator
+    from bayesrisk.scorecard.scaler import PointsScaler
 
     monkeypatch.setattr(WoEBinner, "fit", explode)
     monkeypatch.setattr(PDCalibrator, "fit", explode)
@@ -188,7 +188,7 @@ def test_fit_publico_resuelve_wildcard_y_rechaza_envelope_antes_de_run(
         del args, kwargs
         raise AssertionError("se creó el motor antes de validar el envelope")
 
-    monkeypatch.setattr("nikodym.api.run", no_debe_ejecutarse)
+    monkeypatch.setattr("bayesrisk.api.run", no_debe_ejecutarse)
     with pytest.raises(ScorecardBundleError, match="variables=2"):
         fit_scorecard_bundle(wildcard, frame)
 
@@ -297,7 +297,7 @@ def test_lineage_apply_mide_runtime_actual_separado_del_fit(
 ) -> None:
     study, frame = _study_y_frame(tmp_path)
     bundle = FittedScorecardBundle.from_study(study)  # type: ignore[arg-type]
-    monkeypatch.setattr("nikodym.scorecard.bundle.runtime_environment_hash", lambda: "a" * 64)
+    monkeypatch.setattr("bayesrisk.scorecard.bundle.runtime_environment_hash", lambda: "a" * 64)
     result = bundle.apply(frame.drop(columns=["bad_flag", "cohort"]).iloc[:1])
     assert result.lineage["runtime_environment_hash"] == "a" * 64
     assert (
@@ -598,7 +598,7 @@ def test_parquet_n_mas_uno_falla_por_metadata_antes_de_aplicar(
     bundle = FittedScorecardBundle.from_study(study)  # type: ignore[arg-type]
     source = tmp_path / "apply.parquet"
     frame.drop(columns=["bad_flag", "cohort"]).iloc[:2].to_parquet(source)
-    monkeypatch.setattr("nikodym.scorecard.bundle._MAX_BATCH_ROWS", 1)
+    monkeypatch.setattr("bayesrisk.scorecard.bundle._MAX_BATCH_ROWS", 1)
     with pytest.raises(ScorecardBundleError, match="envelope S2"):
         bundle.apply_file(source, tmp_path / "rechazado", chunk_size=1)
     assert not (tmp_path / "rechazado").exists()
@@ -632,11 +632,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from nikodym.api import run
-from nikodym.core.config import NikodymConfig
-from nikodym.scorecard.bundle import FittedScorecardBundle
-from nikodym.ui.datasets import materialize
-from nikodym.ui.presets import standard_preset
+from bayesrisk.api import run
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.scorecard.bundle import FittedScorecardBundle
+from bayesrisk.ui.datasets import materialize
+from bayesrisk.ui.presets import standard_preset
 
 def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -645,7 +645,7 @@ root = Path(sys.argv[1])
 preset = standard_preset()
 source = materialize(preset["dataset_id"], workdir=root)
 frame = pd.read_parquet(source)
-config = NikodymConfig.model_validate(preset["config"])
+config = BayesRiskConfig.model_validate(preset["config"])
 memory_data = config.data.model_copy(
     update={"load": config.data.load.model_copy(update={"source": None})}
 )

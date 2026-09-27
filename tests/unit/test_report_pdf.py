@@ -23,25 +23,25 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.lineage import LineageBundle
-from nikodym.core.study import Study
-from nikodym.report.config import PdfRenderConfig, ReportConfig, SectionPolicyConfig
-from nikodym.report.exceptions import ReportDependencyError
-from nikodym.report.pdf import render_pdf
-from nikodym.report.renderer import HtmlReportRenderer, PdfReportRenderer
-from nikodym.report.results import ReportInputBundle, ReportResult, ReportSection
-from nikodym.report.step import REPORT_REQUIRED_CARDS, ReportStep
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.core.study import Study
+from bayesrisk.report.config import PdfRenderConfig, ReportConfig, SectionPolicyConfig
+from bayesrisk.report.exceptions import ReportDependencyError
+from bayesrisk.report.pdf import render_pdf
+from bayesrisk.report.renderer import HtmlReportRenderer, PdfReportRenderer
+from bayesrisk.report.results import ReportInputBundle, ReportResult, ReportSection
+from bayesrisk.report.step import REPORT_REQUIRED_CARDS, ReportStep
 
 
 def _weasyprint_utilizable() -> bool:
     """¿Se puede RENDERIZAR un PDF aquí? No basta con que el paquete esté instalado.
 
     ``find_spec("weasyprint")`` sólo dice que existe el paquete de Python. WeasyPrint además carga
-    librerías NATIVAS (Pango/HarfBuzz/libffi) por cffi al importarse, y ``pip install nikodym[pdf]``
-    no las trae: en un macOS o un Windows sin Pango el import revienta con ``OSError``. Gatear sólo
-    por ``find_spec`` hacía que estos tests, en vez de saltarse, FALLARAN en cualquier máquina de
-    desarrollo con los extras instalados y sin las nativas del sistema.
+    librerías NATIVAS (Pango/HarfBuzz/libffi) por cffi al importarse, y ``pip install
+    bayesrisk[pdf]`` no las trae: en un macOS o un Windows sin Pango el import revienta con
+    ``OSError``. Gatear sólo por ``find_spec`` hacía que estos tests, en vez de saltarse, FALLARAN
+    en cualquier máquina de desarrollo con los extras instalados y sin las nativas del sistema.
 
     En el CI el job de PDF instala las nativas explícitamente, así que allí esto sigue siendo
     ``True`` y los tests corren de verdad (si las nativas faltaran, ese job falla en su propio paso
@@ -57,7 +57,7 @@ def _weasyprint_utilizable() -> bool:
 
 
 _HAS_WEASYPRINT = _weasyprint_utilizable()
-_MARCA = "marcaunicaxyznikodym"
+_MARCA = "marcaunicaxyzbayesrisk"
 
 
 def _lineage() -> LineageBundle:
@@ -69,7 +69,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "0.1.0"},
+        library_versions={"bayesrisk": "0.1.0"},
         determinism_caveats=["fixture controlado"],
         created_at=datetime(2026, 6, 24, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",
@@ -135,7 +135,7 @@ def _card(domain: str) -> dict[str, Any]:
 
 def _study_with_report_artifacts(*, config: ReportConfig) -> Study:
     """``Study`` con las ocho cards requeridas y tablas de reporte, listo para ``ReportStep``."""
-    study = Study(NikodymConfig(report=config))
+    study = Study(BayesRiskConfig(report=config))
     study.run_context.lineage = _lineage()
     for domain, key in REPORT_REQUIRED_CARDS:
         study.artifacts.set(domain, key, _card(domain))
@@ -155,7 +155,7 @@ def test_render_pdf_genera_pdf_valido_con_texto_extraible() -> None:
     """``render_pdf`` produce un PDF válido (``%PDF``, ≥1 página) con el texto extraíble."""
     from pypdf import PdfReader
 
-    pdf = render_pdf(f"<h1>Nikodym</h1><p>{_MARCA}</p>")
+    pdf = render_pdf(f"<h1>bayesrisk</h1><p>{_MARCA}</p>")
 
     assert pdf[:4] == b"%PDF"
     assert len(pdf) > 0
@@ -290,13 +290,13 @@ def test_render_pdf_sin_weasyprint_lanza_dependency_error(
     """``render_pdf`` traduce la ausencia de WeasyPrint a ``ReportDependencyError`` accionable."""
     _bloquear_weasyprint(monkeypatch)
     with pytest.raises(ReportDependencyError, match="WeasyPrint"):
-        render_pdf("<h1>Nikodym</h1>")
+        render_pdf("<h1>bayesrisk</h1>")
 
 
 def _romper_nativas_de_weasyprint(monkeypatch: pytest.MonkeyPatch) -> None:
     """WeasyPrint instalado pero SIN sus librerías nativas: el import levanta ``OSError``.
 
-    Es el escenario real de ``pip install nikodym[pdf]`` en un macOS o un Windows sin Pango: el
+    Es el escenario real de ``pip install bayesrisk[pdf]`` en un macOS o un Windows sin Pango: el
     paquete de Python está, las librerías del sistema no.
     """
     real_import = builtins.__import__
@@ -325,7 +325,7 @@ def test_render_pdf_sin_librerias_nativas_lanza_dependency_error(
     """
     _romper_nativas_de_weasyprint(monkeypatch)
     with pytest.raises(ReportDependencyError, match="nativas"):
-        render_pdf("<h1>Nikodym</h1>")
+        render_pdf("<h1>bayesrisk</h1>")
 
 
 def test_pdf_renderer_degrada_sin_librerias_nativas(
@@ -376,7 +376,7 @@ def test_write_pdf_from_html_degrada_o_falla_sin_weasyprint(
 ) -> None:
     """``write_pdf_from_html`` sin WeasyPrint: degrada a ``None`` (False) o re-lanza (True)."""
     _bloquear_weasyprint(monkeypatch)
-    html = "<h1>Nikodym</h1>"
+    html = "<h1>bayesrisk</h1>"
 
     lenient = PdfReportRenderer(ReportConfig(pdf=PdfRenderConfig(fail_if_unavailable=False)))
     with pytest.warns(RuntimeWarning, match="falta WeasyPrint"):
@@ -395,7 +395,7 @@ def test_warning_del_fallback_distingue_nativas_ausentes_de_paquete_ausente(
 ) -> None:
     """El warning del fallback dice CUÁL de los dos fallos ocurrió, no un genérico.
 
-    Es el caso más común fuera de Linux: ``pip install nikodym[pdf]`` sí instaló WeasyPrint, pero
+    Es el caso más común fuera de Linux: ``pip install bayesrisk[pdf]`` sí instaló WeasyPrint, pero
     Pango/HarfBuzz/libffi no están en el sistema y el import revienta con ``OSError``. Un warning
     genérico ("WeasyPrint no está disponible") mandaba al usuario a reinstalar un paquete que ya
     tenía, escondiendo que lo que falta es una librería del sistema. ``render_pdf`` ya distinguía
@@ -418,7 +418,7 @@ def test_warning_del_fallback_distingue_nativas_ausentes_de_paquete_ausente(
 
     renderer = PdfReportRenderer(ReportConfig(pdf=PdfRenderConfig(fail_if_unavailable=False)))
     with pytest.warns(RuntimeWarning) as capturado:
-        path = renderer.write_pdf_from_html("<h1>Nikodym</h1>", output_dir=str(tmp_path / "sin"))
+        path = renderer.write_pdf_from_html("<h1>bayesrisk</h1>", output_dir=str(tmp_path / "sin"))
 
     assert path is None
     mensaje = str(capturado[0].message)
@@ -433,14 +433,14 @@ def test_warning_del_fallback_distingue_nativas_ausentes_de_paquete_ausente(
 
 
 def test_import_report_no_arrastra_weasyprint_por_subprocess() -> None:
-    """``import nikodym.report`` NO importa WeasyPrint (import perezoso en ``render_pdf``)."""
+    """``import bayesrisk.report`` NO importa WeasyPrint (import perezoso en ``render_pdf``)."""
     code = (
         "import sys;"
-        # Bloquea weasyprint: si algo intentara importarlo en import-time, `import nikodym.report`
+        # Bloquea weasyprint: si algo intentara importarlo en import-time, `import bayesrisk.report`
         # reventaría (ImportError) en vez de continuar.
         "sys.modules['weasyprint'] = None;"
-        "import nikodym.report as report;"
-        "assert report.__name__ == 'nikodym.report';"
+        "import bayesrisk.report as report;"
+        "assert report.__name__ == 'bayesrisk.report';"
         "assert sys.modules.get('weasyprint') is None;"
         "blocked=[m for m in ('matplotlib', 'plotly') if m in sys.modules];"
         "assert not blocked, blocked"

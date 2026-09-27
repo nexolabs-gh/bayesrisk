@@ -17,16 +17,16 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.validation.discrimination as discrimination
-from nikodym.performance.evaluator import PerformanceEvaluator
-from nikodym.validation.config import DiscriminationValidationConfig
-from nikodym.validation.discrimination import (
+import bayesrisk.validation.discrimination as discrimination
+from bayesrisk.performance.evaluator import PerformanceEvaluator
+from bayesrisk.validation.config import DiscriminationValidationConfig
+from bayesrisk.validation.discrimination import (
     discrimination_from_artifact,
     discrimination_recomputed,
     evaluate_discrimination,
 )
-from nikodym.validation.exceptions import ValidationDataError
-from nikodym.validation.results import DiscriminationRecord
+from bayesrisk.validation.exceptions import ValidationDataError
+from bayesrisk.validation.results import DiscriminationRecord
 
 _PARTITIONS = ("desarrollo", "holdout", "oot")
 
@@ -194,7 +194,7 @@ def test_fallback_una_sola_clase_es_not_evaluable() -> None:
 
 def test_fallback_rechaza_columna_reservada() -> None:
     frame = _analytic_frame()
-    frame["__nikodym_validation_score__"] = 0.5
+    frame["__bayesrisk_validation_score__"] = 0.5
     with pytest.raises(ValidationDataError, match="columna reservada"):
         discrimination_recomputed(frame)
 
@@ -316,7 +316,7 @@ def test_ast_no_reimplementa_discriminacion() -> None:
 def test_import_discrimination_no_arrastra_sklearn_ni_scipy() -> None:
     code = (
         "import sys;"
-        "import nikodym.validation.discrimination as d;"
+        "import bayesrisk.validation.discrimination as d;"
         "blocked=[m for m in ('scipy','sklearn','statsmodels') if m in sys.modules];"
         "assert not blocked, blocked;"
         "assert callable(d.discrimination_from_artifact);"

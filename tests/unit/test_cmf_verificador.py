@@ -22,14 +22,14 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from nikodym.provisioning.cmf.matrices import (
+from bayesrisk.provisioning.cmf.matrices import (
     CmfMatrixManifest,
     CmfVerification,
     load_cmf_matrices,
 )
 
 _RAIZ = Path(__file__).resolve().parents[2]
-_MANIFIESTO = _RAIZ / "src" / "nikodym" / "provisioning" / "cmf" / "data" / "manifest.json"
+_MANIFIESTO = _RAIZ / "src" / "bayesrisk" / "provisioning" / "cmf" / "data" / "manifest.json"
 
 _COTEJO_BASE: dict[str, object] = {
     "date": "2026-07-14",

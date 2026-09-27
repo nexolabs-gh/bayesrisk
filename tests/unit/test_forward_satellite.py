@@ -15,10 +15,10 @@ import pytest
 from numpy.testing import assert_allclose
 from pandas.testing import assert_frame_equal
 
-import nikodym.forward.satellite as satellite_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import MissingDependencyError, NotFittedError
-from nikodym.forward.config import (
+import bayesrisk.forward.satellite as satellite_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import MissingDependencyError, NotFittedError
+from bayesrisk.forward.config import (
     ForwardConfig,
     ForwardInputConfig,
     MacroModelConfig,
@@ -28,13 +28,13 @@ from nikodym.forward.config import (
     ScenarioDefinitionConfig,
     TtcReversionConfig,
 )
-from nikodym.forward.exceptions import (
+from bayesrisk.forward.exceptions import (
     ForwardInputError,
     ForwardPredictionError,
     PitConsistencyError,
     SatelliteModelError,
 )
-from nikodym.forward.satellite import SatelliteModel
+from bayesrisk.forward.satellite import SatelliteModel
 
 _TERM_COLUMNS = [
     "row_id",
@@ -562,7 +562,7 @@ def test_validadores_privados_e_imports_perezosos(monkeypatch: pytest.MonkeyPatc
     code = (
         "import sys;"
         "baseline=set(sys.modules);"
-        "import nikodym.forward.satellite;"
+        "import bayesrisk.forward.satellite;"
         "blocked=[m for m in ('pandas','scipy','statsmodels','pmdarima') "
         "if m in sys.modules and m not in baseline];"
         "assert not blocked, blocked"
@@ -581,7 +581,7 @@ def test_validadores_privados_e_imports_perezosos(monkeypatch: pytest.MonkeyPatc
         satellite_module._import_pandas()
     with pytest.raises(MissingDependencyError, match="numpy"):
         satellite_module._import_numpy()
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[forecasting\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[forecasting\]"):
         satellite_module._import_statsmodels_api()
 
 

@@ -1,0 +1,512 @@
+"""Config declarativo de la capa ``survival`` (SDD-18 §5).
+
+:class:`SurvivalConfig` es la sección ``survival`` de
+:class:`~bayesrisk.core.config.BayesRiskConfig`: estima lifetime PD con Kaplan-Meier,
+discrete-time hazard, Cox PH o AFT. Toda clase hereda de
+:class:`~bayesrisk.core.config.BayesRiskBaseConfig` (``extra='forbid'`` y ``frozen=True``); cada
+campo declara ``title``/``description`` y metadatos ``ui_*`` para que la UI (SDD-23) sea un editor
+del mismo config. La sección es computacional, por lo que entra al ``config_hash`` global cuando
+está activa.
+
+**Experimental (fuera de la garantía SemVer 2.x).**
+"""
+
+from __future__ import annotations
+
+from typing import Any, Literal, Self
+
+from pydantic import Field, model_validator
+
+from bayesrisk.core.config import BayesRiskBaseConfig
+from bayesrisk.core.dataset_check import ContextoConfig, Requisito
+from bayesrisk.survival.exceptions import SurvivalConfigError
+
+SurvivalMethod = Literal["discrete_hazard", "kaplan_meier", "cox_ph", "aft"]
+DiscreteHazardLink = Literal["logit", "cloglog"]
+PdSource = Literal["model_raw", "calibration", "none"]
+AftFamily = Literal["weibull", "lognormal", "loglogistic"]
+PdRole = Literal["covariate", "offset", "segment", "none"]
+
+__all__ = [
+    "AftFamily",
+    "CoxAftConfig",
+    "DiscreteHazardConfig",
+    "DiscreteHazardLink",
+    "KaplanMeierConfig",
+    "PdSource",
+    "SurvivalConfig",
+    "SurvivalInputConfig",
+    "SurvivalMethod",
+    "SurvivalTimeGridConfig",
+]
+
+#: Prefijo de la ruta de este dominio en ``BayesRiskConfig``, para anclar sus errores (D-EXI-5).
+#: Vive en UN solo sitio y no repetido en cada ``raise``: la ruta que el error declara es
+#: **absoluta desde la raíz del config**, así que ata al dominio con el nombre de su campo en la
+#: raíz, y concentrarla aquí deja un único lugar donde ese acoplamiento puede quedarse stale.
+_LOC_SECCION: tuple[str, ...] = ("survival",)
+
+_INPUT_COLUMN_FIELDS: tuple[str, ...] = (
+    "duration_col",
+    "event_col",
+    "id_col",
+    "segment_col",
+    "pd_column",
+    "linear_predictor_column",
+)
+
+
+class SurvivalInputConfig(BayesRiskBaseConfig):
+    """Configuración de columnas de entrada para survival."""
+
+    duration_col: str = Field(
+        default=...,
+        title="Columna de duración",
+        description="Columna con el tiempo hasta evento observado o censura derecha.",
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Entrada",
+            "ui_order": 1,
+        },
+    )
+    event_col: str = Field(
+        default=...,
+        title="Columna de evento",
+        description="Columna indicadora de evento/default observado; 1=evento y 0=censura.",
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Entrada",
+            "ui_order": 2,
+        },
+    )
+    id_col: str | None = Field(
+        default=None,
+        title="Columna de identificador",
+        description="Columna opcional con identificador estable de fila, cuenta o cliente.",
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Entrada",
+            "ui_order": 3,
+        },
+    )
+    segment_col: str | None = Field(
+        default=None,
+        title="Columna de segmento",
+        description="Columna opcional de segmento o pool para agregación y diagnósticos.",
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Entrada",
+            "ui_order": 4,
+        },
+    )
+    pd_source: PdSource = Field(
+        default="model_raw",
+        title="Fuente PD",
+        description="Origen de la PD del scorecard usada como insumo del modelo lifetime.",
+        json_schema_extra={
+            "ui_widget": "selectbox",
+            "ui_group": "PD del scorecard",
+            "ui_order": 1,
+        },
+    )
+    pd_column: str = Field(
+        default="pd_raw",
+        title="Columna PD cruda",
+        description="Columna con PD cruda o calibrada según la fuente configurada.",
+        json_schema_extra={
+            "column_role": "derived",
+            "ui_widget": "text_input",
+            "ui_group": "PD del scorecard",
+            "ui_order": 2,
+        },
+    )
+    linear_predictor_column: str = Field(
+        default="linear_predictor",
+        title="Columna predictor lineal",
+        description=(
+            "Columna con el logit o predictor lineal del scorecard, usada como covariable u offset."
+        ),
+        json_schema_extra={
+            "column_role": "derived",
+            "ui_widget": "text_input",
+            "ui_group": "PD del scorecard",
+            "ui_order": 3,
+        },
+    )
+    covariate_cols: tuple[str, ...] = Field(
+        default=(),
+        title="Covariables adicionales",
+        description="Columnas adicionales ya preprocesadas que entran al ajuste survival.",
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "multiselect",
+            "ui_group": "Covariables",
+            "ui_order": 1,
+        },
+    )
+
+    @model_validator(mode="after")
+    def _check_columnas_input(self) -> Self:
+        """Valida columnas no vacías y duración distinta de evento."""
+        _require_non_empty_strings(_column_values(self, _INPUT_COLUMN_FIELDS), context="input")
+        empty_covariates = [
+            idx for idx, column in enumerate(self.covariate_cols) if not column.strip()
+        ]
+        if empty_covariates:
+            raise SurvivalConfigError(
+                f"Las covariables de input no pueden estar vacías: {empty_covariates}.",
+                # D-EXI-5: el error se ANCLA a su campo, para que el formulario pueda llevar ahí
+                # al usuario en vez de dejarle un mensaje sin control. La ruta va absoluta desde la
+                # raíz del config, y un gate exige que resuelva contra `BayesRiskConfig`.
+                loc=(*_LOC_SECCION, "input", "covariate_cols"),
+            )
+        if self.duration_col.strip() == self.event_col.strip():
+            # D-EXI-5: SIN `loc` a propósito. Es un invariante ENTRE dos campos y no hay culpable
+            # único —renombrar cualquiera de los dos deshace la colisión—, así que anclar en uno
+            # mandaría al usuario a un campo que puede ser el correcto de los dos.
+            raise SurvivalConfigError("duration_col y event_col deben ser columnas distintas.")
+        return self
+
+    def requisitos_incumplidos_por_contexto(
+        self, contexto: ContextoConfig
+    ) -> tuple[Requisito, ...]:
+        """Lo que esta elección exige del RESTO del config, no del dataset (D-ABA-8).
+
+        🔴 **El caso que lo motiva es un falso verde medido.** Con ``pd_source='calibration'`` el
+        motor exige el artefacto de la calibración, pero ``_requires_for`` (``survival/step.py``)
+        devuelve lo mismo que para ``'model_raw'`` y **no declara ese paso**, así que el DAG no lo
+        ve: ``check_pipeline`` da ``executable=True`` y la corrida muere al llegar a las curvas,
+        después de cargar el archivo y ajustar. Su hermano ``provisioning_internal`` sí lo declara
+        en su ``requires`` — el mismo problema, resuelto de la otra forma, en el mismo repo.
+
+        Sólo se comprueba ``'calibration'``: ``'model_raw'`` **sí** viaja en el ``requires``, así
+        que avisar de él aquí duplicaría un diagnóstico que el DAG ya da mejor —con el orden de los
+        pasos— y produciría dos mensajes para un solo problema.
+        """
+        if self.pd_source != "calibration" or "calibration" in contexto.secciones_activas:
+            return ()
+        return (
+            Requisito(
+                path="pd_source",
+                declared=self.pd_source,
+                message=(
+                    "Elegiste enganchar las curvas a la probabilidad ya calibrada, y la etapa que "
+                    "la calibra no está activa en esta corrida. Actívala, o engancha las curvas a "
+                    "la probabilidad sin calibrar, o ajústalas sólo con lo que trae tu archivo."
+                ),
+            ),
+        )
+
+
+class SurvivalTimeGridConfig(BayesRiskBaseConfig):
+    """Configuración de grilla temporal para proyecciones lifetime."""
+
+    time_unit: str = Field(
+        default="period",
+        title="Unidad temporal",
+        description=("Unidad de los tiempos de la curva; por ejemplo 'month' o 'year'."),
+        json_schema_extra={
+            "ui_help": (
+                "Unidad en que están expresados los tiempos de la curva: 'year', 'month', "
+                "'quarter', 'semester', 'week' o 'day' (también en español). Viaja con la "
+                "curva y el motor IFRS 9 la usa para descontar la pérdida esperada, así que "
+                "declararla mal —o dejarla en el valor por defecto 'period', que nombra un "
+                "índice y no una duración— cambia la provisión. Si no la declara, IFRS 9 "
+                "asume años y lo deja anotado en el resultado."
+            ),
+            "ui_widget": "text_input",
+            "ui_group": "Horizonte",
+            "ui_order": 1,
+        },
+    )
+    horizon_periods: int | None = Field(
+        default=None,
+        ge=1,
+        title="Horizonte en períodos",
+        description="Horizonte lifetime explícito; si falta, el motor usa la grilla observada.",
+        json_schema_extra={"ui_widget": "number_input", "ui_group": "Horizonte", "ui_order": 2},
+    )
+    evaluation_times: tuple[float, ...] = Field(
+        default=(),
+        title="Tiempos de evaluación",
+        description="Tiempos explícitos de evaluación, en la unidad temporal declarada.",
+        json_schema_extra={"ui_widget": "number_list", "ui_group": "Horizonte", "ui_order": 3},
+    )
+
+    @model_validator(mode="after")
+    def _check_time_unit(self) -> Self:
+        """Valida que la unidad temporal declarativa no esté vacía."""
+        if not self.time_unit.strip():
+            raise SurvivalConfigError(
+                "time_unit no puede estar vacío.",
+                loc=(*_LOC_SECCION, "time_grid", "time_unit"),  # D-EXI-5
+            )
+        return self
+
+
+class KaplanMeierConfig(BayesRiskBaseConfig):
+    """Configuración de Kaplan-Meier y sus intervalos opcionales."""
+
+    confidence_level: float | None = Field(
+        default=None,
+        gt=0.0,
+        lt=1.0,
+        title="Nivel de confianza",
+        description="Nivel de confianza opcional para publicar bandas Kaplan-Meier.",
+        json_schema_extra={"ui_widget": "number_input", "ui_group": "Kaplan-Meier", "ui_order": 1},
+    )
+    confidence_transform: Literal["plain", "loglog"] | None = Field(
+        default=None,
+        title="Transformación de intervalo",
+        description="Transformación usada para bandas de confianza de Kaplan-Meier.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Kaplan-Meier", "ui_order": 2},
+    )
+
+    @model_validator(mode="after")
+    def _check_confidence_interval(self) -> Self:
+        """Exige transformación cuando se declara nivel de confianza."""
+        if self.confidence_level is not None and self.confidence_transform is None:
+            raise SurvivalConfigError(
+                "kaplan_meier.confidence_level exige confidence_transform.",
+                # D-EXI-5: «X exige Y» ancla en Y, que es lo que FALTA y lo que el usuario tiene
+                # que contestar. Mismo criterio que «lgd.method='workout' exige recovery_col».
+                loc=(*_LOC_SECCION, "kaplan_meier", "confidence_transform"),
+            )
+        return self
+
+
+class DiscreteHazardConfig(BayesRiskBaseConfig):
+    """Configuración del modelo discrete-time hazard."""
+
+    link: DiscreteHazardLink = Field(
+        default="logit",
+        title="Link del hazard",
+        description="Función de enlace para el hazard discreto person-period.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Discrete hazard", "ui_order": 1},
+    )
+    include_period_dummies: bool = Field(
+        default=True,
+        title="Interceptos por período",
+        description="Incluye dummies/interceptos por período en el ajuste person-period.",
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Discrete hazard", "ui_order": 2},
+    )
+    pd_role: PdRole = Field(
+        default="covariate",
+        title="Rol de la PD del scorecard",
+        description="Rol de la PD o el logit del scorecard en el modelo de hazard discreto.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Discrete hazard", "ui_order": 3},
+    )
+    min_events_per_period: int | None = Field(
+        default=None,
+        ge=1,
+        title="Mínimo de eventos por período",
+        description="Mínimo técnico opcional de eventos por período para aceptar el ajuste.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Discrete hazard",
+            "ui_order": 4,
+        },
+    )
+
+
+class CoxAftConfig(BayesRiskBaseConfig):
+    """Configuración compartida de Cox PH y AFT."""
+
+    ph_test_enabled: bool = Field(
+        default=True,
+        title="Activar test PH",
+        description="Activa diagnóstico de proporcionalidad de hazards para Cox PH.",
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Cox/AFT", "ui_order": 1},
+    )
+    ph_p_value_threshold: float | None = Field(
+        default=None,
+        gt=0.0,
+        lt=1.0,
+        title="Umbral p-value PH",
+        description="Umbral opcional de p-value para fallar o advertir en diagnóstico PH.",
+        json_schema_extra={"ui_widget": "number_input", "ui_group": "Cox/AFT", "ui_order": 2},
+    )
+    aft_family: AftFamily | None = Field(
+        default=None,
+        title="Familia AFT",
+        description="Familia paramétrica AFT; requerida si method='aft'.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Cox/AFT", "ui_order": 3},
+    )
+
+
+class SurvivalConfig(BayesRiskBaseConfig):
+    """Modela el tiempo hasta el incumplimiento y obtiene de ahí la PD lifetime."""
+
+    schema_version: str = Field(
+        default="1.0.0",
+        title="Versión del sub-schema survival",
+        description="Versión local del schema de survival para migraciones futuras.",
+        json_schema_extra={"ui_widget": "hidden", "ui_group": "General", "ui_order": 0},
+    )
+    type: Literal["standard"] = Field(
+        default="standard",
+        title="Tipo de sección survival",
+        description="Variante de la sección de survival; hoy solo existe la estándar.",
+        json_schema_extra={"ui_widget": "hidden", "ui_group": "General", "ui_order": 1},
+    )
+    method: SurvivalMethod = Field(
+        default="discrete_hazard",
+        title="Método survival",
+        description="Ruta estadística usada para estimar supervivencia y PD lifetime.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Método", "ui_order": 1},
+    )
+    input: SurvivalInputConfig = Field(
+        default=...,
+        title="Entrada",
+        description="Columnas de duración, evento, PD del scorecard y covariables.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Entrada", "ui_order": 1},
+    )
+    time_grid: SurvivalTimeGridConfig = Field(
+        default_factory=SurvivalTimeGridConfig,
+        title="Grilla temporal",
+        description="Horizonte y tiempos explícitos de evaluación lifetime.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Horizonte", "ui_order": 1},
+    )
+    kaplan_meier: KaplanMeierConfig = Field(
+        default_factory=KaplanMeierConfig,
+        title="Kaplan-Meier",
+        description="Parámetros no paramétricos e intervalos opcionales de Kaplan-Meier.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Kaplan-Meier", "ui_order": 1},
+    )
+    discrete_hazard: DiscreteHazardConfig = Field(
+        default_factory=DiscreteHazardConfig,
+        title="Discrete hazard",
+        description="Parámetros de la ruta discrete-time hazard person-period.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Discrete hazard", "ui_order": 1},
+    )
+    cox_aft: CoxAftConfig = Field(
+        default_factory=CoxAftConfig,
+        title="Cox/AFT",
+        description="Parámetros de Cox PH y AFT paramétrico.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Cox/AFT", "ui_order": 1},
+    )
+    fail_on_falta_dato: bool = Field(
+        default=True,
+        title="Fallar ante falta de dato",
+        description=(
+            "Detiene la corrida si esta etapa emite un aviso declarado: una definición que sólo "
+            "su institución puede fijar y que el motor se negó a inventar. Con el valor "
+            "desactivado la corrida continúa y el aviso queda registrado en el resultado."
+        ),
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Gobernanza", "ui_order": 1},
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _check_offset_raw(cls, data: Any) -> Any:
+        """Valida temprano el requisito de predictor lineal para ``pd_role='offset'``."""
+        if not isinstance(data, dict):
+            return data
+        discrete_raw = data.get("discrete_hazard")
+        input_raw = data.get("input")
+        if not isinstance(discrete_raw, dict) or discrete_raw.get("pd_role") != "offset":
+            return data
+        if not isinstance(input_raw, dict):
+            return data
+        linear_predictor = input_raw.get("linear_predictor_column", "linear_predictor")
+        if not isinstance(linear_predictor, str) or not linear_predictor.strip():
+            raise SurvivalConfigError(
+                "discrete_hazard.pd_role='offset' exige linear_predictor_column no vacío.",
+                # D-EXI-5: ancla en lo que FALTA (el campo de `input`), no en la opción que lo
+                # exige. La ruta es la del formulario, absoluta desde la raíz del config.
+                loc=(*_LOC_SECCION, "input", "linear_predictor_column"),
+            )
+        return data
+
+    @model_validator(mode="after")
+    def _check_invariantes(self) -> Self:
+        """Valida invariantes cruzados de SDD-18 §5."""
+        if self.method == "aft" and self.cox_aft.aft_family is None:
+            raise SurvivalConfigError(
+                "method='aft' exige cox_aft.aft_family.",
+                loc=(*_LOC_SECCION, "cox_aft", "aft_family"),  # D-EXI-5: ancla en lo que falta
+            )
+        return self
+
+    def requisitos_incumplidos(self, columnas: frozenset[str] | None) -> tuple[Requisito, ...]:
+        """Lo que esta sección se exige a sí misma y detiene la corrida al final (D-INV-1).
+
+        🔴 **El caso es caro y era invisible**: con los dos campos de la grilla en su default, el
+        motor cae a los tiempos observados, emite ``DATO-INSTITUCIONAL-SUR-1`` y —como
+        ``fail_on_falta_dato`` viene en ``True``— **aborta** en `step.py:637-643`, después de cargar
+        el archivo, ajustar el modelo y calcular la term-structure. Medido con corridas reales: los
+        **cuatro** métodos abortan, porque el fallback lo resuelve el paso y no cada motor.
+
+        Va en esta clase y no en las sub-secciones porque la condición necesita
+        ``fail_on_falta_dato`` y ``method``, que viven aquí. Es el mismo criterio por el que el
+        gate del motor está en ``_card_from_model`` y no dentro de un motor.
+
+        ⚠️ **``fail_on_falta_dato`` es parte de la condición, no un detalle**: con él apagado la
+        corrida llega a ``done`` y registra el aviso, así que avisar ahí sería un falso positivo —y
+        el mensaje, que dice que la corrida se detendrá, sería literalmente falso—.
+
+        ``SUR-2`` queda fuera **con su razón medida**: depende del CONTENIDO (todos censurados), no
+        del config, y este protocolo sólo recibe nombres de columna.
+        """
+        del columnas  # no depende del dataset; precedente: `performance.partitions`
+        if not self.fail_on_falta_dato:
+            return ()
+        requisitos: list[Requisito] = []
+        if not self.time_grid.evaluation_times and self.time_grid.horizon_periods is None:
+            requisitos.append(
+                Requisito(
+                    path="time_grid.horizon_periods",
+                    declared="(ninguno)",
+                    message=(
+                        "No dijiste hasta cuándo proyectar las curvas, y el motor no lo inventa: "
+                        "sin horizonte usaría los tiempos que traen tus datos, que es una decisión "
+                        "tuya y no suya. Declara el horizonte en períodos o los tiempos de "
+                        "evaluación, o desactiva «Fallar ante falta de dato» para correr igual con "
+                        "el aviso registrado."
+                    ),
+                )
+            )
+        if self.method == "kaplan_meier" and (
+            self.kaplan_meier.confidence_level is None
+            or self.kaplan_meier.confidence_transform is None
+        ):
+            requisitos.append(
+                Requisito(
+                    path="kaplan_meier.confidence_level",
+                    declared="(ninguno)",
+                    message=(
+                        "Kaplan-Meier va a estimar sin intervalos de confianza porque falta "
+                        "declarar el nivel o su transformación. Declara los dos, elige otro "
+                        "método, o desactiva «Fallar ante falta de dato» para correr igual con el "
+                        "aviso registrado."
+                    ),
+                )
+            )
+        return tuple(requisitos)
+
+
+def _column_values(cfg: object, fields: tuple[str, ...]) -> dict[str, str]:
+    """Devuelve nombres de columnas configurados para validar strings no vacíos."""
+    values: dict[str, str] = {}
+    for field in fields:
+        value = getattr(cfg, field)
+        if value is not None:
+            values[field] = value
+    return values
+
+
+def _require_non_empty_strings(values: dict[str, str], *, context: str) -> None:
+    """Valida que los nombres de columnas declarativos no sean vacíos.
+
+    D-EXI-5: su ``raise`` va **sin** ``loc``. El ofensor es cualquiera de los seis campos de
+    ``_INPUT_COLUMN_FIELDS`` y el mensaje los enumera **todos**, así que no hay un campo único al
+    que llevar al usuario. Tampoco se puede pasar la ruta desde el llamador: el gate que las
+    vigila las evalúa **estáticamente** y sólo admite una tupla literal en el propio ``raise``.
+    """
+    empty = [name for name, value in values.items() if not value.strip()]
+    if empty:
+        raise SurvivalConfigError(f"Los campos de {context} no pueden estar vacíos: {empty}.")

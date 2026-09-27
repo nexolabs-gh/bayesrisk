@@ -14,17 +14,22 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.model.step as step_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.core.study import Study
-from nikodym.data.partition import PARTITION_COL, TTD_COL, PartitionResult
-from nikodym.data.target import LabeledFrame, TargetSummary
-from nikodym.model.config import IvContributionConfig, ModelConfig, SignPolicyConfig, StepwiseConfig
-from nikodym.model.exceptions import ModelFitError
-from nikodym.model.results import ModelCardSection, ModelResult, StepwiseDecision
-from nikodym.model.step import MODEL_ARTIFACTS, ModelStep
+import bayesrisk.model.step as step_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.core.study import Study
+from bayesrisk.data.partition import PARTITION_COL, TTD_COL, PartitionResult
+from bayesrisk.data.target import LabeledFrame, TargetSummary
+from bayesrisk.model.config import (
+    IvContributionConfig,
+    ModelConfig,
+    SignPolicyConfig,
+    StepwiseConfig,
+)
+from bayesrisk.model.exceptions import ModelFitError
+from bayesrisk.model.results import ModelCardSection, ModelResult, StepwiseDecision
+from bayesrisk.model.step import MODEL_ARTIFACTS, ModelStep
 
 
 def _model_config(
@@ -181,7 +186,7 @@ def _study_with_artifacts(
 ) -> Study:
     """Construye un ``Study`` con artefactos upstream ya publicados."""
     selected_frame = _selected_woe_frame() if frame is None else frame
-    study = Study(NikodymConfig(model=config or _model_config()))
+    study = Study(BayesRiskConfig(model=config or _model_config()))
     study.artifacts.set("data", "labels", _labels(selected_frame))
     study.artifacts.set("data", "splits", _splits(selected_frame))
     study.artifacts.set("binning", "summary", _summary() if summary is None else summary)
@@ -310,7 +315,7 @@ def test_config_desde_study_overrides_y_dependency_versions(
     with pytest.warns(DeprecationWarning, match="glm_binomial"):
         resolved = step_module._model_config_from_study(study, fallback=fallback)
     assert resolved.engine == "logit"
-    study_without_model = Study(NikodymConfig())
+    study_without_model = Study(BayesRiskConfig())
     assert step_module._model_config_from_study(study_without_model, fallback=fallback) is fallback
 
     with pytest.raises(ModelFitError, match=r"overrides.*faltantes"):
@@ -441,13 +446,13 @@ def test_missing_dependency_en_import_perezoso_del_estimator(
     real_import = step_module.importlib.import_module
 
     def fake_import(name: str) -> Any:
-        if name == "nikodym.model.estimator":
+        if name == "bayesrisk.model.estimator":
             raise ModuleNotFoundError("No module named 'sklearn'", name="sklearn")
         return real_import(name)
 
     monkeypatch.setattr(step_module.importlib, "import_module", fake_import)
 
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         step_module._build_estimator(_model_config())
 
 
@@ -459,15 +464,15 @@ def test_build_estimator_despacha_cada_optimizador_del_catalogo(optimizer: str) 
 
 
 def test_import_model_step_liviano_no_carga_estimator_ni_scoring() -> None:
-    """``import nikodym.model.step`` no arrastra estimator ni dependencias de scoring."""
+    """``import bayesrisk.model.step`` no arrastra estimator ni dependencias de scoring."""
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.model.step
+        import bayesrisk.model.step
 
         blocked = [
             name for name in (
-                "nikodym.model.estimator",
+                "bayesrisk.model.estimator",
                 "pandas",
                 "sklearn",
                 "statsmodels",

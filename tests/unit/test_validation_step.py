@@ -20,25 +20,25 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.validation as validation_pkg
-import nikodym.validation.step as step_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.data.target import LabeledFrame, TargetSummary
-from nikodym.testing import assert_bitwise_reproducible
-from nikodym.validation.config import (
+import bayesrisk.core.study as study_module
+import bayesrisk.validation as validation_pkg
+import bayesrisk.validation.step as step_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.data.target import LabeledFrame, TargetSummary
+from bayesrisk.testing import assert_bitwise_reproducible
+from bayesrisk.validation.config import (
     BacktestingValidationConfig,
     CalibrationValidationConfig,
     DiscriminationValidationConfig,
     ValidationConfig,
 )
-from nikodym.validation.exceptions import ValidationDataError
-from nikodym.validation.results import ValidationResult
-from nikodym.validation.step import VALIDATION_ARTIFACTS, ValidationStep
+from bayesrisk.validation.exceptions import ValidationDataError
+from bayesrisk.validation.results import ValidationResult
+from bayesrisk.validation.step import VALIDATION_ARTIFACTS, ValidationStep
 
 _SCORECARD_INDEX = [f"c{i}" for i in range(90)]
 
@@ -150,7 +150,7 @@ def _scorecard_study(
 ) -> Study:
     """Construye un ``Study`` con los artefactos de un scorecard listo para validar."""
     cfg = config or _scorecard_config()
-    study = Study(NikodymConfig(validation=cfg))
+    study = Study(BayesRiskConfig(validation=cfg))
     study.artifacts.set("calibration", "calibrated_pd_frame", _calibrated_pd_frame())
     study.artifacts.set("data", "labels", _labeled_frame())
     if include_performance:
@@ -224,7 +224,7 @@ def _ifrs9_config() -> ValidationConfig:
 
 def _ifrs9_study(*, data_frame: pd.DataFrame | None = None) -> Study:
     """Construye un ``Study`` con los artefactos IFRS 9 listos para backtesting."""
-    study = Study(NikodymConfig(validation=_ifrs9_config()))
+    study = Study(BayesRiskConfig(validation=_ifrs9_config()))
     study.artifacts.set("provisioning_ifrs9", "detail", _ifrs9_detail())
     study.artifacts.set("provisioning_ifrs9", "staging", _ifrs9_staging())
     study.artifacts.set("data", "frame", _data_frame() if data_frame is None else data_frame)
@@ -308,9 +308,9 @@ def test_core_study_cablea_validation_al_cierre_del_computo() -> None:
     assert order.index("validation") > order.index("performance")
     assert order.index("validation") > order.index("stability")
     assert order.index("validation") > order.index("provisioning")
-    assert study_module._DOMAIN_MODULES["validation"] == "nikodym.validation"
+    assert study_module._DOMAIN_MODULES["validation"] == "bayesrisk.validation"
     assert study_module._DOMAIN_CONFIG_CLASSES["validation"] == (
-        "nikodym.validation.config",
+        "bayesrisk.validation.config",
         "ValidationConfig",
     )
     study = _scorecard_study()
@@ -434,7 +434,7 @@ def test_execute_audita_el_aviso_declarado_del_backtesting_bloqueado() -> None:
         backtesting=BacktestingValidationConfig(enabled=False),
         fail_on_falta_dato=False,
     )
-    study = Study(NikodymConfig(validation=cfg))
+    study = Study(BayesRiskConfig(validation=cfg))
     sink = InMemoryAuditSink()
     step = ValidationStep.from_config(cfg)
     step._audit = sink
@@ -815,7 +815,7 @@ def test_emit_permite_usar_step_como_sink() -> None:
     """El step reexpone ``emit`` para actuar como sumidero de auditoría si un motor lo requiere."""
     from datetime import UTC, datetime
 
-    from nikodym.core.audit import AuditEvent
+    from bayesrisk.core.audit import AuditEvent
 
     step = ValidationStep.from_config(_scorecard_config())
     sink = InMemoryAuditSink()
@@ -844,12 +844,12 @@ def test_import_pandas_ausente_es_missing_dependency(monkeypatch: pytest.MonkeyP
 
 
 def test_import_validation_registra_step_sin_stack_pesado() -> None:
-    """``import nikodym.validation`` registra el step sin cargar pandas/scipy/sklearn."""
+    """``import bayesrisk.validation`` registra el step sin cargar pandas/scipy/sklearn."""
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.validation
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.validation
+        from bayesrisk.core.registry import REGISTRY
 
         assert REGISTRY.resolve("validation", "standard").__name__ == "ValidationStep"
         blocked = [

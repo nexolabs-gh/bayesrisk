@@ -14,27 +14,27 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.selection.step as step_module
-from nikodym.binning.results import iv_band
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.core.study import Study
-from nikodym.data.partition import PARTITION_COL, TTD_COL, PartitionResult
-from nikodym.data.target import LabeledFrame, TargetSummary
-from nikodym.selection.config import (
+import bayesrisk.selection.step as step_module
+from bayesrisk.binning.results import iv_band
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.core.study import Study
+from bayesrisk.data.partition import PARTITION_COL, TTD_COL, PartitionResult
+from bayesrisk.data.target import LabeledFrame, TargetSummary
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
     VifSelectionConfig,
 )
-from nikodym.selection.exceptions import SelectionFitError, SelectionForcedVifConflictError
-from nikodym.selection.results import (
+from bayesrisk.selection.exceptions import SelectionFitError, SelectionForcedVifConflictError
+from bayesrisk.selection.results import (
     SelectionCardSection,
     SelectionResult,
     VariableSelectionDecision,
 )
-from nikodym.selection.step import SELECTION_ARTIFACTS, SelectionStep
+from bayesrisk.selection.step import SELECTION_ARTIFACTS, SelectionStep
 
 
 @dataclass
@@ -128,7 +128,7 @@ def _study_with_artifacts(config: SelectionConfig | None = None) -> Study:
         stability=StabilitySelectionConfig(enabled=False),
     )
     frame = _woe_frame()
-    study = Study(NikodymConfig(selection=cfg))
+    study = Study(BayesRiskConfig(selection=cfg))
     study.artifacts.set("data", "labels", _labels(frame))
     study.artifacts.set("data", "splits", _splits(frame))
     study.artifacts.set(
@@ -151,7 +151,7 @@ def _study_with_custom_binning(
     config: SelectionConfig,
 ) -> Study:
     """Construye un ``Study`` con artefactos de binning sintéticos."""
-    study = Study(NikodymConfig(selection=config))
+    study = Study(BayesRiskConfig(selection=config))
     study.artifacts.set("data", "labels", _labels(frame))
     study.artifacts.set("data", "splits", _splits(frame))
     study.artifacts.set("binning", "process", _FakeBinningProcess(woe_column_map))
@@ -506,26 +506,26 @@ def test_missing_dependency_en_import_perezoso_del_selector(
     real_import = step_module.importlib.import_module
 
     def fake_import(name: str) -> Any:
-        if name == "nikodym.selection.selector":
+        if name == "bayesrisk.selection.selector":
             raise ModuleNotFoundError("No module named 'sklearn'", name="sklearn")
         return real_import(name)
 
     monkeypatch.setattr(step_module.importlib, "import_module", fake_import)
 
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         step_module._build_selector(SelectionConfig())
 
 
 def test_import_selection_step_liviano_no_carga_selector_ni_scoring() -> None:
-    """``import nikodym.selection.step`` no arrastra selector ni dependencias de scoring."""
+    """``import bayesrisk.selection.step`` no arrastra selector ni dependencias de scoring."""
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.selection.step
+        import bayesrisk.selection.step
 
         blocked = [
             name for name in (
-                "nikodym.selection.selector",
+                "bayesrisk.selection.selector",
                 "pandas",
                 "sklearn",
                 "statsmodels",
@@ -555,7 +555,7 @@ def test_config_desde_study_coacciona_dict_y_fallback_standalone() -> None:
     study = SimpleNamespace(config=SimpleNamespace(selection={"min_iv": 0.03}))
     assert step_module._selection_config_from_study(study, fallback=fallback).min_iv == 0.03
 
-    study_without_selection = Study(NikodymConfig())
+    study_without_selection = Study(BayesRiskConfig())
     assert step_module._selection_config_from_study(study_without_selection, fallback=fallback) is (
         fallback
     )

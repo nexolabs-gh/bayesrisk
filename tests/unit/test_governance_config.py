@@ -1,4 +1,4 @@
-"""Tests de ``GovernanceConfig`` y su cableado diferido en ``NikodymConfig``."""
+"""Tests de ``GovernanceConfig`` y su cableado diferido en ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ import sys
 import pytest
 from pydantic import ValidationError
 
-import nikodym.governance
-from nikodym.core.config import NikodymConfig, config_hash
-from nikodym.core.config import schema as _schema_mod
-from nikodym.governance import (
+import bayesrisk.governance
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.governance import (
     GovernanceConfig,
     GovernanceError,
     ModelCardBuilder,
@@ -22,11 +22,11 @@ from nikodym.governance import (
 
 def test_governance_public_api_reexporta_superficie() -> None:
     """El paquete ``governance`` publica la superficie mínima definida por SDD-03."""
-    assert nikodym.governance.GovernanceConfig is GovernanceConfig
-    assert nikodym.governance.GovernanceError is GovernanceError
-    assert nikodym.governance.RegistryUnavailableError is RegistryUnavailableError
-    assert nikodym.governance.ModelCardBuilder is ModelCardBuilder
-    assert "ModelInventory" in nikodym.governance.__all__
+    assert bayesrisk.governance.GovernanceConfig is GovernanceConfig
+    assert bayesrisk.governance.GovernanceError is GovernanceError
+    assert bayesrisk.governance.RegistryUnavailableError is RegistryUnavailableError
+    assert bayesrisk.governance.ModelCardBuilder is ModelCardBuilder
+    assert "ModelInventory" in bayesrisk.governance.__all__
 
 
 def test_governance_config_purpose_obligatorio_y_defaults() -> None:
@@ -65,14 +65,14 @@ def test_governance_cartera_admite_taxonomia_no_chilena() -> None:
     assert cfg.cartera == "commercial_individual"
 
 
-def test_nikodymconfig_governance_instancia_y_dict_coaccionan() -> None:
-    """Con ``nikodym.governance`` importado, la sección se valida como config real."""
+def test_bayesriskconfig_governance_instancia_y_dict_coaccionan() -> None:
+    """Con ``bayesrisk.governance`` importado, la sección se valida como config real."""
     gov_cfg = GovernanceConfig(purpose="Gobernanza de scorecard", publish_to_inventory=True)
-    cfg = NikodymConfig(governance=gov_cfg)
+    cfg = BayesRiskConfig(governance=gov_cfg)
     assert isinstance(cfg.governance, GovernanceConfig)
     assert cfg.governance is gov_cfg
 
-    desde_dict = NikodymConfig(
+    desde_dict = BayesRiskConfig(
         governance={
             "purpose": "Scorecard comportamiento",
             "assumptions": ["muestra cerrada"],
@@ -88,31 +88,31 @@ def test_nikodymconfig_governance_instancia_y_dict_coaccionan() -> None:
     assert desde_dict.governance.motor == "scoring"
 
 
-def test_nikodymconfig_governance_extra_forbid() -> None:
+def test_bayesriskconfig_governance_extra_forbid() -> None:
     """Un typo dentro de ``governance`` se rechaza cuando el hook está poblado."""
     with pytest.raises(ValidationError):
-        NikodymConfig(governance={"purpose": "x", "typo": 1})
+        BayesRiskConfig(governance={"purpose": "x", "typo": 1})
 
 
-def test_nikodymconfig_governance_core_only_blob_y_rechazo_no_canonico(
+def test_bayesriskconfig_governance_core_only_blob_y_rechazo_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook, ``governance`` es blob JSON-canónico; valores no deterministas se rechazan."""
     monkeypatch.setattr(_schema_mod, "_GOVERNANCE_CONFIG_CLS", None)
 
-    cfg = NikodymConfig(governance={"purpose": "documentar"})
+    cfg = BayesRiskConfig(governance={"purpose": "documentar"})
     assert cfg.governance == {"purpose": "documentar"}
 
     with pytest.raises(ValidationError, match="governance debe ser JSON-canónico"):
-        NikodymConfig(governance={"x": {1, 2, 3}})
+        BayesRiskConfig(governance={"x": {1, 2, 3}})
 
 
 def test_config_hash_excluye_governance_por_ser_infraestructura() -> None:
     """Cambiar gobernanza/documentación no altera la identidad del experimento."""
-    base = config_hash(NikodymConfig())
-    con_a = config_hash(NikodymConfig(governance=GovernanceConfig(purpose="A")))
+    base = config_hash(BayesRiskConfig())
+    con_a = config_hash(BayesRiskConfig(governance=GovernanceConfig(purpose="A")))
     con_b = config_hash(
-        NikodymConfig(
+        BayesRiskConfig(
             governance=GovernanceConfig(
                 purpose="B",
                 publish_to_inventory=True,
@@ -133,8 +133,8 @@ def test_registry_unavailable_desciende_de_governance_error() -> None:
 def test_import_core_no_arrastra_governance_ni_stack_tabular() -> None:
     """El gate liviano se preserva en un proceso fresco."""
     code = (
-        "import nikodym.core, sys;"
-        "mods=('nikodym.governance','nikodym.audit','nikodym.data','pandera','pyarrow','pandas');"
+        "import bayesrisk.core, sys;"
+        "mods=('bayesrisk.governance','bayesrisk.audit','bayesrisk.data','pandera','pyarrow','pandas');"
         "assert not [m for m in mods if m in sys.modules]"
     )
     subprocess.run(

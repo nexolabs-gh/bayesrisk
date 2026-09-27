@@ -1,18 +1,15 @@
-import { NikodymMark } from "@/components/NikodymMark"
+import { BayesRiskMark } from "@/components/BayesRiskMark"
 
-/** Marca Nikodym para el header del sidebar: símbolo N-red + wordmark. Sin lógica.
+/** Marca bayesrisk para el header del sidebar: monograma B + wordmark. Sin lógica.
  *  En rail angosto (< lg) se muestra solo el símbolo; el wordmark aparece en lg+.
  *  Con `onHome`, la marca es un botón que vuelve a la landing/launcher. */
 export function AppHeader({ onHome }: { onHome?: () => void }) {
   const content = (
     <>
-      <NikodymMark className="size-7 shrink-0" />
+      <BayesRiskMark className="size-7 shrink-0" />
       <div className="hidden items-baseline gap-2 lg:flex">
         <span className="font-display text-lg font-bold tracking-tight text-foreground">
-          Nikodym
-        </span>
-        <span className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
-          RiskLib
+          bayesrisk
         </span>
       </div>
     </>

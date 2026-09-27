@@ -6,7 +6,7 @@ validación de target, monotonía no soportada (warn/error) e invariantes de pre
 GBDT (``xgboost``/``lightgbm``/``catboost``, no instalados en la suite) se ejercen con **fakes**
 inyectados por ``importlib.import_module`` (mismo patrón que ``test_ml_backends``) para cubrir el
 recorte de early stopping, el cableado de monotonía, ``best_iteration`` e ``MLPredictError`` sin
-librerías pesadas. Un subproceso verifica que ``import nikodym.ml.estimator`` es liviano.
+librerías pesadas. Un subproceso verifica que ``import bayesrisk.ml.estimator`` es liviano.
 """
 
 from __future__ import annotations
@@ -21,10 +21,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.ml.backends as backends
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import NotFittedError
-from nikodym.ml.config import (
+import bayesrisk.ml.backends as backends
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import NotFittedError
+from bayesrisk.ml.config import (
     MLConfig,
     MLTrainConfig,
     MonotonicConfig,
@@ -32,7 +32,7 @@ from nikodym.ml.config import (
     SvmParams,
     XGBoostParams,
 )
-from nikodym.ml.estimator import (
+from bayesrisk.ml.estimator import (
     MLChallenger,
     _as_target,
     _extract_best_iteration,
@@ -40,7 +40,7 @@ from nikodym.ml.estimator import (
     _validate_and_normalize_proba,
     _validate_binary_target,
 )
-from nikodym.ml.exceptions import (
+from bayesrisk.ml.exceptions import (
     MLConfigError,
     MLDataError,
     MLFitError,
@@ -649,18 +649,18 @@ def test_xgboost_predict_normaliza_menos_cero(monkeypatch: pytest.MonkeyPatch) -
 
 # ═══════════════════════════ reexport y núcleo liviano ═══════════════════════════
 def test_reexport_perezoso_de_ml_challenger() -> None:
-    """``MLChallenger`` se expone de forma perezosa desde ``nikodym.ml`` y en ``__all__``."""
-    import nikodym.ml as ml
+    """``MLChallenger`` se expone de forma perezosa desde ``bayesrisk.ml`` y en ``__all__``."""
+    import bayesrisk.ml as ml
 
     assert "MLChallenger" in ml.__all__
     assert ml.MLChallenger is MLChallenger
 
 
 def test_import_estimator_es_liviano_en_proceso_fresco() -> None:
-    """``import nikodym.ml.estimator`` no arrastra librerías ML ni tabulares (SDD-12 §9)."""
+    """``import bayesrisk.ml.estimator`` no arrastra librerías ML ni tabulares (SDD-12 §9)."""
     code = (
         "import sys;"
-        "import nikodym.ml.estimator;"
+        "import bayesrisk.ml.estimator;"
         "bloqueados=[m for m in "
         "('numpy','pandas','pandera','pyarrow','scipy','sklearn','xgboost','lightgbm','catboost') "
         "if m in sys.modules];"

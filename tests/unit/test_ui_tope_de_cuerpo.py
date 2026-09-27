@@ -23,14 +23,14 @@ from typing import Any
 
 import pytest
 
-from nikodym.ui.security import CREDENTIALED_PATHS, MUTATING_PATHS, PUBLIC_PATHS
+from bayesrisk.ui.security import CREDENTIALED_PATHS, MUTATING_PATHS, PUBLIC_PATHS
 
 pytest.importorskip("fastapi")
 pytest.importorskip("httpx2")
 
 from _ui_client import TEST_PORT, build_test_runtime, ui_client
 
-from nikodym.ui.settings import UiConfig
+from bayesrisk.ui.settings import UiConfig
 
 #: Un cuerpo cómodamente por encima del tope de 1 MiB que usan los tests.
 _GRANDE = b"z" * (4 * 1024 * 1024)
@@ -211,7 +211,7 @@ def test_sin_content_length_el_contador_sigue_gobernando(tmp_path: Path) -> None
 
 def test_un_content_length_duplicado_se_queda_con_la_declaracion_mayor() -> None:
     """La cabecera sólo puede endurecer: ante dos valores manda el grande, no el pequeño."""
-    from nikodym.ui.security import _content_length
+    from bayesrisk.ui.security import _content_length
 
     scope = {"headers": [(b"content-length", b"10"), (b"content-length", b"99999")]}
     assert _content_length(scope) == 99999
@@ -255,7 +255,7 @@ def test_el_contador_corta_sin_tragarse_el_cuerpo_entero(tmp_path: Path) -> None
     """
     import anyio
 
-    from nikodym.ui.server import create_app
+    from bayesrisk.ui.server import create_app
 
     app = create_app(UiConfig(workdir=str(tmp_path), upload_max_mb=1), build_test_runtime(tmp_path))
     pedidos = 0
@@ -292,7 +292,7 @@ def test_el_rechazo_por_cabecera_no_pide_un_solo_trozo(tmp_path: Path) -> None:
     """El camino barato: con ``Content-Length`` por encima del tope no se lee **nada**."""
     import anyio
 
-    from nikodym.ui.server import create_app
+    from bayesrisk.ui.server import create_app
 
     app = create_app(UiConfig(workdir=str(tmp_path), upload_max_mb=1), build_test_runtime(tmp_path))
     pedidos = 0
@@ -350,8 +350,8 @@ def test_los_dos_mensajes_del_tope_declaran_el_mismo_limite() -> None:
     pero la cola tiene que ser idéntica: dos redacciones del mismo número le harían creer al usuario
     que hay dos límites, que es lo que ``mensaje_de_tope`` existe para evitar.
     """
-    from nikodym.ui.datasets import mensaje_de_tope
-    from nikodym.ui.security import _mensaje_de_tope
+    from bayesrisk.ui.datasets import mensaje_de_tope
+    from bayesrisk.ui.security import _mensaje_de_tope
 
     cola = "supera el límite admitido de 1048576 bytes (1 MiB)."
     assert mensaje_de_tope(9_000_000, 1048576).endswith(cola)

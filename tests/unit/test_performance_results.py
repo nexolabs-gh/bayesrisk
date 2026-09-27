@@ -12,18 +12,18 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.performance as performance_pkg
-import nikodym.performance.results as performance_results
-from nikodym.performance.config import (
+import bayesrisk.performance as performance_pkg
+import bayesrisk.performance.results as performance_results
+from bayesrisk.performance.config import (
     EvaluationSource as ConfigEvaluationSource,
 )
-from nikodym.performance.config import (
+from bayesrisk.performance.config import (
     PerformancePartition as ConfigPerformancePartition,
 )
-from nikodym.performance.config import (
+from bayesrisk.performance.config import (
     ScoreDirection as ConfigScoreDirection,
 )
-from nikodym.performance.results import (
+from bayesrisk.performance.results import (
     DecilePerformanceRecord,
     DiscriminantMetricRecord,
     PerformanceCardSection,
@@ -392,8 +392,8 @@ def test_performance_result_valida_dataframes_y_consistencia_card() -> None:
 def test_performance_results_lazy_exports_y_nucleo_liviano_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.core;"
-        "import nikodym.performance as performance;"
+        "import bayesrisk.core;"
+        "import bayesrisk.performance as performance;"
         "blocked=[m for m in ('pandas','scipy','sklearn','statsmodels','optbinning') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"

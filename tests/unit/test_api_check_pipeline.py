@@ -1,4 +1,4 @@
-"""Tests de ``nikodym.check_pipeline`` y ``Study.check_pipeline`` (enmienda VALIDACION-PIPELINE).
+"""Tests de ``bayesrisk.check_pipeline`` y ``Study.check_pipeline`` (enmienda VALIDACION-PIPELINE).
 
 Cubre las decisiones D-PIPE-2/D-PIPE-3/D-PIPE-6: el veredicto de ejecutabilidad sin ejecutar nada,
 el primitivo *fail-loud* del núcleo frente al envoltorio que captura, la ausencia de rastro en el
@@ -16,12 +16,12 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, Field, ValidationError
 
-import nikodym
-from nikodym.api import check_pipeline
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ConfigError
-from nikodym.core.study import Study
-from nikodym.ui import presets
+import bayesrisk
+from bayesrisk.api import check_pipeline
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.core.study import Study
+from bayesrisk.ui import presets
 
 
 def _config(preset_id: str) -> dict[str, Any]:
@@ -29,11 +29,11 @@ def _config(preset_id: str) -> dict[str, Any]:
     return deepcopy(presets.get_preset(preset_id)["config"])
 
 
-def _sin_survival() -> NikodymConfig:
+def _sin_survival() -> BayesRiskConfig:
     """Preset F4 con ``survival`` apagado: el config inejecutable que destapó la enmienda."""
     crudo = _config("f4-ifrs9-retail")
     crudo["survival"] = None
-    return NikodymConfig.model_validate(crudo)
+    return BayesRiskConfig.model_validate(crudo)
 
 
 # --- El veredicto (D-PIPE-2) -------------------------------------------------------------------
@@ -41,7 +41,7 @@ def _sin_survival() -> NikodymConfig:
 
 def test_preset_ejecutable_publica_sus_pasos_en_orden() -> None:
     """Un preset de fábrica es ejecutable y anuncia el pipeline que correría."""
-    check = check_pipeline(NikodymConfig.model_validate(_config("f4-ifrs9-retail")))
+    check = check_pipeline(BayesRiskConfig.model_validate(_config("f4-ifrs9-retail")))
 
     assert check.executable is True
     assert check.steps == ("data", "survival", "provisioning_ifrs9", "report")
@@ -51,7 +51,7 @@ def test_preset_ejecutable_publica_sus_pasos_en_orden() -> None:
 
 def test_config_vacio_es_ejecutable_con_pipeline_vacio() -> None:
     """Sin secciones activas no hay nada que correr, y eso no es un error del config."""
-    check = check_pipeline(NikodymConfig.model_validate({}))
+    check = check_pipeline(BayesRiskConfig.model_validate({}))
 
     assert check.executable is True
     assert check.steps == ()
@@ -73,7 +73,7 @@ def test_artefactos_habilitan_un_pipeline_parcial_y_mapping_ignora_valores() -> 
 
 def test_artefacto_inerte_se_declara_sin_bloquear() -> None:
     """Una clave de dominio válido que ningún paso consume avisa en el veredicto."""
-    check = check_pipeline(NikodymConfig.model_validate({}), artifacts=[("data", "frame")])
+    check = check_pipeline(BayesRiskConfig.model_validate({}), artifacts=[("data", "frame")])
 
     assert check.executable is True
     assert check.steps == ()
@@ -90,9 +90,9 @@ def test_artefacto_inerte_sobrevive_a_otro_error_del_pipeline() -> None:
 
 def test_dominio_desconocido_y_colision_bloquean_antes_de_ejecutar() -> None:
     """Typos de dominio y salidas que un paso activo produciría son errores estructurales."""
-    unknown = check_pipeline(NikodymConfig.model_validate({}), artifacts=[("dtaa", "frame")])
+    unknown = check_pipeline(BayesRiskConfig.model_validate({}), artifacts=[("dtaa", "frame")])
     collision = check_pipeline(
-        NikodymConfig.model_validate(_config("f4-ifrs9-retail")),
+        BayesRiskConfig.model_validate(_config("f4-ifrs9-retail")),
         artifacts=[("data", "frame")],
     )
 
@@ -150,7 +150,7 @@ def test_comprobar_no_deja_rastro_de_corrida() -> None:
 
 def test_el_primitivo_no_ejecuta_ningun_paso() -> None:
     """Un config ejecutable se comprueba sin producir artefactos ni resultados."""
-    study = Study(NikodymConfig.model_validate(_config("f4-ifrs9-retail")))
+    study = Study(BayesRiskConfig.model_validate(_config("f4-ifrs9-retail")))
 
     pasos = study.check_pipeline()
 
@@ -162,7 +162,7 @@ def test_el_primitivo_no_ejecuta_ningun_paso() -> None:
 
 def test_steps_explicitos_tienen_prioridad_sobre_el_config() -> None:
     """El argumento ``steps`` manda sobre ``config.run.steps``, igual que en :meth:`run`."""
-    study = Study(NikodymConfig.model_validate(_config("f4-ifrs9-retail")))
+    study = Study(BayesRiskConfig.model_validate(_config("f4-ifrs9-retail")))
 
     assert study.check_pipeline(["data"]) == ["data"]
 
@@ -182,7 +182,7 @@ def test_una_excepcion_inesperada_se_declara_como_tal(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr(Study, "check_pipeline", _explota)
 
-    check = check_pipeline(NikodymConfig.model_validate({}))
+    check = check_pipeline(BayesRiskConfig.model_validate({}))
 
     assert check.executable is False
     assert check.error_type == "RuntimeError"
@@ -204,7 +204,7 @@ def test_el_mensaje_conserva_el_codigo_de_marca(monkeypatch: pytest.MonkeyPatch)
 
     monkeypatch.setattr(Study, "check_pipeline", _con_marca)
 
-    check = check_pipeline(NikodymConfig.model_validate({}))
+    check = check_pipeline(BayesRiskConfig.model_validate({}))
 
     assert check.message == codigo
 
@@ -218,7 +218,7 @@ def test_un_valor_fuera_de_rango_en_un_subconfig_se_reporta_como_accionable(
     """Un ``ValidationError`` de coacción cuenta como error de dominio y se publica.
 
     Las secciones de dominio son ``Any`` en el schema raíz, así que una restricción violada dentro
-    de una de ellas no la caza ``NikodymConfig.model_validate``: la caza la coacción que hace la
+    de una de ellas no la caza ``BayesRiskConfig.model_validate``: la caza la coacción que hace la
     resolución. Tratarlo como «excepción inesperada» habría ocultado el diagnóstico justo en el
     caso más común de todos.
 
@@ -242,7 +242,7 @@ def test_un_valor_fuera_de_rango_en_un_subconfig_se_reporta_como_accionable(
 
     monkeypatch.setattr(Study, "check_pipeline", _coacciona_mal)
 
-    check = check_pipeline(NikodymConfig.model_validate({}))
+    check = check_pipeline(BayesRiskConfig.model_validate({}))
 
     assert check.executable is False
     assert check.is_domain_error is True, "es accionable por quien configura, no detalle interno"
@@ -277,7 +277,7 @@ def test_muchos_errores_se_acotan_diciendo_cuantos_faltan(
 
     monkeypatch.setattr(Study, "check_pipeline", _coacciona_mal)
 
-    mensaje = check_pipeline(NikodymConfig.model_validate({})).message
+    mensaje = check_pipeline(BayesRiskConfig.model_validate({})).message
 
     assert mensaje is not None
     assert "y 2 problema(s) más" in mensaje
@@ -287,10 +287,10 @@ def test_muchos_errores_se_acotan_diciendo_cuantos_faltan(
 
 
 def test_check_pipeline_es_superficie_publica_del_paquete() -> None:
-    """``nikodym.check_pipeline`` existe y es el mismo objeto que ``nikodym.api.check_pipeline``."""
-    assert nikodym.check_pipeline is check_pipeline
-    assert "check_pipeline" in dir(nikodym)
-    assert "PipelineCheck" in dir(nikodym)
+    """``bayesrisk.check_pipeline`` es el mismo objeto que ``bayesrisk.api.check_pipeline``."""
+    assert bayesrisk.check_pipeline is check_pipeline
+    assert "check_pipeline" in dir(bayesrisk)
+    assert "PipelineCheck" in dir(bayesrisk)
 
 
 # --- Comprobar no puede sembrar el proceso ------------------------------------------------------
@@ -314,7 +314,7 @@ def test_comprobar_no_siembra_los_rng_del_proceso(monkeypatch: pytest.MonkeyPatc
 
     random.seed(123)
     primero = random.random()
-    check_pipeline(NikodymConfig.model_validate({"repro": {"seed": 999}}))
+    check_pipeline(BayesRiskConfig.model_validate({"repro": {"seed": 999}}))
     segundo = random.random()
 
     assert [primero, segundo] == esperado, "la comprobación pisó el stream global de random"
@@ -327,6 +327,6 @@ def test_la_corrida_si_siembra(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.delenv("PYTHONHASHSEED", raising=False)
     with pytest.warns(UserWarning, match="PYTHONHASHSEED"):
-        Study(NikodymConfig.model_validate({"repro": {"seed": 7}}))
+        Study(BayesRiskConfig.model_validate({"repro": {"seed": 7}}))
 
     assert os.environ.get("PYTHONHASHSEED") is not None

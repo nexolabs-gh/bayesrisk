@@ -1,6 +1,6 @@
 """Tests de la función pura ``reliability_curve`` (curva de confiabilidad de calibración, B35a).
 
-Se ejercita el módulo *domain-agnostic* ``nikodym.ui.reliability`` con ``DataFrame`` sintéticos y
+Se ejercita el módulo *domain-agnostic* ``bayesrisk.ui.reliability`` con ``DataFrame`` sintéticos y
 CONTROLADOS: calibración perfecta (ECE≈0, puntos sobre la diagonal), mal calibrada (ECE>0),
 intervalo de Wilson, invariante de conteo por partición, exclusión de particiones vacías y
 determinismo byte-a-byte. No requiere el motor ni FastAPI.
@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nikodym.ui.reliability import reliability_curve
+from bayesrisk.ui.reliability import reliability_curve
 
 _BIN_KEYS = {
     "bin",

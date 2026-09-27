@@ -19,8 +19,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from nikodym.ui.routes import jobs_payload
-from nikodym.ui.settings import UiConfig
+from bayesrisk.ui.routes import jobs_payload
+from bayesrisk.ui.settings import UiConfig
 
 _FIXTURE = Path(__file__).resolve().parent.parent / "web" / "src" / "fixtures" / "jobs.json"
 

@@ -126,23 +126,23 @@ export const CODIGO: readonly (readonly { t: string; c: string }[])[] = [
   [],
   [
     { t: "import", c: "kw" },
-    { t: " nikodym", c: "id" },
+    { t: " bayesrisk", c: "id" },
   ],
   [
     { t: "from", c: "kw" },
-    { t: " nikodym.core.config ", c: "id" },
+    { t: " bayesrisk.core.config ", c: "id" },
     { t: "import", c: "kw" },
-    { t: " NikodymConfig", c: "id" },
+    { t: " BayesRiskConfig", c: "id" },
   ],
   [
     { t: "from", c: "kw" },
-    { t: " nikodym.ui.datasets ", c: "id" },
+    { t: " bayesrisk.ui.datasets ", c: "id" },
     { t: "import", c: "kw" },
     { t: " materialize", c: "id" },
   ],
   [
     { t: "from", c: "kw" },
-    { t: " nikodym.ui.presets ", c: "id" },
+    { t: " bayesrisk.ui.presets ", c: "id" },
     { t: "import", c: "kw" },
     { t: " standard_preset", c: "id" },
   ],
@@ -195,13 +195,13 @@ export const CODIGO: readonly (readonly { t: string; c: string }[])[] = [
   [],
   [
     { t: "config", c: "id" },
-    { t: " = NikodymConfig.", c: "p" },
+    { t: " = BayesRiskConfig.", c: "p" },
     { t: "model_validate", c: "fn" },
     { t: "(cfg)", c: "p" },
   ],
   [
     { t: "study", c: "id" },
-    { t: " = nikodym.", c: "p" },
+    { t: " = bayesrisk.", c: "p" },
     { t: "run", c: "fn" },
     { t: "(config)", c: "p" },
   ],
@@ -239,13 +239,13 @@ export const TESTS_SUITE = "4.900"
  *   superficie: "UI"     → tiene preset, pantalla y capítulo en el informe.
  *               "Python" → hay que escribir el config a mano. Sin preset, sin pantalla y sin
  *                          capítulo en el informe. OJO: sí existe un comando — `pyproject.toml`
- *                          declara `[project.scripts] nikodym-ui` desde B2.2 (`65c37a0`)—, pero
+ *                          declara `[project.scripts] bayesrisk-ui` desde B2.2 (`65c37a0`)—, pero
  *                          levanta la interfaz y no corre estos dominios. El copy decía «no existe
  *                          CLI» y quedó atrás del código: una afirmación falsable, y falsa, en la
  *                          página cuya tesis es que todo aquí se puede verificar.
- *   garantia:   "estable"      → contrato congelado bajo SemVer 1.x.
+ *   garantia:   "estable"      → contrato congelado bajo SemVer 2.x.
  *               "experimental" → el motor calcula y está cubierto por tests, pero la firma puede
- *                                cambiar dentro de la 1.x. No está certificado ni es apto para
+ *                                cambiar dentro de la 2.x. No está certificado ni es apto para
  *                                producción por el solo hecho de existir.
  *
  * Cada tagline se verificó contra el código antes de publicarse. Lo que el motor NO hace se dice
@@ -260,8 +260,8 @@ export const DOMINIOS = [
     tagline:
       "Binning WoE monotónico (OptBinning), selección por IV y VIF, logística sobre WoE, escalado " +
       "PDO/offset y calibración a la tasa objetivo, con AUC/KS/Gini y PSI/CSI. Es la superficie más " +
-      "madura del paquete: la única bajo garantía SemVer 1.x.",
-    modulo: "nikodym.scorecard",
+      "madura del paquete: la única bajo garantía SemVer 2.x.",
+    modulo: "bayesrisk.scorecard",
   },
   {
     key: "provisioning",
@@ -282,7 +282,7 @@ export const DOMINIOS = [
       "reportar por institución el mayor entre su método estándar y el método interno del banco — " +
       "nunca un máximo contra IFRS 9, porque el Compendio (A-2, num. 5) excluye el deterioro de " +
       "NIIF 9 sobre las colocaciones.",
-    modulo: "nikodym.provisioning",
+    modulo: "bayesrisk.provisioning",
   },
   {
     key: "stress",
@@ -294,7 +294,7 @@ export const DOMINIOS = [
       "sensibilidad y chequeo de dominancia entre escenarios. Incluye reverse stress: resuelve por " +
       "bisección la severidad mínima que cruza el umbral, y falla explícito si la métrica no es " +
       "monótona o si no converge, en vez de devolver un número cómodo.",
-    modulo: "nikodym.stress",
+    modulo: "bayesrisk.stress",
   },
   {
     key: "markov",
@@ -307,7 +307,7 @@ export const DOMINIOS = [
       "(diagnose / regularize / forbid). El default diagnostica —marca la matriz sin generador " +
       "válido y sigue—; con forbid la corrida se cae. No hace roll rates ni curvas de cosecha: " +
       "eso todavía no existe.",
-    modulo: "nikodym.markov",
+    modulo: "bayesrisk.markov",
   },
   {
     key: "forward",
@@ -318,7 +318,7 @@ export const DOMINIOS = [
       "ARIMA y auto-ARIMA, VAR y VECM sobre series macro, con Ljung-Box sobre los residuos como " +
       "diagnóstico, y modelos satélite que traducen el escenario macroeconómico a PD —y a LGD si " +
       "le entregas la LGD base—, escenario por escenario.",
-    modulo: "nikodym.forward",
+    modulo: "bayesrisk.forward",
   },
   {
     key: "survival",
@@ -331,7 +331,7 @@ export const DOMINIOS = [
     tagline:
       "Kaplan-Meier, modelos de Cox y AFT, y hazard en tiempo discreto sobre datos censurados: " +
       "cuándo ocurre el incumplimiento, no solo con qué probabilidad.",
-    modulo: "nikodym.survival",
+    modulo: "bayesrisk.survival",
   },
 ] as const
 
@@ -365,13 +365,13 @@ export const SALVEDADES = [
     clave: "Extras",
     texto:
       // Sin backticks: esta prosa se pinta tal cual, sin renderizador markdown, así que un backtick
-      // aquí se le muestra al lector. El resto del párrafo ya escribe `nikodym[scoring]` en plano.
-      "pip install nikodym trae el núcleo —config, orquestación, la capa de datos y el informe " +
+      // aquí se le muestra al lector. El resto del párrafo ya escribe `bayesrisk[scoring]` en plano.
+      "pip install bayesrisk trae el núcleo —config, orquestación, la capa de datos y el informe " +
       "HTML—, pero no el motor del scorecard: el pipeline F1, que es la superficie estable, exige " +
-      "nikodym[scoring]. La interfaz local exige nikodym[ui]; el auto-ARIMA, nikodym[forecasting] " +
-      "(pmdarima); los modelos de sobrevivencia, nikodym[survival] (lifelines); y cada backend de " +
-      "ML, SHAP, MLflow, Excel y el export Word, el suyo. nikodym[all] deja el paquete operativo " +
-      "salvo el PDF, que se instala aparte (nikodym[pdf], WeasyPrint) porque arrastra una " +
+      "bayesrisk[scoring]. La interfaz local exige bayesrisk[ui]; el auto-ARIMA, bayesrisk[forecasting] " +
+      "(pmdarima); los modelos de sobrevivencia, bayesrisk[survival] (lifelines); y cada backend de " +
+      "ML, SHAP, MLflow, Excel y el export Word, el suyo. bayesrisk[all] deja el paquete operativo " +
+      "salvo el PDF, que se instala aparte (bayesrisk[pdf], WeasyPrint) porque arrastra una " +
       "transitiva copyleft que el cierre redistribuible no acepta.",
   },
 ] as const

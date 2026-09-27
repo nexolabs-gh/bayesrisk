@@ -336,6 +336,312 @@ wheels = [
 ]
 
 [[package]]
+name = "bayesrisk"
+source = { editable = "." }
+dependencies = [
+    { name = "jinja2" },
+    { name = "joblib" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pandera" },
+    { name = "pyarrow" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.optional-dependencies]
+ai = [
+    { name = "anthropic" },
+]
+all = [
+    { name = "anthropic" },
+    { name = "catboost" },
+    { name = "fastapi" },
+    { name = "lifelines" },
+    { name = "lightgbm" },
+    { name = "llvmlite" },
+    { name = "matplotlib" },
+    { name = "mlflow" },
+    { name = "numba" },
+    { name = "openpyxl" },
+    { name = "optbinning" },
+    { name = "optuna" },
+    { name = "pmdarima" },
+    { name = "polars" },
+    { name = "python-docx" },
+    { name = "python-multipart" },
+    { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "shap", version = "0.49.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "shap", version = "0.51.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.12' and platform_machine != 'x86_64') or (python_full_version < '3.12' and sys_platform != 'darwin')" },
+    { name = "shap", version = "0.52.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.12' and platform_machine != 'x86_64') or (python_full_version >= '3.12' and sys_platform != 'darwin')" },
+    { name = "statsmodels" },
+    { name = "uvicorn" },
+    { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and sys_platform != 'linux'" },
+    { name = "xgboost", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform != 'linux'" },
+    { name = "xgboost-cpu", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and sys_platform == 'linux'" },
+    { name = "xgboost-cpu", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform == 'linux'" },
+]
+catboost = [
+    { name = "catboost" },
+    { name = "scikit-learn" },
+]
+docx = [
+    { name = "python-docx" },
+]
+excel = [
+    { name = "openpyxl" },
+]
+explain = [
+    { name = "llvmlite" },
+    { name = "matplotlib" },
+    { name = "numba" },
+    { name = "shap", version = "0.49.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "shap", version = "0.51.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.12' and platform_machine != 'x86_64') or (python_full_version < '3.12' and sys_platform != 'darwin')" },
+    { name = "shap", version = "0.52.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.12' and platform_machine != 'x86_64') or (python_full_version >= '3.12' and sys_platform != 'darwin')" },
+]
+forecasting = [
+    { name = "pmdarima" },
+    { name = "statsmodels" },
+]
+lightgbm = [
+    { name = "lightgbm" },
+    { name = "scikit-learn" },
+]
+markov = [
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+ml = [
+    { name = "scikit-learn" },
+]
+pdf = [
+    { name = "weasyprint" },
+]
+polars = [
+    { name = "polars" },
+]
+report = [
+    { name = "matplotlib" },
+]
+scoring = [
+    { name = "optbinning" },
+    { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "statsmodels" },
+]
+survival = [
+    { name = "lifelines" },
+]
+tracking = [
+    { name = "mlflow" },
+]
+tuning = [
+    { name = "optuna" },
+]
+ui = [
+    { name = "fastapi" },
+    { name = "lifelines" },
+    { name = "matplotlib" },
+    { name = "openpyxl" },
+    { name = "optbinning" },
+    { name = "python-docx" },
+    { name = "python-multipart" },
+    { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "statsmodels" },
+    { name = "uvicorn" },
+]
+xgboost = [
+    { name = "scikit-learn" },
+    { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and sys_platform != 'linux'" },
+    { name = "xgboost", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform != 'linux'" },
+    { name = "xgboost-cpu", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and sys_platform == 'linux'" },
+    { name = "xgboost-cpu", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform == 'linux'" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "coverage", extra = ["toml"] },
+    { name = "cryptography" },
+    { name = "httpx2" },
+    { name = "hypothesis" },
+    { name = "jsonschema" },
+    { name = "lifelines" },
+    { name = "mkdocs-material" },
+    { name = "mkdocstrings", extra = ["python"] },
+    { name = "mypy" },
+    { name = "optbinning" },
+    { name = "pandas-stubs" },
+    { name = "pre-commit" },
+    { name = "pypdf" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+    { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "statsmodels" },
+    { name = "types-pyyaml" },
+]
+docs = [
+    { name = "mkdocs-material" },
+    { name = "mkdocstrings", extra = ["python"] },
+]
+lint = [
+    { name = "cryptography" },
+    { name = "mypy" },
+    { name = "pandas-stubs" },
+    { name = "ruff" },
+    { name = "types-pyyaml" },
+]
+test = [
+    { name = "coverage", extra = ["toml"] },
+    { name = "cryptography" },
+    { name = "httpx2" },
+    { name = "hypothesis" },
+    { name = "jsonschema" },
+    { name = "lifelines" },
+    { name = "optbinning" },
+    { name = "pypdf" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "statsmodels" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", marker = "extra == 'ai'", specifier = ">=0.40" },
+    { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.40" },
+    { name = "catboost", marker = "extra == 'all'", specifier = ">=1.2" },
+    { name = "catboost", marker = "extra == 'catboost'", specifier = ">=1.2" },
+    { name = "fastapi", marker = "extra == 'all'", specifier = ">=0.110" },
+    { name = "fastapi", marker = "extra == 'ui'", specifier = ">=0.110" },
+    { name = "jinja2", specifier = ">=3.1" },
+    { name = "joblib", specifier = ">=1.3" },
+    { name = "lifelines", marker = "extra == 'all'", specifier = ">=0.28" },
+    { name = "lifelines", marker = "extra == 'survival'", specifier = ">=0.28" },
+    { name = "lifelines", marker = "extra == 'ui'", specifier = ">=0.28" },
+    { name = "lightgbm", marker = "extra == 'all'", specifier = ">=4.0" },
+    { name = "lightgbm", marker = "extra == 'lightgbm'", specifier = ">=4.0" },
+    { name = "llvmlite", marker = "extra == 'all'", specifier = ">=0.43" },
+    { name = "llvmlite", marker = "extra == 'explain'", specifier = ">=0.43" },
+    { name = "matplotlib", marker = "extra == 'all'", specifier = ">=3.7" },
+    { name = "matplotlib", marker = "extra == 'explain'", specifier = ">=3.7" },
+    { name = "matplotlib", marker = "extra == 'report'", specifier = ">=3.7" },
+    { name = "matplotlib", marker = "extra == 'ui'", specifier = ">=3.7" },
+    { name = "mlflow", marker = "extra == 'all'", specifier = ">=2.10" },
+    { name = "mlflow", marker = "extra == 'tracking'", specifier = ">=2.10" },
+    { name = "numba", marker = "extra == 'all'", specifier = ">=0.60" },
+    { name = "numba", marker = "extra == 'explain'", specifier = ">=0.60" },
+    { name = "numpy", specifier = ">=1.22" },
+    { name = "openpyxl", marker = "extra == 'all'", specifier = ">=3.1" },
+    { name = "openpyxl", marker = "extra == 'excel'", specifier = ">=3.1" },
+    { name = "openpyxl", marker = "extra == 'ui'", specifier = ">=3.1" },
+    { name = "optbinning", marker = "extra == 'all'", specifier = ">=0.19" },
+    { name = "optbinning", marker = "extra == 'scoring'", specifier = ">=0.19" },
+    { name = "optbinning", marker = "extra == 'ui'", specifier = ">=0.19" },
+    { name = "optuna", marker = "extra == 'all'", specifier = ">=3.5" },
+    { name = "optuna", marker = "extra == 'tuning'", specifier = ">=3.5" },
+    { name = "pandas", specifier = ">=2.0,<3" },
+    { name = "pandera", specifier = ">=0.24" },
+    { name = "pmdarima", marker = "extra == 'all'", specifier = ">=2.0" },
+    { name = "pmdarima", marker = "extra == 'forecasting'", specifier = ">=2.0" },
+    { name = "polars", marker = "extra == 'all'", specifier = ">=0.20" },
+    { name = "polars", marker = "extra == 'polars'", specifier = ">=0.20" },
+    { name = "pyarrow", specifier = ">=14" },
+    { name = "pydantic", specifier = ">=2.5" },
+    { name = "python-docx", marker = "extra == 'all'", specifier = ">=1.1" },
+    { name = "python-docx", marker = "extra == 'docx'", specifier = ">=1.1" },
+    { name = "python-docx", marker = "extra == 'ui'", specifier = ">=1.1" },
+    { name = "python-multipart", marker = "extra == 'all'", specifier = ">=0.0.9" },
+    { name = "python-multipart", marker = "extra == 'ui'", specifier = ">=0.0.9" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "scikit-learn", marker = "extra == 'all'", specifier = ">=1.6" },
+    { name = "scikit-learn", marker = "extra == 'all'", specifier = ">=1.6,<1.8" },
+    { name = "scikit-learn", marker = "extra == 'catboost'", specifier = ">=1.6" },
+    { name = "scikit-learn", marker = "extra == 'lightgbm'", specifier = ">=1.6" },
+    { name = "scikit-learn", marker = "extra == 'ml'", specifier = ">=1.6" },
+    { name = "scikit-learn", marker = "extra == 'scoring'", specifier = ">=1.6,<1.8" },
+    { name = "scikit-learn", marker = "extra == 'ui'", specifier = ">=1.6,<1.8" },
+    { name = "scikit-learn", marker = "extra == 'xgboost'", specifier = ">=1.6" },
+    { name = "scipy", marker = "extra == 'all'", specifier = ">=1.10" },
+    { name = "scipy", marker = "extra == 'markov'", specifier = ">=1.10" },
+    { name = "scipy", marker = "extra == 'scoring'", specifier = ">=1.10" },
+    { name = "scipy", marker = "extra == 'ui'", specifier = ">=1.10" },
+    { name = "shap", marker = "extra == 'all'", specifier = ">=0.44" },
+    { name = "shap", marker = "extra == 'explain'", specifier = ">=0.44" },
+    { name = "statsmodels", marker = "extra == 'all'", specifier = ">=0.14" },
+    { name = "statsmodels", marker = "extra == 'forecasting'", specifier = ">=0.14" },
+    { name = "statsmodels", marker = "extra == 'scoring'", specifier = ">=0.14" },
+    { name = "statsmodels", marker = "extra == 'ui'", specifier = ">=0.14" },
+    { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.29" },
+    { name = "uvicorn", marker = "extra == 'ui'", specifier = ">=0.29" },
+    { name = "weasyprint", marker = "extra == 'pdf'", specifier = ">=63" },
+    { name = "xgboost", marker = "sys_platform != 'linux' and extra == 'all'", specifier = ">=2.0" },
+    { name = "xgboost", marker = "sys_platform != 'linux' and extra == 'xgboost'", specifier = ">=2.0" },
+    { name = "xgboost-cpu", marker = "sys_platform == 'linux' and extra == 'all'", specifier = ">=2.0" },
+    { name = "xgboost-cpu", marker = "sys_platform == 'linux' and extra == 'xgboost'", specifier = ">=2.0" },
+]
+provides-extras = ["ai", "all", "catboost", "docx", "excel", "explain", "forecasting", "lightgbm", "markov", "ml", "pdf", "polars", "report", "scoring", "survival", "tracking", "tuning", "ui", "xgboost"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "coverage", extras = ["toml"], specifier = "<7.10" },
+    { name = "cryptography", specifier = ">=45" },
+    { name = "httpx2", specifier = ">=2.5" },
+    { name = "hypothesis", specifier = ">=6.100" },
+    { name = "jsonschema", specifier = ">=4.23" },
+    { name = "lifelines", specifier = ">=0.28" },
+    { name = "mkdocs-material", specifier = ">=9.5" },
+    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.24" },
+    { name = "mypy", specifier = ">=1.10" },
+    { name = "optbinning", specifier = ">=0.19" },
+    { name = "pandas-stubs", specifier = ">=2.0" },
+    { name = "pre-commit", specifier = ">=3.7" },
+    { name = "pypdf", specifier = ">=5" },
+    { name = "pytest", specifier = ">=8.1" },
+    { name = "pytest-cov", specifier = ">=5.0,<6.0" },
+    { name = "ruff", specifier = ">=0.5" },
+    { name = "scikit-learn", specifier = ">=1.6,<1.8" },
+    { name = "scipy", specifier = ">=1.10" },
+    { name = "statsmodels", specifier = ">=0.14" },
+    { name = "types-pyyaml", specifier = ">=6.0" },
+]
+docs = [
+    { name = "mkdocs-material", specifier = ">=9.5" },
+    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.24" },
+]
+lint = [
+    { name = "cryptography", specifier = ">=45" },
+    { name = "mypy", specifier = ">=1.10" },
+    { name = "pandas-stubs", specifier = ">=2.0" },
+    { name = "ruff", specifier = ">=0.5" },
+    { name = "types-pyyaml", specifier = ">=6.0" },
+]
+test = [
+    { name = "coverage", extras = ["toml"], specifier = "<7.10" },
+    { name = "cryptography", specifier = ">=45" },
+    { name = "httpx2", specifier = ">=2.5" },
+    { name = "hypothesis", specifier = ">=6.100" },
+    { name = "jsonschema", specifier = ">=4.23" },
+    { name = "lifelines", specifier = ">=0.28" },
+    { name = "optbinning", specifier = ">=0.19" },
+    { name = "pypdf", specifier = ">=5" },
+    { name = "pytest", specifier = ">=8.1" },
+    { name = "pytest-cov", specifier = ">=5.0,<6.0" },
+    { name = "scikit-learn", specifier = ">=1.6,<1.8" },
+    { name = "scipy", specifier = ">=1.10" },
+    { name = "statsmodels", specifier = ">=0.14" },
+]
+
+[[package]]
 name = "blinker"
 version = "1.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2715,312 +3021,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/62/3c/c4ef2164a71c1a63d7f1ae411c4082c5fa872405106db60a4b7114989ad7/narwhals-2.22.1.tar.gz", hash = "sha256:d62920805a0a43b7ff8b54b0c0d3142d796f8a9301836ada37e573d6a33cbcd9", size = 647493, upload-time = "2026-06-05T12:34:34.051Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/48/ca/36339329c4604adbcc99c899b7eb1ce1a555c499b6a6860757dc9bfed36d/narwhals-2.22.1-py3-none-any.whl", hash = "sha256:60567d774edf77db53906f89d9fbd164e66e56d66d388e1e6990f17ac33cfb53", size = 454815, upload-time = "2026-06-05T12:34:32.289Z" },
-]
-
-[[package]]
-name = "nikodym"
-source = { editable = "." }
-dependencies = [
-    { name = "jinja2" },
-    { name = "joblib" },
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "pandera" },
-    { name = "pyarrow" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-]
-
-[package.optional-dependencies]
-ai = [
-    { name = "anthropic" },
-]
-all = [
-    { name = "anthropic" },
-    { name = "catboost" },
-    { name = "fastapi" },
-    { name = "lifelines" },
-    { name = "lightgbm" },
-    { name = "llvmlite" },
-    { name = "matplotlib" },
-    { name = "mlflow" },
-    { name = "numba" },
-    { name = "openpyxl" },
-    { name = "optbinning" },
-    { name = "optuna" },
-    { name = "pmdarima" },
-    { name = "polars" },
-    { name = "python-docx" },
-    { name = "python-multipart" },
-    { name = "scikit-learn" },
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "shap", version = "0.49.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
-    { name = "shap", version = "0.51.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.12' and platform_machine != 'x86_64') or (python_full_version < '3.12' and sys_platform != 'darwin')" },
-    { name = "shap", version = "0.52.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.12' and platform_machine != 'x86_64') or (python_full_version >= '3.12' and sys_platform != 'darwin')" },
-    { name = "statsmodels" },
-    { name = "uvicorn" },
-    { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and sys_platform != 'linux'" },
-    { name = "xgboost", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform != 'linux'" },
-    { name = "xgboost-cpu", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and sys_platform == 'linux'" },
-    { name = "xgboost-cpu", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform == 'linux'" },
-]
-catboost = [
-    { name = "catboost" },
-    { name = "scikit-learn" },
-]
-docx = [
-    { name = "python-docx" },
-]
-excel = [
-    { name = "openpyxl" },
-]
-explain = [
-    { name = "llvmlite" },
-    { name = "matplotlib" },
-    { name = "numba" },
-    { name = "shap", version = "0.49.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
-    { name = "shap", version = "0.51.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.12' and platform_machine != 'x86_64') or (python_full_version < '3.12' and sys_platform != 'darwin')" },
-    { name = "shap", version = "0.52.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.12' and platform_machine != 'x86_64') or (python_full_version >= '3.12' and sys_platform != 'darwin')" },
-]
-forecasting = [
-    { name = "pmdarima" },
-    { name = "statsmodels" },
-]
-lightgbm = [
-    { name = "lightgbm" },
-    { name = "scikit-learn" },
-]
-markov = [
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-]
-ml = [
-    { name = "scikit-learn" },
-]
-pdf = [
-    { name = "weasyprint" },
-]
-polars = [
-    { name = "polars" },
-]
-report = [
-    { name = "matplotlib" },
-]
-scoring = [
-    { name = "optbinning" },
-    { name = "scikit-learn" },
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "statsmodels" },
-]
-survival = [
-    { name = "lifelines" },
-]
-tracking = [
-    { name = "mlflow" },
-]
-tuning = [
-    { name = "optuna" },
-]
-ui = [
-    { name = "fastapi" },
-    { name = "lifelines" },
-    { name = "matplotlib" },
-    { name = "openpyxl" },
-    { name = "optbinning" },
-    { name = "python-docx" },
-    { name = "python-multipart" },
-    { name = "scikit-learn" },
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "statsmodels" },
-    { name = "uvicorn" },
-]
-xgboost = [
-    { name = "scikit-learn" },
-    { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and sys_platform != 'linux'" },
-    { name = "xgboost", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform != 'linux'" },
-    { name = "xgboost-cpu", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and sys_platform == 'linux'" },
-    { name = "xgboost-cpu", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform == 'linux'" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "coverage", extra = ["toml"] },
-    { name = "cryptography" },
-    { name = "httpx2" },
-    { name = "hypothesis" },
-    { name = "jsonschema" },
-    { name = "lifelines" },
-    { name = "mkdocs-material" },
-    { name = "mkdocstrings", extra = ["python"] },
-    { name = "mypy" },
-    { name = "optbinning" },
-    { name = "pandas-stubs" },
-    { name = "pre-commit" },
-    { name = "pypdf" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-    { name = "scikit-learn" },
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "statsmodels" },
-    { name = "types-pyyaml" },
-]
-docs = [
-    { name = "mkdocs-material" },
-    { name = "mkdocstrings", extra = ["python"] },
-]
-lint = [
-    { name = "cryptography" },
-    { name = "mypy" },
-    { name = "pandas-stubs" },
-    { name = "ruff" },
-    { name = "types-pyyaml" },
-]
-test = [
-    { name = "coverage", extra = ["toml"] },
-    { name = "cryptography" },
-    { name = "httpx2" },
-    { name = "hypothesis" },
-    { name = "jsonschema" },
-    { name = "lifelines" },
-    { name = "optbinning" },
-    { name = "pypdf" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "scikit-learn" },
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "statsmodels" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anthropic", marker = "extra == 'ai'", specifier = ">=0.40" },
-    { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.40" },
-    { name = "catboost", marker = "extra == 'all'", specifier = ">=1.2" },
-    { name = "catboost", marker = "extra == 'catboost'", specifier = ">=1.2" },
-    { name = "fastapi", marker = "extra == 'all'", specifier = ">=0.110" },
-    { name = "fastapi", marker = "extra == 'ui'", specifier = ">=0.110" },
-    { name = "jinja2", specifier = ">=3.1" },
-    { name = "joblib", specifier = ">=1.3" },
-    { name = "lifelines", marker = "extra == 'all'", specifier = ">=0.28" },
-    { name = "lifelines", marker = "extra == 'survival'", specifier = ">=0.28" },
-    { name = "lifelines", marker = "extra == 'ui'", specifier = ">=0.28" },
-    { name = "lightgbm", marker = "extra == 'all'", specifier = ">=4.0" },
-    { name = "lightgbm", marker = "extra == 'lightgbm'", specifier = ">=4.0" },
-    { name = "llvmlite", marker = "extra == 'all'", specifier = ">=0.43" },
-    { name = "llvmlite", marker = "extra == 'explain'", specifier = ">=0.43" },
-    { name = "matplotlib", marker = "extra == 'all'", specifier = ">=3.7" },
-    { name = "matplotlib", marker = "extra == 'explain'", specifier = ">=3.7" },
-    { name = "matplotlib", marker = "extra == 'report'", specifier = ">=3.7" },
-    { name = "matplotlib", marker = "extra == 'ui'", specifier = ">=3.7" },
-    { name = "mlflow", marker = "extra == 'all'", specifier = ">=2.10" },
-    { name = "mlflow", marker = "extra == 'tracking'", specifier = ">=2.10" },
-    { name = "numba", marker = "extra == 'all'", specifier = ">=0.60" },
-    { name = "numba", marker = "extra == 'explain'", specifier = ">=0.60" },
-    { name = "numpy", specifier = ">=1.22" },
-    { name = "openpyxl", marker = "extra == 'all'", specifier = ">=3.1" },
-    { name = "openpyxl", marker = "extra == 'excel'", specifier = ">=3.1" },
-    { name = "openpyxl", marker = "extra == 'ui'", specifier = ">=3.1" },
-    { name = "optbinning", marker = "extra == 'all'", specifier = ">=0.19" },
-    { name = "optbinning", marker = "extra == 'scoring'", specifier = ">=0.19" },
-    { name = "optbinning", marker = "extra == 'ui'", specifier = ">=0.19" },
-    { name = "optuna", marker = "extra == 'all'", specifier = ">=3.5" },
-    { name = "optuna", marker = "extra == 'tuning'", specifier = ">=3.5" },
-    { name = "pandas", specifier = ">=2.0,<3" },
-    { name = "pandera", specifier = ">=0.24" },
-    { name = "pmdarima", marker = "extra == 'all'", specifier = ">=2.0" },
-    { name = "pmdarima", marker = "extra == 'forecasting'", specifier = ">=2.0" },
-    { name = "polars", marker = "extra == 'all'", specifier = ">=0.20" },
-    { name = "polars", marker = "extra == 'polars'", specifier = ">=0.20" },
-    { name = "pyarrow", specifier = ">=14" },
-    { name = "pydantic", specifier = ">=2.5" },
-    { name = "python-docx", marker = "extra == 'all'", specifier = ">=1.1" },
-    { name = "python-docx", marker = "extra == 'docx'", specifier = ">=1.1" },
-    { name = "python-docx", marker = "extra == 'ui'", specifier = ">=1.1" },
-    { name = "python-multipart", marker = "extra == 'all'", specifier = ">=0.0.9" },
-    { name = "python-multipart", marker = "extra == 'ui'", specifier = ">=0.0.9" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "scikit-learn", marker = "extra == 'all'", specifier = ">=1.6" },
-    { name = "scikit-learn", marker = "extra == 'all'", specifier = ">=1.6,<1.8" },
-    { name = "scikit-learn", marker = "extra == 'catboost'", specifier = ">=1.6" },
-    { name = "scikit-learn", marker = "extra == 'lightgbm'", specifier = ">=1.6" },
-    { name = "scikit-learn", marker = "extra == 'ml'", specifier = ">=1.6" },
-    { name = "scikit-learn", marker = "extra == 'scoring'", specifier = ">=1.6,<1.8" },
-    { name = "scikit-learn", marker = "extra == 'ui'", specifier = ">=1.6,<1.8" },
-    { name = "scikit-learn", marker = "extra == 'xgboost'", specifier = ">=1.6" },
-    { name = "scipy", marker = "extra == 'all'", specifier = ">=1.10" },
-    { name = "scipy", marker = "extra == 'markov'", specifier = ">=1.10" },
-    { name = "scipy", marker = "extra == 'scoring'", specifier = ">=1.10" },
-    { name = "scipy", marker = "extra == 'ui'", specifier = ">=1.10" },
-    { name = "shap", marker = "extra == 'all'", specifier = ">=0.44" },
-    { name = "shap", marker = "extra == 'explain'", specifier = ">=0.44" },
-    { name = "statsmodels", marker = "extra == 'all'", specifier = ">=0.14" },
-    { name = "statsmodels", marker = "extra == 'forecasting'", specifier = ">=0.14" },
-    { name = "statsmodels", marker = "extra == 'scoring'", specifier = ">=0.14" },
-    { name = "statsmodels", marker = "extra == 'ui'", specifier = ">=0.14" },
-    { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.29" },
-    { name = "uvicorn", marker = "extra == 'ui'", specifier = ">=0.29" },
-    { name = "weasyprint", marker = "extra == 'pdf'", specifier = ">=63" },
-    { name = "xgboost", marker = "sys_platform != 'linux' and extra == 'all'", specifier = ">=2.0" },
-    { name = "xgboost", marker = "sys_platform != 'linux' and extra == 'xgboost'", specifier = ">=2.0" },
-    { name = "xgboost-cpu", marker = "sys_platform == 'linux' and extra == 'all'", specifier = ">=2.0" },
-    { name = "xgboost-cpu", marker = "sys_platform == 'linux' and extra == 'xgboost'", specifier = ">=2.0" },
-]
-provides-extras = ["ai", "all", "catboost", "docx", "excel", "explain", "forecasting", "lightgbm", "markov", "ml", "pdf", "polars", "report", "scoring", "survival", "tracking", "tuning", "ui", "xgboost"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "coverage", extras = ["toml"], specifier = "<7.10" },
-    { name = "cryptography", specifier = ">=45" },
-    { name = "httpx2", specifier = ">=2.5" },
-    { name = "hypothesis", specifier = ">=6.100" },
-    { name = "jsonschema", specifier = ">=4.23" },
-    { name = "lifelines", specifier = ">=0.28" },
-    { name = "mkdocs-material", specifier = ">=9.5" },
-    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.24" },
-    { name = "mypy", specifier = ">=1.10" },
-    { name = "optbinning", specifier = ">=0.19" },
-    { name = "pandas-stubs", specifier = ">=2.0" },
-    { name = "pre-commit", specifier = ">=3.7" },
-    { name = "pypdf", specifier = ">=5" },
-    { name = "pytest", specifier = ">=8.1" },
-    { name = "pytest-cov", specifier = ">=5.0,<6.0" },
-    { name = "ruff", specifier = ">=0.5" },
-    { name = "scikit-learn", specifier = ">=1.6,<1.8" },
-    { name = "scipy", specifier = ">=1.10" },
-    { name = "statsmodels", specifier = ">=0.14" },
-    { name = "types-pyyaml", specifier = ">=6.0" },
-]
-docs = [
-    { name = "mkdocs-material", specifier = ">=9.5" },
-    { name = "mkdocstrings", extras = ["python"], specifier = ">=0.24" },
-]
-lint = [
-    { name = "cryptography", specifier = ">=45" },
-    { name = "mypy", specifier = ">=1.10" },
-    { name = "pandas-stubs", specifier = ">=2.0" },
-    { name = "ruff", specifier = ">=0.5" },
-    { name = "types-pyyaml", specifier = ">=6.0" },
-]
-test = [
-    { name = "coverage", extras = ["toml"], specifier = "<7.10" },
-    { name = "cryptography", specifier = ">=45" },
-    { name = "httpx2", specifier = ">=2.5" },
-    { name = "hypothesis", specifier = ">=6.100" },
-    { name = "jsonschema", specifier = ">=4.23" },
-    { name = "lifelines", specifier = ">=0.28" },
-    { name = "optbinning", specifier = ">=0.19" },
-    { name = "pypdf", specifier = ">=5" },
-    { name = "pytest", specifier = ">=8.1" },
-    { name = "pytest-cov", specifier = ">=5.0,<6.0" },
-    { name = "scikit-learn", specifier = ">=1.6,<1.8" },
-    { name = "scipy", specifier = ">=1.10" },
-    { name = "statsmodels", specifier = ">=0.14" },
 ]
 
 [[package]]

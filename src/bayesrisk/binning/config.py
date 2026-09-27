@@ -1,0 +1,739 @@
+"""Config declarativo de la capa ``binning`` (SDD-06 §5).
+
+:class:`BinningConfig` es la sección ``binning`` de
+:class:`~bayesrisk.core.config.BayesRiskConfig`: binning supervisado óptimo, WoE e IV para la
+scorecard de comportamiento. Toda clase hereda de
+:class:`~bayesrisk.core.config.BayesRiskBaseConfig` (``extra='forbid'`` y ``frozen=True``); cada
+campo declara ``title``/``description`` y metadatos ``ui_*`` para que la UI (SDD-23) sea un
+editor del mismo config. La sección es computacional, por lo que entra al ``config_hash`` global
+cuando está activa.
+
+**Estable (SemVer 2.x).**
+"""
+
+from __future__ import annotations
+
+import math
+from itertools import pairwise
+from typing import Literal, Self
+
+from pydantic import ConfigDict, Field, model_validator
+
+from bayesrisk.core.config import BayesRiskBaseConfig, declara_esenciales
+from bayesrisk.core.dataset_check import COMODIN, PerfilDataset, Requisito
+from bayesrisk.core.exceptions import ConfigError
+
+#: Prefijo del `loc` de los errores de esta sección (D-EXI-5). Vive en un solo sitio para que un
+#: renombrado de la sección no haya que perseguirlo por cada `raise`.
+_LOC_SECCION: tuple[str, ...] = ("binning",)
+
+#: Fracción de filas sobre la que una columna de texto se lee como identificador (D-PERF-5).
+#:
+#: 95 % y no 100 % porque un identificador real puede traer nulos o algún duplicado y no deja de
+#: serlo. Es un umbral declarado, no derivado: mejor decirlo aquí que esconderlo en una condición.
+_UMBRAL_IDENTIFICADOR = 0.95
+
+MonotonicTrend = Literal[
+    "auto",
+    "auto_heuristic",
+    "auto_asc_desc",
+    "ascending",
+    "descending",
+    "concave",
+    "convex",
+    "peak",
+    "peak_heuristic",
+    "valley",
+    "valley_heuristic",
+]
+
+__all__ = ["BinningConfig", "MonotonicTrend", "VariableBinningConfig"]
+
+
+class VariableBinningConfig(BayesRiskBaseConfig):
+    """Overrides de binning para una variable específica."""
+
+    name: str = Field(
+        default=...,
+        title="Variable",
+        description="Nombre de la variable cruda a la que aplica este override.",
+        json_schema_extra={
+            "ui_widget": "text_input",
+            "ui_group": "Overrides por variable",
+            "ui_order": 1,
+            "ui_help": "Nombre exacto de la columna cruda a la que aplican los ajustes de esta "
+            "fila; debe coincidir con el nombre en los datos.",
+        },
+    )
+    dtype: Literal["numerical", "categorical", "auto"] = Field(
+        default="auto",
+        title="Tipo",
+        description="'auto' deja que el transformer infiera el tipo; los otros valores lo fuerzan.",
+        json_schema_extra={
+            "ui_widget": "selectbox",
+            "ui_group": "Overrides por variable",
+            "ui_order": 2,
+            "ui_help": "Fuerza el tipo de esta variable cuando la detección automática se "
+            "equivoca (p. ej. un código guardado como número que en realidad es categórico).",
+        },
+    )
+    monotonic_trend: MonotonicTrend | None = Field(
+        default=None,
+        title="Monotonía específica",
+        description=(
+            "Monotonía de la tasa de default para esta variable; en blanco usa la regla general."
+        ),
+        json_schema_extra={
+            "ui_widget": "selectbox",
+            "ui_group": "Overrides por variable",
+            "ui_order": 3,
+            "ui_help": "Anula la monotonía global solo para esta variable cuando su relación "
+            "con el riesgo es distinta al resto (p. ej. una forma en U que pide 'valley').",
+        },
+    )
+    max_n_bins: int | None = Field(
+        default=None,
+        ge=2,
+        le=50,
+        title="Máximo de bins específico",
+        description=(
+            "Número máximo de bins finales para esta variable; en blanco usa el valor general."
+        ),
+        json_schema_extra={
+            "ui_widget": "slider",
+            "ui_group": "Overrides por variable",
+            "ui_order": 4,
+            "ui_help": "Tope de bins propio de esta variable, por si necesita más o menos "
+            "granularidad que el máximo global (p. ej. una variable muy predictiva).",
+        },
+    )
+    min_bin_size: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=0.5,
+        title="Tamaño mínimo específico",
+        description=(
+            "Fracción mínima por bin final para esta variable; en blanco usa el valor general."
+        ),
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Overrides por variable",
+            "ui_order": 5,
+            "ui_help": "Tamaño mínimo de bin propio de esta variable; úsalo cuando su "
+            "distribución (p. ej. muy concentrada) necesita un piso distinto al global.",
+        },
+    )
+    cat_cutoff: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=0.5,
+        title="Umbral de categorías raras (específico)",
+        description=(
+            "Frecuencia bajo la cual se agrupan las categorías raras; en blanco usa el valor "
+            "general."
+        ),
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Overrides por variable",
+            "ui_order": 6,
+            "ui_help": "Umbral de categoría rara propio de esta variable; úsalo cuando su "
+            "cardinalidad o distribución de niveles difiere del resto de las variables.",
+        },
+    )
+    user_splits: tuple[float, ...] | None = Field(
+        default=None,
+        title="Cortes fijados a mano",
+        description=(
+            "Cortes entre tramos que se imponen a esta variable numérica, en sus unidades y en "
+            "orden creciente; en blanco el motor los busca."
+        ),
+        json_schema_extra={
+            "ui_widget": "number_list",
+            "ui_group": "Overrides por variable",
+            "ui_order": 7,
+            "ui_help": "Los límites entre tramos que decide la institución (por ejemplo 24 y 60 "
+            "meses de antigüedad). Cada valor cierra un tramo y abre el siguiente; el motor "
+            "calcula el WoE de los tramos que resultan. Sólo para variables numéricas.",
+        },
+    )
+    user_splits_fixed: tuple[bool, ...] | None = Field(
+        default=None,
+        title="Cortes que no se juntan",
+        description=(
+            "Para cada corte fijado, verdadero si el motor debe respetarlo tal cual y falso si "
+            "puede juntarlo con su vecino; en blanco puede juntar cualquiera."
+        ),
+        json_schema_extra={
+            "ui_widget": "json",
+            "ui_group": "Overrides por variable",
+            "ui_order": 8,
+            "ui_help": "Una marca por corte fijado: verdadero deja ese corte intocable; falso "
+            "permite que el motor lo junte con el tramo vecino si así mejora el ajuste.",
+        },
+    )
+
+    @model_validator(mode="after")
+    def _check_user_splits(self) -> Self:
+        """Los cortes fijados: crecientes, finitos, al menos uno, y sólo para numéricas.
+
+        Es la hoja de §8-9 (a) de FLUJO-GUIADO-SCORECARD, la única excepción al presupuesto cero
+        de perillas: una decisión humana («junta estos dos tramos», «fija estos cortes») que no
+        existía en ninguna puerta. ``user_splits_fixed`` acompaña a ``user_splits`` uno a uno.
+        """
+        if self.user_splits is None:
+            if self.user_splits_fixed is not None:
+                raise ConfigError(
+                    f"variable_overrides[{self.name!r}]: user_splits_fixed sin user_splits no "
+                    "dice nada; declara los cortes."
+                )
+            return self
+        if len(self.user_splits) == 0:
+            raise ConfigError(
+                f"variable_overrides[{self.name!r}]: user_splits necesita al menos un corte; "
+                "en blanco el motor los busca."
+            )
+        if any(not math.isfinite(corte) for corte in self.user_splits):
+            raise ConfigError(
+                f"variable_overrides[{self.name!r}]: los cortes tienen que ser números finitos."
+            )
+        if any(b <= a for a, b in pairwise(self.user_splits)):
+            raise ConfigError(
+                f"variable_overrides[{self.name!r}]: los cortes tienen que ser estrictamente "
+                f"crecientes; recibidos {list(self.user_splits)}."
+            )
+        if self.dtype == "categorical":
+            raise ConfigError(
+                f"variable_overrides[{self.name!r}]: los cortes fijados sólo aplican a variables "
+                "numéricas."
+            )
+        if self.user_splits_fixed is not None and len(self.user_splits_fixed) != len(
+            self.user_splits
+        ):
+            raise ConfigError(
+                f"variable_overrides[{self.name!r}]: user_splits_fixed tiene que tener la misma "
+                f"longitud que user_splits ({len(self.user_splits)})."
+            )
+        return self
+
+
+class BinningConfig(BayesRiskBaseConfig):
+    """Agrupa cada variable en tramos WoE y mide su poder predictivo con el IV."""
+
+    model_config = ConfigDict(json_schema_extra=declara_esenciales)
+
+    type: Literal["standard"] = Field(
+        default="standard",
+        title="Tipo de sección binning",
+        description="Variante de la sección de binning; hoy solo existe la estándar.",
+        json_schema_extra={
+            "ui_widget": "hidden",
+            "ui_group": "General",
+            "ui_order": 0,
+            "ui_help": "Identificador interno del tipo de sección; no requiere edición.",
+        },
+    )
+    feature_columns: tuple[str, ...] | Literal["*"] = Field(
+        default="*",
+        title="Variables candidatas",
+        description=(
+            "'*' = columnas no estructurales, salvo las que definen el target y una llave de "
+            "unicidad simple."
+        ),
+        json_schema_extra={
+            "ui_essential": True,
+            "column_role": "input",
+            "ui_widget": "multiselect",
+            "ui_group": "Variables",
+            "ui_order": 1,
+            "ui_help": "Variables a binear. Deja '*' para incluir las columnas no estructurales "
+            "salvo las que definen el target y una llave de unicidad de una sola columna. Una "
+            "llave compuesta conserva sus columnas. Una lista explícita se respeta; si incluye "
+            "una columna del target, esa decisión queda auditada.",
+        },
+    )
+    exclude_columns: tuple[str, ...] = Field(
+        default_factory=tuple,
+        title="Variables excluidas",
+        description="Columnas a excluir del binning aunque entren por feature_columns='*'.",
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "multiselect",
+            "ui_group": "Variables",
+            "ui_order": 2,
+            "ui_help": "Variables que se sacan del binning aunque queden incluidas por "
+            "feature_columns='*'; útil para descartar columnas puntuales sin listar el resto.",
+        },
+    )
+    categorical_columns: tuple[str, ...] = Field(
+        default_factory=tuple,
+        title="Variables categóricas",
+        description=(
+            "Variables que OptBinning debe tratar como categóricas aunque pandas no lo infiera."
+        ),
+        json_schema_extra={
+            "ui_essential": True,
+            "column_role": "input",
+            "ui_widget": "multiselect",
+            "ui_group": "Variables",
+            "ui_order": 3,
+            "ui_help": "Fuerza a que estas variables se traten como categóricas aunque su tipo "
+            "de dato luzca numérico (p. ej. códigos de región guardados como enteros).",
+        },
+    )
+    variable_overrides: tuple[VariableBinningConfig, ...] = Field(
+        default_factory=tuple,
+        title="Overrides por variable",
+        description="Ajustes específicos de tipo, monotonía, número de bins o rare levels.",
+        json_schema_extra={
+            "ui_widget": "section",
+            "ui_group": "Variables",
+            "ui_order": 4,
+            "ui_help": "Ajustes específicos por variable que anulan, solo para las variables "
+            "listadas, los valores globales de tipo, monotonía, bins o rare levels.",
+        },
+    )
+
+    max_n_prebins: int = Field(
+        default=20,
+        ge=2,
+        le=200,
+        title="Máximo de prebins",
+        description="Límite de prebins candidatos antes de resolver el binning óptimo.",
+        json_schema_extra={
+            "ui_widget": "slider",
+            "ui_group": "Restricciones",
+            "ui_order": 1,
+            "ui_help": "Cantidad de cortes candidatos que se exploran antes de optimizar. Más "
+            "prebins dan más flexibilidad para encontrar buenos cortes, a costa de más cómputo.",
+        },
+    )
+    min_prebin_size: float = Field(
+        default=0.05,
+        gt=0.0,
+        le=0.5,
+        title="Tamaño mínimo de prebin",
+        description="Fracción mínima de observaciones por prebin candidato.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Restricciones",
+            "ui_order": 2,
+            "ui_help": "Fracción mínima de observaciones que debe tener cada corte candidato. "
+            "Subirlo evita prebins minúsculos y poco robustos en variables con colas largas.",
+        },
+    )
+    min_n_bins: int | None = Field(
+        default=None,
+        ge=2,
+        le=50,
+        title="Mínimo de bins",
+        description=(
+            "Número mínimo de bins finales; en blanco deja la decisión al motor de binning."
+        ),
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Restricciones",
+            "ui_order": 3,
+            "ui_help": "Piso de bins finales por variable; deja None si prefieres que el solver "
+            "decida libremente cuántos bins usar según lo que aporten a separar el riesgo.",
+        },
+    )
+    max_n_bins: int | None = Field(
+        default=8,
+        ge=2,
+        le=50,
+        title="Máximo de bins",
+        description="Número máximo de bins finales por variable.",
+        json_schema_extra={
+            "ui_essential": True,
+            "ui_widget": "slider",
+            "ui_group": "Restricciones",
+            "ui_order": 4,
+            "ui_help": "Tope de bins (grupos) por variable tras optimizar. Menos bins = scorecard "
+            "más robusta y estable; más bins captan no linealidades pero arriesgan sobreajuste.",
+        },
+    )
+    min_bin_size: float | None = Field(
+        default=0.05,
+        ge=0.0,
+        le=0.5,
+        title="Tamaño mínimo de bin",
+        description=(
+            "Fracción mínima de observaciones por bin final; en blanco usa el valor del motor."
+        ),
+        json_schema_extra={
+            "ui_essential": True,
+            "ui_widget": "number_input",
+            "ui_group": "Restricciones",
+            "ui_order": 5,
+            "ui_help": "Fracción mínima de observaciones que debe tener cada bin final. Evita "
+            "bins con pocos casos, donde el WoE queda inestable y poco confiable fuera de muestra.",
+        },
+    )
+    min_bin_n_event: int | None = Field(
+        default=1,
+        ge=1,
+        title="Mínimo de malos por bin",
+        description="Mínimo de eventos/defaults requeridos en cada bin final.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Restricciones",
+            "ui_order": 6,
+            "ui_help": "Cantidad mínima de casos malos (eventos/default) exigida en cada bin "
+            "final; protege contra bins con tan pocos eventos que el WoE queda mal estimado.",
+        },
+    )
+    min_bin_n_nonevent: int | None = Field(
+        default=1,
+        ge=1,
+        title="Mínimo de buenos por bin",
+        description="Mínimo de no-eventos/no-defaults requeridos en cada bin final.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Restricciones",
+            "ui_order": 7,
+            "ui_help": "Misma protección que el mínimo de malos por bin, pero exigida sobre la "
+            "cantidad de casos buenos (no-eventos) en cada bin final.",
+        },
+    )
+
+    monotonic_trend: MonotonicTrend | None = Field(
+        default="auto_asc_desc",
+        title="Monotonía por defecto",
+        description="Default bayesrisk: escoger automáticamente event rate ascendente/descendente.",
+        json_schema_extra={
+            "ui_essential": True,
+            "ui_widget": "selectbox",
+            "ui_group": "Monotonía",
+            "ui_order": 1,
+            "ui_help": "Forma de la relación entre cada variable y el riesgo que debe respetar "
+            "el binning. Fuerza un valor solo si conoces de antemano el comportamiento esperado.",
+        },
+    )
+    min_event_rate_diff: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        title="Diferencia mínima de tasa de default",
+        description="Separación mínima de tasa de evento entre bins consecutivos.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Monotonía",
+            "ui_order": 2,
+            "ui_help": "Diferencia mínima de tasa de malos exigida entre bins vecinos. Subirlo "
+            "evita bins casi idénticos en riesgo que no aportan poder discriminante real.",
+        },
+    )
+    max_pvalue: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        title="p-valor máximo entre bins",
+        description="Restricción opcional de p-valor máximo; en blanco la desactiva.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Monotonía",
+            "ui_order": 3,
+            "ui_help": "Exige que la diferencia de riesgo entre bins sea estadísticamente "
+            "significativa hasta este p-valor. Déjalo en None si no quieres esta restricción.",
+        },
+    )
+    max_pvalue_policy: Literal["consecutive", "all"] = Field(
+        default="consecutive",
+        title="Política p-valor",
+        description="Aplica la restricción de p-valor sobre bins consecutivos o todos los pares.",
+        json_schema_extra={
+            "ui_widget": "selectbox",
+            "ui_group": "Monotonía",
+            "ui_order": 4,
+            "ui_help": "Define si la prueba de p-valor máximo se aplica solo entre bins vecinos "
+            "('consecutive') o entre todos los pares de bins ('all', más exigente).",
+        },
+    )
+
+    solver: Literal["cp", "mip"] = Field(
+        default="mip",
+        title="Solver",
+        description=(
+            "Solver de OptBinning para el binning óptimo. Default 'mip': el solver 'cp' se cuelga "
+            "indefinidamente (ignora time_limit) sobre variables continuas con ortools>=9.12."
+        ),
+        json_schema_extra={
+            "ui_widget": "selectbox",
+            "ui_group": "Solver",
+            "ui_order": 1,
+            "ui_help": "Motor de optimización de los cortes. Mantén 'mip': 'cp' está "
+            "deshabilitado porque puede quedarse colgado indefinidamente en variables continuas.",
+        },
+    )
+    mip_solver: Literal["bop", "cbc"] = Field(
+        default="bop",
+        title="MIP solver",
+        description="Solver MIP transitivo cuando solver='mip'.",
+        json_schema_extra={
+            "ui_widget": "selectbox",
+            "ui_group": "Solver",
+            "ui_order": 2,
+            "ui_help": "Implementación MIP concreta usada cuando 'solver' es 'mip'. Cámbiala "
+            "solo por un motivo técnico puntual; el default funciona para la mayoría de los casos.",
+        },
+    )
+    time_limit: int = Field(
+        default=100,
+        ge=1,
+        le=3600,
+        title="Límite de tiempo por variable (segundos)",
+        description=(
+            "Tiempo máximo de optimización por variable antes de evaluar status del solver."
+        ),
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Solver",
+            "ui_order": 3,
+            "ui_help": "Tiempo máximo que se le da al solver por variable antes de aceptar la "
+            "mejor solución encontrada. Subirlo ayuda en variables difíciles, con más cómputo.",
+        },
+    )
+    require_optimal: bool = Field(
+        default=True,
+        title="Exigir status óptimo",
+        description=(
+            "Si está activado, una solución que el motor no probó óptima detiene la corrida."
+        ),
+        json_schema_extra={
+            "ui_widget": "checkbox",
+            "ui_group": "Solver",
+            "ui_order": 4,
+            "ui_help": "Si está activo, una variable cuyo solver no probó una solución óptima "
+            "se descarta en vez de publicarse subóptima. Recomendado mantenerlo activo.",
+        },
+    )
+    n_jobs: int | None = Field(
+        default=None,
+        title="Núcleos para binear en paralelo",
+        description=(
+            "Vacío = un solo núcleo. Para reproducibilidad regulatoria conviene no usar -1."
+        ),
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Solver",
+            "ui_order": 5,
+            "ui_help": "Núcleos usados para binear variables en paralelo. Deja None (1 core) "
+            "para reproducibilidad exacta entre corridas; -1 acelera pero puede variar resultados.",
+        },
+    )
+
+    special_handling: Literal["separate", "as_missing"] = Field(
+        default="separate",
+        title="Tratamiento de los valores especiales",
+        description="'separate' usa special_codes; 'as_missing' los deja como missing.",
+        json_schema_extra={
+            "ui_widget": "selectbox",
+            "ui_group": "Missing y special",
+            "ui_order": 1,
+            "ui_help": "Cómo tratar los valores especiales (centinelas como 'sin información' o "
+            "'no aplica'): 'separate' les da bin propio con WoE propio; 'as_missing' los fusiona "
+            "con los faltantes.",
+        },
+    )
+    metric_special: Literal["empirical"] | float = Field(
+        default="empirical",
+        title="WoE del bin de valores especiales",
+        description="'empirical' usa el WoE observado del bin special; un float fuerza ese valor.",
+        json_schema_extra={
+            "ui_widget": "number_or_select",
+            "ui_group": "Missing y special",
+            "ui_order": 2,
+            "ui_help": "WoE del bin de valores especiales. 'empirical' usa el WoE calculado de "
+            "los datos observados; un número lo fuerza manualmente (p. ej. para neutralizarlo).",
+        },
+    )
+    metric_missing: Literal["empirical"] | float = Field(
+        default="empirical",
+        title="WoE del bin de faltantes",
+        description="'empirical' usa el WoE observado del bin missing; un float fuerza ese valor.",
+        json_schema_extra={
+            "ui_widget": "number_or_select",
+            "ui_group": "Missing y special",
+            "ui_order": 3,
+            "ui_help": "WoE del bin de valores faltantes. 'empirical' usa el WoE calculado de "
+            "los datos observados; un número lo fuerza manualmente.",
+        },
+    )
+    cat_cutoff: float | None = Field(
+        default=0.01,
+        ge=0.0,
+        le=0.5,
+        title="Umbral de categorías raras",
+        description="Frecuencia bajo la cual OptBinning agrupa niveles categóricos raros.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Categóricas",
+            "ui_order": 1,
+            "ui_help": "Frecuencia mínima bajo la cual una categoría se considera rara y se "
+            "agrupa con otras antes de optimizar; súbelo en variables con muchos niveles poco "
+            "poblados.",
+        },
+    )
+    cat_unknown: float | str | None = Field(
+        default=None,
+        title="Valor para categoría no vista",
+        description="En blanco asigna WoE 0 (neutral) a las categorías nunca vistas.",
+        json_schema_extra={
+            "ui_widget": "text_or_number",
+            "ui_group": "Categóricas",
+            "ui_order": 2,
+            "ui_help": "WoE a usar cuando en producción aparece una categoría nunca vista en el "
+            "ajuste. None asigna WoE neutral (0), tratándola como neutra respecto al riesgo.",
+        },
+    )
+    split_digits: int | None = Field(
+        default=None,
+        ge=0,
+        le=10,
+        title="Dígitos de cortes",
+        description=(
+            "Número de decimales de los puntos de corte; en blanco conserva la precisión del motor."
+        ),
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Salida",
+            "ui_order": 1,
+            "ui_help": "Cantidad de decimales con que se redondean los puntos de corte "
+            "numéricos. Deja None para conservar la precisión completa del solver.",
+        },
+    )
+    output_suffix: str = Field(
+        default="__woe",
+        title="Sufijo de columnas WoE",
+        description="Sufijo que se agrega al nombre crudo para las columnas transformadas a WoE.",
+        json_schema_extra={
+            "ui_widget": "text_input",
+            "ui_group": "Salida",
+            "ui_order": 2,
+            "ui_help": "Sufijo agregado al nombre de cada variable original para nombrar su "
+            "columna transformada a WoE (p. ej. 'edad' pasa a 'edad__woe').",
+        },
+    )
+    keep_structural_columns: bool = Field(
+        default=True,
+        title="Conservar columnas estructurales de data",
+        description="Incluye columnas estructurales mínimas junto a las columnas WoE publicadas.",
+        json_schema_extra={
+            "column_role": "not_a_column",
+            "ui_widget": "checkbox",
+            "ui_group": "Salida",
+            "ui_order": 3,
+            "ui_help": "Si está activo, conserva columnas estructurales (como target o "
+            "partición) junto a las columnas WoE en la salida, útil para trazabilidad posterior.",
+        },
+    )
+    fail_on_non_binnable: bool = Field(
+        default=False,
+        title="Fallar ante variable no binneable",
+        description=(
+            "Si está activado, una variable constante, sin datos o no soportada detiene el ajuste."
+        ),
+        json_schema_extra={
+            "ui_widget": "checkbox",
+            "ui_group": "Salida",
+            "ui_order": 4,
+            "ui_help": "Si está activo, encontrar una variable constante, 100% vacía o no "
+            "soportada detiene todo el ajuste con error; si está apagado, esa variable se omite "
+            "y queda registrada como descartada.",
+        },
+    )
+
+    @model_validator(mode="after")
+    def _check_bin_range(self) -> Self:
+        """Valida que el rango mínimo/máximo de bins sea coherente cuando ambos existen."""
+        if (
+            self.min_n_bins is not None
+            and self.max_n_bins is not None
+            and self.min_n_bins > self.max_n_bins
+        ):
+            raise ValueError("min_n_bins no puede ser mayor que max_n_bins.")
+        return self
+
+    @model_validator(mode="after")
+    def _check_solver_implementado(self) -> Self:
+        """``solver='cp'`` se rechaza aquí y no sólo al ajustar (D-ABA-5).
+
+        🔴 **La otra mitad de un defecto que estaba cerrado a medias.** El motor ya abortaba
+        —``binning/transformer.py``, primera línea de ``fit``— pero el config lo aceptaba, y con él
+        ``check_pipeline`` y ``check_dataset``: las tres superficies previas daban verde sobre una
+        elección que muere en el paso 2, **después** de cargar y validar todo el archivo del
+        usuario. Y quien llega por YAML o por código —el 100 % de quien usa esto como librería— no
+        tenía ninguna superficie que lo parara antes.
+
+        El abanico lo declara ``no_implementada`` y el gate de D-ABA-5 exige que además sea
+        imposible de construir: rotularlo sólo en el catálogo dejaría el defecto vivo justo para
+        quien no ve el catálogo. Mismo criterio con que ``stability.csi_source='woe_bins'`` y
+        ``validation.calibration.hl_grouping='fixed_bands'`` ya se rechazan en su config.
+
+        ⚠️ **El literal NO se estrecha, y es deliberado**: sacar ``cp`` de la anotación cambiaría el
+        schema publicado, y el catálogo dejaría de poder enseñar la opción con su motivo — que es
+        justo lo que D-JOB-5 pide en vez de esconderla. El veto vive en el validador.
+        """
+        if self.solver == "cp":
+            raise ConfigError(
+                "El agrupamiento en tramos por programación por restricciones no está disponible: "
+                "sobre variables continuas se queda sin término y sin respetar el límite de "
+                "tiempo. Usa programación entera mixta, que es la opción por omisión.",
+                # D-EXI-5: el error se ANCLA a su campo, para que el formulario pueda llevar ahí al
+                # usuario en vez de dejarle un mensaje sin control. La ruta va absoluta desde la
+                # raíz del config, y un gate exige que resuelva contra `BayesRiskConfig`.
+                loc=(*_LOC_SECCION, "solver"),
+            )
+        return self
+
+    def requisitos_incumplidos_por_perfil(self, perfil: PerfilDataset) -> tuple[Requisito, ...]:
+        """Invariantes que exigen mirar los DATOS, no sólo los nombres (D-PERF-3/4).
+
+        La invariante la declara aquí el dominio que la impone, igual que las de D-INV-1: es
+        *binning* quien sabe que una columna de texto con casi un valor por fila no es un predictor.
+
+        **El caso real que la motiva**, medido con un CSV de cartera corriente: una columna
+        ``id_operacion`` con un valor por fila entra por el comodín, OptBinning manda todas sus
+        categorías al bin «otros», se queda sin ninguna y **mata la corrida** con un mensaje suyo,
+        en inglés, que no nombra la columna. El paquete C ya dejó la salida —declararla en la llave
+        de unicidad—; lo que faltaba era señalarla antes de pagar la corrida.
+        """
+        # Con una lista explícita, el usuario ya eligió: nombrar una columna es decir que la quiere.
+        # El aviso apunta al descuido del comodín, que es donde la columna entra sin que nadie la
+        # pida.
+        if self.feature_columns != COMODIN:
+            return ()
+        if perfil.n_filas <= 0:
+            return ()
+
+        excluidas = {*self.exclude_columns, *self.categorical_columns}
+        sospechosas = [
+            columna.nombre
+            for columna in perfil.columnas
+            if columna.nombre not in excluidas
+            # Sólo NO numéricas: una continua tiene tantos valores distintos como filas y se
+            # discretiza sin problema. Medido: `carga_financiera` corrió bien en el mismo dataset.
+            and not columna.es_numerica
+            and columna.n_unicos >= _UMBRAL_IDENTIFICADOR * perfil.n_filas
+        ]
+        if not sospechosas:
+            return ()
+
+        nombradas = ", ".join(f"«{c}»" for c in sorted(sospechosas))
+        plural = len(sospechosas) > 1
+        return (
+            Requisito(
+                path="feature_columns",
+                declared=COMODIN,
+                message=(
+                    f"{'Las columnas' if plural else 'La columna'} {nombradas} "
+                    f"{'tienen' if plural else 'tiene'} un valor distinto en casi cada fila, así "
+                    f"que {'parecen identificadores' if plural else 'parece un identificador'} de "
+                    f"la operación y no {'variables' if plural else 'una variable'} con la que "
+                    f"predecir. Al estar tomando todas las variables disponibles, "
+                    f"{'entran' if plural else 'entra'} igual y la corrida se detendrá al agrupar "
+                    f"en tramos. Decláral{'as' if plural else 'a'} en la llave de unicidad "
+                    f"de fila, o añádel{'as' if plural else 'a'} a las variables excluidas."
+                ),
+            ),
+        )

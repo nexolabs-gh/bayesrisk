@@ -1,4 +1,4 @@
-"""Tests de ``IfrsProvisioningConfig`` (SDD-16 §5) e integración con ``NikodymConfig``."""
+"""Tests de ``IfrsProvisioningConfig`` (SDD-16 §5) e integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -11,15 +11,15 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.provisioning.ifrs9 as ifrs9_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.provisioning.ifrs9 as ifrs9_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.provisioning.ifrs9.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.provisioning.ifrs9.config import (
     IfrsEadConfig,
     IfrsEclConfig,
     IfrsLgdConfig,
@@ -28,7 +28,7 @@ from nikodym.provisioning.ifrs9.config import (
     IfrsScenarioConfig,
     IfrsStagingConfig,
 )
-from nikodym.provisioning.ifrs9.exceptions import (
+from bayesrisk.provisioning.ifrs9.exceptions import (
     IfrsConfigError,
     IfrsEadError,
     IfrsEclError,
@@ -188,47 +188,47 @@ def test_round_trip_yaml_ifrsprovisioningconfig() -> None:
     assert IfrsProvisioningConfig.model_validate(yaml.safe_load(text)) == cfg
 
 
-# ─────────────────────────── integración NikodymConfig ───────────────────────────
+# ─────────────────────────── integración BayesRiskConfig ───────────────────────────
 
 
-def test_nikodymconfig_provisioning_ifrs9_instancia() -> None:
-    """Pasar una instancia ``IfrsProvisioningConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_provisioning_ifrs9_instancia() -> None:
+    """Pasar una instancia ``IfrsProvisioningConfig`` a ``BayesRiskConfig`` la conserva."""
     provisioning = IfrsProvisioningConfig()
-    cfg = NikodymConfig(provisioning_ifrs9=provisioning)
+    cfg = BayesRiskConfig(provisioning_ifrs9=provisioning)
     assert isinstance(cfg.provisioning_ifrs9, IfrsProvisioningConfig)
     assert cfg.provisioning_ifrs9 is provisioning
 
 
-def test_nikodymconfig_provisioning_ifrs9_dict_coacciona() -> None:
+def test_bayesriskconfig_provisioning_ifrs9_dict_coacciona() -> None:
     """Un dict en ``provisioning_ifrs9`` se coacciona por el hook cargado."""
-    cfg = NikodymConfig(provisioning_ifrs9={"ecl": {"rounding": "integer_currency"}})
+    cfg = BayesRiskConfig(provisioning_ifrs9={"ecl": {"rounding": "integer_currency"}})
     assert isinstance(cfg.provisioning_ifrs9, IfrsProvisioningConfig)
     assert cfg.provisioning_ifrs9.ecl.rounding == "integer_currency"
 
 
-def test_nikodymconfig_provisioning_ifrs9_none_explicito() -> None:
+def test_bayesriskconfig_provisioning_ifrs9_none_explicito() -> None:
     """``provisioning_ifrs9=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(provisioning_ifrs9=None).provisioning_ifrs9 is None
+    assert BayesRiskConfig(provisioning_ifrs9=None).provisioning_ifrs9 is None
 
 
-def test_nikodymconfig_provisioning_ifrs9_core_only_acepta_blob_json(
+def test_bayesriskconfig_provisioning_ifrs9_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``provisioning_ifrs9`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_PROVISIONING_IFRS9_CONFIG_CLS", None)
-    cfg = NikodymConfig(provisioning_ifrs9={"ecl": {"rounding": "integer_currency"}})
+    cfg = BayesRiskConfig(provisioning_ifrs9={"ecl": {"rounding": "integer_currency"}})
     assert cfg.provisioning_ifrs9 == {"ecl": {"rounding": "integer_currency"}}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_provisioning_ifrs9_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_provisioning_ifrs9_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``provisioning_ifrs9`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_PROVISIONING_IFRS9_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(provisioning_ifrs9=blob)
+        BayesRiskConfig(provisioning_ifrs9=blob)
 
 
 # ─────────────────────────── validaciones de PD ───────────────────────────
@@ -563,13 +563,13 @@ def test_literales_y_rangos_invalidos_rechazados_por_pydantic(
 
 def test_config_hash_default_con_provisioning_ifrs9_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``provisioning_ifrs9=None``."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_config_hash_se_movio_por_seccion_ifrs9() -> None:
     """Añadir ``provisioning_ifrs9`` movió el golden respecto al valor previo (no es regresión)."""
     assert GOLDEN_DEFAULT_CONFIG_HASH != GOLDEN_PREVIO_SIN_IFRS9
-    assert config_hash(NikodymConfig()) != GOLDEN_PREVIO_SIN_IFRS9
+    assert config_hash(BayesRiskConfig()) != GOLDEN_PREVIO_SIN_IFRS9
 
 
 @pytest.mark.parametrize(
@@ -589,8 +589,8 @@ def test_config_hash_cambia_al_variar_provisioning_ifrs9(
     provisioning: IfrsProvisioningConfig,
 ) -> None:
     """``provisioning_ifrs9`` no es INFRA: source/rho/pit/SICR/pesos/descuento cambian el hash."""
-    base = config_hash(NikodymConfig(provisioning_ifrs9=IfrsProvisioningConfig()))
-    variado = config_hash(NikodymConfig(provisioning_ifrs9=provisioning))
+    base = config_hash(BayesRiskConfig(provisioning_ifrs9=IfrsProvisioningConfig()))
+    variado = config_hash(BayesRiskConfig(provisioning_ifrs9=provisioning))
     assert "provisioning_ifrs9" not in INFRA_SECTIONS
     assert variado != base
 
@@ -624,7 +624,7 @@ def test_ifrs9_public_api_minimo() -> None:
     assert "IfrsProvisioningConfig" in ifrs9_pkg.__all__
 
 
-def test_ifrs9_errors_descienden_de_nikodym_error() -> None:
+def test_ifrs9_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``provisioning.ifrs9`` cuelgan de la raíz propia de la librería."""
     for error_cls in (
         IfrsProvisioningError,
@@ -637,7 +637,7 @@ def test_ifrs9_errors_descienden_de_nikodym_error() -> None:
         IfrsStagingError,
         IfrsEclError,
     ):
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
     assert issubclass(IfrsTermStructureError, IfrsInputError)
 
 
@@ -645,16 +645,16 @@ def test_ifrs9_errors_descienden_de_nikodym_error() -> None:
 
 
 def test_import_provisioning_ifrs9_config_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.provisioning.ifrs9.config`` registra hook sin arrastrar stack pesado."""
+    """``import bayesrisk.provisioning.ifrs9.config`` registra hook sin arrastrar stack pesado."""
     code = (
-        "import nikodym.provisioning.ifrs9.config, nikodym.core, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.provisioning.ifrs9.config import IfrsProvisioningConfig;"
+        "import bayesrisk.provisioning.ifrs9.config, bayesrisk.core, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.provisioning.ifrs9.config import IfrsProvisioningConfig;"
         "bloqueados=[m for m in "
-        "('nikodym.data','pandera','pyarrow','pandas','scipy','statsmodels',"
-        "'nikodym.tracking','mlflow') if m in sys.modules];"
+        "('bayesrisk.data','pandera','pyarrow','pandas','scipy','statsmodels',"
+        "'bayesrisk.tracking','mlflow') if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(provisioning_ifrs9={'ecl': {'rounding': 'currency_2dp'}});"
+        "cfg=BayesRiskConfig(provisioning_ifrs9={'ecl': {'rounding': 'currency_2dp'}});"
         "assert isinstance(cfg.provisioning_ifrs9, IfrsProvisioningConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -663,10 +663,10 @@ def test_import_provisioning_ifrs9_config_liviano_y_registra_hook_en_proceso_fre
 def test_core_valida_provisioning_ifrs9_como_blob_opaco_sin_importar_ifrs9() -> None:
     """El core acepta ``provisioning_ifrs9`` JSON/dict sin importar la capa IFRS 9."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(provisioning_ifrs9={'ecl': {'rounding': 'integer_currency'}});"
+        "cfg=BayesRiskConfig(provisioning_ifrs9={'ecl': {'rounding': 'integer_currency'}});"
         "assert cfg.provisioning_ifrs9 == {'ecl': {'rounding': 'integer_currency'}};"
-        "assert 'nikodym.provisioning.ifrs9' not in sys.modules"
+        "assert 'bayesrisk.provisioning.ifrs9' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)

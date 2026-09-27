@@ -1129,7 +1129,7 @@ describe("la jurisdicción sale del listado principal, sin perder ningún trabaj
   })
 
   it("con el opt-in del lanzador el bloque de referencia vuelve, sin tocar el componente", () => {
-    // Es el mismo catálogo que sirve `nikodym-ui --casos-de-referencia`: los diez ofrecidos.
+    // Es el mismo catálogo que sirve `bayesrisk-ui --casos-de-referencia`: los diez ofrecidos.
     const conOptIn = JOBS.map((j) => ({ ...j, offered: true }))
     const { estandar, porJurisdiccion } = catalogoDeLanding(conOptIn)
     expect(porJurisdiccion.map((j) => j.id)).toEqual(["provisiones_cmf", "comparar_provisiones"])

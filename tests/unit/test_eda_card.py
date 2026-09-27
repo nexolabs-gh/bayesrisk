@@ -7,14 +7,14 @@ from typing import Literal
 import pandas as pd
 import pytest
 
-from nikodym.eda.card import EdaCardSection
-from nikodym.eda.config import EdaConfig
-from nikodym.eda.default_rate import DefaultRateResult
-from nikodym.eda.figures import FigureSpec
-from nikodym.eda.quality import QualityResult
-from nikodym.eda.stability import StabilityResult
-from nikodym.eda.step import EdaResult, EdaStep
-from nikodym.eda.univariate import UnivariateResult
+from bayesrisk.eda.card import EdaCardSection
+from bayesrisk.eda.config import EdaConfig
+from bayesrisk.eda.default_rate import DefaultRateResult
+from bayesrisk.eda.figures import FigureSpec
+from bayesrisk.eda.quality import QualityResult
+from bayesrisk.eda.stability import StabilityResult
+from bayesrisk.eda.step import EdaResult, EdaStep
+from bayesrisk.eda.univariate import UnivariateResult
 
 
 def _eda_result(

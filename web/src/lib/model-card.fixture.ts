@@ -188,7 +188,7 @@ export const MODEL_CARD_F1: ModelCard = {
     python_version: "3.12.10",
     platform: "Windows-11-10.0.26200-SP0",
     library_versions: {
-      nikodym: "1.11.0",
+      bayesrisk: "1.11.0",
       numpy: "2.4.6",
       pandas: "2.3.3",
       pandera: "0.32.0",

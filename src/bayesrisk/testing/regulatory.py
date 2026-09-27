@@ -1,0 +1,67 @@
+"""Fuente única del gate de cobertura regulatoria (SDD-24 §11, Hito 0).
+
+El job ``coverage-regulatory`` debe consumir estos targets para evitar falsos verdes por vacuidad:
+si un módulo declarado desaparece del filesystem, el test asociado falla antes de aceptar un
+``coverage report`` 100 % sobre una lista vacía.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Final
+
+__all__ = [
+    "REGULATORY_COVERAGE_INCLUDE",
+    "REGULATORY_COVERAGE_PATHS",
+    "missing_regulatory_coverage_paths",
+    "regulatory_coverage_include_arg",
+    "regulatory_coverage_paths",
+]
+
+REGULATORY_COVERAGE_PATHS: Final[tuple[str, ...]] = (
+    "src/bayesrisk/core/exceptions.py",
+    "src/bayesrisk/core/seeding.py",
+    # D-HOR-0: la tabla de conversión de unidad temporal decide el exponente del descuento de la
+    # ECL. Un alias mal escrito no rompe nada visible: cae en «unidad no declarada», el motor
+    # presume años y la provisión sale mal por un factor de 12 o de 365. Es cifra contable, así que
+    # entra al gate entera.
+    "src/bayesrisk/core/time_units.py",
+    "src/bayesrisk/provisioning/cmf/__init__.py",
+    "src/bayesrisk/provisioning/ifrs9/__init__.py",
+    # D-LGD-14: el motor de LGD dejó de vivir dentro de `ifrs9` y pasó al nivel compartido, porque
+    # lo consume también el método interno. Ese movimiento no le quita cobertura —nunca estuvo en
+    # esta lista— pero le crea una obligación nueva: pasa a producir la severidad de una cifra
+    # contable cuyo paquete está entero al 100 % por la razón escrita tres líneas más abajo. Una
+    # rama del estimador sin cubrir es una provisión sin verificar, viva donde viva el archivo.
+    "src/bayesrisk/provisioning/lgd.py",
+    # SDD-28: el método interno del B-1 entra COMPLETO al gate (no sólo su `__init__`). Es la cifra
+    # contable que se compara con la del método estándar: una rama sin cubrir es una provisión sin
+    # verificar.
+    "src/bayesrisk/provisioning/internal/__init__.py",
+    "src/bayesrisk/provisioning/internal/config.py",
+    "src/bayesrisk/provisioning/internal/engine.py",
+    "src/bayesrisk/provisioning/internal/exceptions.py",
+    "src/bayesrisk/provisioning/internal/results.py",
+    "src/bayesrisk/provisioning/internal/step.py",
+)
+"""Rutas fuente que deben existir y quedar al 100 % de cobertura."""
+
+REGULATORY_COVERAGE_INCLUDE: Final[tuple[str, ...]] = tuple(
+    f"*/{path.removeprefix('src/')}" for path in REGULATORY_COVERAGE_PATHS
+)
+"""Patrones ``coverage report --include`` derivados de ``REGULATORY_COVERAGE_PATHS``."""
+
+
+def regulatory_coverage_include_arg() -> str:
+    """Devuelve el argumento ``--include`` canónico para ``coverage report``."""
+    return ",".join(REGULATORY_COVERAGE_INCLUDE)
+
+
+def regulatory_coverage_paths(root: Path) -> tuple[Path, ...]:
+    """Materializa las rutas regulatorias contra la raíz del repo."""
+    return tuple(root / relative for relative in REGULATORY_COVERAGE_PATHS)
+
+
+def missing_regulatory_coverage_paths(root: Path) -> tuple[Path, ...]:
+    """Lista rutas regulatorias declaradas que no existen bajo ``root``."""
+    return tuple(path for path in regulatory_coverage_paths(root) if not path.is_file())

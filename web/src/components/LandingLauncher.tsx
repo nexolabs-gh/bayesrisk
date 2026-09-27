@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { ArrowRight, ArrowUpRight, Check, Copy } from "lucide-react"
 
 import { listPresets, type PresetSummary } from "@/lib/api"
-import { NikodymMark } from "@/components/NikodymMark"
+import { BayesRiskMark } from "@/components/BayesRiskMark"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import {
   CAPITULOS,
@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils"
  *    mobile): la confesión y la promesa viajan juntas o no viajan. El H1 histórico que motivó la
  *    regla —"IFRS 9, CMF y stress ya los calcula el motor"— ya no existe; hoy ninguna superficie de
  *    portada nombra una jurisdicción, y `test_portada_sin_jurisdiccion.py` lo hace cumplir.
- * 2. **El CTA depende de DEMO_MODE.** En `demo.nikodym.cl` la app NO calcula: sirve los fixtures
+ * 2. **El CTA depende de DEMO_MODE.** En `demo.bayesadvisory.cl` la app NO calcula: sirve los fixtures
  *    verbatim de una corrida real (ver `lib/demo.ts`). Ofrecer ahí "Construir un scorecard" sería
  *    prometer lo que esa pantalla no puede entregar.
  *
@@ -47,24 +47,24 @@ import { cn } from "@/lib/utils"
  * (ver `landing-evidence.ts`). Cero lógica de dominio: solo navegación.
  */
 
-const DOCS_URL = "https://docs.nikodym.cl"
+const DOCS_URL = "https://docs.bayesadvisory.cl"
 /**
- * El comando lleva el extra `[scoring]` a propósito: `pip install nikodym` instala el núcleo pero
+ * El comando lleva el extra `[scoring]` a propósito: `pip install bayesrisk` instala el núcleo pero
  * **no** el motor del scorecard (OptBinning, statsmodels, scikit-learn viven en ese extra), y este
  * botón está justo al lado de la promesa «construye un scorecard». Un comando copiable que no hace
  * lo que promete el botón de al lado es la versión pública de «feature gateada = feature
  * inexistente». Las comillas no son decorativas: sin ellas, zsh expande los corchetes como glob y
  * el comando muere con «no matches found».
  */
-const PYPI_CMD = 'pip install "nikodym[scoring]"'
+const PYPI_CMD = 'pip install "bayesrisk[scoring]"'
 
 /**
  * Consultora que construye el motor. La ancla es `#contact` (en inglés): con `#contacto` la página
  * carga igual pero no scrollea, y el visitante aterriza en el hero sin enterarse. El `?ref` va
  * ANTES del `#`, o queda dentro del fragmento y no llega al servidor.
  */
-const CASO_URL = "https://www.nikodym.cl/?ref=demo#contact"
-const CASO_URL_FOOTER = "https://www.nikodym.cl/?ref=demo-footer#contact"
+const CASO_URL = "https://www.bayesadvisory.cl/?ref=demo#contact"
+const CASO_URL_FOOTER = "https://www.bayesadvisory.cl/?ref=demo-footer#contact"
 
 /** Numeración de sección: la voz del documento. */
 function Seccion({
@@ -306,7 +306,7 @@ function CurvaGains() {
  * salen de la capa de presentación (`presetDisplay`), no del nombre/descripción crudos del fixture:
  * así landing y workspace muestran el mismo copy limpio.
  *
- * ⚠️ **El copy lo pone quien lo usa, y no es cosmética** (D-JOB-2). En `demo.nikodym.cl` esto ES la
+ * ⚠️ **El copy lo pone quien lo usa, y no es cosmética** (D-JOB-2). En `demo.bayesadvisory.cl` esto ES la
  * entrada: «Elige una demo». En el build instalable es el camino SECUNDARIO —«ver un ejemplo con
  * datos de muestra»— detrás de traer datos propios. Un solo texto para los dos sitios volvería a
  * poner la demostración al frente en la aplicación que se instala, que es justo lo que D-JOB-2
@@ -547,12 +547,12 @@ export function LandingLauncher({
         {/* Barra de marca */}
         <header className="flex items-center justify-between py-6">
           <div className="flex items-center gap-2.5">
-            <NikodymMark className="size-8" />
+            <BayesRiskMark className="size-8" />
             <span className="font-display text-xl font-bold tracking-tight text-foreground">
-              Nikodym
+              bayesrisk
             </span>
             <span className="mt-1 hidden font-mono text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground sm:inline">
-              RiskLib
+              Bayes Advisory
             </span>
           </div>
           <div className="flex items-center gap-5">
@@ -664,14 +664,14 @@ export function LandingLauncher({
                 el informe) o se usa desde <span className="text-foreground">Python</span> (hay que
                 escribir el config a mano; no hay preset, ni pantalla, ni capítulo en el informe, y
                 el único comando del paquete —{" "}
-                <span className="font-mono text-foreground">nikodym-ui</span>— levanta la interfaz,
+                <span className="font-mono text-foreground">bayesrisk-ui</span>— levanta la interfaz,
                 no corre estos dominios).{" "}
                 <span className="font-mono text-xs uppercase tracking-[0.1em] text-foreground">
                   Garantía
                 </span>
                 : <span className="text-foreground">estable</span> (contrato congelado bajo SemVer
                 1.x) o <span className="text-foreground">experimental</span> (el motor calcula y
-                está cubierto por tests, pero la firma puede cambiar dentro de la 1.x; no está
+                está cubierto por tests, pero la firma puede cambiar dentro de la 2.x; no está
                 certificado ni es apto para producción por el solo hecho de existir).
               </p>
               <p>
@@ -681,7 +681,7 @@ export function LandingLauncher({
                 <span className="font-mono text-foreground">{TESTS_SUITE}</span> en la suite
                 completa. Corren como pasos del mismo{" "}
                 <span className="font-mono text-foreground">Study</span>, con el mismo{" "}
-                <span className="font-mono text-foreground">NikodymConfig</span> y el mismo{" "}
+                <span className="font-mono text-foreground">BayesRiskConfig</span> y el mismo{" "}
                 <span className="font-mono text-foreground">config_hash</span> que el scorecard.{" "}
                 <span className="text-foreground">
                   Lo que les falta es superficie, no aritmética.
@@ -870,8 +870,8 @@ export function LandingLauncher({
           <Seccion id="§5" titulo="Quién lo construye">
             <div className="lg:max-w-2xl">
               <p className="text-base leading-relaxed text-muted-foreground">
-                Nikodym RiskLib lo construye{" "}
-                <span className="text-foreground">Nexo Labs</span>, una consultora chilena de riesgo
+                bayesrisk lo construye{" "}
+                <span className="text-foreground">Bayes Advisory</span>, una consultora chilena de riesgo
                 y analítica de datos. El motor es Apache-2.0 y no tiene edición comercial ni
                 funciones reservadas: está publicado para que puedas leer el código antes de hablar
                 con nosotros.
@@ -922,7 +922,7 @@ export function LandingLauncher({
               se parte por dentro ("APACHE-" / "2.0"). Que baje el enlace entero, no las palabras. */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
             <span className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-muted-foreground">
-              Nikodym RiskLib · Apache-2.0
+              bayesrisk · Apache-2.0
             </span>
             <a
               href={CASO_URL_FOOTER}
@@ -930,7 +930,7 @@ export function LandingLauncher({
               rel="noreferrer"
               className="whitespace-nowrap font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              Nexo Labs ↗
+              Bayes Advisory ↗
             </a>
           </div>
           <ComandoCopiable className="sm:py-2" />

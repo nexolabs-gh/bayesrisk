@@ -1,41 +1,41 @@
 # Referencia de la API
 
-Superficie pública de Nikodym RiskLib, organizada por dominio. Cada símbolo se genera
+Superficie pública de bayesrisk, organizada por dominio. Cada símbolo se genera
 automáticamente desde sus *docstrings* con [mkdocstrings]; las firmas y campos son los del código
 publicado (`1.20.0`).
 
-!!! note "Estabilidad (SemVer 1.x)"
-    El pipeline de validación de scorecard (F1) —el trío `run` → `Study` → `NikodymConfig` y los
+!!! note "Estabilidad (SemVer 2.x)"
+    El pipeline de validación de scorecard (F1) —el trío `run` → `Study` → `BayesRiskConfig` y los
     dominios `data`, `eda`, `binning`, `selection`, `model`, `scorecard`, `calibration`,
-    `performance` y `stability`— es **API estable**: no rompe hasta una versión 2.0. También lo son el
+    `performance` y `stability`— es **API estable**: no rompe hasta una versión 3.0. También lo son el
     informe (`report`), el trail de auditoría (`audit`), porque ya son superficie de integración,
-    y la puerta guiada (`guided`, `nikodym.Scorecard`), desde que cerraron sus tres puertas.
+    y la puerta guiada (`guided`, `bayesrisk.Scorecard`), desde que cerraron sus tres puertas.
     Las superficies que aún crecen (modelado ML, provisiones, survival, forward-looking, stress,
     validación, gobernanza y tracking) están marcadas como **experimentales** en su *docstring*,
-    fuera de la garantía SemVer 1.x.
+    fuera de la garantía SemVer 2.x.
 
-    Esa lista no se escribe a mano en tres sitios: la fija `nikodym.testing.stability` y la
+    Esa lista no se escribe a mano en tres sitios: la fija `bayesrisk.testing.stability` y la
     verifican los gates del repositorio contra el *docstring* de cada paquete y contra esta página.
 
 !!! note "Núcleo liviano e import perezoso"
-    `import nikodym` no arrastra el stack ML. `nikodym.run` se re-exporta de forma perezosa (PEP
-    562) desde `nikodym.api`, y los backends pesados de cada dominio (pandas, sklearn, statsmodels,
+    `import bayesrisk` no arrastra el stack ML. `bayesrisk.run` se re-exporta de forma perezosa (PEP
+    562) desde `bayesrisk.api`, y los backends pesados de cada dominio (pandas, sklearn, statsmodels,
     optbinning, XGBoost, …) se cargan solo al ejecutar el paso correspondiente, tras sus *extras*
     opcionales.
 
 ## Puerta guiada
 
-`nikodym.Scorecard` construye, corre y cuenta un scorecard de comportamiento con la entrada
-mínima; es un cliente de `run` que arma el `NikodymConfig`, lo ejecuta y lee sus artefactos.
-Estable bajo SemVer 1.x desde que cerraron sus tres puertas (código, config completo y
+`bayesrisk.Scorecard` construye, corre y cuenta un scorecard de comportamiento con la entrada
+mínima; es un cliente de `run` que arma el `BayesRiskConfig`, lo ejecuta y lee sus artefactos.
+Estable bajo SemVer 2.x desde que cerraron sus tres puertas (código, config completo y
 pantalla): su firma, sus resúmenes y sus decisiones (`exclude`, `keep`, `merge_bins`,
 `set_bins`) sólo crecen de forma aditiva.
 
-::: nikodym.guided.scorecard.Scorecard
+::: bayesrisk.guided.scorecard.Scorecard
 
-::: nikodym.guided.summaries.StageSummary
+::: bayesrisk.guided.summaries.StageSummary
 
-::: nikodym.guided.summaries.FinalSummary
+::: bayesrisk.guided.summaries.FinalSummary
 
 ## Ejecución y estado de la corrida
 
@@ -43,83 +43,83 @@ Punto de entrada único (`run`) y las estructuras *stateful* que produce: el `St
 `ArtifactStore` *namespaced*, el `RunContext` (estado + lineage) y el `LineageBundle` reproducible.
 `check_pipeline` responde si un config **se puede** ejecutar, sin ejecutarlo.
 
-::: nikodym.run
+::: bayesrisk.run
     options:
       heading_level: 3
 
-::: nikodym.check_pipeline
+::: bayesrisk.check_pipeline
     options:
       heading_level: 3
 
-::: nikodym.api.PipelineCheck
+::: bayesrisk.api.PipelineCheck
     options:
       heading_level: 3
 
-::: nikodym.api.assemble_run
+::: bayesrisk.api.assemble_run
     options:
       heading_level: 3
 
 <a id="study"></a>
 
-::: nikodym.core.study.Study
+::: bayesrisk.core.study.Study
     options:
       heading_level: 3
 
-::: nikodym.core.artifacts.ArtifactStore
+::: bayesrisk.core.artifacts.ArtifactStore
     options:
       heading_level: 3
 
-::: nikodym.core.lineage.RunContext
+::: bayesrisk.core.lineage.RunContext
     options:
       heading_level: 3
 
-::: nikodym.core.lineage.LineageBundle
+::: bayesrisk.core.lineage.LineageBundle
     options:
       heading_level: 3
 
-::: nikodym.core.steps.Step
+::: bayesrisk.core.steps.Step
     options:
       heading_level: 3
 
 ## Configuración declarativa
 
-`NikodymConfig` es la raíz del experimento (Pydantic v2): agrupa las secciones de reproducibilidad,
+`BayesRiskConfig` es la raíz del experimento (Pydantic v2): agrupa las secciones de reproducibilidad,
 orquestación y todos los dominios. Se acompaña de utilidades de identidad (`config_hash`),
 carga/volcado YAML y migración de esquema.
 
-::: nikodym.core.config.schema.NikodymConfig
+::: bayesrisk.core.config.schema.BayesRiskConfig
     options:
       heading_level: 3
 
-::: nikodym.core.config.schema.RunConfig
+::: bayesrisk.core.config.schema.RunConfig
     options:
       heading_level: 3
 
-::: nikodym.core.config.schema.ReproConfig
+::: bayesrisk.core.config.schema.ReproConfig
     options:
       heading_level: 3
 
-::: nikodym.core.config.hashing.config_hash
+::: bayesrisk.core.config.hashing.config_hash
     options:
       heading_level: 3
 
-::: nikodym.core.config.loader.load_config
+::: bayesrisk.core.config.loader.load_config
     options:
       heading_level: 3
 
-::: nikodym.core.config.loader.loads_config
+::: bayesrisk.core.config.loader.loads_config
     options:
       heading_level: 3
 
-::: nikodym.core.config.loader.dump_config
+::: bayesrisk.core.config.loader.dump_config
     options:
       heading_level: 3
 
-::: nikodym.core.config.migration.migrate
+::: bayesrisk.core.config.migration.migrate
     options:
       heading_level: 3
 
-::: nikodym.core.config.migration.migration
+::: bayesrisk.core.config.migration.migration
     options:
       heading_level: 3
 
@@ -128,27 +128,27 @@ carga/volcado YAML y migración de esquema.
 Carga, validación de esquema, definición del *target*, particionado y hashing lógico del dataset
 (`data_hash`) que alimenta el lineage.
 
-::: nikodym.data.config.DataConfig
+::: bayesrisk.data.config.DataConfig
     options:
       heading_level: 3
 
-::: nikodym.data.loading.DataLoader
+::: bayesrisk.data.loading.DataLoader
     options:
       heading_level: 3
 
-::: nikodym.data.schema.SchemaValidator
+::: bayesrisk.data.schema.SchemaValidator
     options:
       heading_level: 3
 
-::: nikodym.data.target.TargetDefinition
+::: bayesrisk.data.target.TargetDefinition
     options:
       heading_level: 3
 
-::: nikodym.data.partition.Partitioner
+::: bayesrisk.data.partition.Partitioner
     options:
       heading_level: 3
 
-::: nikodym.data.step.DataStep
+::: bayesrisk.data.step.DataStep
     options:
       heading_level: 3
 
@@ -162,24 +162,24 @@ fecha— está en la guía [Análisis exploratorio](guias/analisis-exploratorio.
 
 En los resultados —JSON, tablas, model card— cada uno viaja como su **identificador**; en la
 pantalla, en el informe y en las guías se lee como su **palabra**. Son el mismo dato, y cada
-correspondencia tiene una sola fuente en `nikodym.eda`.
+correspondencia tiene una sola fuente en `bayesrisk.eda`.
 
 | Identificador | Palabra | Qué es | Fuente |
 |---|---|---|---|
-| `period` | por fecha de observación | Eje **efectivo** de la tasa (`axis` de la card) | `nikodym.eda.default_rate.AXIS_LABELS` |
+| `period` | por fecha de observación | Eje **efectivo** de la tasa (`axis` de la card) | `bayesrisk.eda.default_rate.AXIS_LABELS` |
 | `cohort` | por cohorte | Ídem; puede ser el efectivo aunque el config diga `period` (`axis_inferred`) | ídem |
-| `cv` | variación relativa | Indicador de estabilidad temporal | `nikodym.eda.stability.STABILITY_INDICATOR_LABELS` |
+| `cv` | variación relativa | Indicador de estabilidad temporal | `bayesrisk.eda.stability.STABILITY_INDICATOR_LABELS` |
 | `max_relative_drift` | peor desvío | Ídem | ídem |
 | `trend_slope` | tendencia | Ídem | ídem |
-| `eje_cohorte` | eje de cohorte, sin orden cronológico | Causa de no evaluar la señal (`stability_not_evaluable_reason`) | `nikodym.eda.stability.NOT_EVALUABLE_REASON_LABELS` |
+| `eje_cohorte` | eje de cohorte, sin orden cronológico | Causa de no evaluar la señal (`stability_not_evaluable_reason`) | `bayesrisk.eda.stability.NOT_EVALUABLE_REASON_LABELS` |
 | `pocos_periodos_evaluables` | menos de dos períodos con observaciones suficientes | Ídem | ídem |
 | `tasa_media_cero` | sin incumplimientos en los períodos evaluables | Ídem; sólo con un indicador relativo | ídem |
 | `sin_eje_temporal` | el archivo no trae un eje temporal que ordenar | Ídem; la tasa no se pudo agrupar, así que no hay serie que mirar | ídem |
 | `tasa_no_calculable` | la tasa por período no se pudo calcular | Ídem; el cálculo de la tasa falló, así que no hay serie que mirar | ídem |
 | `no_calculable` | no se pudo calcular | Ídem; la señal falló por sí sola y la tasa se conserva entera | ídem |
-| `sin_eje_temporal` | el archivo no trae columna de fecha ni cohorte declarada | Causa de no evaluar **la tasa** (`default_rate_not_evaluable_reason`): sin columna de fecha y sin cohorte declarada no hay eje, la tabla por período sale vacía y la corrida sigue | `nikodym.eda.default_rate.DEFAULT_RATE_NOT_EVALUABLE_REASON_LABELS` |
+| `sin_eje_temporal` | el archivo no trae columna de fecha ni cohorte declarada | Causa de no evaluar **la tasa** (`default_rate_not_evaluable_reason`): sin columna de fecha y sin cohorte declarada no hay eje, la tabla por período sale vacía y la corrida sigue | `bayesrisk.eda.default_rate.DEFAULT_RATE_NOT_EVALUABLE_REASON_LABELS` |
 | `no_calculable` | no se pudo calcular | Ídem, cuando el **cálculo** falló: la tabla sale vacía, la tasa global se conserva si hubo población y la causa del motor viaja en `failed_analyses` | ídem |
-| `near_constant` | casi constante | Marca de calidad por columna | `nikodym.eda.quality.QUALITY_FLAG_LABELS` |
+| `near_constant` | casi constante | Marca de calidad por columna | `bayesrisk.eda.quality.QUALITY_FLAG_LABELS` |
 | `near_unique` | casi única | Ídem | ídem |
 | `high_cardinality` | alta cardinalidad | Ídem | ídem |
 
@@ -197,29 +197,29 @@ calculó se **omite** en vez de publicarse como cero. Una excepción que no sea 
 degrada, pero su causa lleva el tipo: «error inesperado del motor (`<Tipo>`): …». Las piezas
 —`DefaultRateAnalyzer`, `UnivariateProfiler`, `DataQualityProfiler`— usadas por código siguen
 levantando su `EdaError` de siempre. Lo que se dice de cada uno y la frase que lo redacta viven
-en `nikodym.eda.card` (`FAILED_ANALYSIS_LABELS`, `failed_analysis_sentence`).
+en `bayesrisk.eda.card` (`FAILED_ANALYSIS_LABELS`, `failed_analysis_sentence`).
 
-::: nikodym.eda.config.EdaConfig
+::: bayesrisk.eda.config.EdaConfig
     options:
       heading_level: 3
 
-::: nikodym.eda.univariate.UnivariateProfiler
+::: bayesrisk.eda.univariate.UnivariateProfiler
     options:
       heading_level: 3
 
-::: nikodym.eda.quality.DataQualityProfiler
+::: bayesrisk.eda.quality.DataQualityProfiler
     options:
       heading_level: 3
 
-::: nikodym.eda.default_rate.DefaultRateAnalyzer
+::: bayesrisk.eda.default_rate.DefaultRateAnalyzer
     options:
       heading_level: 3
 
-::: nikodym.eda.stability.TemporalStabilityAnalyzer
+::: bayesrisk.eda.stability.TemporalStabilityAnalyzer
     options:
       heading_level: 3
 
-::: nikodym.eda.step.EdaStep
+::: bayesrisk.eda.step.EdaStep
     options:
       heading_level: 3
 
@@ -228,19 +228,19 @@ en `nikodym.eda.card` (`FAILED_ANALYSIS_LABELS`, `failed_analysis_sentence`).
 Discretización supervisada con *Weight of Evidence* (WoE), monotonía controlada e IV (motor
 OptBinning tras el *extra* `scoring`).
 
-::: nikodym.binning.config.BinningConfig
+::: bayesrisk.binning.config.BinningConfig
     options:
       heading_level: 3
 
-::: nikodym.binning.transformer.WoEBinner
+::: bayesrisk.binning.transformer.WoEBinner
     options:
       heading_level: 3
 
-::: nikodym.binning.results.BinningResult
+::: bayesrisk.binning.results.BinningResult
     options:
       heading_level: 3
 
-::: nikodym.binning.step.BinningStep
+::: bayesrisk.binning.step.BinningStep
     options:
       heading_level: 3
 
@@ -253,7 +253,7 @@ Filtrado pre-modelo por IV, correlación, VIF y estabilidad.
 Cada variable candidata sale con un motivo (`decisions[].reason`) y con la banda diagnóstica de su
 IV (`decisions[].iv_band`). Igual que con las bandas de estabilidad, el identificador es el dato y
 la palabra es lo que se lee en pantalla y en el informe; las fuentes únicas son
-`nikodym.selection.results.REASON_LABELS` y `nikodym.binning.results.IV_BAND_LABELS`.
+`bayesrisk.selection.results.REASON_LABELS` y `bayesrisk.binning.results.IV_BAND_LABELS`.
 
 | Motivo | Palabra |
 |---|---|
@@ -281,19 +281,19 @@ la palabra es lo que se lee en pantalla y en el informe; las fuentes únicas son
 | `strong` | fuerte |
 | `suspicious` | sospechoso |
 
-::: nikodym.selection.config.SelectionConfig
+::: bayesrisk.selection.config.SelectionConfig
     options:
       heading_level: 3
 
-::: nikodym.selection.selector.FeatureSelector
+::: bayesrisk.selection.selector.FeatureSelector
     options:
       heading_level: 3
 
-::: nikodym.selection.results.SelectionResult
+::: bayesrisk.selection.results.SelectionResult
     options:
       heading_level: 3
 
-::: nikodym.selection.step.SelectionStep
+::: bayesrisk.selection.step.SelectionStep
     options:
       heading_level: 3
 
@@ -302,19 +302,19 @@ la palabra es lo que se lee en pantalla y en el informe; las fuentes únicas son
 Regresión logística sobre variables WoE con *stepwise*, política de signos e inferencia
 (statsmodels).
 
-::: nikodym.model.config.ModelConfig
+::: bayesrisk.model.config.ModelConfig
     options:
       heading_level: 3
 
-::: nikodym.model.estimator.LogisticPDModel
+::: bayesrisk.model.estimator.LogisticPDModel
     options:
       heading_level: 3
 
-::: nikodym.model.results.ModelResult
+::: bayesrisk.model.results.ModelResult
     options:
       heading_level: 3
 
-::: nikodym.model.step.ModelStep
+::: bayesrisk.model.step.ModelStep
     options:
       heading_level: 3
 
@@ -323,23 +323,23 @@ Regresión logística sobre variables WoE con *stepwise*, política de signos e 
 Traducción de coeficientes a puntajes enteros (escala PDO / *target odds*), con *overrides* y
 redondeo controlado.
 
-::: nikodym.scorecard.config.ScorecardConfig
+::: bayesrisk.scorecard.config.ScorecardConfig
     options:
       heading_level: 3
 
-::: nikodym.scorecard.scaler.PointsScaler
+::: bayesrisk.scorecard.scaler.PointsScaler
     options:
       heading_level: 3
 
-::: nikodym.scorecard.transformer.Scorecard
+::: bayesrisk.scorecard.transformer.Scorecard
     options:
       heading_level: 3
 
-::: nikodym.scorecard.results.ScorecardResult
+::: bayesrisk.scorecard.results.ScorecardResult
     options:
       heading_level: 3
 
-::: nikodym.scorecard.step.ScorecardStep
+::: bayesrisk.scorecard.step.ScorecardStep
     options:
       heading_level: 3
 
@@ -347,19 +347,19 @@ redondeo controlado.
 
 Ajuste de la PD cruda a un ancla de negocio (*through-the-cycle*), con tope de *offset* auditable.
 
-::: nikodym.calibration.config.CalibrationConfig
+::: bayesrisk.calibration.config.CalibrationConfig
     options:
       heading_level: 3
 
-::: nikodym.calibration.calibrator.PDCalibrator
+::: bayesrisk.calibration.calibrator.PDCalibrator
     options:
       heading_level: 3
 
-::: nikodym.calibration.results.CalibrationResult
+::: bayesrisk.calibration.results.CalibrationResult
     options:
       heading_level: 3
 
-::: nikodym.calibration.step.CalibrationStep
+::: bayesrisk.calibration.step.CalibrationStep
     options:
       heading_level: 3
 
@@ -367,19 +367,19 @@ Ajuste de la PD cruda a un ancla de negocio (*through-the-cycle*), con tope de *
 
 Métricas de discriminación (AUC/KS/Gini) y desempeño por decil, por partición.
 
-::: nikodym.performance.config.PerformanceConfig
+::: bayesrisk.performance.config.PerformanceConfig
     options:
       heading_level: 3
 
-::: nikodym.performance.evaluator.PerformanceEvaluator
+::: bayesrisk.performance.evaluator.PerformanceEvaluator
     options:
       heading_level: 3
 
-::: nikodym.performance.results.PerformanceResult
+::: bayesrisk.performance.results.PerformanceResult
     options:
       heading_level: 3
 
-::: nikodym.performance.step.PerformanceStep
+::: bayesrisk.performance.step.PerformanceStep
     options:
       heading_level: 3
 
@@ -392,7 +392,7 @@ PSI/CSI y estabilidad temporal del puntaje y de las características.
 Cada comparación se clasifica en una banda, y la banda fija de forma única la acción auditada. En
 los resultados —JSON, `psi_table`, `stability_metrics`, model card— la banda viaja como su
 **identificador**; en la pantalla, en el informe y en las guías se lee como su **palabra**. Son el
-mismo dato: la fuente única de la correspondencia es `nikodym.stability.results.BAND_LABELS`.
+mismo dato: la fuente única de la correspondencia es `bayesrisk.stability.results.BAND_LABELS`.
 
 | Identificador | Palabra | Acción auditada |
 |---|---|---|
@@ -403,21 +403,21 @@ mismo dato: la fuente única de la correspondencia es `nikodym.stability.results
 
 El resumen de cada comparación publica juntos el peor PSI entre score y PD, la identidad de la
 magnitud ganadora (`score_psi` → «score», `pd_psi` → «PD calibrada», en
-`nikodym.stability.results.PSI_METRIC_LABELS`) y la banda **de esa misma magnitud**.
+`bayesrisk.stability.results.PSI_METRIC_LABELS`) y la banda **de esa misma magnitud**.
 
-::: nikodym.stability.config.StabilityConfig
+::: bayesrisk.stability.config.StabilityConfig
     options:
       heading_level: 3
 
-::: nikodym.stability.evaluator.StabilityEvaluator
+::: bayesrisk.stability.evaluator.StabilityEvaluator
     options:
       heading_level: 3
 
-::: nikodym.stability.results.StabilityResult
+::: bayesrisk.stability.results.StabilityResult
     options:
       heading_level: 3
 
-::: nikodym.stability.step.StabilityStep
+::: bayesrisk.stability.step.StabilityStep
     options:
       heading_level: 3
 
@@ -431,7 +431,7 @@ Cómo se lee el resultado —y qué hace un validador con él— está en la gu�
 
 En los resultados —JSON, tablas tidy, model card— cada estado viaja como su **identificador**; en la
 pantalla y en el informe se lee como su **palabra**. Son el mismo dato, y su correspondencia tiene
-una sola fuente: `nikodym.validation.results`.
+una sola fuente: `bayesrisk.validation.results`.
 
 | Identificador | Palabra | Dónde aparece |
 |---|---|---|
@@ -464,19 +464,19 @@ y el mínimo técnico que los dejó fuera. Un Hosmer-Lemeshow sin veredicto **s�
 —con `statistic` nulo y su causa— pero tampoco cuenta: `n_tests` y `n_failed` cuentan sólo las
 decisiones evaluables de las cuatro familias.
 
-::: nikodym.validation.config.ValidationConfig
+::: bayesrisk.validation.config.ValidationConfig
     options:
       heading_level: 3
 
-::: nikodym.validation.evaluator.ValidationEvaluator
+::: bayesrisk.validation.evaluator.ValidationEvaluator
     options:
       heading_level: 3
 
-::: nikodym.validation.results.ValidationResult
+::: bayesrisk.validation.results.ValidationResult
     options:
       heading_level: 3
 
-::: nikodym.validation.step.ValidationStep
+::: bayesrisk.validation.step.ValidationStep
     options:
       heading_level: 3
 
@@ -485,15 +485,15 @@ decisiones evaluables de las cuatro familias.
 Modelos GBDT (XGBoost, LightGBM, CatBoost), *random forest* y SVM como *extras* selectivos, con
 monotonía y comparación *challenger* frente al scorecard.
 
-::: nikodym.ml.config.MLConfig
+::: bayesrisk.ml.config.MLConfig
     options:
       heading_level: 3
 
-::: nikodym.ml.results.MLResult
+::: bayesrisk.ml.results.MLResult
     options:
       heading_level: 3
 
-::: nikodym.ml.step.MLStep
+::: bayesrisk.ml.step.MLStep
     options:
       heading_level: 3
 
@@ -501,15 +501,15 @@ monotonía y comparación *challenger* frente al scorecard.
 
 Optimización del espacio de búsqueda (Optuna) con muestreadores/*pruners* deterministas.
 
-::: nikodym.tuning.config.TuningConfig
+::: bayesrisk.tuning.config.TuningConfig
     options:
       heading_level: 3
 
-::: nikodym.tuning.results.TuningResult
+::: bayesrisk.tuning.results.TuningResult
     options:
       heading_level: 3
 
-::: nikodym.tuning.step.TuningStep
+::: bayesrisk.tuning.step.TuningStep
     options:
       heading_level: 3
 
@@ -517,15 +517,15 @@ Optimización del espacio de búsqueda (Optuna) con muestreadores/*pruners* dete
 
 Explicaciones globales/locales (SHAP opcional) y *reason codes* para scorecard y modelos ML.
 
-::: nikodym.explain.config.ExplainConfig
+::: bayesrisk.explain.config.ExplainConfig
     options:
       heading_level: 3
 
-::: nikodym.explain.results.ExplainResult
+::: bayesrisk.explain.results.ExplainResult
     options:
       heading_level: 3
 
-::: nikodym.explain.step.ExplainStep
+::: bayesrisk.explain.step.ExplainStep
     options:
       heading_level: 3
 
@@ -533,11 +533,11 @@ Explicaciones globales/locales (SHAP opcional) y *reason codes* para scorecard y
 
 Modelos de tiempo-a-evento: Kaplan-Meier, hazard discreto y Cox/AFT (algunos tras *extra*).
 
-::: nikodym.survival.config.SurvivalConfig
+::: bayesrisk.survival.config.SurvivalConfig
     options:
       heading_level: 3
 
-::: nikodym.survival.step.SurvivalStep
+::: bayesrisk.survival.step.SurvivalStep
     options:
       heading_level: 3
 
@@ -545,11 +545,11 @@ Modelos de tiempo-a-evento: Kaplan-Meier, hazard discreto y Cox/AFT (algunos tra
 
 Estimación de matrices de transición y estructura temporal de PD por estados.
 
-::: nikodym.markov.config.MarkovConfig
+::: bayesrisk.markov.config.MarkovConfig
     options:
       heading_level: 3
 
-::: nikodym.markov.step.MarkovStep
+::: bayesrisk.markov.step.MarkovStep
     options:
       heading_level: 3
 
@@ -557,15 +557,15 @@ Estimación de matrices de transición y estructura temporal de PD por estados.
 
 Proyección macroeconómica, modelos satélite y escenarios ponderados para PD *point-in-time*.
 
-::: nikodym.forward.config.ForwardConfig
+::: bayesrisk.forward.config.ForwardConfig
     options:
       heading_level: 3
 
-::: nikodym.forward.results.ForwardResult
+::: bayesrisk.forward.results.ForwardResult
     options:
       heading_level: 3
 
-::: nikodym.forward.step.ForwardStep
+::: bayesrisk.forward.step.ForwardStep
     options:
       heading_level: 3
 
@@ -573,15 +573,15 @@ Proyección macroeconómica, modelos satélite y escenarios ponderados para PD *
 
 Escenarios de *shock*, barridos de sensibilidad y *reverse stress* sobre las métricas de provisión.
 
-::: nikodym.stress.config.StressConfig
+::: bayesrisk.stress.config.StressConfig
     options:
       heading_level: 3
 
-::: nikodym.stress.results.StressResult
+::: bayesrisk.stress.results.StressResult
     options:
       heading_level: 3
 
-::: nikodym.stress.step.StressStep
+::: bayesrisk.stress.step.StressStep
     options:
       heading_level: 3
 
@@ -602,47 +602,47 @@ verificación están en [Aterrizar una norma local](norma-local.md).
     El comparativo CMF↔IFRS 9 que expone esta capa es un **comparativo entre marcos contables**
     (útil, por ejemplo, para reportar a una matriz extranjera), no una exigencia de la CMF.
 
-::: nikodym.provisioning.config.ProvisioningConfig
+::: bayesrisk.provisioning.config.ProvisioningConfig
     options:
       heading_level: 3
 
-::: nikodym.provisioning.orchestrator.ProvisioningOrchestrator
+::: bayesrisk.provisioning.orchestrator.ProvisioningOrchestrator
     options:
       heading_level: 3
 
-::: nikodym.provisioning.results.ProvisionOrchestrationResult
+::: bayesrisk.provisioning.results.ProvisionOrchestrationResult
     options:
       heading_level: 3
 
-::: nikodym.provisioning.step.ProvisioningStep
+::: bayesrisk.provisioning.step.ProvisioningStep
     options:
       heading_level: 3
 
 ### Motor CMF
 
-::: nikodym.provisioning.cmf.config.CmfProvisioningConfig
+::: bayesrisk.provisioning.cmf.config.CmfProvisioningConfig
     options:
       heading_level: 4
 
-::: nikodym.provisioning.cmf.engine.CmfProvisioningEngine
+::: bayesrisk.provisioning.cmf.engine.CmfProvisioningEngine
     options:
       heading_level: 4
 
-::: nikodym.provisioning.cmf.results.CmfProvisionResult
+::: bayesrisk.provisioning.cmf.results.CmfProvisionResult
     options:
       heading_level: 4
 
 ### Motor IFRS 9 / ECL
 
-::: nikodym.provisioning.ifrs9.config.IfrsProvisioningConfig
+::: bayesrisk.provisioning.ifrs9.config.IfrsProvisioningConfig
     options:
       heading_level: 4
 
-::: nikodym.provisioning.ifrs9.engine.IfrsProvisioningEngine
+::: bayesrisk.provisioning.ifrs9.engine.IfrsProvisioningEngine
     options:
       heading_level: 4
 
-::: nikodym.provisioning.ifrs9.results.IfrsProvisionResult
+::: bayesrisk.provisioning.ifrs9.results.IfrsProvisionResult
     options:
       heading_level: 4
 
@@ -651,35 +651,35 @@ verificación están en [Aterrizar una norma local](norma-local.md).
 *Model card* (SR 11-7), inventario de modelos y registro de escenarios/overlays. Es la superficie de
 trazabilidad que `run` ensambla y (opcionalmente) publica al inventario.
 
-::: nikodym.governance.config.GovernanceConfig
+::: bayesrisk.governance.config.GovernanceConfig
     options:
       heading_level: 3
 
-::: nikodym.governance.model_card.ModelCard
+::: bayesrisk.governance.model_card.ModelCard
     options:
       heading_level: 3
 
-::: nikodym.governance.model_card.ModelCardBuilder
+::: bayesrisk.governance.model_card.ModelCardBuilder
     options:
       heading_level: 3
 
-::: nikodym.governance.inventory.ModelInventory
+::: bayesrisk.governance.inventory.ModelInventory
     options:
       heading_level: 3
 
-::: nikodym.governance.inventory.NullInventory
+::: bayesrisk.governance.inventory.NullInventory
     options:
       heading_level: 3
 
-::: nikodym.governance.inventory.InventoryEntry
+::: bayesrisk.governance.inventory.InventoryEntry
     options:
       heading_level: 3
 
-::: nikodym.governance.inventory.publish_inventory
+::: bayesrisk.governance.inventory.publish_inventory
     options:
       heading_level: 3
 
-::: nikodym.governance.scenarios.ScenarioLog
+::: bayesrisk.governance.scenarios.ScenarioLog
     options:
       heading_level: 3
 
@@ -688,35 +688,35 @@ trazabilidad que `run` ensambla y (opcionalmente) publica al inventario.
 *Audit sink* JSONL, captura del entorno y hashing determinista de datos/archivos, más la relectura
 del *trail* para reconstruir la corrida.
 
-::: nikodym.audit.config.AuditConfig
+::: bayesrisk.audit.config.AuditConfig
     options:
       heading_level: 3
 
-::: nikodym.audit.sink.JsonlAuditSink
+::: bayesrisk.audit.sink.JsonlAuditSink
     options:
       heading_level: 3
 
-::: nikodym.audit.environment.EnvironmentSnapshot
+::: bayesrisk.audit.environment.EnvironmentSnapshot
     options:
       heading_level: 3
 
-::: nikodym.audit.environment.capture_environment
+::: bayesrisk.audit.environment.capture_environment
     options:
       heading_level: 3
 
-::: nikodym.audit.hashing.hash_dataframe
+::: bayesrisk.audit.hashing.hash_dataframe
     options:
       heading_level: 3
 
-::: nikodym.audit.hashing.hash_file
+::: bayesrisk.audit.hashing.hash_file
     options:
       heading_level: 3
 
-::: nikodym.audit.replay.read_trail
+::: bayesrisk.audit.replay.read_trail
     options:
       heading_level: 3
 
-::: nikodym.audit.replay.iter_trail
+::: bayesrisk.audit.replay.iter_trail
     options:
       heading_level: 3
 
@@ -725,19 +725,19 @@ del *trail* para reconstruir la corrida.
 Registro opcional de corridas y modelos en un backend externo (MLflow), tras el *extra*
 correspondiente.
 
-::: nikodym.tracking.config.TrackingConfig
+::: bayesrisk.tracking.config.TrackingConfig
     options:
       heading_level: 3
 
-::: nikodym.tracking.recorder.TrackingRecorder
+::: bayesrisk.tracking.recorder.TrackingRecorder
     options:
       heading_level: 3
 
-::: nikodym.tracking.sink.TrackingSink
+::: bayesrisk.tracking.sink.TrackingSink
     options:
       heading_level: 3
 
-::: nikodym.tracking.inventory.MLflowInventory
+::: bayesrisk.tracking.inventory.MLflowInventory
     options:
       heading_level: 3
 
@@ -746,27 +746,27 @@ correspondiente.
 Reporte auditable del scorecard: ensamblado del bundle, render HTML/PDF y narración opcional
 (regla o IA).
 
-::: nikodym.report.config.ReportConfig
+::: bayesrisk.report.config.ReportConfig
     options:
       heading_level: 3
 
-::: nikodym.report.builder.ReportBuilder
+::: bayesrisk.report.builder.ReportBuilder
     options:
       heading_level: 3
 
-::: nikodym.report.renderer.HtmlReportRenderer
+::: bayesrisk.report.renderer.HtmlReportRenderer
     options:
       heading_level: 3
 
-::: nikodym.report.renderer.PdfReportRenderer
+::: bayesrisk.report.renderer.PdfReportRenderer
     options:
       heading_level: 3
 
-::: nikodym.report.results.ReportResult
+::: bayesrisk.report.results.ReportResult
     options:
       heading_level: 3
 
-::: nikodym.report.step.ReportStep
+::: bayesrisk.report.step.ReportStep
     options:
       heading_level: 3
 
@@ -775,19 +775,19 @@ Reporte auditable del scorecard: ensamblado del bundle, render HTML/PDF y narrac
 Utilidades para el quickstart y la UI: materialización determinista de datasets sintéticos,
 ingesta de *uploads* y el config F1 curado (`standard_preset`).
 
-::: nikodym.ui.datasets.materialize
+::: bayesrisk.ui.datasets.materialize
     options:
       heading_level: 3
 
-::: nikodym.ui.datasets.list_datasets
+::: bayesrisk.ui.datasets.list_datasets
     options:
       heading_level: 3
 
-::: nikodym.ui.datasets.ingest_upload
+::: bayesrisk.ui.datasets.ingest_upload
     options:
       heading_level: 3
 
-::: nikodym.ui.presets.standard_preset
+::: bayesrisk.ui.presets.standard_preset
     options:
       heading_level: 3
 
@@ -796,11 +796,11 @@ ingesta de *uploads* y el config F1 curado (`standard_preset`).
 Introspección de *extras* instalados e imports perezosos con error accionable cuando falta una
 dependencia opcional.
 
-::: nikodym.utils.optional.has_extra
+::: bayesrisk.utils.optional.has_extra
     options:
       heading_level: 3
 
-::: nikodym.utils.optional.require_extra
+::: bayesrisk.utils.optional.require_extra
     options:
       heading_level: 3
 

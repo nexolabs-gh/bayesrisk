@@ -45,8 +45,8 @@ from pathlib import Path
 from typing import Any
 
 #: Dónde sirve cada sitio la huella del commit que lo construyó (`deploy.yml`, «Sellar …»).
-SELLO_DOCS_URL = "https://docs.nikodym.cl/build-sha.txt"
-SELLO_DEMO_URL = "https://demo.nikodym.cl/build-sha.txt"
+SELLO_DOCS_URL = "https://docs.bayesadvisory.cl/build-sha.txt"
+SELLO_DEMO_URL = "https://demo.bayesadvisory.cl/build-sha.txt"
 _SHA = re.compile(r"[0-9a-f]{40}")
 
 PUBLICAR = "publicar"

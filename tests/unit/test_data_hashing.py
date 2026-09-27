@@ -6,8 +6,8 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from nikodym.core.exceptions import DataValidationError
-from nikodym.data.hashing import data_hash
+from bayesrisk.core.exceptions import DataValidationError
+from bayesrisk.data.hashing import data_hash
 
 GOLDEN_DATA_HASH = "9c5118ad5b593e577783c64f5268b5ae7d755e799353099f30e0498e8ea19f68"
 GOLDEN_CATEGORY_DATA_HASH = "65191931e5ccb9956156e85d7ffff3ec6989b0e8e702884831a39059a37468cc"

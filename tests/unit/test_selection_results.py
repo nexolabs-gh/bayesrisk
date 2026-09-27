@@ -11,9 +11,9 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-from nikodym.binning.results import iv_band as binning_iv_band
-from nikodym.selection import results as selection_results
-from nikodym.selection.results import (
+from bayesrisk.binning.results import iv_band as binning_iv_band
+from bayesrisk.selection import results as selection_results
+from bayesrisk.selection.results import (
     SelectionCardSection,
     SelectionDecisionReason,
     SelectionResult,
@@ -430,7 +430,7 @@ def test_selection_results_reutiliza_iv_band_de_binning() -> None:
 def test_selection_lazy_exports_publicos_no_arrastran_pandas_hasta_acceder_results() -> None:
     code = (
         "import sys;"
-        "import nikodym.selection as selection;"
+        "import bayesrisk.selection as selection;"
         "assert 'pandas' not in sys.modules, 'pandas cargado antes del lazy export';"
         "symbols=('SelectionDecisionReason','VariableSelectionDecision',"
         "'SelectionResult','SelectionCardSection');"

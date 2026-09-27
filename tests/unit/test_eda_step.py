@@ -7,12 +7,12 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.eda as eda
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.data.config import (
+import bayesrisk.eda as eda
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     CohortSplitConfig,
     DataConfig,
     LoadingConfig,
@@ -22,21 +22,21 @@ from nikodym.data.config import (
     Rule,
     TargetConfig,
 )
-from nikodym.data.partition import PARTITION_COL, TTD_COL, PartitionResult
-from nikodym.data.target import STATUS_COL, LabeledFrame, TargetSummary
-from nikodym.eda.card import EdaCardSection
-from nikodym.eda.config import (
+from bayesrisk.data.partition import PARTITION_COL, TTD_COL, PartitionResult
+from bayesrisk.data.target import STATUS_COL, LabeledFrame, TargetSummary
+from bayesrisk.eda.card import EdaCardSection
+from bayesrisk.eda.config import (
     DefaultRateConfig,
     EdaConfig,
     SamplingConfig,
     TemporalStabilityConfig,
     UnivariateConfig,
 )
-from nikodym.eda.default_rate import DefaultRateResult
-from nikodym.eda.figures import FigureSpec, _build_figure_specs
-from nikodym.eda.step import EDA_ARTIFACTS, EdaResult, EdaStep
-from nikodym.eda.univariate import UnivariateResult
-from nikodym.testing import assert_bitwise_reproducible
+from bayesrisk.eda.default_rate import DefaultRateResult
+from bayesrisk.eda.figures import FigureSpec, _build_figure_specs
+from bayesrisk.eda.step import EDA_ARTIFACTS, EdaResult, EdaStep
+from bayesrisk.eda.univariate import UnivariateResult
+from bayesrisk.testing import assert_bitwise_reproducible
 
 ROOT_SEED = 20_240_626
 
@@ -133,7 +133,7 @@ def _config(*, sampling: SamplingConfig | None = None) -> EdaConfig:
 
 def _study_with_data(frame: pd.DataFrame, cfg: EdaConfig | None = None) -> Study:
     """Crea un ``Study`` con artefactos de ``data`` precargados."""
-    study = Study(NikodymConfig(repro=ReproConfig(seed=ROOT_SEED), eda=cfg or _config()))
+    study = Study(BayesRiskConfig(repro=ReproConfig(seed=ROOT_SEED), eda=cfg or _config()))
     study.artifacts.set("data", "frame", frame)
     study.artifacts.set("data", "labels", _labels(frame))
     study.artifacts.set("data", "splits", _splits(frame))
@@ -376,7 +376,7 @@ def _frame_sin_fecha(n_rows: int = 12) -> pd.DataFrame:
 
 
 def _study_con_data(frame: pd.DataFrame, cfg: EdaConfig, data: DataConfig) -> Study:
-    study = Study(NikodymConfig(repro=ReproConfig(seed=ROOT_SEED), data=data, eda=cfg))
+    study = Study(BayesRiskConfig(repro=ReproConfig(seed=ROOT_SEED), data=data, eda=cfg))
     study.artifacts.set("data", "frame", frame)
     study.artifacts.set("data", "labels", _labels(frame))
     study.artifacts.set("data", "splits", _splits(frame))

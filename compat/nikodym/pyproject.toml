@@ -1,0 +1,71 @@
+# nikodym 1.21.0 — capa de compatibilidad congelada (enmienda RENOMBRE-BAYESRISK, D-REN-7).
+#
+# La librería se llama `bayesrisk` desde la 2.0.0. Este paquete no trae código de la librería: su
+# único módulo instala un alias `nikodym.<ruta>` → `bayesrisk.<ruta>` y avisa una vez. Es el último
+# release de nikodym; no se mantiene en paralelo. Vive fuera del proyecto uv (no entra a uv.lock).
+#
+# Los extras replican, con el mismo nombre, los de `bayesrisk` (un gate de la suite los compara):
+# `pip install "nikodym[scoring]"` tiene que seguir trayendo lo mismo que traía.
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nikodym"
+version = "1.21.0"
+description = "nikodym ahora se llama bayesrisk. Este paquete sólo mantiene funcionando `import nikodym`: instala bayesrisk y reexporta todo."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Bayes Advisory", email = "admin@nxlabs.cl" }]
+keywords = ["credit-risk", "ifrs9", "ecl", "scorecard", "bayesrisk"]
+classifiers = [
+  "Development Status :: 7 - Inactive",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Topic :: Scientific/Engineering",
+]
+dependencies = ["bayesrisk>=2.0,<3"]
+
+[project.optional-dependencies]
+scoring = ["bayesrisk[scoring]>=2.0,<3"]
+xgboost = ["bayesrisk[xgboost]>=2.0,<3"]
+lightgbm = ["bayesrisk[lightgbm]>=2.0,<3"]
+catboost = ["bayesrisk[catboost]>=2.0,<3"]
+tuning = ["bayesrisk[tuning]>=2.0,<3"]
+explain = ["bayesrisk[explain]>=2.0,<3"]
+forecasting = ["bayesrisk[forecasting]>=2.0,<3"]
+survival = ["bayesrisk[survival]>=2.0,<3"]
+markov = ["bayesrisk[markov]>=2.0,<3"]
+tracking = ["bayesrisk[tracking]>=2.0,<3"]
+ui = ["bayesrisk[ui]>=2.0,<3"]
+polars = ["bayesrisk[polars]>=2.0,<3"]
+excel = ["bayesrisk[excel]>=2.0,<3"]
+report = ["bayesrisk[report]>=2.0,<3"]
+pdf = ["bayesrisk[pdf]>=2.0,<3"]
+docx = ["bayesrisk[docx]>=2.0,<3"]
+ai = ["bayesrisk[ai]>=2.0,<3"]
+ml = ["bayesrisk[ml]>=2.0,<3"]
+all = ["bayesrisk[all]>=2.0,<3"]
+
+[project.urls]
+"bayesrisk en PyPI" = "https://pypi.org/project/bayesrisk/"
+Documentation = "https://docs.bayesadvisory.cl"
+"Migrar desde nikodym" = "https://docs.bayesadvisory.cl/migrar-desde-nikodym/"
+Source = "https://github.com/nexolabs-gh/nikodym"
+
+# `nikodym-ui` sigue existiendo para quien lo tenga en un script: apunta directo a la interfaz de
+# bayesrisk (sin pasar por el alias ni por el aviso).
+[project.scripts]
+nikodym-ui = "bayesrisk.ui.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nikodym"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/README.md", "/LICENSE", "/pyproject.toml"]

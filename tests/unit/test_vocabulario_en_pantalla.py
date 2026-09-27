@@ -34,32 +34,32 @@ from typing import Any, Final, get_args
 import pytest
 from pydantic import BaseModel
 
-from nikodym.binning.results import IV_BAND_LABELS, IvBand
-from nikodym.eda.card import FAILED_ANALYSIS_LABELS, EdaCardSection
-from nikodym.eda.default_rate import _RESULT_COLUMNS as _COLUMNAS_TASA
-from nikodym.eda.default_rate import (
+from bayesrisk.binning.results import IV_BAND_LABELS, IvBand
+from bayesrisk.eda.card import FAILED_ANALYSIS_LABELS, EdaCardSection
+from bayesrisk.eda.default_rate import _RESULT_COLUMNS as _COLUMNAS_TASA
+from bayesrisk.eda.default_rate import (
     AXIS_LABELS,
     DEFAULT_RATE_NOT_EVALUABLE_REASON_LABELS,
     DefaultRateNotEvaluableReason,
     EdaAxis,
 )
-from nikodym.eda.quality import _RESULT_COLUMNS as _COLUMNAS_CALIDAD
-from nikodym.eda.quality import QUALITY_FLAG_LABELS, QualityFlag
-from nikodym.eda.stability import (
+from bayesrisk.eda.quality import _RESULT_COLUMNS as _COLUMNAS_CALIDAD
+from bayesrisk.eda.quality import QUALITY_FLAG_LABELS, QualityFlag
+from bayesrisk.eda.stability import (
     NOT_EVALUABLE_REASON_LABELS,
     STABILITY_INDICATOR_LABELS,
     NotEvaluableReason,
     StabilityMetric,
 )
-from nikodym.selection.config import (
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
     VifSelectionConfig,
 )
-from nikodym.selection.results import REASON_LABELS, SelectionDecisionReason
-from nikodym.selection.step import _thresholds_from_config
-from nikodym.stability.results import (
+from bayesrisk.selection.results import REASON_LABELS, SelectionDecisionReason
+from bayesrisk.selection.step import _thresholds_from_config
+from bayesrisk.stability.results import (
     BAND_LABELS,
     PSI_METRIC_LABELS,
     STABILITY_METRIC_LABELS,
@@ -68,8 +68,8 @@ from nikodym.stability.results import (
     StabilityBand,
     StabilityMetricName,
 )
-from nikodym.validation.config import BacktestParameter, ValidationFamily
-from nikodym.validation.results import (
+from bayesrisk.validation.config import BacktestParameter, ValidationFamily
+from bayesrisk.validation.results import (
     BACKTEST_PARAMETER_LABELS,
     BACKTEST_TEST_LABELS,
     CALIBRATION_TEST_LABELS,
@@ -100,7 +100,7 @@ _RAIZ: Final = Path(__file__).resolve().parents[2]
 _CHART_THEME: Final = _RAIZ / "web" / "src" / "components" / "charts" / "chart-theme.ts"
 _RESULTS_FORMAT: Final = _RAIZ / "web" / "src" / "lib" / "results-format.ts"
 _RESULTS_TYPES: Final = _RAIZ / "web" / "src" / "lib" / "results-types.ts"
-_PROSE: Final = _RAIZ / "src" / "nikodym" / "report" / "prose.py"
+_PROSE: Final = _RAIZ / "src" / "bayesrisk" / "report" / "prose.py"
 _RESULTS_F1: Final = _RAIZ / "web" / "src" / "fixtures" / "demo" / "results-f1.json"
 
 
@@ -463,7 +463,7 @@ def test_el_semaforo_del_html_lee_las_palabras_de_su_fuente() -> None:
     sin que nada lo acusara. Ahora las lee de las dos fuentes únicas, y este gate fija que siga
     siendo así: un literal nuevo ahí es la reaparición del defecto.
     """
-    fuente = (_RAIZ / "src" / "nikodym" / "report" / "renderer.py").read_text(encoding="utf-8")
+    fuente = (_RAIZ / "src" / "bayesrisk" / "report" / "renderer.py").read_text(encoding="utf-8")
     for palabra in ("Pass técnico", "Falla técnica", "Requiere revisión", "Requiere redesarrollo"):
         assert palabra not in fuente, f"«{palabra}» volvió al mapa del semáforo"
     assert 'BAND_LABELS["review"]' in fuente
@@ -475,14 +475,14 @@ def test_la_prosa_del_informe_ya_no_tiene_su_propio_diccionario_de_bandas() -> N
     fuente = _PROSE.read_text(encoding="utf-8")
     assert "_STABILITY_BANDS" not in fuente
     assert "Requiere redesarrollo" not in fuente
-    assert "from nikodym.stability.results import BAND_LABELS, PSI_METRIC_LABELS" in fuente
+    assert "from bayesrisk.stability.results import BAND_LABELS, PSI_METRIC_LABELS" in fuente
 
 
 def test_la_prosa_del_informe_sigue_sin_arrastrar_pandas() -> None:
     """El rótulo de los motivos vive en ``selection`` (que sí importa pandas) y por eso su import
     va dentro de ``_reason_label``. Sin este gate, subirlo al módulo pasa inadvertido."""
     code = (
-        "import sys, nikodym.report.prose as p;"
+        "import sys, bayesrisk.report.prose as p;"
         "assert 'pandas' not in sys.modules, 'prose arrastró pandas al importarse';"
         "assert p._reason_label('low_iv') == 'IV insuficiente';"
         "assert p._quality_label('near_unique') == 'casi única';"
@@ -524,7 +524,7 @@ def test_el_tipo_eda_result_espeja_la_card_y_sus_tres_tablas() -> None:
 def test_el_tope_de_barras_por_cohorte_es_el_mismo_en_el_informe_y_en_la_pantalla() -> None:
     """El eje de cohorte acepta cualquier columna: el informe y el panel grafican como máximo el
     mismo número de cohortes, en el orden del motor, y lo dicen (3.ª pasada adversarial de S9)."""
-    from nikodym.report import charts
+    from bayesrisk.report import charts
 
     fuente = _RESULTS_FORMAT.read_text(encoding="utf-8")
     tope_ts = re.search(r"^export const EDA_MAX_RATE_BARS = (\d+)$", fuente, re.M)
@@ -535,11 +535,11 @@ def test_el_tope_de_barras_por_cohorte_es_el_mismo_en_el_informe_y_en_la_pantall
 def test_el_tope_de_filas_publicadas_de_la_tasa_es_uno_solo_para_respuesta_e_informe() -> None:
     """Cierre 1 de D-SC: la respuesta y el informe publican como máximo 1.000 períodos/cohortes.
 
-    La fuente canónica vive en el dominio (`nikodym.eda.default_rate.MAX_PUBLISHED_PERIODS`); el
+    La fuente canónica vive en el dominio (`bayesrisk.eda.default_rate.MAX_PUBLISHED_PERIODS`); el
     serializer la replica —la capa `ui` no importa dominios— y este gate los ata.
     """
-    from nikodym.eda.default_rate import MAX_PUBLISHED_PERIODS
-    from nikodym.ui import serializers
+    from bayesrisk.eda.default_rate import MAX_PUBLISHED_PERIODS
+    from bayesrisk.ui import serializers
 
     assert serializers.EDA_MAX_PUBLISHED_PERIODS == MAX_PUBLISHED_PERIODS == 1_000
 
@@ -550,7 +550,7 @@ def test_las_filas_de_la_tasa_y_de_la_calidad_espejan_las_columnas_del_motor() -
     La fila de la tasa lleva además `period_type`, que añade el serializer al final: el tipo con
     que el motor distinguió la cohorte, para que la pantalla no funda dos que JSON escribe igual.
     """
-    from nikodym.ui import serializers
+    from bayesrisk.ui import serializers
 
     fuente = Path(serializers.__file__).read_text(encoding="utf-8")
     # La proyección vive en `_project_periods`, que comparten el payload (hasta el tope) y la
@@ -569,7 +569,7 @@ def test_la_fila_de_calibracion_y_los_cortes_del_semaforo_espejan_al_motor() -> 
     ``traffic_light_cuts``; el tipo del front espeja las columnas del motor, en su orden, y el
     tipo de los cortes lleva exactamente las dos claves. Un fixture capturado antes de estas claves
     sigue siendo válido: el panel las lee como opcionales."""
-    from nikodym.validation.results import _CALIBRATION_COLUMNS
+    from bayesrisk.validation.results import _CALIBRATION_COLUMNS
 
     assert _claves_de_la_interfaz_ts("ValidationCalibrationRow") == list(_CALIBRATION_COLUMNS)
     assert _claves_de_la_interfaz_ts("ValidationTrafficLightCuts") == ["green_alpha", "red_alpha"]
@@ -580,7 +580,7 @@ def test_la_particion_sin_veredicto_espeja_lo_que_la_card_publica() -> None:
     partición, sus números y la causa; el tipo del front espeja esas claves en su orden, y la
     columna de la causa cierra la tabla ``calibration`` (el informe no la pinta; el panel la
     traduce)."""
-    from nikodym.validation.results import _CALIBRATION_COLUMNS, NOT_EVALUABLE_PARTITION_FIELDS
+    from bayesrisk.validation.results import _CALIBRATION_COLUMNS, NOT_EVALUABLE_PARTITION_FIELDS
 
     assert _claves_de_la_interfaz_ts("ValidationNotEvaluablePartition") == list(
         NOT_EVALUABLE_PARTITION_FIELDS
@@ -591,7 +591,7 @@ def test_la_particion_sin_veredicto_espeja_lo_que_la_card_publica() -> None:
 def test_el_eje_temporal_en_palabras_cubre_los_dos_ejes_con_eje() -> None:
     """``TEMPORAL_AXIS_LABELS`` traduce ``comparison`` de la fila temporal: los ejes de
     ``TemporalAxis`` salvo ``none``, que no produce fila."""
-    from nikodym.stability.config import TemporalAxis
+    from bayesrisk.stability.config import TemporalAxis
 
     assert set(TEMPORAL_AXIS_LABELS) == set(get_args(TemporalAxis)) - {"none"}
 
@@ -611,7 +611,7 @@ def test_la_receta_del_recalculo_espeja_lo_que_la_card_publica() -> None:
 def test_la_fila_del_perfil_espeja_lo_que_el_serializer_aplana() -> None:
     """El perfil por variable no es un frame del motor sino la proyección plana del serializer
     (columna delante, un tramo por fila): el tipo espeja esa proyección, medida sobre su código."""
-    from nikodym.ui import serializers
+    from bayesrisk.ui import serializers
 
     fuente = Path(serializers.__file__).read_text(encoding="utf-8")
     inicio = fuente.index("def _eda_univariate(")

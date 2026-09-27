@@ -1,4 +1,4 @@
-"""Tests de ``StressConfig`` (SDD-21 §5) e integración con ``NikodymConfig``."""
+"""Tests de ``StressConfig`` (SDD-21 §5) e integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -14,19 +14,19 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.stress as stress_pkg
-import nikodym.stress.config as stress_config_module
-from nikodym.core import study as study_module
-from nikodym.core.config import (
+import bayesrisk.stress as stress_pkg
+import bayesrisk.stress.config as stress_config_module
+from bayesrisk.core import study as study_module
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.stress.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.stress.config import (
     ReverseStressConfig,
     SensitivitySweepConfig,
     StressConfig,
@@ -38,7 +38,7 @@ from nikodym.stress.config import (
     StressTargetConfig,
     StressValidationConfig,
 )
-from nikodym.stress.exceptions import (
+from bayesrisk.stress.exceptions import (
     NonMonotonicStressError,
     ReverseStressError,
     StressConfigError,
@@ -101,7 +101,7 @@ def _cfg(**overrides: object) -> StressConfig:
 
 def _manual_default_hash() -> str:
     """Recalcula el golden sin llamar a ``config_hash``."""
-    payload = NikodymConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
+    payload = BayesRiskConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -213,7 +213,7 @@ def test_stressconfig_defaults_golden() -> None:
     }
 
 
-def test_round_trip_yaml_stressconfig_y_nikodymconfig() -> None:
+def test_round_trip_yaml_stressconfig_y_bayesriskconfig() -> None:
     """Serializar y recargar ``stress`` por YAML preserva igualdad exacta."""
     target = StressTargetConfig(
         name="pd_objetivo",
@@ -250,7 +250,7 @@ def test_round_trip_yaml_stressconfig_y_nikodymconfig() -> None:
             ),
         ),
     )
-    root = NikodymConfig(stress=cfg)
+    root = BayesRiskConfig(stress=cfg)
     assert loads_config(dump_config(root)) == root
 
     text = yaml.safe_dump(cfg.model_dump(mode="json"), sort_keys=False, allow_unicode=True)
@@ -258,14 +258,14 @@ def test_round_trip_yaml_stressconfig_y_nikodymconfig() -> None:
     assert StressConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_stress_instancia_y_dict_coaccionan() -> None:
+def test_bayesriskconfig_stress_instancia_y_dict_coaccionan() -> None:
     """Instancias y dicts en ``stress`` se coaccionan por el hook cargado."""
     stress = _cfg()
-    cfg = NikodymConfig(stress=stress)
+    cfg = BayesRiskConfig(stress=stress)
     assert isinstance(cfg.stress, StressConfig)
     assert cfg.stress is stress
 
-    dict_cfg = NikodymConfig(
+    dict_cfg = BayesRiskConfig(
         stress={
             "scenarios": [
                 {
@@ -285,42 +285,42 @@ def test_nikodymconfig_stress_instancia_y_dict_coaccionan() -> None:
     assert dict_cfg.stress.scenarios[0].shocks[0].factor == "unemployment"
 
 
-def test_nikodymconfig_stress_none_explicito() -> None:
+def test_bayesriskconfig_stress_none_explicito() -> None:
     """``stress=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(stress=None).stress is None
+    assert BayesRiskConfig(stress=None).stress is None
 
 
-def test_nikodymconfig_stress_core_only_acepta_blob_json(
+def test_bayesriskconfig_stress_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``stress`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_STRESS_CONFIG_CLS", None)
-    cfg = NikodymConfig(stress={"scenarios": [{"name": "severe_plus"}]})
+    cfg = BayesRiskConfig(stress={"scenarios": [{"name": "severe_plus"}]})
     assert cfg.stress == {"scenarios": [{"name": "severe_plus"}]}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_stress_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_stress_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``stress`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_STRESS_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(stress=blob)
+        BayesRiskConfig(stress=blob)
 
 
 def test_config_hash_default_con_stress_none_golden_no_tautologico() -> None:
     """El golden por defecto incluye ``stress=None`` con cálculo independiente."""
     assert _manual_default_hash() == GOLDEN_DEFAULT_CONFIG_HASH
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_stress_no_es_infra_section_y_cambia_hash() -> None:
     """``stress`` entra al ``config_hash`` global y sus parámetros mueven identidad."""
-    base = config_hash(NikodymConfig(stress=_cfg()))
+    base = config_hash(BayesRiskConfig(stress=_cfg()))
     variado = config_hash(
-        NikodymConfig(
+        BayesRiskConfig(
             stress=_cfg(output=StressOutputConfig(metrics=("pd_marginal", "pd_cumulative")))
         )
     )
@@ -368,8 +368,8 @@ def test_hash_normaliza_ceros_negativos_en_tuplas_float() -> None:
     )
 
     assert negativo.model_dump(mode="json") == positivo.model_dump(mode="json")
-    assert config_hash(NikodymConfig(stress=negativo)) == config_hash(
-        NikodymConfig(stress=positivo)
+    assert config_hash(BayesRiskConfig(stress=negativo)) == config_hash(
+        BayesRiskConfig(stress=positivo)
     )
 
 
@@ -940,7 +940,7 @@ def test_stress_public_api_minimo() -> None:
     assert "StressConfig" in stress_pkg.__all__
 
 
-def test_stress_errors_descienden_de_nikodym_error_y_respetan_jerarquia() -> None:
+def test_stress_errors_descienden_de_bayesrisk_error_y_respetan_jerarquia() -> None:
     """Las excepciones de ``stress`` cuelgan de la raíz propia y jerarquía SDD-21."""
     for error_cls in (
         StressError,
@@ -954,7 +954,7 @@ def test_stress_errors_descienden_de_nikodym_error_y_respetan_jerarquia() -> Non
         ReverseStressError,
         NonMonotonicStressError,
     ):
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
         with pytest.raises(StressError, match="fallo stress"):
             raise error_cls("fallo stress")
     assert issubclass(ReverseStressError, StressEngineError)
@@ -965,36 +965,36 @@ def test_core_study_cablea_stress_en_orden_por_defecto() -> None:
     """``Study`` conoce ``stress`` inmediatamente después de ``forward``."""
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order.index("forward") < order.index("stress") < order.index("performance")
-    assert study_module._DOMAIN_MODULES["stress"] == "nikodym.stress"
+    assert study_module._DOMAIN_MODULES["stress"] == "bayesrisk.stress"
     assert study_module._DOMAIN_CONFIG_CLASSES["stress"] == (
-        "nikodym.stress.config",
+        "bayesrisk.stress.config",
         "StressConfig",
     )
 
 
 def test_import_stress_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.stress`` registra hook sin arrastrar engines pesados."""
+    """``import bayesrisk.stress`` registra hook sin arrastrar engines pesados."""
     code = (
-        "import nikodym.stress, sys;"
-        "assert 'nikodym.stress.results' not in sys.modules;"
-        "from nikodym.core.config import schema as _schema;"
-        "assert _schema._STRESS_CONFIG_CLS is nikodym.stress.StressConfig;"
-        "from nikodym.core.config import NikodymConfig;"
-        "bloqueados=[m for m in ('pandas','numpy','scipy','statsmodels','nikodym.provisioning') "
+        "import bayesrisk.stress, sys;"
+        "assert 'bayesrisk.stress.results' not in sys.modules;"
+        "from bayesrisk.core.config import schema as _schema;"
+        "assert _schema._STRESS_CONFIG_CLS is bayesrisk.stress.StressConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "bloqueados=[m for m in ('pandas','numpy','scipy','statsmodels','bayesrisk.provisioning') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(stress={'scenarios':[{'name':'severe_plus',"
+        "cfg=BayesRiskConfig(stress={'scenarios':[{'name':'severe_plus',"
         "'shocks':[{'factor':'unemployment','value':1.5}],"
         "'require_dominates_forward_adverse':False}],"
         "'validation':{'require_dominates_forward_adverse':False,"
         "'fail_on_falta_dato':False,'fail_on_missing_ecl_engine':False}});"
         "assert type(cfg.stress).__name__ == 'StressConfig';"
-        "assert type(cfg.stress).__module__ == 'nikodym.stress.config';"
-        "bloqueados=[m for m in ('pandas','numpy','scipy','statsmodels','nikodym.provisioning') "
+        "assert type(cfg.stress).__module__ == 'bayesrisk.stress.config';"
+        "bloqueados=[m for m in ('pandas','numpy','scipy','statsmodels','bayesrisk.provisioning') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "assert 'nikodym.stress.results' not in sys.modules;"
-        "assert isinstance(cfg.stress, nikodym.stress.StressConfig)"
+        "assert 'bayesrisk.stress.results' not in sys.modules;"
+        "assert isinstance(cfg.stress, bayesrisk.stress.StressConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 

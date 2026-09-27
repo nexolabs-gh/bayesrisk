@@ -3,8 +3,8 @@
 ``external_artifacts`` es la declaración **máquina-legible** de lo que un trabajo acepta traer de
 fuera, y de ella sale la **allowlist** de la puerta por HTTP: una clave que ningún trabajo
 disponible declare se rechaza sin materializar nada. Como el resto del catálogo, se escribe con
-literales —`nikodym.ui` es *domain-agnostic* por otro gate—, así que sin nada que la ate al motor se
-separaría en silencio en las dos direcciones:
+literales —`bayesrisk.ui` es *domain-agnostic* por otro gate—, así que sin nada que la ate al motor
+se separaría en silencio en las dos direcciones:
 
 - **una clave que el motor no publica** ⇒ el trabajo pide un archivo que nadie va a consumir, y la
   corrida lo declara inerte después de que el usuario ya lo subió;
@@ -25,10 +25,10 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from nikodym.core.config.schema import cargar_configs_de_dominio
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import _DOMAIN_MODULES
-from nikodym.ui.jobs import artefactos_admitidos, list_jobs
+from bayesrisk.core.config.schema import cargar_configs_de_dominio
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import _DOMAIN_MODULES
+from bayesrisk.ui.jobs import artefactos_admitidos, list_jobs
 
 _CLAVES_DE_ENTRADA = {"artifact", "label", "when", "key_question", "columns"}
 _CLAVES_DE_COLUMNA = {"question", "config_paths"}
@@ -124,7 +124,7 @@ def test_todo_campo_del_mapeo_existe_en_el_motor() -> None:
     ]
     assert inexistentes == [], (
         f"campos del mapeo que el motor no tiene: {inexistentes}. Si un campo se renombró, "
-        "actualiza `external_artifacts` en `nikodym/ui/jobs.py`."
+        "actualiza `external_artifacts` en `bayesrisk/ui/jobs.py`."
     )
 
 

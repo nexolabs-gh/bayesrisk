@@ -14,12 +14,12 @@ from typing import Any
 import numpy as np
 import pytest
 
-pytest.importorskip("optbinning", reason="exige nikodym[scoring]")
+pytest.importorskip("optbinning", reason="exige bayesrisk[scoring]")
 
 
 def _puerta(tmp_path: Path) -> Any:
-    from nikodym import Scorecard
-    from nikodym.ui.datasets import materialize
+    from bayesrisk import Scorecard
+    from bayesrisk.ui.datasets import materialize
 
     datos = materialize("consumo_comportamiento", workdir=tmp_path / "datasets")
     sc = Scorecard(

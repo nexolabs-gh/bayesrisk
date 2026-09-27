@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from nikodym.ui import jobs
+from bayesrisk.ui import jobs
 
 _ROOT = Path(__file__).resolve().parents[2]
 _REGISTRY = _ROOT / "tests" / "fixtures" / "option_effect_oracles.txt"

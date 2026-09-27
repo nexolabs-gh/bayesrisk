@@ -12,8 +12,8 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.explain.results as explain_results
-from nikodym.explain.results import (
+import bayesrisk.explain.results as explain_results
+from bayesrisk.explain.results import (
     DriverComparisonRecord,
     ExplainCardSection,
     ExplainerMetadata,
@@ -412,7 +412,7 @@ def test_explain_result_scorecard_contributions_copia_y_valida() -> None:
 def test_import_results_liviano_no_arrastra_shap_ni_tabulares() -> None:
     assert explain_results.__all__  # el módulo expone su API pública
     code = (
-        "import nikodym.explain.results, sys;"
+        "import bayesrisk.explain.results, sys;"
         "bloqueados=[m for m in ('shap','matplotlib','sklearn','pandas','numpy') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados"

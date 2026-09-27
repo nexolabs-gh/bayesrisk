@@ -7,7 +7,7 @@ discriminación de desempeño y el PSI de estabilidad, y **añade** lo que ningu
 que es contrastar la probabilidad estimada contra el incumplimiento observado.
 
 !!! warning "El estado técnico no es el veredicto"
-    Nikodym publica evidencia: cuántas pruebas corrieron, cuáles fallaron y sobre qué población.
+    bayesrisk publica evidencia: cuántas pruebas corrieron, cuáles fallaron y sobre qué población.
     Aprobar el modelo, aprobarlo con observaciones o rechazarlo es una decisión de quien valida, y
     el informe lo dice explícitamente en su capítulo. Un «Falla» aquí es una prueba que rechazó,
     no una sentencia sobre el modelo.
@@ -198,8 +198,8 @@ Dos detalles que el copy del formulario declara y conviene tener presentes:
 La sección se configura igual desde YAML o desde Python; la interfaz es un editor del mismo config.
 
 ```python
-from nikodym.validation.config import ValidationConfig
-from nikodym.validation.evaluator import ValidationEvaluator
+from bayesrisk.validation.config import ValidationConfig
+from bayesrisk.validation.evaluator import ValidationEvaluator
 
 config = ValidationConfig(
     families=("discrimination", "calibration", "stability"),

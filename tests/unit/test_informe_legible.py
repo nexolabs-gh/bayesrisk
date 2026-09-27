@@ -1,7 +1,7 @@
 """D-INF-1…4 (`docs/design/_ENMIENDA-INFORME-LEGIBLE.md`): el informe se lee en es-CL.
 
 Cada número que el informe imprime —tablas, listas, anexo de parámetros, linaje, gráficos y la
-página ejecutiva— pasa por :mod:`nikodym.report.cifras`: coma decimal, cuatro decimales, miles con
+página ejecutiva— pasa por :mod:`bayesrisk.report.cifras`: coma decimal, cuatro decimales, miles con
 punto en los conteos, «sí»/«no», y la regla del cero final, que impide que un redondeo se haga pasar
 por un corte (un PSI ``0.24996`` no se escribe ``0,2500`` junto a su corte de ``0,25``).
 """
@@ -18,9 +18,9 @@ import pytest
 from test_report_charts import _stability_frame
 from test_report_renderer import _bundle, _renderer
 
-from nikodym.report import charts, prose
-from nikodym.report import renderer as renderer_module
-from nikodym.report.cifras import (
+from bayesrisk.report import charts, prose
+from bayesrisk.report import renderer as renderer_module
+from bayesrisk.report.cifras import (
     cifra,
     conteo,
     corte,
@@ -190,7 +190,7 @@ def test_el_word_alinea_a_la_derecha_las_columnas_numericas() -> None:
     docx = pytest.importorskip("docx")
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-    from nikodym.report.docx import DocxReportRenderer
+    from bayesrisk.report.docx import DocxReportRenderer
 
     documento = docx.Document(io.BytesIO(DocxReportRenderer().render(_bundle())))
     derecha: set[str] = set()

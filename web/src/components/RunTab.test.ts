@@ -208,7 +208,7 @@ describe("applyPreset (el ejemplo selecciona su trabajo · D-JOB-17)", () => {
  * Es el gate que hizo aceptable el cambio: ninguno de los tres deja el sidebar vacío, que era el
  * único desenlace intolerable. Los configs vienen de los fixtures de la demo, que son la salida
  * verbatim del backend (`scripts/capture_demo_fixtures*.py`); se comprobó contra
- * `nikodym.ui.presets` que las secciones activas de los tres coinciden con las de aquí.
+ * `bayesrisk.ui.presets` que las secciones activas de los tres coinciden con las de aquí.
  *
  * ⚠️ **La demo estática cambia con esto, y es la decisión tomada** (por encima del «`job === null` a
  * propósito» de D-JOB-19): el escaparate deja de enseñar 15 secciones para el ejemplo de scorecard y

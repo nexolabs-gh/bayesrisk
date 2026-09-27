@@ -1,6 +1,6 @@
 # Avisos declarados
 
-Cuando un número no sale de un dato real, Nikodym no lo rellena con un default cómodo: lo marca. La
+Cuando un número no sale de un dato real, bayesrisk no lo rellena con un default cómodo: lo marca. La
 constancia viaja con el resultado —no en un log que nadie lee— y esta página es el catálogo de esas
 marcas, para cuando aparezca una en tu corrida y necesites saber qué significa.
 
@@ -11,7 +11,7 @@ empieza por [Conceptos](concepts.md).
 
 La diferencia importa, porque una es un pendiente nuestro y la otra una decisión tuya:
 
-**`FALTA-DATO` — lo debe Nikodym.** Una brecha del motor: algo que la librería todavía no trae, que
+**`FALTA-DATO` — lo debe bayesrisk.** Una brecha del motor: algo que la librería todavía no trae, que
 difirió a una versión posterior, o que no verificó contra la fuente oficial. Son pocas, y están
 enumeradas abajo hasta la última.
 
@@ -90,17 +90,17 @@ RAN 21-10. Están registradas en el
 
 ## Cómo se clasifica un código nuevo
 
-La regla cabe en una línea: `FALTA-DATO` es *lo debe Nikodym*; `DATO-INSTITUCIONAL` es *lo debe la
+La regla cabe en una línea: `FALTA-DATO` es *lo debe bayesrisk*; `DATO-INSTITUCIONAL` es *lo debe la
 institución*. Con una precisión que evita el caso ambiguo: **una capacidad diferida es del motor
 aunque el parámetro lo escriba el usuario**. Si la librería no la trae todavía, la deuda es nuestra
 por más que el dato tenga que ponerlo alguien más.
 
-Las dos marcas viven en `nikodym.core.markers`, y el código que las consume usa `is_declared_warning()`
+Las dos marcas viven en `bayesrisk.core.markers`, y el código que las consume usa `is_declared_warning()`
 en vez de comparar el literal: un filtro que sólo conozca una de las dos descartaría la otra en
 silencio.
 
 ```python
-from nikodym.core.markers import is_declared_warning
+from bayesrisk.core.markers import is_declared_warning
 
 # Todos los avisos declarados de la fila, de cualquiera de las dos marcas.
 declarados = [c for c in fila.warning_codes if is_declared_warning(c)]

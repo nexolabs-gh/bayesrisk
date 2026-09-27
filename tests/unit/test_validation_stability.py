@@ -2,7 +2,7 @@
 
 Cubre el contrato de reúso-no-reimplementación: la proyección del artefacto ``stability_metrics``
 copia el PSI byte a byte, el recálculo —que desde la capa C de VALIDACION-COTEJADA (D-VAL-16) corre
-en ``nikodym.stability.step.compute_stability`` y llega aquí como otro ``stability_metrics`` con
+en ``bayesrisk.stability.step.compute_stability`` y llega aquí como otro ``stability_metrics`` con
 ``source="recomputed"``— se proyecta idéntico al consumo, el mapeo de bandas PSI a verdicto
 (``<stable`` estable / ``[stable,review)`` vigilar / ``>=review`` redesarrollar) y un test AST que
 verifica que no se reimplementa el PSI (sin ``log``). ``stability_recomputed(frame, **kwargs)``
@@ -22,11 +22,11 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.validation.stability as stability
-from nikodym.stability.evaluator import StabilityEvaluator
-from nikodym.validation.config import StabilityValidationConfig
-from nikodym.validation.exceptions import ValidationDataError
-from nikodym.validation.stability import (
+import bayesrisk.validation.stability as stability
+from bayesrisk.stability.evaluator import StabilityEvaluator
+from bayesrisk.validation.config import StabilityValidationConfig
+from bayesrisk.validation.exceptions import ValidationDataError
+from bayesrisk.validation.stability import (
     evaluate_stability,
     stability_from_artifact,
 )
@@ -324,7 +324,7 @@ def test_ast_no_reimplementa_psi() -> None:
     # sólo se proyecta. Ningún `StabilityEvaluator(` construido a mano puede volver.
     assert "StabilityEvaluator(" not in source
     assert "compute_stability" in source
-    from nikodym.stability import step as stability_step
+    from bayesrisk.stability import step as stability_step
 
     assert callable(stability_step.compute_stability)
 
@@ -335,11 +335,11 @@ def test_ast_no_reimplementa_psi() -> None:
 def test_import_stability_no_arrastra_sklearn_ni_scipy() -> None:
     code = (
         "import sys;"
-        "import nikodym.validation.stability as s;"
+        "import bayesrisk.validation.stability as s;"
         "blocked=[m for m in ('scipy','sklearn','statsmodels') if m in sys.modules];"
         "assert not blocked, blocked;"
         "assert callable(s.stability_from_artifact);"
         "assert callable(s.evaluate_stability);"
-        "assert 'nikodym.stability.step' not in sys.modules"
+        "assert 'bayesrisk.stability.step' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)

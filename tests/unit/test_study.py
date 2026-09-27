@@ -13,26 +13,26 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.core import study as study_mod
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.base import BaseNikodymEstimator
-from nikodym.core.config import NikodymConfig, config_hash
-from nikodym.core.config.schema import RunConfig
-from nikodym.core.exceptions import (
+from bayesrisk.core import study as study_mod
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.base import BaseBayesRiskEstimator
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+from bayesrisk.core.config.schema import RunConfig
+from bayesrisk.core.exceptions import (
     ArtifactNotFoundError,
+    BayesRiskError,
     ConfigError,
-    NikodymError,
     ReproducibilityError,
     UntrustedStudyError,
 )
-from nikodym.core.mixins import AuditableMixin
-from nikodym.core.registry import REGISTRY
-from nikodym.core.steps import StepAdapter
-from nikodym.core.study import Study
+from bayesrisk.core.mixins import AuditableMixin
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.steps import StepAdapter
+from bayesrisk.core.study import Study
 
 
-def _config(**run_kwargs: object) -> NikodymConfig:
-    return NikodymConfig(run=RunConfig(**run_kwargs)) if run_kwargs else NikodymConfig()
+def _config(**run_kwargs: object) -> BayesRiskConfig:
+    return BayesRiskConfig(run=RunConfig(**run_kwargs)) if run_kwargs else BayesRiskConfig()
 
 
 def _minimal_data_dict() -> dict[str, object]:
@@ -84,9 +84,9 @@ def test_save_load_round_trip_contenido_no_ascii(tmp_path: Path) -> None:
     escribiría ``config.yaml``/``run_metadata.json``/``lineage.json`` en cp1252 y la relectura UTF-8
     corrompería el artefacto, rompiendo la reproducibilidad byte-a-byte cross-plataforma.
     """
-    from nikodym.governance import GovernanceConfig
+    from bayesrisk.governance import GovernanceConfig
 
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         name="Análisis de cartera — Peña María",
         governance=GovernanceConfig(
             model_name="Modelo Peña María",
@@ -216,11 +216,11 @@ def test_el_fallo_deja_el_diagnostico_en_run_context_sin_sink(
     El preset F1 trae ``audit: null`` ⇒ ``NullAuditSink``, así que el mensaje del motor se emitía al
     vacío. Este test corre **sin** ``set_audit_sink``: el caso del usuario de ``pip install``.
     """
-    study = _study_que_falla(monkeypatch, NikodymError("falta la columna 'mora_max_12m'"))
+    study = _study_que_falla(monkeypatch, BayesRiskError("falta la columna 'mora_max_12m'"))
 
     error = study.run_context.error
     assert error is not None
-    assert error.type == "NikodymError"
+    assert error.type == "BayesRiskError"
     assert error.message == "falta la columna 'mora_max_12m'"
     assert error.step == "boom"
     assert error.is_domain_error is True
@@ -228,7 +228,7 @@ def test_el_fallo_deja_el_diagnostico_en_run_context_sin_sink(
 
 def test_el_fallo_sella_finished_at(monkeypatch: pytest.MonkeyPatch) -> None:
     """Una corrida terminada declara cuándo terminó, haya salido bien o mal (D-ERR-3)."""
-    study = _study_que_falla(monkeypatch, NikodymError("boom"))
+    study = _study_que_falla(monkeypatch, BayesRiskError("boom"))
 
     assert study.run_context.finished_at is not None
     assert study.run_context.error is not None
@@ -259,7 +259,7 @@ def test_el_config_inejecutable_deja_el_diagnostico_igual_que_un_fallo_de_paso()
     Medido el 2026-07-27 por el camino del usuario de la UI: encender `provisioning_ifrs9` sin
     `survival` produce un `ConfigError` EXCELENTE —dice qué artefacto falta y quién lo pedía— que
     se perdía completo, porque `_resolve_steps`/`_validate_pipeline` corren fuera del `try` que
-    registra el fallo. `nikodym.run` devolvía entonces un `Study` en `"created"`, con `run_id` y
+    registra el fallo. `bayesrisk.run` devolvía entonces un `Study` en `"created"`, con `run_id` y
     `error` en `None`: ni `"done"` ni `"failed"`, o sea un estado que su propio docstring no
     contempla al mandar chequear el status. El fallo no se degradaba, se silenciaba.
     """
@@ -327,15 +327,15 @@ def test_run_end_conserva_la_clave_error_y_suma_las_nuevas(
         provides: tuple = ()
 
         def execute(self, study: Study, rng: object) -> None:
-            raise NikodymError("explotó el paso")
+            raise BayesRiskError("explotó el paso")
 
     monkeypatch.setattr(study, "_resolve_steps", lambda nombres: [_Boom()])
-    with pytest.raises(NikodymError):
+    with pytest.raises(BayesRiskError):
         study.run()
 
     payload = sink.events[-1].payload
     assert payload["error"] == "explotó el paso"
-    assert payload["error_type"] == "NikodymError"
+    assert payload["error_type"] == "BayesRiskError"
     assert payload["step"] == "boom"
 
 
@@ -343,7 +343,7 @@ def test_el_rastro_del_fallo_sobrevive_el_round_trip(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """De poco sirve el diagnóstico si se pierde al guardar el Study parcial para pedir ayuda."""
-    study = _study_que_falla(monkeypatch, NikodymError("falta la columna 'edad'"))
+    study = _study_que_falla(monkeypatch, BayesRiskError("falta la columna 'edad'"))
     destino = study.save(tmp_path / "parcial")
 
     recargado = Study.load(destino)
@@ -456,8 +456,8 @@ def test_run_step_difiere_en_f0() -> None:
 
 
 def test_lineage_bundle_sin_run_levanta() -> None:
-    """``lineage_bundle()`` sobre un Study en ``created`` levanta ``NikodymError``."""
-    with pytest.raises(NikodymError, match=r"run\(\)"):
+    """``lineage_bundle()`` sobre un Study en ``created`` levanta ``BayesRiskError``."""
+    with pytest.raises(BayesRiskError, match=r"run\(\)"):
         Study(_config()).lineage_bundle()
 
 
@@ -495,7 +495,7 @@ def test_save_atomico_no_deja_destino_a_medias(
     def _boom(_cfg: object) -> str:
         raise RuntimeError("fallo al volcar config")
 
-    monkeypatch.setattr("nikodym.core.study.dump_config", _boom)
+    monkeypatch.setattr("bayesrisk.core.study.dump_config", _boom)
     with pytest.raises(RuntimeError, match="fallo al volcar"):
         study.save(destino)
     assert (destino / "config.yaml").read_text(encoding="utf-8") == original
@@ -608,12 +608,14 @@ def test_resolve_step_componente_sin_from_config_levanta(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Un registro sin ``from_config`` falla con diagnóstico explícito."""
-    import nikodym.data
+    import bayesrisk.data
 
     class _NoFactory:
         """Clase registrada inválida para cubrir el error del seam dinámico."""
 
-    study = Study(NikodymConfig(data=nikodym.data.DataConfig.model_validate(_minimal_data_dict())))
+    study = Study(
+        BayesRiskConfig(data=bayesrisk.data.DataConfig.model_validate(_minimal_data_dict()))
+    )
     monkeypatch.setattr(REGISTRY, "resolve", lambda _domain, _name: _NoFactory)
 
     with pytest.raises(ConfigError, match="no expone from_config"):
@@ -621,17 +623,19 @@ def test_resolve_step_componente_sin_from_config_levanta(
 
 
 def test_resolve_step_adapta_estimador_base(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Un ``BaseNikodymEstimator`` registrado se envuelve en ``StepAdapter``."""
-    import nikodym.data
+    """Un ``BaseBayesRiskEstimator`` registrado se envuelve en ``StepAdapter``."""
+    import bayesrisk.data
 
-    class _Estimator(BaseNikodymEstimator):
+    class _Estimator(BaseBayesRiskEstimator):
         """Estimador mínimo para cubrir la rama de adaptación."""
 
         @classmethod
         def from_config(cls, cfg: object) -> _Estimator:
             return cls()
 
-    study = Study(NikodymConfig(data=nikodym.data.DataConfig.model_validate(_minimal_data_dict())))
+    study = Study(
+        BayesRiskConfig(data=bayesrisk.data.DataConfig.model_validate(_minimal_data_dict()))
+    )
     monkeypatch.setattr(REGISTRY, "resolve", lambda _domain, _name: _Estimator)
 
     step = study._resolve_step("data")
@@ -643,7 +647,7 @@ def test_resolve_step_adapta_estimador_base(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_resolve_step_rechaza_objeto_no_adaptable(monkeypatch: pytest.MonkeyPatch) -> None:
     """Un componente que no es ``Step`` ni estimador base falla de forma ruidosa."""
-    import nikodym.data
+    import bayesrisk.data
 
     class _NoAdaptable:
         """Componente inválido con factory válida pero sin contrato orquestable."""
@@ -652,7 +656,9 @@ def test_resolve_step_rechaza_objeto_no_adaptable(monkeypatch: pytest.MonkeyPatc
         def from_config(cls, cfg: object) -> object:
             return object()
 
-    study = Study(NikodymConfig(data=nikodym.data.DataConfig.model_validate(_minimal_data_dict())))
+    study = Study(
+        BayesRiskConfig(data=bayesrisk.data.DataConfig.model_validate(_minimal_data_dict()))
+    )
     monkeypatch.setattr(REGISTRY, "resolve", lambda _domain, _name: _NoAdaptable)
 
     with pytest.raises(ConfigError, match="no implementa Step"):
@@ -669,25 +675,25 @@ def test_registro_y_coercion_perezosa_cubren_data_y_binning() -> None:
     study._ensure_domain_registered("binning")
     coerced_binning = study._coerce_domain_config("binning", {"max_n_bins": 6})
 
-    import nikodym.binning
+    import bayesrisk.binning
 
     coerced = study._coerce_domain_config("data", _minimal_data_dict())
 
-    import nikodym.data
+    import bayesrisk.data
 
-    assert isinstance(coerced_binning, nikodym.binning.BinningConfig)
+    assert isinstance(coerced_binning, bayesrisk.binning.BinningConfig)
     assert coerced_binning.max_n_bins == 6
     assert study.config.binning is coerced_binning
-    assert isinstance(coerced, nikodym.data.DataConfig)
+    assert isinstance(coerced, bayesrisk.data.DataConfig)
     assert study.config.data is coerced
 
 
 def test_save_sobre_existente_reescribe(tmp_path: Path) -> None:
     """Re-guardar sobre un directorio existente lo reemplaza por el nuevo Study."""
-    study = Study(NikodymConfig(name="primero"))
+    study = Study(BayesRiskConfig(name="primero"))
     destino = tmp_path / "estudio"
     study.save(destino)
-    Study(NikodymConfig(name="segundo")).save(destino)
+    Study(BayesRiskConfig(name="segundo")).save(destino)
     assert (destino / "config.yaml").exists()
     assert Study.load(destino, trust=True).config.name == "segundo"
 
@@ -706,7 +712,7 @@ def test_save_usa_respaldo_inexistente_al_sobrescribir(
         real(src, dst)
 
     monkeypatch.setattr(study_mod.os, "replace", _assert_respaldo_inexistente)
-    Study(NikodymConfig(name="nuevo")).save(destino)
+    Study(BayesRiskConfig(name="nuevo")).save(destino)
     assert Study.load(destino, trust=True).config.name == "nuevo"
 
 
@@ -841,7 +847,7 @@ def test_estado_git_parsea_sha_y_estado(monkeypatch: pytest.MonkeyPatch) -> None
 def test_versiones_lineage_completas() -> None:
     """Las 5 librerías del lineage resuelven (un typo en la lista rompería esto)."""
     assert set(study_mod._versiones_librerias()) == {
-        "nikodym",
+        "bayesrisk",
         "numpy",
         "pandas",
         "pydantic",
@@ -857,7 +863,7 @@ def test_lineage_campos_completos(monkeypatch: pytest.MonkeyPatch) -> None:
     assert bundle.root_seed == 42
     assert bundle.schema_version == study.config.schema_version
     assert bundle.config_hash == config_hash(study.config)
-    assert set(bundle.library_versions) == {"nikodym", "numpy", "pandas", "pydantic", "PyYAML"}
+    assert set(bundle.library_versions) == {"bayesrisk", "numpy", "pandas", "pydantic", "PyYAML"}
     assert bundle.git_sha == "a" * 40
     assert bundle.git_dirty is False
     assert bundle.created_at.tzinfo is not None
@@ -968,9 +974,9 @@ def test_el_lineage_congela_el_hash_del_config_ya_coaccionado(tmp_path: Path) ->
     La corrida falla al ejecutar (no hay fuente de datos) y da igual: lo que se verifica es el
     estado que deja, no la excepción.
     """
-    from nikodym.data.config import DataConfig
+    from bayesrisk.data.config import DataConfig
 
-    tipado = NikodymConfig.model_validate({"data": _minimal_data_dict()})
+    tipado = BayesRiskConfig.model_validate({"data": _minimal_data_dict()})
     crudo = DataConfig.model_validate(tipado.data).model_dump(mode="json", by_alias=True)
     del crudo["missing"]
     opaco = tipado.model_copy(update={"data": crudo})

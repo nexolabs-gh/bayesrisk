@@ -19,8 +19,8 @@ import pytest
 from _ui_f1 import write_stacked_behavior_parquet
 from test_guided_summaries import _ofensores
 
-from nikodym.guided import Scorecard
-from nikodym.guided.summaries import SIN_DECISIONES
+from bayesrisk.guided import Scorecard
+from bayesrisk.guided.summaries import SIN_DECISIONES
 
 MOTIVO = "dato que no estará disponible al originar"
 PROPOSITO = "Decidir la originación de créditos de consumo."
@@ -34,7 +34,7 @@ def _usar_fake_binning_process(fake_binning_process: object) -> None:
 def _corrida(raiz: Path, *, name: str, decidir: bool) -> Scorecard:
     from conftest import FakeBinningProcess
 
-    import nikodym.binning.transformer as transformer_module
+    import bayesrisk.binning.transformer as transformer_module
 
     with pytest.MonkeyPatch.context() as parche:
         parche.setenv("PYTHONHASHSEED", "0")

@@ -15,10 +15,10 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.stress as stress_pkg
-import nikodym.stress.results as stress_results
-from nikodym.stress.exceptions import StressOutputError
-from nikodym.stress.results import (
+import bayesrisk.stress as stress_pkg
+import bayesrisk.stress.results as stress_results
+from bayesrisk.stress.exceptions import StressOutputError
+from bayesrisk.stress.results import (
     ReverseStressResult,
     StressCard,
     StressDiagnostics,
@@ -782,7 +782,7 @@ def test_sensitivity_y_reverse_result_golden_copias_y_validaciones() -> None:
 
 
 def test_stress_result_ct2_tidy_term_structure_none_y_exports() -> None:
-    """``StressResult`` cumple CT-2 y expone DTOs vía ``nikodym.stress``."""
+    """``StressResult`` cumple CT-2 y expone DTOs vía ``bayesrisk.stress``."""
     scenario_frame = _scenario_frame()
     term = _term_structure_frame()
     impact = _impact_frame()
@@ -1687,15 +1687,15 @@ def test_stress_results_import_liviano_y_exports_publicos() -> None:
     """Los DTOs de resultados no se importan hasta pedirlos."""
     code = (
         "import sys;"
-        "import nikodym.stress;"
-        "assert 'nikodym.stress.results' not in sys.modules;"
-        "blocked=[m for m in ('pandas','numpy','scipy','statsmodels','nikodym.provisioning') "
+        "import bayesrisk.stress;"
+        "assert 'bayesrisk.stress.results' not in sys.modules;"
+        "blocked=[m for m in ('pandas','numpy','scipy','statsmodels','bayesrisk.provisioning') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'StressResult' in nikodym.stress.__all__;"
-        "_=nikodym.stress.StressResult;"
-        "assert 'nikodym.stress.results' in sys.modules;"
-        "blocked=[m for m in ('pandas','numpy','scipy','statsmodels','nikodym.provisioning') "
+        "assert 'StressResult' in bayesrisk.stress.__all__;"
+        "_=bayesrisk.stress.StressResult;"
+        "assert 'bayesrisk.stress.results' in sys.modules;"
+        "blocked=[m for m in ('pandas','numpy','scipy','statsmodels','bayesrisk.provisioning') "
         "if m in sys.modules];"
         "assert not blocked, blocked"
     )

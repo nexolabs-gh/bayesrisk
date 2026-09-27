@@ -3,8 +3,8 @@
 Cubre el contrato CT-1 exacto (``requires`` según ``term_structure_source``/``base_pd_source`` y las
 seis claves ``provides``), el cableado de ``core.study`` (orden, módulos y config classes), la
 ejecución end-to-end vía ``Study.run``, la equivalencia survival↔markov con el mismo ``pd_marginal``
-y el import liviano (``import nikodym.core`` no arrastra provisioning; ``import
-nikodym.provisioning.ifrs9`` registra el step sin cargar tabulares ni scipy).
+y el import liviano (``import bayesrisk.core`` no arrastra provisioning; ``import
+bayesrisk.provisioning.ifrs9`` registra el step sin cargar tabulares ni scipy).
 """
 
 from __future__ import annotations
@@ -20,26 +20,26 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.core.study as study_module
-import nikodym.provisioning.ifrs9 as ifrs9_pkg
-import nikodym.provisioning.ifrs9.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.provisioning.ifrs9 import (
+import bayesrisk.core.study as study_module
+import bayesrisk.provisioning.ifrs9 as ifrs9_pkg
+import bayesrisk.provisioning.ifrs9.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.provisioning.ifrs9 import (
     IFRS9_PROVISIONING_ARTIFACTS,
     IfrsProvisioningConfig,
     IfrsProvisioningStep,
 )
-from nikodym.provisioning.ifrs9.config import (
+from bayesrisk.provisioning.ifrs9.config import (
     IfrsEadConfig,
     IfrsLgdConfig,
     IfrsPdConfig,
     IfrsScenarioConfig,
 )
-from nikodym.provisioning.ifrs9.exceptions import IfrsConfigError, IfrsInputError
+from bayesrisk.provisioning.ifrs9.exceptions import IfrsConfigError, IfrsInputError
 
 ROOT_SEED = 20_260_703
 # Golden Stage 1 (EAD 1000, LGD 0.5, pd_marg 0.10/0.08, EIR 0.10, H_12m=1): 50/1.1.
@@ -105,7 +105,7 @@ def _ts() -> pd.DataFrame:
 
 def _study(cfg: IfrsProvisioningConfig, *, ts_domain: str = "survival") -> Study:
     """``Study`` con ``data.frame`` y la term-structure preinyectados."""
-    study = Study(NikodymConfig(provisioning_ifrs9=cfg))
+    study = Study(BayesRiskConfig(provisioning_ifrs9=cfg))
     study.artifacts.set("data", "frame", _frame())
     study.artifacts.set(ts_domain, "term_structure", _ts())
     return study
@@ -174,13 +174,13 @@ def test_core_study_cablea_provisioning_ifrs9() -> None:
     assert order.index("survival") < order.index("provisioning_ifrs9")
     assert order.index("forward") < order.index("provisioning_ifrs9")
     assert order.index("provisioning_ifrs9") < order.index("provisioning_cmf")
-    assert study_module._DOMAIN_MODULES["provisioning_ifrs9"] == "nikodym.provisioning.ifrs9"
+    assert study_module._DOMAIN_MODULES["provisioning_ifrs9"] == "bayesrisk.provisioning.ifrs9"
     assert study_module._DOMAIN_CONFIG_CLASSES["provisioning_ifrs9"] == (
-        "nikodym.provisioning.ifrs9.config",
+        "bayesrisk.provisioning.ifrs9.config",
         "IfrsProvisioningConfig",
     )
 
-    study = Study(NikodymConfig(provisioning_ifrs9=_cfg()))
+    study = Study(BayesRiskConfig(provisioning_ifrs9=_cfg()))
     assert study._default_step_names() == ["provisioning_ifrs9"]
     assert isinstance(study._resolve_step("provisioning_ifrs9"), IfrsProvisioningStep)
 
@@ -247,7 +247,7 @@ def test_auditoria_pit_y_lgd_payloads() -> None:
 def test_auditoria_lgd_forward_presente_true() -> None:
     """Con una ts que trae columna ``lgd`` no nula, ``ifrs9_lgd`` audita el descarte."""
     cfg = _cfg(fail_on_falta_dato=False)
-    study = Study(NikodymConfig(provisioning_ifrs9=cfg))
+    study = Study(BayesRiskConfig(provisioning_ifrs9=cfg))
     study.artifacts.set("data", "frame", _frame())
     ts = _ts()
     ts["lgd"] = [0.9, 0.5]
@@ -301,7 +301,7 @@ def test_step_consume_la_term_structure_del_dominio_elegido(
 ) -> None:
     """Oracle 3-way: sólo el artefacto del dominio elegido determina la ECL."""
     cfg = _cfg(term_structure_source=source)
-    study = Study(NikodymConfig(provisioning_ifrs9=cfg))
+    study = Study(BayesRiskConfig(provisioning_ifrs9=cfg))
     study.artifacts.set("data", "frame", _frame())
     term_structure = _ts()
     term_structure.loc[0, "pd_marginal"] = pd_marginal
@@ -319,14 +319,14 @@ def test_step_consume_la_term_structure_del_dominio_elegido(
 
 
 def test_ct1_falta_data_frame() -> None:
-    study = Study(NikodymConfig(provisioning_ifrs9=_cfg()))
+    study = Study(BayesRiskConfig(provisioning_ifrs9=_cfg()))
     step = IfrsProvisioningStep.from_config(_cfg())
     with pytest.raises(ArtifactNotFoundError, match=r"\('data', 'frame'\)"):
         step.execute(study, np.random.default_rng(ROOT_SEED))
 
 
 def test_ct1_falta_term_structure() -> None:
-    study = Study(NikodymConfig(provisioning_ifrs9=_cfg()))
+    study = Study(BayesRiskConfig(provisioning_ifrs9=_cfg()))
     study.artifacts.set("data", "frame", _frame())
     step = IfrsProvisioningStep.from_config(_cfg())
     with pytest.raises(ArtifactNotFoundError, match=r"\('survival', 'term_structure'\)"):
@@ -335,7 +335,7 @@ def test_ct1_falta_term_structure() -> None:
 
 def test_ct1_falta_calibrated_pd() -> None:
     cfg = _cfg(base_pd_source="calibration")
-    study = Study(NikodymConfig(provisioning_ifrs9=cfg))
+    study = Study(BayesRiskConfig(provisioning_ifrs9=cfg))
     study.artifacts.set("data", "frame", _frame())
     study.artifacts.set("survival", "term_structure", _ts())
     step = IfrsProvisioningStep.from_config(cfg)
@@ -423,14 +423,14 @@ def test_import_liviano_subprocess() -> None:
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.core
+        import bayesrisk.core
         assert not [
-            m for m in ("nikodym.provisioning", "pandas", "pandera", "pyarrow", "scipy")
+            m for m in ("bayesrisk.provisioning", "pandas", "pandera", "pyarrow", "scipy")
             if m in sys.modules
-        ], [m for m in sys.modules if m.startswith("nikodym.provisioning")]
+        ], [m for m in sys.modules if m.startswith("bayesrisk.provisioning")]
 
-        import nikodym.provisioning.ifrs9
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.provisioning.ifrs9
+        from bayesrisk.core.registry import REGISTRY
         assert REGISTRY.resolve("provisioning_ifrs9", "standard").__name__ == "IfrsProvisioningStep"
         blocked = [
             m for m in ("pandas", "pandera", "pyarrow", "scipy", "statsmodels")

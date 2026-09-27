@@ -7,10 +7,10 @@ from runpy import run_path
 
 import pytest
 
-from nikodym.core.config import NikodymConfig, config_hash
-from nikodym.ui import routes
-from nikodym.ui.datasets import materialize
-from nikodym.ui.presets import PROVISIONES_DATASET_ID, provisiones_preset
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+from bayesrisk.ui import routes
+from bayesrisk.ui.datasets import materialize
+from bayesrisk.ui.presets import PROVISIONES_DATASET_ID, provisiones_preset
 
 _SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "capture_demo_fixtures.py"
 _SYMBOLS = run_path(str(_SCRIPT))
@@ -81,7 +81,7 @@ def _hash_en_checkout(root: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[str,
         with _canonical_capture_workdir() as workdir:
             source = materialize(PROVISIONES_DATASET_ID, workdir=workdir)
             wired = routes._wire_dataset_source(provisiones_preset()["config"], source)
-            digest = config_hash(NikodymConfig.model_validate(wired))
+            digest = config_hash(BayesRiskConfig.model_validate(wired))
             return digest, source.as_posix()
 
 

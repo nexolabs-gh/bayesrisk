@@ -2,7 +2,7 @@
  * Modo demo (showcase estático) — SDD-23 / lanzamiento F7.
  *
  * Sirve los fixtures de corridas REALES del motor para que la app funcione end-to-end SIN backend,
- * en el deploy estático de `demo.nikodym.cl`. Es MULTI-PRESET: empaqueta dos corridas capturadas
+ * en el deploy estático de `demo.bayesadvisory.cl`. Es MULTI-PRESET: empaqueta dos corridas capturadas
  * contra el backend FastAPI (ver `scripts/capture_demo_fixtures*.py`):
  *   - `f1-estandar-consumo` — scorecard de comportamiento puro (sin provisiones).
  *   - `f4-ifrs9-retail` — provisiones IFRS 9 / ECL de tres etapas (SDD-16, experimental).
@@ -25,7 +25,7 @@
  * rama `if (DEMO_MODE)` de `api.ts`/`schema.ts` y este módulo queda inerte (fixtures fuera del bundle).
  *
  * Regla del SDD respetada: la UI NO reimplementa lógica de dominio. Estos fixtures NO se calculan en
- * el front; son la salida verbatim del motor (`nikodym.run`) sobre cada preset.
+ * el front; son la salida verbatim del motor (`bayesrisk.run`) sobre cada preset.
  */
 
 import { ApiError } from "@/lib/api"

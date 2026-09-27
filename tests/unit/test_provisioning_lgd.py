@@ -20,11 +20,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.provisioning.lgd as lgd_module
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.provisioning.exceptions import LgdError
-from nikodym.provisioning.ifrs9.config import IfrsLgdConfig
-from nikodym.provisioning.lgd import (
+import bayesrisk.provisioning.lgd as lgd_module
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.provisioning.exceptions import LgdError
+from bayesrisk.provisioning.ifrs9.config import IfrsLgdConfig
+from bayesrisk.provisioning.lgd import (
     WORKOUT_COST_COLUMN,
     WORKOUT_EAD_COLUMN,
     WORKOUT_RATE_COLUMN,
@@ -424,8 +424,8 @@ def test_el_motor_no_vive_dentro_de_ifrs9() -> None:
     una severidad sería el acoplamiento equivocado, y el que ``internal/config.py`` descarta por
     escrito en su propio docstring.
     """
-    assert LgdEngine.__module__ == "nikodym.provisioning.lgd"
-    assert LgdError.__module__ == "nikodym.provisioning.exceptions"
+    assert LgdEngine.__module__ == "bayesrisk.provisioning.lgd"
+    assert LgdError.__module__ == "bayesrisk.provisioning.exceptions"
     # El motor movido no puede arrastrar de vuelta el paquete que acaba de dejar.
     fuente = Path(inspect.getfile(lgd_module)).read_text(encoding="utf-8")
     runtime = [
@@ -437,14 +437,14 @@ def test_el_motor_no_vive_dentro_de_ifrs9() -> None:
 
 
 def test_el_reexport_de_ifrs9_es_el_mismo_objeto() -> None:
-    """``from nikodym.provisioning.ifrs9 import LgdEngine`` seguía existiendo: no se rompe.
+    """``from bayesrisk.provisioning.ifrs9 import LgdEngine`` seguía existiendo: no se rompe.
 
     Un re-export que devolviera otra clase pasaría un ``import`` y fallaría en el primer
     ``isinstance``; y un ``IfrsLgdError`` que no fuera el mismo objeto dejaría en verde un
     ``pytest.raises`` que ya no atrapa lo que el motor levanta.
     """
-    import nikodym.provisioning.ifrs9 as ifrs9_pkg
-    from nikodym.provisioning.ifrs9.exceptions import IfrsLgdError
+    import bayesrisk.provisioning.ifrs9 as ifrs9_pkg
+    from bayesrisk.provisioning.ifrs9.exceptions import IfrsLgdError
 
     assert ifrs9_pkg.LgdEngine is LgdEngine
     assert IfrsLgdError is LgdError

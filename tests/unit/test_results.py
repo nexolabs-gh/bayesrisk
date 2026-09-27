@@ -11,7 +11,7 @@ from collections.abc import Mapping
 
 import pandas as pd
 
-from nikodym.core.results import ECLResultLike, ProvisionResultLike
+from bayesrisk.core.results import ECLResultLike, ProvisionResultLike
 
 
 class _ProvisionStub:

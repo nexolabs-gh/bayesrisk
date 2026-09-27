@@ -1,4 +1,4 @@
-"""Tests de ``EdaConfig`` (SDD-27 §5) y su integración con ``NikodymConfig``."""
+"""Tests de ``EdaConfig`` (SDD-27 §5) y su integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ import yaml
 from hypothesis import given, settings
 from pydantic import ValidationError
 
-import nikodym.eda  # noqa: F401  — importa la capa: puebla el hook _EDA_CONFIG_CLS
-from nikodym.core.config import INFRA_SECTIONS, NikodymConfig, config_hash, loads_config
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import ConfigError
-from nikodym.eda.config import (
+import bayesrisk.eda  # noqa: F401  — importa la capa: puebla el hook _EDA_CONFIG_CLS
+from bayesrisk.core.config import INFRA_SECTIONS, BayesRiskConfig, config_hash, loads_config
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.eda.config import (
     DefaultRateConfig,
     EdaConfig,
     QualityConfig,
@@ -23,8 +23,8 @@ from nikodym.eda.config import (
     TemporalStabilityConfig,
     UnivariateConfig,
 )
-from nikodym.eda.exceptions import EdaError
-from nikodym.testing.strategies import nikodym_config_strategy
+from bayesrisk.eda.exceptions import EdaError
+from bayesrisk.testing.strategies import bayesrisk_config_strategy
 
 
 @pytest.fixture(autouse=True)
@@ -83,57 +83,57 @@ def test_round_trip_yaml_edaconfig() -> None:
     assert EdaConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_eda_instancia() -> None:
-    """Pasar una instancia ``EdaConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_eda_instancia() -> None:
+    """Pasar una instancia ``EdaConfig`` a ``BayesRiskConfig`` la conserva."""
     eda = EdaConfig()
-    cfg = NikodymConfig(eda=eda)
+    cfg = BayesRiskConfig(eda=eda)
     assert isinstance(cfg.eda, EdaConfig)
     assert cfg.eda is eda
 
 
-def test_nikodymconfig_eda_dict_coacciona() -> None:
+def test_bayesriskconfig_eda_dict_coacciona() -> None:
     """Un dict en ``eda`` se coacciona a ``EdaConfig`` por el hook cargado."""
-    cfg = NikodymConfig(eda={"univariate": {"n_quantile_bins": 12}})
+    cfg = BayesRiskConfig(eda={"univariate": {"n_quantile_bins": 12}})
     assert isinstance(cfg.eda, EdaConfig)
     assert cfg.eda.univariate.n_quantile_bins == 12
 
 
-def test_nikodymconfig_eda_none_explicito() -> None:
+def test_bayesriskconfig_eda_none_explicito() -> None:
     """``eda=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(eda=None).eda is None
+    assert BayesRiskConfig(eda=None).eda is None
 
 
-def test_nikodymconfig_eda_core_only_acepta_blob_json(
+def test_bayesriskconfig_eda_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``eda`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_EDA_CONFIG_CLS", None)
-    cfg = NikodymConfig(eda={"analysis_partition": "desarrollo"})
+    cfg = BayesRiskConfig(eda={"analysis_partition": "desarrollo"})
     assert cfg.eda == {"analysis_partition": "desarrollo"}
 
 
-def test_nikodymconfig_eda_core_only_rechaza_set(
+def test_bayesriskconfig_eda_core_only_rechaza_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``eda`` rechaza sets porque romperían el ``config_hash``."""
     monkeypatch.setattr(_schema_mod, "_EDA_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(eda={"columnas": {"a", "b"}})
+        BayesRiskConfig(eda={"columnas": {"a", "b"}})
 
 
 def test_config_hash_cambia_al_variar_campo_eda() -> None:
     """``eda`` no es INFRA: cambiar un campo de EDA cambia la identidad computacional."""
-    base = config_hash(NikodymConfig(eda=EdaConfig()))
+    base = config_hash(BayesRiskConfig(eda=EdaConfig()))
     variado = config_hash(
-        NikodymConfig(eda=EdaConfig(univariate=UnivariateConfig(n_quantile_bins=20)))
+        BayesRiskConfig(eda=EdaConfig(univariate=UnivariateConfig(n_quantile_bins=20)))
     )
     assert "eda" not in INFRA_SECTIONS
     assert variado != base
 
 
 @settings(max_examples=12, deadline=None)
-@given(cfg=nikodym_config_strategy(sections=["eda"]))
-def test_nikodym_config_strategy_genera_configs_eda_validos(cfg: NikodymConfig) -> None:
+@given(cfg=bayesrisk_config_strategy(sections=["eda"]))
+def test_bayesrisk_config_strategy_genera_configs_eda_validos(cfg: BayesRiskConfig) -> None:
     """La estrategia pública genera configs raíz válidos con sección ``eda`` activa."""
     assert isinstance(cfg.eda, EdaConfig)
     assert cfg.eda.type == "standard"
@@ -176,20 +176,20 @@ def test_campos_eda_tienen_metadatos_ui() -> None:
             assert {"ui_widget", "ui_group", "ui_order"} <= set(extra)
 
 
-def test_eda_error_desciende_de_nikodym_error() -> None:
+def test_eda_error_desciende_de_bayesrisk_error() -> None:
     """``EdaError`` es la raíz de errores propios de la capa EDA."""
     with pytest.raises(EdaError, match="fallo descriptivo"):
         raise EdaError("fallo descriptivo")
 
 
 def test_import_core_liviano_e_import_eda_registra_step_en_proceso_fresco() -> None:
-    """``core`` sigue liviano; ``import nikodym.eda`` registra ``EdaStep``."""
+    """``core`` sigue liviano; ``import bayesrisk.eda`` registra ``EdaStep``."""
     code = (
-        "import nikodym.core, sys;"
+        "import bayesrisk.core, sys;"
         "bloqueados=[m for m in ('pandas','pandera','pyarrow') if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "import nikodym.eda;"
-        "from nikodym.core.registry import REGISTRY;"
+        "import bayesrisk.eda;"
+        "from bayesrisk.core.registry import REGISTRY;"
         "assert REGISTRY.resolve('eda','standard').__name__ == 'EdaStep'"
     )
     subprocess.run([sys.executable, "-c", code], check=True)

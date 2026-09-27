@@ -11,9 +11,9 @@ import sys
 
 import pytest
 
-from nikodym.core.config import NikodymConfig, ReproConfig, config_hash
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig, config_hash
 
-# Identidad SHA-256 de NikodymConfig() por defecto (sin INFRA_SECTIONS). Congelado a mano.
+# Identidad SHA-256 de BayesRiskConfig() por defecto (sin INFRA_SECTIONS). Congelado a mano.
 # B7.1: se añadió la clave computacional `selection=None`, por eso el golden cambió.
 # B8.1: se añadió la clave computacional `model=None`, por eso el golden cambió.
 # B9.1: se añadió la clave computacional `scorecard=None`, por eso el golden cambió.
@@ -34,10 +34,10 @@ GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f4344
 
 
 def _hash_en_subproceso(hashseed: str) -> str:
-    """Calcula config_hash(NikodymConfig()) en un proceso fresco con PYTHONHASHSEED dado."""
+    """Calcula config_hash(BayesRiskConfig()) en un proceso fresco con PYTHONHASHSEED dado."""
     codigo = (
-        "from nikodym.core.config import NikodymConfig, config_hash;"
-        "print(config_hash(NikodymConfig()))"
+        "from bayesrisk.core.config import BayesRiskConfig, config_hash;"
+        "print(config_hash(BayesRiskConfig()))"
     )
     salida = subprocess.run(
         [sys.executable, "-c", codigo],
@@ -51,13 +51,13 @@ def _hash_en_subproceso(hashseed: str) -> str:
 
 def test_config_hash_default_congelado() -> None:
     """El hash del config por defecto coincide con el golden (estabilidad cross-release)."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_config_hash_estable_bajo_reordenamiento() -> None:
     """Configs equivalentes con kwargs en distinto orden producen el mismo hash."""
-    uno = NikodymConfig(name="a", repro=ReproConfig(seed=7))
-    dos = NikodymConfig(repro=ReproConfig(seed=7), name="a")
+    uno = BayesRiskConfig(name="a", repro=ReproConfig(seed=7))
+    dos = BayesRiskConfig(repro=ReproConfig(seed=7), name="a")
     assert config_hash(uno) == config_hash(dos)
 
 

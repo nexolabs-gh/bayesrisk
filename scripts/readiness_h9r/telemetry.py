@@ -2074,7 +2074,9 @@ class TelemetrySampler:
         """Inicia el único writer del sidecar."""
         if self._thread is not None:
             raise RuntimeError("sampler ya iniciado")
-        self._thread = threading.Thread(target=self._run, name="nikodym-h9r-telemetry", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, name="bayesrisk-h9r-telemetry", daemon=True
+        )
         self._thread.start()
 
     def stop(self, *, timeout_seconds: float = 5.0) -> dict[str, Any]:
@@ -2159,7 +2161,7 @@ class TelemetrySampler:
 
         reader = threading.Thread(
             target=read_sensor,
-            name="nikodym-h9r-sensor-read",
+            name="bayesrisk-h9r-sensor-read",
             daemon=True,
         )
         reader.start()

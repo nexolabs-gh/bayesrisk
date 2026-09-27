@@ -1,4 +1,4 @@
-"""Tests del módulo net-new ``nikodym.report.charts`` (bloque B1).
+"""Tests del módulo net-new ``bayesrisk.report.charts`` (bloque B1).
 
 Cubren determinismo (auto-consistencia same-machine, independencia de ``PYTHONHASHSEED``),
 sanitizado anti-no-determinismo del SVG, validación de columnas, import liviano (importar el módulo
@@ -18,7 +18,7 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 
-from nikodym.report.exceptions import ReportInputError
+from bayesrisk.report.exceptions import ReportInputError
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
@@ -26,7 +26,7 @@ pytestmark = pytest.mark.skipif(not _HAS_MATPLOTLIB, reason="requiere el extra r
 
 # El módulo se importa a nivel de test (no de paquete) para no arrastrar matplotlib en otros tests
 # cuando el extra no está; con el gate skipif de arriba esto sólo corre si matplotlib existe.
-import nikodym.report.charts as charts  # noqa: E402
+import bayesrisk.report.charts as charts  # noqa: E402
 
 _UUID_RE = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE
@@ -224,7 +224,7 @@ def _all_charts() -> dict[str, str]:
 _SUBPROCESS_RENDER = """
 import hashlib, sys
 import pandas as pd
-import nikodym.report.charts as charts
+import bayesrisk.report.charts as charts
 
 deciles = pd.DataFrame([
     {"partition": p, "decile": d, "cum_total": d * 100,
@@ -475,7 +475,7 @@ def test_coefficients_beta_no_finito_se_descarta_deterministico() -> None:
 
 def test_importar_charts_no_trae_matplotlib_por_subprocess() -> None:
     code = (
-        "import sys; import nikodym.report.charts; "
+        "import sys; import bayesrisk.report.charts; "
         "assert 'matplotlib' not in sys.modules, "
         "'importar charts NO debe traer matplotlib'"
     )
@@ -484,9 +484,9 @@ def test_importar_charts_no_trae_matplotlib_por_subprocess() -> None:
 
 def test_paquete_report_sigue_liviano_por_subprocess() -> None:
     code = (
-        "import sys; import nikodym.report; "
+        "import sys; import bayesrisk.report; "
         "assert 'matplotlib' not in sys.modules, "
-        "'importar nikodym.report NO debe traer matplotlib'"
+        "'importar bayesrisk.report NO debe traer matplotlib'"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 

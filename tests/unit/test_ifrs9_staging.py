@@ -19,11 +19,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.provisioning.ifrs9.staging as staging_module
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.provisioning.ifrs9 import StagingEngine
-from nikodym.provisioning.ifrs9.config import IfrsStagingConfig
-from nikodym.provisioning.ifrs9.exceptions import IfrsInputError, IfrsStagingError
+import bayesrisk.provisioning.ifrs9.staging as staging_module
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.provisioning.ifrs9 import StagingEngine
+from bayesrisk.provisioning.ifrs9.config import IfrsStagingConfig
+from bayesrisk.provisioning.ifrs9.exceptions import IfrsInputError, IfrsStagingError
 
 
 def _assign(cfg: IfrsStagingConfig, frame: pd.DataFrame, **series: Any) -> pd.DataFrame:
@@ -291,7 +291,7 @@ def test_exencion_rescata_gatillo_blando_a_stage1() -> None:
 
 
 def test_exencion_no_rescata_presuncion_dpd_bajo_politica_v1() -> None:
-    # Política conservadora Nikodym v1: la exención no rescata el gatillo DPD → Stage 2.
+    # Política conservadora bayesrisk v1: la exención no rescata el gatillo DPD → Stage 2.
     cfg = IfrsStagingConfig(
         is_default_col=None,
         low_credit_risk_exemption=True,

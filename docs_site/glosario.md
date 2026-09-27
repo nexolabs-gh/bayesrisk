@@ -1,13 +1,13 @@
 # Glosario regulatorio
 
-Definiciones cortas y precisas de los términos de riesgo de crédito que aparecen en Nikodym y en
+Definiciones cortas y precisas de los términos de riesgo de crédito que aparecen en bayesrisk y en
 su marco normativo. Los términos están agrupados por función: **parámetros de riesgo**,
 **construcción del scorecard**, **métricas de desempeño y estabilidad** y **marco normativo y
 gobernanza**. Dentro de cada grupo el orden es alfabético.
 
 !!! note "Convención de nombres CMF ↔ internacional"
     La CMF (ex SBIF) nombra los parámetros en español; la literatura y la API usan las siglas
-    inglesas. Nikodym trata **CMF regulatorio** e **IFRS 9 / ECL** como dos motores separados.
+    inglesas. bayesrisk trata **CMF regulatorio** e **IFRS 9 / ECL** como dos motores separados.
     Equivalencias:
 
     | Internacional | CMF (Capítulo B-1 del CNC) | Rol |
@@ -58,7 +58,7 @@ Dos regímenes para expresar la PD:
 - **TTC (through-the-cycle):** promedia el ciclo económico y es **estable** en el tiempo; es el
   régimen típico de un scorecard regulatorio y del ancla de provisiones.
 
-En Nikodym el paso de **calibración** ajusta la PD cruda a un ancla. En la *corrida de ejemplo* el
+En bayesrisk el paso de **calibración** ajusta la PD cruda a un ancla. En la *corrida de ejemplo* el
 régimen declarado es **through-the-cycle**, pero el ancla se **lee de los datos**
 (`anchor_source = development_observed`): es la tasa de default observada en desarrollo, **0,233**.
 Anclar a un nivel de política distinto del observado —lo que de verdad separa un TTC de un PIT— es
@@ -82,7 +82,7 @@ magnitud:
 | 0,30 – 0,50 | fuerte |
 | > 0,50 | sospechoso (posible *leakage*, revisar) |
 
-Nikodym calcula el IV por variable en el paso de **binning** y lo usa como filtro en la
+bayesrisk calcula el IV por variable en el paso de **binning** y lo usa como filtro en la
 **selección**. En la *corrida de ejemplo*, `ingreso_mensual` es la más informativa (**IV 0,305**),
 `deuda_ingreso` queda en rango medio (**IV 0,164**) y `segmento` prácticamente no discrimina
 (**IV 0,003**).
@@ -107,7 +107,7 @@ coeficiente. Es el artefacto central del pipeline F1, accesible como
 
 Transformación de cada bin de una variable en `ln(%buenos / %malos)`. Linealiza la relación con el
 log-odds (lo que la regresión logística espera), maneja no-linealidades y valores faltantes como un
-bin más, y hace comparables variables de distinta naturaleza. Nikodym lo calcula con **OptBinning**
+bin más, y hace comparables variables de distinta naturaleza. bayesrisk lo calcula con **OptBinning**
 imponiendo **monotonía** controlada, de modo que el WoE crezca o decrezca de forma coherente con el
 riesgo a lo largo de los bins.
 
@@ -129,7 +129,7 @@ tomados al azar. **0,5** = azar, **1,0** = perfecto. Se relaciona con el Gini po
 
 El mismo cálculo del PSI pero aplicado a la **distribución de cada variable** (no del score final),
 para localizar **qué** característica está migrando entre poblaciones. Diagnostica el origen de un
-PSI alto: si una variable concentra el desplazamiento, el CSI lo señala. Nikodym lo reporta en el
+PSI alto: si una variable concentra el desplazamiento, el CSI lo señala. bayesrisk lo reporta en el
 dominio `stability` junto con la peor variable y su valor.
 
 ### Gini — *Coeficiente de Gini*
@@ -175,7 +175,7 @@ Pérdida crediticia esperada bajo la norma contable internacional **IFRS 9**: pr
 **prospectiva** y **sensible al ciclo** (PD en régimen PIT, escenarios forward-looking), con un
 enfoque de **tres etapas** (12 meses vs. *lifetime* según deterioro de la calidad crediticia). Es
 un cómputo **distinto** del modelo estándar CMF: el banco lo calcula con metodología interna.
-Nikodym lo modela como un motor separado del CMF.
+bayesrisk lo modela como un motor separado del CMF.
 
 ### Lineage (linaje / trazabilidad)
 
@@ -189,7 +189,7 @@ auditable que exige un supervisor.
 ### Model card (tarjeta de modelo)
 
 Ficha estandarizada que documenta un modelo: propósito, datos, metodología, parámetros, métricas
-de desempeño y limitaciones. En Nikodym se **emite al habilitar el paso de gobernanza** (que exige
+de desempeño y limitaciones. En bayesrisk se **emite al habilitar el paso de gobernanza** (que exige
 declarar un `purpose`), como parte del pipeline y alineado con SR 11-7, de modo que la documentación
 del modelo no sea un entregable manual posterior sino un subproducto de la ejecución. Lo que sí es
 automático en **toda** corrida es el *lineage* y el *audit-trail*.
@@ -206,7 +206,7 @@ un contingente se obtiene con el **CCF** del B-3 (p. ej. avales **100 %**, bolet
 
 !!! warning "CMF ≠ IFRS 9 — y la regla del máximo no es entre ellos"
     El modelo estándar CMF es la **base mínima prudencial**, con PI/PDI tabuladas por la norma;
-    IFRS 9 / ECL es prospectivo. Nikodym los mantiene como motores distintos y **no** los mezcla.
+    IFRS 9 / ECL es prospectivo. bayesrisk los mantiene como motores distintos y **no** los mezcla.
 
     La **regla del máximo** del Capítulo B-1 (Circular N° 2.346 / 06.03.2024) es entre el **método
     estándar y el método interno** del banco: *"La constitución de provisiones se efectuará
@@ -220,14 +220,14 @@ un contingente se obtiene con el **CCF** del B-3 (p. ej. avales **100 %**, bolet
 
 Guía supervisora (Reserva Federal / OCC, EE. UU.) sobre **gestión del riesgo de modelo**: exige
 validación independiente, documentación completa (model card), control de versiones y monitoreo
-continuo (backtesting). Es el estándar de referencia de gobernanza de modelos; Nikodym lo adopta
+continuo (backtesting). Es el estándar de referencia de gobernanza de modelos; bayesrisk lo adopta
 "por construcción": audit-trail y lineage en cada corrida, y model card al habilitar el paso de gobernanza.
 
 ---
 
 !!! info "Dónde se calcula cada cosa"
     Los términos de este glosario se materializan como artefactos *namespaced* por dominio en el
-    `Study` que devuelve `nikodym.run(config)`: el **IV** y el **WoE** en el dominio `binning`, el
+    `Study` que devuelve `bayesrisk.run(config)`: el **IV** y el **WoE** en el dominio `binning`, el
     **scorecard** y el **PDO** en `scorecard`, la **PD calibrada** y el ancla TTC en `calibration`,
     el **AUC/KS/Gini** en `performance` y el **PSI/CSI** en `stability`. Ver
     [Conceptos](concepts.md) para el modelo mental y la [Referencia de la API](api.md) para el

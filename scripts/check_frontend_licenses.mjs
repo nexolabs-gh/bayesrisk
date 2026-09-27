@@ -10,7 +10,7 @@ import { buildNotices } from "./frontend_provenance_plugin.mjs"
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const WEB = path.join(ROOT, "web")
 const EVIDENCE = path.join(WEB, "dist", "evidence")
-const STATIC = path.join(ROOT, "src", "nikodym", "ui", "static")
+const STATIC = path.join(ROOT, "src", "bayesrisk", "ui", "static")
 const FORBIDDEN = /\b(?:AGPL|LGPL|GPL)(?:[-\s]?v?\d+(?:\.\d+)*)?\b/i
 const PERMISSIVE = new Set([
   "0BSD",

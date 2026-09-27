@@ -1,4 +1,4 @@
-"""Tests del harness público ``nikodym.testing.estimator_checks``."""
+"""Tests del harness público ``bayesrisk.testing.estimator_checks``."""
 
 from __future__ import annotations
 
@@ -8,28 +8,28 @@ import numpy as np
 import pytest
 from pydantic import Field
 
-from nikodym.core.audit import NullAuditSink
-from nikodym.core.base import BaseNikodymEstimator, NikodymClassifier
-from nikodym.core.config.schema import NikodymBaseConfig
-from nikodym.testing import all_nikodym_checks, check_nikodym_estimator
-from nikodym.testing.estimator_checks import (
+from bayesrisk.core.audit import NullAuditSink
+from bayesrisk.core.base import BaseBayesRiskEstimator, BayesRiskClassifier
+from bayesrisk.core.config.schema import BayesRiskBaseConfig
+from bayesrisk.testing import all_bayesrisk_checks, check_bayesrisk_estimator
+from bayesrisk.testing.estimator_checks import (
     _call_with_neutral_args,
     _changed_value,
     _literal_values,
 )
 
 
-class HarnessConfig(NikodymBaseConfig):
+class HarnessConfig(BayesRiskBaseConfig):
     """Sub-config válido para dummies del harness."""
 
     type: Literal["harness"] = "harness"
     alpha: int = Field(default=1, ge=0, le=10)
 
 
-class ValidEstimator(NikodymClassifier):
+class ValidEstimator(BayesRiskClassifier):
     """Estimador mínimo que cumple los nueve contratos."""
 
-    config_cls: ClassVar[type[NikodymBaseConfig]] = HarnessConfig
+    config_cls: ClassVar[type[BayesRiskBaseConfig]] = HarnessConfig
 
     def __init__(self, alpha: int = 1) -> None:
         self.alpha = alpha
@@ -56,12 +56,12 @@ class ValidEstimator(NikodymClassifier):
 
 def _check(name: str) -> Any:
     """Obtiene un check por nombre desde la API pública enumerada."""
-    return dict(all_nikodym_checks())[name]
+    return dict(all_bayesrisk_checks())[name]
 
 
-def test_all_nikodym_checks_enumera_los_nueve_en_orden() -> None:
+def test_all_bayesrisk_checks_enumera_los_nueve_en_orden() -> None:
     """La lista pública es cerrada y estable según SDD-24 §7.2."""
-    assert [name for name, _ in all_nikodym_checks()] == [
+    assert [name for name, _ in all_bayesrisk_checks()] == [
         "check_no_logic_in_init",
         "check_get_params_mirrors_config",
         "check_set_params_roundtrip",
@@ -74,9 +74,9 @@ def test_all_nikodym_checks_enumera_los_nueve_en_orden() -> None:
     ]
 
 
-def test_check_nikodym_estimator_pasa_estimador_valido() -> None:
+def test_check_bayesrisk_estimator_pasa_estimador_valido() -> None:
     """Un estimador mínimo bien formado pasa la batería completa."""
-    check_nikodym_estimator(ValidEstimator())
+    check_bayesrisk_estimator(ValidEstimator())
 
 
 def test_check_no_logic_in_init_falla_por_atributo_extra() -> None:
@@ -94,11 +94,11 @@ def test_check_no_logic_in_init_falla_por_atributo_extra() -> None:
 def test_check_no_logic_in_init_falla_por_parametro_con_sufijo_fiteado() -> None:
     """Contrato 1: tampoco se acepta un hiperparámetro con pinta de atributo fiteado."""
 
-    class CoefConfig(NikodymBaseConfig):
+    class CoefConfig(BayesRiskBaseConfig):
         coef_: int = Field(default=1, ge=0)
 
-    class FittedParamEstimator(NikodymClassifier):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = CoefConfig
+    class FittedParamEstimator(BayesRiskClassifier):
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = CoefConfig
 
         def __init__(self, coef_: int = 1) -> None:
             self.coef_ = coef_
@@ -110,13 +110,13 @@ def test_check_no_logic_in_init_falla_por_parametro_con_sufijo_fiteado() -> None
 def test_check_get_params_mirrors_config_falla_por_drift() -> None:
     """Contrato 2: campos de config e hiperparámetros deben coincidir."""
 
-    class DriftConfig(NikodymBaseConfig):
+    class DriftConfig(BayesRiskBaseConfig):
         type: Literal["drift"] = "drift"
         alpha: int = Field(default=1, ge=0)
         beta: int = 2
 
     class DriftEstimator(ValidEstimator):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = DriftConfig
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = DriftConfig
 
     with pytest.raises(AssertionError, match="no espeja config_cls"):
         _check("check_get_params_mirrors_config")(DriftEstimator())
@@ -125,7 +125,7 @@ def test_check_get_params_mirrors_config_falla_por_drift() -> None:
 def test_check_get_params_mirrors_config_falla_sin_config_cls() -> None:
     """Contrato 2: la clase debe declarar ``config_cls``."""
 
-    class NoConfigEstimator(NikodymClassifier):
+    class NoConfigEstimator(BayesRiskClassifier):
         def __init__(self, alpha: int = 1) -> None:
             self.alpha = alpha
 
@@ -148,11 +148,11 @@ def test_check_set_params_roundtrip_falla_si_no_actualiza() -> None:
 def test_check_set_params_roundtrip_pasa_sin_hiperparametros() -> None:
     """Contrato 3: un estimador sin params igual debe rechazar claves inválidas."""
 
-    class ParamlessConfig(NikodymBaseConfig):
+    class ParamlessConfig(BayesRiskBaseConfig):
         type: Literal["paramless"] = "paramless"
 
-    class ParamlessEstimator(NikodymClassifier):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = ParamlessConfig
+    class ParamlessEstimator(BayesRiskClassifier):
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = ParamlessConfig
 
     _check("check_set_params_roundtrip")(ParamlessEstimator())
 
@@ -160,14 +160,14 @@ def test_check_set_params_roundtrip_pasa_sin_hiperparametros() -> None:
 def test_check_set_params_roundtrip_soporta_bool_float_y_str() -> None:
     """Contrato 3: el valor alternativo cubre tipos escalares comunes."""
 
-    class ScalarConfig(NikodymBaseConfig):
+    class ScalarConfig(BayesRiskBaseConfig):
         type: Literal["scalar"] = "scalar"
         enabled: bool = True
         weight: float = Field(default=0.5, ge=0.0, le=1.0)
         label: str = "base"
 
-    class BoolEstimator(NikodymClassifier):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = ScalarConfig
+    class BoolEstimator(BayesRiskClassifier):
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = ScalarConfig
 
         def __init__(self, enabled: bool = True, weight: float = 0.5, label: str = "base") -> None:
             self.enabled = enabled
@@ -192,17 +192,17 @@ def test_changed_value_cubre_escalares() -> None:
     assert _changed_value(True, "enabled") is False
     assert _changed_value(1, "alpha") == 2
     assert _changed_value(0.5, "weight") == 1.5
-    assert _changed_value("base", "label") == "base-nikodym"
+    assert _changed_value("base", "label") == "base-bayesrisk"
 
 
 def test_check_set_params_roundtrip_falla_con_parametro_no_soportado() -> None:
     """Contrato 3: un hiperparámetro no escalar requiere soporte explícito."""
 
-    class TupleConfig(NikodymBaseConfig):
+    class TupleConfig(BayesRiskBaseConfig):
         values: tuple[int, ...] = (1, 2)
 
-    class TupleEstimator(NikodymClassifier):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = TupleConfig
+    class TupleEstimator(BayesRiskClassifier):
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = TupleConfig
 
         def __init__(self, values: tuple[int, ...] = (1, 2)) -> None:
             self.values = values
@@ -238,7 +238,7 @@ def test_check_set_params_roundtrip_falla_si_usa_value_error_sklearn() -> None:
 
     class SklearnErrorEstimator(ValidEstimator):
         def set_params(self, **params: Any) -> Self:
-            if "__nikodym_parametro_inexistente__" in params:
+            if "__bayesrisk_parametro_inexistente__" in params:
                 raise SklearnValueError("sklearn")
             return super().set_params(**params)
 
@@ -273,8 +273,8 @@ def test_check_not_fitted_raises_falla_si_predict_no_valida_estado() -> None:
 def test_check_not_fitted_raises_falla_si_no_hay_metodo_salida() -> None:
     """Contrato 4: debe existir algún método de salida conocido."""
 
-    class NoOutput(NikodymClassifier):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = HarnessConfig
+    class NoOutput(BayesRiskClassifier):
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = HarnessConfig
 
         def __init__(self, alpha: int = 1) -> None:
             self.alpha = alpha
@@ -322,8 +322,8 @@ def test_check_fitted_attrs_suffix_falla_si_fit_no_crea_estado() -> None:
 def test_check_fitted_attrs_suffix_falla_sin_fit_ni_compute() -> None:
     """Contrato 5: el estimador debe tener una entrada de entrenamiento o cálculo."""
 
-    class NoTraining(NikodymClassifier):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = HarnessConfig
+    class NoTraining(BayesRiskClassifier):
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = HarnessConfig
 
         def __init__(self, alpha: int = 1) -> None:
             self.alpha = alpha
@@ -342,7 +342,7 @@ def test_check_from_config_roundtrip_falla_si_from_config_cambia_params() -> Non
 
     class BadFromConfig(ValidEstimator):
         @classmethod
-        def from_config(cls, cfg: NikodymBaseConfig) -> Self:
+        def from_config(cls, cfg: BayesRiskBaseConfig) -> Self:
             del cfg
             return cls(alpha=9)
 
@@ -374,7 +374,7 @@ def test_check_validate_config_falla_si_fit_no_revalida() -> None:
     [
         type(
             "GtConfig",
-            (NikodymBaseConfig,),
+            (BayesRiskBaseConfig,),
             {
                 "__annotations__": {
                     "type": Literal["gt"],
@@ -386,7 +386,7 @@ def test_check_validate_config_falla_si_fit_no_revalida() -> None:
         ),
         type(
             "LeConfig",
-            (NikodymBaseConfig,),
+            (BayesRiskBaseConfig,),
             {
                 "__annotations__": {
                     "type": Literal["le"],
@@ -398,7 +398,7 @@ def test_check_validate_config_falla_si_fit_no_revalida() -> None:
         ),
         type(
             "LtConfig",
-            (NikodymBaseConfig,),
+            (BayesRiskBaseConfig,),
             {
                 "__annotations__": {
                     "type": Literal["lt"],
@@ -411,7 +411,7 @@ def test_check_validate_config_falla_si_fit_no_revalida() -> None:
     ],
 )
 def test_check_validate_config_soporta_cotas_gt_le_lt(
-    config_cls: type[NikodymBaseConfig],
+    config_cls: type[BayesRiskBaseConfig],
 ) -> None:
     """Contrato 7: la búsqueda de valor inválido cubre todas las cotas Pydantic usadas."""
 
@@ -458,12 +458,12 @@ def test_check_validate_config_falla_si_fit_levanta_otro_error() -> None:
 def test_check_validate_config_falla_sin_cotas() -> None:
     """Contrato 7: debe haber al menos un campo acotado para probar diferimiento."""
 
-    class NoBoundsConfig(NikodymBaseConfig):
+    class NoBoundsConfig(BayesRiskBaseConfig):
         type: Literal["nobounds"] = "nobounds"
         alpha: int = 1
 
     class NoBounds(ValidEstimator):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = NoBoundsConfig
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = NoBoundsConfig
 
     with pytest.raises(AssertionError, match="ge/gt/le/lt"):
         _check("check_validate_config")(NoBounds())
@@ -484,8 +484,8 @@ def test_check_audit_default_null_falla_si_audit_es_none() -> None:
 def test_check_audit_default_null_falla_sin_auditable_mixin() -> None:
     """Contrato 8: el estimador debe exponer ``log_decision`` vía ``AuditableMixin``."""
 
-    class PlainEstimator(BaseNikodymEstimator):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = HarnessConfig
+    class PlainEstimator(BaseBayesRiskEstimator):
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = HarnessConfig
         _audit = NullAuditSink()
 
         def __init__(self, alpha: int = 1) -> None:
@@ -540,12 +540,12 @@ def test_check_reproducible_falla_si_ignora_seed_manager() -> None:
 def test_check_reproducible_acepta_compute_que_devuelve_resultado() -> None:
     """Contrato 9: si ``compute`` devuelve resultado, se compara directamente."""
 
-    class ComputeConfig(NikodymBaseConfig):
+    class ComputeConfig(BayesRiskBaseConfig):
         type: Literal["compute"] = "compute"
         alpha: int = Field(default=1, ge=0)
 
-    class ComputeReturns(BaseNikodymEstimator):
-        config_cls: ClassVar[type[NikodymBaseConfig]] = ComputeConfig
+    class ComputeReturns(BaseBayesRiskEstimator):
+        config_cls: ClassVar[type[BayesRiskBaseConfig]] = ComputeConfig
 
         def __init__(self, alpha: int = 1) -> None:
             self.alpha = alpha

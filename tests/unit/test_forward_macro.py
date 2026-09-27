@@ -14,10 +14,10 @@ import pytest
 from numpy.testing import assert_allclose
 from pandas.testing import assert_frame_equal
 
-import nikodym.forward.macro as macro_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import MissingDependencyError, NotFittedError
-from nikodym.forward.config import (
+import bayesrisk.forward.macro as macro_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import MissingDependencyError, NotFittedError
+from bayesrisk.forward.config import (
     ForwardConfig,
     ForwardInputConfig,
     MacroModelConfig,
@@ -27,13 +27,13 @@ from nikodym.forward.config import (
     ScenarioDefinitionConfig,
     TtcReversionConfig,
 )
-from nikodym.forward.exceptions import (
+from bayesrisk.forward.exceptions import (
     ForwardConfigError,
     ForwardFitError,
     ForwardInputError,
     MacroProjectionError,
 )
-from nikodym.forward.macro import MacroProjectionModel
+from bayesrisk.forward.macro import MacroProjectionModel
 
 _MACRO_COLUMNS = [
     "scenario",
@@ -330,7 +330,7 @@ def test_auto_arima_opt_in_con_fake_y_dependencia_faltante(monkeypatch: pytest.M
 
     monkeypatch.setattr(macro_module, "_import_auto_arima", original_auto_import)
     monkeypatch.setattr(macro_module.importlib, "import_module", fake_import)
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[forecasting\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[forecasting\]"):
         MacroProjectionModel.from_config(cfg).fit(_ar1_golden_frame())
 
 
@@ -596,8 +596,8 @@ def test_imports_perezosos_y_dependencias_faltantes(monkeypatch: pytest.MonkeyPa
     code = (
         "import sys;"
         "baseline=set(sys.modules);"
-        "import nikodym.forward.results;"
-        "import nikodym.forward.macro;"
+        "import bayesrisk.forward.results;"
+        "import bayesrisk.forward.macro;"
         "blocked=[m for m in ('pandas','scipy','statsmodels','pmdarima') "
         "if m in sys.modules and m not in baseline];"
         "assert not blocked, blocked"
@@ -625,13 +625,13 @@ def test_imports_perezosos_y_dependencias_faltantes(monkeypatch: pytest.MonkeyPa
         macro_module._import_pandas()
     with pytest.raises(MissingDependencyError, match="numpy"):
         macro_module._import_numpy()
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[forecasting\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[forecasting\]"):
         macro_module._import_statsmodels_arima()
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[forecasting\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[forecasting\]"):
         macro_module._import_var()
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[forecasting\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[forecasting\]"):
         macro_module._import_vecm()
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[forecasting\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[forecasting\]"):
         macro_module._import_ljung_box()
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[forecasting\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[forecasting\]"):
         macro_module._import_auto_arima()

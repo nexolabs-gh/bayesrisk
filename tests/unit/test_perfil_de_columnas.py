@@ -18,13 +18,13 @@ import pandas as pd
 import pytest
 from pandas.api.types import is_numeric_dtype
 
-import nikodym
-from nikodym.binning.config import BinningConfig
-from nikodym.binning.transformer import _mensaje_de_fallo
-from nikodym.core.config import NikodymConfig
-from nikodym.core.dataset_check import PerfilColumna, PerfilDataset, check_dataset
-from nikodym.ui import datasets, routes
-from nikodym.ui.presets import standard_preset
+import bayesrisk
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.binning.transformer import _mensaje_de_fallo
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.dataset_check import PerfilColumna, PerfilDataset, check_dataset
+from bayesrisk.ui import datasets, routes
+from bayesrisk.ui.presets import standard_preset
 
 
 def _perfil(*columnas: PerfilColumna, n_filas: int = 1000) -> PerfilDataset:
@@ -94,7 +94,7 @@ def test_sin_perfil_check_dataset_se_comporta_igual_que_antes() -> None:
     reintroduce el falso positivo, que aquí sería acusar de identificador a una columna que nadie
     midió. Omitir el parámetro tiene que dejar el veredicto **idéntico**.
     """
-    config = NikodymConfig.model_validate(standard_preset()["config"])
+    config = BayesRiskConfig.model_validate(standard_preset()["config"])
     columnas = ["id_operacion", "edad", "renta"]
     sin_perfil = check_dataset(config, columnas)
     con_perfil_none = check_dataset(config, columnas, column_profile=None)
@@ -104,7 +104,7 @@ def test_sin_perfil_check_dataset_se_comporta_igual_que_antes() -> None:
 
 def test_el_aviso_llega_por_check_dataset_con_perfil() -> None:
     """La invariante no sirve si el recorrido no la recoge: se mira la superficie pública."""
-    config = NikodymConfig.model_validate(
+    config = BayesRiskConfig.model_validate(
         {**standard_preset()["config"], "binning": {"type": "standard", "feature_columns": "*"}}
     )
     columnas = ["id_operacion", "edad"]
@@ -177,7 +177,7 @@ def test_el_perfil_viaja_por_la_ingesta_y_lo_recupera_el_preflight(tmp_path: obj
     """La cadena completa: sin ella la invariante existe y el usuario no la ve nunca."""
     from pathlib import Path
 
-    from nikodym.ui import datasets
+    from bayesrisk.ui import datasets
 
     workdir = Path(str(tmp_path))
     frame = pd.DataFrame(
@@ -208,7 +208,7 @@ def test_un_dataset_no_materializado_no_tiene_perfil(tmp_path: object) -> None:
     """
     from pathlib import Path
 
-    from nikodym.ui import datasets
+    from bayesrisk.ui import datasets
 
     assert datasets.load_profile("consumo_comportamiento", workdir=Path(str(tmp_path))) is None
 
@@ -345,13 +345,13 @@ def test_el_preflight_recibe_el_perfil_de_un_dataset_del_catalogo(tmp_path: Path
     con perfil y sin él. Lo que hay que aseverar es que **deja de ser ``None``**.
     """
     recibido: dict[str, object] = {}
-    original = nikodym.check_dataset
+    original = bayesrisk.check_dataset
 
     def espia(*args: object, **kwargs: object) -> object:
         recibido.update(kwargs)
         return original(*args, **kwargs)  # type: ignore[arg-type]
 
-    with mock.patch.object(nikodym, "check_dataset", espia):
+    with mock.patch.object(bayesrisk, "check_dataset", espia):
         routes.preflight_dataset(standard_preset()["config"], "consumo_drift", workdir=tmp_path)
 
     perfil = recibido["column_profile"]
@@ -413,9 +413,9 @@ def test_los_valores_que_se_ofrecen_son_los_que_el_motor_compara() -> None:
     pueden separarse mañana sin que nada enrojezca, que es la lección que ya dejó
     ``TEMPORAL_CANDIDATE_NAMES`` cuando estaba triplicada.
     """
-    from nikodym.core import dataset_check as core_module
-    from nikodym.data import partition as partition_module
-    from nikodym.ui import datasets as datasets_module
+    from bayesrisk.core import dataset_check as core_module
+    from bayesrisk.data import partition as partition_module
+    from bayesrisk.ui import datasets as datasets_module
 
     # Vive en el núcleo, que es lo único que las dos capas pueden importar: la capa `ui` tiene
     # vetado importar dominio (`test_ui_no_importa_modulos_de_dominio`), y ese veto es lo que

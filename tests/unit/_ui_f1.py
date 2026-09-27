@@ -13,10 +13,10 @@ from typing import Any
 
 import pandas as pd
 
-from nikodym.binning.config import BinningConfig
-from nikodym.calibration.config import CalibrationConfig
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.data.config import (
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.calibration.config import CalibrationConfig
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.data.config import (
     CohortSplitConfig,
     ColumnSpec,
     DataConfig,
@@ -27,15 +27,15 @@ from nikodym.data.config import (
     SchemaConfig,
     TargetConfig,
 )
-from nikodym.model.config import (
+from bayesrisk.model.config import (
     IvContributionConfig,
     ModelConfig,
     SignPolicyConfig,
     StepwiseConfig,
 )
-from nikodym.performance.config import PerformanceConfig
-from nikodym.scorecard.config import ScorecardConfig
-from nikodym.selection.config import (
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.scorecard.config import ScorecardConfig
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
@@ -147,9 +147,9 @@ def _data_config(*, source: str | None) -> DataConfig:
     )
 
 
-def full_f1_config(source: str, **overrides: Any) -> NikodymConfig:
+def full_f1_config(source: str, **overrides: Any) -> BayesRiskConfig:
     """Config F1 completa data→binning→selection→model→scorecard→calibration→performance."""
-    return NikodymConfig(
+    return BayesRiskConfig(
         repro=ReproConfig(seed=ROOT_SEED),
         data=_data_config(source=source),
         binning=BinningConfig(
@@ -182,9 +182,9 @@ def full_f1_config(source: str, **overrides: Any) -> NikodymConfig:
     )
 
 
-def failing_config(source: str) -> NikodymConfig:
+def failing_config(source: str) -> BayesRiskConfig:
     """Config estructuralmente válida que falla en runtime (binning de columna inexistente)."""
-    return NikodymConfig(
+    return BayesRiskConfig(
         repro=ReproConfig(seed=ROOT_SEED),
         data=_data_config(source=source),
         binning=BinningConfig(feature_columns=("no_existe",), categorical_columns=()),
@@ -231,7 +231,7 @@ def write_near_unique_cohort_parquet(path: Path, *, repeats: int = 80) -> int:
     return len(frame)
 
 
-def eda_only_config(source: str, *, cohort_col: str = NEAR_UNIQUE_COHORT_COL) -> NikodymConfig:
+def eda_only_config(source: str, *, cohort_col: str = NEAR_UNIQUE_COHORT_COL) -> BayesRiskConfig:
     """Config ``data`` + ``eda`` con la tasa agrupada por ``cohort_col`` (sin modelar nada).
 
     Sólo corre el análisis exploratorio: es lo que el tope de la respuesta acota; el F1 entero
@@ -239,7 +239,7 @@ def eda_only_config(source: str, *, cohort_col: str = NEAR_UNIQUE_COHORT_COL) ->
     ``min_obs_per_period=1`` para que cada cohorte de una sola operación tenga tasa y la tabla sea
     tan larga como el identificador.
     """
-    from nikodym.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
+    from bayesrisk.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
 
     data = _data_config(source=source)
     schema = data.schema_.model_copy(
@@ -250,7 +250,7 @@ def eda_only_config(source: str, *, cohort_col: str = NEAR_UNIQUE_COHORT_COL) ->
             )
         }
     )
-    return NikodymConfig(
+    return BayesRiskConfig(
         repro=ReproConfig(seed=ROOT_SEED),
         data=data.model_copy(update={"schema_": schema}),
         eda=EdaConfig(

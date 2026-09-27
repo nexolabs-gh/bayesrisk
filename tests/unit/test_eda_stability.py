@@ -9,12 +9,12 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-import nikodym.eda as eda
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.eda.config import TemporalStabilityConfig
-from nikodym.eda.default_rate import DefaultRateResult
-from nikodym.eda.exceptions import EdaError
-from nikodym.eda.stability import (
+import bayesrisk.eda as eda
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.eda.config import TemporalStabilityConfig
+from bayesrisk.eda.default_rate import DefaultRateResult
+from bayesrisk.eda.exceptions import EdaError
+from bayesrisk.eda.stability import (
     NOT_EVALUABLE_REASON_LABELS,
     NotEvaluableReason,
     StabilityResult,

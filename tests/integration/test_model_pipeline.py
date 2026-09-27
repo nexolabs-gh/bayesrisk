@@ -8,12 +8,12 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from nikodym.binning.config import BinningConfig
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.exceptions import ArtifactNotFoundError
-from nikodym.core.study import Study
-from nikodym.data.config import (
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     CohortSplitConfig,
     ColumnSpec,
     DataConfig,
@@ -23,20 +23,25 @@ from nikodym.data.config import (
     SchemaConfig,
     TargetConfig,
 )
-from nikodym.data.step import INPUT_FRAME_KEY
-from nikodym.model.config import IvContributionConfig, ModelConfig, SignPolicyConfig, StepwiseConfig
-from nikodym.model.exceptions import ModelFitError
-from nikodym.model.step import MODEL_ARTIFACTS
-from nikodym.scorecard.config import ScorecardConfig
-from nikodym.scorecard.results import ScorecardCardSection, ScorecardResult
-from nikodym.scorecard.step import SCORECARD_ARTIFACTS
-from nikodym.selection.config import (
+from bayesrisk.data.step import INPUT_FRAME_KEY
+from bayesrisk.model.config import (
+    IvContributionConfig,
+    ModelConfig,
+    SignPolicyConfig,
+    StepwiseConfig,
+)
+from bayesrisk.model.exceptions import ModelFitError
+from bayesrisk.model.step import MODEL_ARTIFACTS
+from bayesrisk.scorecard.config import ScorecardConfig
+from bayesrisk.scorecard.results import ScorecardCardSection, ScorecardResult
+from bayesrisk.scorecard.step import SCORECARD_ARTIFACTS
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
     VifSelectionConfig,
 )
-from nikodym.testing import assert_bitwise_reproducible
+from bayesrisk.testing import assert_bitwise_reproducible
 
 ROOT_SEED = 20_240_628
 
@@ -225,7 +230,7 @@ def _model_config(
 def _study(*, model: ModelConfig | None = None) -> Study:
     """Study con secciones ``data``, ``binning``, ``selection`` y ``model`` activas."""
     return Study(
-        NikodymConfig(
+        BayesRiskConfig(
             repro=ReproConfig(seed=ROOT_SEED),
             data=_data_config(),
             binning=_binning_config(),
@@ -238,7 +243,7 @@ def _study(*, model: ModelConfig | None = None) -> Study:
 def _study_with_scorecard() -> Study:
     """Study con el pipeline de scorecard completo activado."""
     return Study(
-        NikodymConfig(
+        BayesRiskConfig(
             repro=ReproConfig(seed=ROOT_SEED),
             data=_data_config(),
             binning=_binning_config(),

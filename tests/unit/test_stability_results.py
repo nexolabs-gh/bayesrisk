@@ -12,18 +12,18 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.stability as stability_pkg
-import nikodym.stability.results as stability_results
-from nikodym.stability.config import (
+import bayesrisk.stability as stability_pkg
+import bayesrisk.stability.results as stability_results
+from bayesrisk.stability.config import (
     CsiSource as ConfigCsiSource,
 )
-from nikodym.stability.config import (
+from bayesrisk.stability.config import (
     ScoreDirection as ConfigScoreDirection,
 )
-from nikodym.stability.config import (
+from bayesrisk.stability.config import (
     StabilityComparison as ConfigStabilityComparison,
 )
-from nikodym.stability.results import (
+from bayesrisk.stability.results import (
     CsiRecord,
     PsiRecord,
     StabilityCardSection,
@@ -630,8 +630,8 @@ def test_helpers_resumen_cubren_maximos_y_peor_csi() -> None:
 def test_stability_results_lazy_exports_y_nucleo_liviano_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.core;"
-        "import nikodym.stability as stability;"
+        "import bayesrisk.core;"
+        "import bayesrisk.stability as stability;"
         "blocked=[m for m in ('pandas','scipy','sklearn','statsmodels','optbinning') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"

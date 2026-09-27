@@ -10,11 +10,11 @@ predictores estables e interpretables y descartan lo que no aporta o rompe la re
     desempeño/estabilidad` (ver [Conceptos](../concepts.md)). El binning produce columnas WoE (una
     por variable cruda, con sufijo `__woe`); la selección filtra ese universo y publica el
     subconjunto que entra a la regresión logística. Ambas etapas son secciones declarativas del
-    mismo `NikodymConfig`: `config.binning` y `config.selection`.
+    mismo `BayesRiskConfig`: `config.binning` y `config.selection`.
 
-!!! note "Superficie estable (SemVer 1.x)"
+!!! note "Superficie estable (SemVer 2.x)"
     Las secciones `binning` y `selection` del config son parte del pipeline de scorecard F1 y desde
-    la versión 1,0 son **API estable** (no rompen hasta una versión 2,0).
+    la versión 1,0 son **API estable** (no rompen hasta una versión 3,0).
 
 ## Weight of Evidence (WoE)
 
@@ -78,7 +78,7 @@ premia bins que además de estar sesgados hacia un lado concentran volumen. En e
 
 ### Bandas diagnósticas de IV
 
-Nikodym clasifica el IV en bandas fijas (helper `iv_band`, SDD-06 §3; frontera con **límite
+bayesrisk clasifica el IV en bandas fijas (helper `iv_band`, SDD-06 §3; frontera con **límite
 inferior inclusivo**). Estas bandas son diagnósticas, **no** son el filtro de corte (eso lo define
 `selection.min_iv`):
 
@@ -115,7 +115,7 @@ Del mismo fixture (`binning.iv_by_variable` y `monotonicity_by_variable`):
 
 ## Binning óptimo monotónico (OptBinning)
 
-El binning de Nikodym es **supervisado y óptimo**: no usa cortes arbitrarios (cuantiles fijos, ancho
+El binning de bayesrisk es **supervisado y óptimo**: no usa cortes arbitrarios (cuantiles fijos, ancho
 constante), sino que resuelve un problema de optimización sobre el target. El motor es
 [OptBinning](https://gnpalencia.org/optbinning/), envuelto por la sección `binning`.
 
@@ -142,7 +142,7 @@ bins ordenados. No es un capricho estadístico; es un requisito de negocio y reg
 - **Coherencia con la scorecard**: si el WoE es monótono, el puntaje que asigna la scorecard también
   lo es, y no aparecen puntajes contraintuitivos.
 
-El default de Nikodym es `monotonic_trend="auto_asc_desc"`: el solver elige automáticamente entre
+El default de bayesrisk es `monotonic_trend="auto_asc_desc"`: el solver elige automáticamente entre
 tendencia **ascendente** o **descendente** de la tasa de evento según los datos, sin permitir formas
 no monótonas. En el ejemplo, eligió `descending` para `ingreso_mensual` (más ingreso → menos riesgo)
 y `ascending` para `deuda_ingreso` (más carga → más riesgo).
@@ -154,7 +154,7 @@ riesgo genuinamente no es monótona; deben justificarse, no ser el default.
 
 ### Parámetros de la sección `binning`
 
-Los nombres y defaults salen directo de `nikodym.binning.config.BinningConfig`:
+Los nombres y defaults salen directo de `bayesrisk.binning.config.BinningConfig`:
 
 | Parámetro | Default | Qué controla |
 |---|---|---|
@@ -221,7 +221,7 @@ Los nombres y defaults salen directo de `nikodym.binning.config.BinningConfig`:
 
 ## Selección de variables
 
-Tras el binning, la sección `selection` (`nikodym.selection.config.SelectionConfig`) aplica una
+Tras el binning, la sección `selection` (`bayesrisk.selection.config.SelectionConfig`) aplica una
 batería de filtros **auditables y deterministas** sobre las columnas WoE candidatas. El objetivo es
 entregar a la regresión un conjunto que sea predictivo, no redundante y estable. Los filtros se
 aplican en cascada y cada decisión queda registrada (variable, motivo, métricas).
@@ -303,13 +303,13 @@ estándar (`min_iv=0.02`, `max_iv=0.5` acción `flag`, `correlation.threshold=0.
 
 ## Configurar y leer los resultados
 
-Ambas secciones se editan como cualquier otra parte del `NikodymConfig`. Partiendo del preset
+Ambas secciones se editan como cualquier otra parte del `BayesRiskConfig`. Partiendo del preset
 estándar (ver [Quickstart](../index.md#quickstart)):
 
 ```python
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.ui.presets import standard_preset
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.ui.presets import standard_preset
 
 cfg_dict = standard_preset()["config"]
 
@@ -322,14 +322,14 @@ cfg_dict["selection"]["min_iv"] = 0.02
 cfg_dict["selection"]["correlation"]["threshold"] = 0.75
 cfg_dict["selection"]["vif"]["threshold"] = 5.0
 
-config = NikodymConfig.model_validate(cfg_dict)
+config = BayesRiskConfig.model_validate(cfg_dict)
 ```
 
-Tras `study = nikodym.run(config)` (y verificar `study.run_context.status == "done"`), los
+Tras `study = bayesrisk.run(config)` (y verificar `study.run_context.status == "done"`), los
 resultados viven *namespaced* en `study.artifacts`. Claves reales que publican estas etapas:
 
 ```python
-study = nikodym.run(config)
+study = bayesrisk.run(config)
 assert study.run_context.status == "done"
 
 # --- Binning ---
@@ -351,4 +351,4 @@ Además, cada etapa deja una sección compacta para la ficha del modelo (`binnin
 ## Ver también
 
 - [Conceptos](../concepts.md) — el pipeline F1 y el modelo `run → Study`.
-- [Referencia de la API](../api.md) — `NikodymConfig`, `run` y `Study`.
+- [Referencia de la API](../api.md) — `BayesRiskConfig`, `run` y `Study`.

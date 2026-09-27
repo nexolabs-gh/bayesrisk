@@ -5,7 +5,7 @@
 *.pem
 secrets/
 credentials*
-# Datasets en la raíz. Anclado con `/` para NO vetar el paquete fuente `src/nikodym/data/` (SDD-02).
+# Datasets en la raíz. Anclado con `/` para NO vetar el paquete fuente `src/bayesrisk/data/` (SDD-02).
 # El comentario va en su propia línea a propósito: en `.gitignore` el `#` sólo abre comentario al
 # principio de la línea, así que un `# …` al final convierte el patrón entero en un nombre literal
 # que no existe — y este veto quedó inerte desde que se escribió (corregido 2026-07-25).
@@ -77,10 +77,12 @@ htmlcov/
 coverage.xml
 
 # === Workdir del UI instalable ===
-# `python -m nikodym.ui` lo crea donde se lo lance, así que basta con arrancar la interfaz DENTRO
+# `python -m bayesrisk.ui` lo crea donde se lo lance, así que basta con arrancar la interfaz DENTRO
 # de un clon para que aterricen aquí el parquet del dataset materializado y el results.json de cada
 # corrida. En un repo público eso es una fuga de datos a un `git add .` de distancia. Sin ancla `/`
-# a propósito: el workdir sigue al cwd del usuario, no a la raíz del repo.
+# a propósito: el workdir sigue al cwd del usuario, no a la raíz del repo. El nombre anterior
+# (`.nikodym_ui/`, hasta nikodym 1.20) SIGUE ignorado: los clones existentes lo tienen en disco.
+.bayesrisk_ui/
 .nikodym_ui/
 
 # === Volcados del MCP de Playwright ===
@@ -126,13 +128,16 @@ Thumbs.db
 *~
 
 # Config local de agentes. `launch.json` sí se versiona: levanta la landing en modo demo, que es
-# la única forma de ver el selector de demos —sólo existe en `demo.nikodym.cl`— antes de deployar.
+# la única forma de ver el selector de demos —sólo existe en `demo.bayesadvisory.cl`— antes de deployar.
 .claude/*
 !.claude/launch.json
 
 # Artefactos de corridas locales del pipeline (output_dir relativo por defecto = "reports")
 /reports/
 # Workdir transitorio de la captura canónica (F1/F3/F4)
+/.bayesrisk-demo-fixtures-f1/
+/.bayesrisk-demo-fixtures-f3/
+/.bayesrisk-demo-fixtures-f4/
 /.nikodym-demo-fixtures-f1/
 /.nikodym-demo-fixtures-f3/
 /.nikodym-demo-fixtures-f4/

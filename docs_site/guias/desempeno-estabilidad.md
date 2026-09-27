@@ -7,7 +7,7 @@ distintas sobre un scorecard:
 - **¿Se sostiene?** ¿La población y los puntajes de hoy se parecen a los de desarrollo? Lo miden
   PSI y CSI.
 
-Sobre ambos se apoya el tercer pilar, el que convierte a Nikodym en algo defendible frente a un
+Sobre ambos se apoya el tercer pilar, el que convierte a bayesrisk en algo defendible frente a un
 validador interno o ante tu regulador: la **gobernanza** —lineage y reproducibilidad bit a bit en
 toda corrida, audit-trail con la auditoría encendida y ficha del modelo cuando declaras el
 propósito—. Un número de AUC solo vale si se puede reproducir y trazar cómo se obtuvo.
@@ -22,7 +22,7 @@ propósito—. Un número de AUC solo vale si se puede reproducir y trazar cómo
 
 ## 1. Discriminación: KS, Gini y AUC
 
-El paso de **desempeño** evalúa qué tan bien el modelo ordena el riesgo. Nikodym reporta las tres
+El paso de **desempeño** evalúa qué tan bien el modelo ordena el riesgo. bayesrisk reporta las tres
 métricas estándar por cada partición (desarrollo, *holdout*, *out-of-time*), calculadas sobre la
 misma fuente —en la corrida de ejemplo, la **PD calibrada** (`evaluation_source="pd_calibrated"`)—.
 
@@ -39,7 +39,7 @@ misma fuente —en la corrida de ejemplo, la **PD calibrada** (`evaluation_sourc
     redondear (AUC `0.71235` → Gini `0.42469` → `0.425`); con el AUC ya redondeado, `2 × 0.712 − 1 = 0.424`.
 - **KS** (Kolmogorov–Smirnov). Máxima distancia vertical entre las distribuciones acumuladas de
   buenos y malos a lo largo del score. Responde: *en el punto de corte óptimo, ¿cuánta más
-  proporción de malos que de buenos deja el modelo por debajo?* Nikodym reporta además el punto de
+  proporción de malos que de buenos deja el modelo por debajo?* bayesrisk reporta además el punto de
   corte donde se alcanza (`ks_cutoff_risk_score`) y las tasas asociadas (`tpr_at_ks`, `fpr_at_ks`).
 
 ### La corrida de ejemplo
@@ -59,7 +59,7 @@ cambio poblacional que el paso de estabilidad debe explicar.
 
 ### Umbrales de referencia
 
-Nikodym **no impone** umbrales fijos de discriminación: en la corrida de ejemplo el bloque de
+bayesrisk **no impone** umbrales fijos de discriminación: en la corrida de ejemplo el bloque de
 `thresholds` va vacío y todas las particiones quedan en banda `"ok"`. Los umbrales de corte son
 **configurables**, porque el nivel aceptable depende de la cartera, el horizonte y la práctica del
 banco. Como orientación de industria (no como regla que el motor aplique):
@@ -73,7 +73,7 @@ banco. Como orientación de industria (no como regla que el motor aplique):
 !!! warning "Contexto sobre benchmark"
     Estos rangos son heurísticos y varían por segmento. En carteras de consumo *retail* un KS de
     `0,30` puede ser un modelo sólido; en un scorecard de comportamiento con información de mora
-    reciente se esperaría más. Lo que Nikodym garantiza no es que el número sea "bueno", sino que
+    reciente se esperaría más. Lo que bayesrisk garantiza no es que el número sea "bueno", sino que
     sea **reproducible y trazable**: quién lo calculó, sobre qué datos y con qué config.
 
 ### Deciles y lift
@@ -103,7 +103,7 @@ PSI = Σᵢ (aᵢ − eᵢ) · ln(aᵢ / eᵢ)
 ```
 
 donde `eᵢ` y `aᵢ` son las proporciones esperada y actual en el *bin*. Cada término es siempre
-positivo (penaliza el desvío en ambas direcciones) y el PSI total es la suma. Nikodym aplica esta
+positivo (penaliza el desvío en ambas direcciones) y el PSI total es la suma. bayesrisk aplica esta
 fórmula sobre el **score** y sobre la **PD calibrada**.
 
 ### CSI — Characteristic Stability Index
@@ -119,7 +119,7 @@ diagnóstico.
 ### Umbrales 0,1 y 0,25
 
 A diferencia de la discriminación, aquí los umbrales **sí son fijos y estándar de industria**, y
-Nikodym los aplica para asignar una banda a cada comparación:
+bayesrisk los aplica para asignar una banda a cada comparación:
 
 | PSI / CSI | Banda | Interpretación | Acción auditada |
 |---|---|---|---|
@@ -165,13 +165,13 @@ gracia del monitoreo es detectar cuándo un `mora_max_12m__points` cruza `0,10` 
 !!! tip "Estabilidad ≠ desempeño"
     Son señales independientes y complementarias. Un modelo puede tener PSI bajo (población estable)
     y aun así perder Gini (el mundo cambió de una forma que el modelo no captura), o al revés. Por
-    eso Nikodym reporta ambos por partición: el diagnóstico correcto necesita las dos vistas.
+    eso bayesrisk reporta ambos por partición: el diagnóstico correcto necesita las dos vistas.
 
 ---
 
 ## 3. Gobernanza: el diferenciador
 
-Aquí está el ángulo que separa a Nikodym de un notebook con `sklearn`. Cada corrida —además de las
+Aquí está el ángulo que separa a bayesrisk de un notebook con `sklearn`. Cada corrida —además de las
 métricas— emite **evidencia auditable**: el lineage siempre; el audit-trail con la auditoría
 encendida, como la traen los ejemplos de fábrica; y la ficha del modelo cuando tu institución
 declara el propósito. Es lo que un validador (SR 11-7) o tu regulador pide antes de aceptar un
@@ -180,7 +180,7 @@ modelo en producción.
 ### Reproducibilidad bit a bit
 
 El principio rector es `(datos + config + semilla) → resultado idéntico`. Al cerrar cada corrida,
-`run` congela un **lineage bundle** (`nikodym.core.lineage.LineageBundle`) con la identidad
+`run` congela un **lineage bundle** (`bayesrisk.core.lineage.LineageBundle`) con la identidad
 computacional completa del experimento:
 
 - `git_sha` y `git_dirty` — commit del código y si el árbol tenía cambios sin commitear.
@@ -191,7 +191,7 @@ computacional completa del experimento:
 - `schema_version`, `created_at` y `determinism_caveats` — versión del esquema, sello temporal y
   advertencias explícitas de no-determinismo.
 
-Se accede con `study.lineage_bundle()`. Al recargar un `Study` persistido, Nikodym **verifica el
+Se accede con `study.lineage_bundle()`. Al recargar un `Study` persistido, bayesrisk **verifica el
 `config_hash`**: si el `config.yaml` en disco no coincide con el del lineage, levanta un error en
 vez de devolver resultados con identidad divergente. La reproducibilidad no es una promesa del
 README; es una invariante chequeada.
@@ -209,7 +209,7 @@ README; es una invariante chequeada.
 ### Ficha del modelo (*model card*, SR 11-7)
 
 Una corrida con la sección `governance` declarada produce una **ficha del modelo**
-(`nikodym.governance.ModelCard`): la ficha auditable del modelo, serializable a **JSON canónico**
+(`bayesrisk.governance.ModelCard`): la ficha auditable del modelo, serializable a **JSON canónico**
 (para *diff* y control de versiones) y a **markdown** (para lectura humana). La sección llega
 apagada y exige un propósito, que sólo tu institución puede fijar; cómo se enciende desde la
 interfaz y qué muestra Resultados está en [Gobernanza y ficha del modelo](gobernanza.md). Reúne en
@@ -218,7 +218,7 @@ un solo objeto lo que un comité de modelos necesita:
 - **Identidad y lineage**: `run_id`, `config_hash`, `data_hash`, `git_sha`, `root_seed`,
   `schema_version`.
 - **Propósito, supuestos y limitaciones**: declarados en el `GovernanceConfig` (el `purpose` es
-  **obligatorio**) y copiados a la ficha. Nikodym además **agrega limitaciones automáticas** cuando
+  **obligatorio**) y copiados a la ficha. bayesrisk además **agrega limitaciones automáticas** cuando
   detecta lineage parcial (p. ej. "lineage parcial: sin hash de datos") o un run fallido: la ficha
   no oculta sus propias lagunas.
 - **Métricas**: los agregados de desempeño y estabilidad, validados como escalares finitos.
@@ -242,7 +242,7 @@ un solo objeto lo que un comité de modelos necesita:
 ### Por qué esto le habla a un regulador
 
 Un banco no compra un AUC alto: compra un modelo que pueda **defender** ante su regulador y ante su
-propia validación interna. Nikodym entrega, a cambio de una declaración de propósito, exactamente
+propia validación interna. bayesrisk entrega, a cambio de una declaración de propósito, exactamente
 lo que esos procesos exigen: identidad reproducible de cada corrida, propósito y limitaciones
 documentados, métricas trazables a los datos y al código que las generó, decisiones registradas y
 un calendario de revisión. La gobernanza deja de ser un anexo que alguien redacta a mano después
@@ -256,20 +256,20 @@ Los resultados viven en el `ArtifactStore` del `Study`, *namespaced* por dominio
 reales de estos dos pasos:
 
 ```python
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.ui.datasets import materialize
-from nikodym.ui.presets import standard_preset
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.ui.datasets import materialize
+from bayesrisk.ui.presets import standard_preset
 from pathlib import Path
 from tempfile import mkdtemp
 
 # Corrida completa con el preset estándar F1 (ver Quickstart).
-workdir = Path(mkdtemp(prefix="nikodym-"))
+workdir = Path(mkdtemp(prefix="bayesrisk-"))
 preset = standard_preset()
 data_path = materialize(preset["dataset_id"], workdir=workdir)
 cfg = preset["config"]
 cfg["data"]["load"]["source"] = str(data_path)
-study = nikodym.run(NikodymConfig.model_validate(cfg), run_dir=workdir / "corrida")
+study = bayesrisk.run(BayesRiskConfig.model_validate(cfg), run_dir=workdir / "corrida")
 assert study.run_context.status == "done"
 
 # Discriminación: AUC / Gini / KS por partición.
@@ -285,7 +285,7 @@ print(lineage.config_hash, lineage.git_sha, lineage.root_seed)
 ```
 
 !!! warning "Chequea el estado antes de leer"
-    `nikodym.run` es *fail-loud pero no explosivo*: ante un fallo devuelve un `Study` **parcial** con
+    `bayesrisk.run` es *fail-loud pero no explosivo*: ante un fallo devuelve un `Study` **parcial** con
     `study.run_context.status == "failed"` y el error registrado en el audit-trail, no una
     excepción. Verifica siempre `study.run_context.status == "done"` antes de usar los artefactos.
 

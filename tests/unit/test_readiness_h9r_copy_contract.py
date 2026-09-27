@@ -73,7 +73,7 @@ def test_runbook_aisla_gate_copy_de_pythonpath_y_sitecustomize(tmp_path: Path) -
     assert completed.returncode == 0, completed.stderr
     assert not marker.exists()
     runbook = (ROOT / "docs/operacion/RUNBOOK.md").read_text(encoding="utf-8")
-    assert "'@ | & $nikodymPython -I -B -" in runbook
+    assert "'@ | & $bayesriskPython -I -B -" in runbook
     assert "if sys.flags.isolated != 1 or sys.dont_write_bytecode != 1:" in runbook
 
 
@@ -97,8 +97,8 @@ def test_censo_publico_cubre_superficies_y_excluye_diseno_interno() -> None:
     assert any(path.startswith("web/src/") for path in relative)
     if (ROOT / "web/dist").is_dir():
         assert any(path.startswith("web/dist/") for path in relative)
-    assert any(path.startswith("src/nikodym/ui/") for path in relative)
-    assert any(path.startswith("src/nikodym/report/") for path in relative)
+    assert any(path.startswith("src/bayesrisk/ui/") for path in relative)
+    assert any(path.startswith("src/bayesrisk/report/") for path in relative)
     assert "reports" in copy_gate_module.PUBLIC_COPY_TREES
     assert not any(path.startswith("docs/design/") for path in relative)
     assert not any(path.startswith("docs/operacion/") for path in relative)
@@ -783,7 +783,7 @@ def test_catalogo_documentado_falla_ante_deriva(tmp_path: Path) -> None:
     ("original", "replacement", "message"),
     [
         ("return dimensions", "return {}", "_g dejó"),
-        ("nikodym.h9r.", "nikodym.other.", "ADAPTER_IDS dejó"),
+        ("nikodym.h9r.", "bayesrisk.other.", "ADAPTER_IDS dejó"),
         (
             'return tuple(identity for identity in self.outputs if identity != "manifest")',
             "return ()",

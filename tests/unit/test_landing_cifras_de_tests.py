@@ -72,7 +72,7 @@ def _recolectados(rutas: list[str]) -> int:
     # `tmp_path` había desaparecido bajo sus pies. Aislado ese archivo pasa 35/35, así que el rojo
     # parecía del arnés H9R y era de aquí. Con un basetemp propio el subproceso no toca el
     # directorio compartido.
-    raiz_tmp = Path(tempfile.mkdtemp(prefix="nikodym-collect-"))
+    raiz_tmp = Path(tempfile.mkdtemp(prefix="bayesrisk-collect-"))
     try:
         salida = subprocess.run(
             [

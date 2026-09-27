@@ -1,6 +1,6 @@
 """Deriva —y VERIFICA corriendo— la ECL IFRS 9 del preset ``f4-ifrs9-retail`` (SDD-16).
 
-``nikodym.ui`` es *domain-agnostic* (SDD-23 §3.3): un test AST veta importar módulos de dominio
+``bayesrisk.ui`` es *domain-agnostic* (SDD-23 §3.3): un test AST veta importar módulos de dominio
 desde ``ui/``. Por eso el preset se sirve como **dict literal JSON-able**, no se construye con
 ``IfrsProvisioningConfig(...)`` dentro de ``ui/``. Este script vive **fuera** de ``ui/``, construye
 las secciones ``survival`` (SDD-18) y ``provisioning_ifrs9`` (SDD-16) con los objetos Pydantic de
@@ -33,9 +33,9 @@ import tempfile
 from copy import deepcopy
 from pathlib import Path
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.provisioning.ifrs9.config import (
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.provisioning.ifrs9.config import (
     IfrsEadConfig,
     IfrsEclConfig,
     IfrsLgdConfig,
@@ -44,14 +44,14 @@ from nikodym.provisioning.ifrs9.config import (
     IfrsScenarioConfig,
     IfrsStagingConfig,
 )
-from nikodym.survival.config import (
+from bayesrisk.survival.config import (
     DiscreteHazardConfig,
     SurvivalConfig,
     SurvivalInputConfig,
     SurvivalTimeGridConfig,
 )
-from nikodym.ui import datasets
-from nikodym.ui.presets import _STANDARD_CONFIG
+from bayesrisk.ui import datasets
+from bayesrisk.ui.presets import _STANDARD_CONFIG
 
 DATASET_ID = "ifrs9_retail_latam"
 HORIZON_YEARS = 5  # periodos ANUALES (== registro del dataset); grilla lifetime = 1..T años
@@ -138,13 +138,13 @@ def compose_config() -> dict:
 
 def verify(cfg: dict) -> None:
     """Corre la cadena entera y comprueba que la ECL IFRS 9 tiene sentido de NEGOCIO."""
-    NikodymConfig.model_validate(cfg)
+    BayesRiskConfig.model_validate(cfg)
     with tempfile.TemporaryDirectory() as tmp:
         source = datasets.materialize(DATASET_ID, workdir=Path(tmp))
         run_cfg = deepcopy(cfg)
         run_cfg["data"]["load"]["source"] = str(source)
         run_cfg["report"] = None  # ya está en None, defensivo (el reporte no es parte del gate)
-        study = nikodym.run(NikodymConfig.model_validate(run_cfg))
+        study = bayesrisk.run(BayesRiskConfig.model_validate(run_cfg))
 
     assert study.run_context.status == "done", f"la corrida falló: {study.run_context.status}"
     card = study.artifacts.get("provisioning_ifrs9", "card")

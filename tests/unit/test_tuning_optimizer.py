@@ -5,7 +5,8 @@ base ``[ml]``): objetivo determinista con dataset diminuto y folds fijas, reprod
 byte-a-byte de ``trials``/``best`` (la importancia queda **fuera** del assert byte-a-byte, nitpick
 A14(1)), anti-leakage de las folds, reúso sin recodificar de
 ``PerformanceEvaluator``/``MLChallenger`` (test AST), extra ``[tuning]`` faltante, valor no finito y
-particiones degeneradas. Un subproceso verifica que ``import nikodym.tuning.optimizer`` es liviano.
+particiones degeneradas. Un subproceso verifica que ``import bayesrisk.tuning.optimizer`` es
+liviano.
 """
 
 from __future__ import annotations
@@ -23,29 +24,29 @@ import pytest
 optuna = pytest.importorskip("optuna")
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-from nikodym.core.audit import InMemoryAuditSink  # noqa: E402
-from nikodym.core.exceptions import MissingDependencyError  # noqa: E402
-from nikodym.ml.config import (  # noqa: E402
+from bayesrisk.core.audit import InMemoryAuditSink  # noqa: E402
+from bayesrisk.core.exceptions import MissingDependencyError  # noqa: E402
+from bayesrisk.ml.config import (  # noqa: E402
     MLConfig,
     MLTrainConfig,
     MonotonicConfig,
     RandomForestParams,
 )
-from nikodym.tuning import optimizer as opt_mod  # noqa: E402
-from nikodym.tuning.config import (  # noqa: E402
+from bayesrisk.tuning import optimizer as opt_mod  # noqa: E402
+from bayesrisk.tuning.config import (  # noqa: E402
     TuningConfig,
     TuningSamplerConfig,
     TuningValidationConfig,
 )
-from nikodym.tuning.exceptions import (  # noqa: E402
+from bayesrisk.tuning.exceptions import (  # noqa: E402
     TuningConfigError,
     TuningDataError,
     TuningOptimizeError,
     TuningSearchSpaceError,
 )
-from nikodym.tuning.optimizer import TuningOptimizer  # noqa: E402
-from nikodym.tuning.results import TuningResult  # noqa: E402
-from nikodym.tuning.search_space import IntSpec, SearchSpaceConfig  # noqa: E402
+from bayesrisk.tuning.optimizer import TuningOptimizer  # noqa: E402
+from bayesrisk.tuning.results import TuningResult  # noqa: E402
+from bayesrisk.tuning.search_space import IntSpec, SearchSpaceConfig  # noqa: E402
 
 # Golden pineado a scikit-learn 1.7.x + optuna 4.9.x (D-TUN-golden): un cambio de versión que mueva
 # estos valores es un evento auditado, no un fallo silencioso (SDD-13 §9).
@@ -415,14 +416,14 @@ def test_extra_tuning_faltante_levanta_missing_dependency(monkeypatch: pytest.Mo
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(opt_mod.importlib, "import_module", fake_import)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[tuning\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[tuning\]"):
         _optimize()
 
 
 def test_import_optimizer_es_liviano_en_proceso_fresco() -> None:
-    """``import nikodym.tuning.optimizer`` no arrastra optuna/ML/tabulares (§9)."""
+    """``import bayesrisk.tuning.optimizer`` no arrastra optuna/ML/tabulares (§9)."""
     code = (
-        "import nikodym.tuning.optimizer, sys;"
+        "import bayesrisk.tuning.optimizer, sys;"
         "heavy = [m for m in ('optuna','sklearn','xgboost','lightgbm','catboost','numpy','pandas')"
         " if m in sys.modules];"
         "assert not heavy, heavy"

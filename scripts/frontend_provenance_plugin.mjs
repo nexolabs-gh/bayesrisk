@@ -1,5 +1,5 @@
 /**
- * Procedencia fail-closed del bundle normal de Nikodym.
+ * Procedencia fail-closed del bundle normal de bayesrisk.
  *
  * `transform` conserva la unión conservadora; `generateBundle` liga fuentes
  * directas por output y emite notices; `writeBundle` hashea los bytes finales.
@@ -395,7 +395,7 @@ export function frontendProvenancePlugin() {
   let draft = null
 
   return {
-    name: "nikodym-frontend-provenance",
+    name: "bayesrisk-frontend-provenance",
     apply: "build",
     buildStart() {
       transformed.clear()

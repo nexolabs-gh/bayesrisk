@@ -15,14 +15,14 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.stress as stress_pkg
-import nikodym.stress.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.forward.config import (
+import bayesrisk.stress as stress_pkg
+import bayesrisk.stress.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.forward.config import (
     ForwardConfig,
     ForwardInputConfig,
     MacroModelConfig,
@@ -32,15 +32,15 @@ from nikodym.forward.config import (
     ScenarioDefinitionConfig,
     TtcReversionConfig,
 )
-from nikodym.forward.results import FORWARD_ECL_CONTRACT_VERSION, ForwardEclInput
-from nikodym.markov.config import (
+from bayesrisk.forward.results import FORWARD_ECL_CONTRACT_VERSION, ForwardEclInput
+from bayesrisk.markov.config import (
     MarkovConfig,
     MarkovDynamicsConfig,
     MarkovEstimationConfig,
     MarkovInputConfig,
     MarkovStateConfig,
 )
-from nikodym.stress.config import (
+from bayesrisk.stress.config import (
     ReverseStressConfig,
     SensitivitySweepConfig,
     StressConfig,
@@ -51,10 +51,10 @@ from nikodym.stress.config import (
     StressTargetConfig,
     StressValidationConfig,
 )
-from nikodym.stress.exceptions import StressDependencyError
-from nikodym.stress.results import StressResult
-from nikodym.stress.step import STRESS_ARTIFACTS, StressStep
-from nikodym.survival.config import (
+from bayesrisk.stress.exceptions import StressDependencyError
+from bayesrisk.stress.results import StressResult
+from bayesrisk.stress.step import STRESS_ARTIFACTS, StressStep
+from bayesrisk.survival.config import (
     DiscreteHazardConfig,
     SurvivalConfig,
     SurvivalInputConfig,
@@ -185,15 +185,15 @@ def test_from_config_registro_provides_emit_e_import_liviano() -> None:
     assert sink.events[-1].payload == {"regla": "x"}
 
     code = (
-        "import nikodym.core, sys;"
-        "assert 'nikodym.stress' not in sys.modules;"
-        "import nikodym.stress;"
-        "assert 'nikodym.stress.step' in sys.modules;"
-        "assert nikodym.stress.StressStep.__name__ == 'StressStep';"
-        "blocked=[m for m in ('pandas','numpy','scipy','statsmodels','nikodym.provisioning',"
-        "'nikodym.stress.results','nikodym.stress.engine') if m in sys.modules];"
+        "import bayesrisk.core, sys;"
+        "assert 'bayesrisk.stress' not in sys.modules;"
+        "import bayesrisk.stress;"
+        "assert 'bayesrisk.stress.step' in sys.modules;"
+        "assert bayesrisk.stress.StressStep.__name__ == 'StressStep';"
+        "blocked=[m for m in ('pandas','numpy','scipy','statsmodels','bayesrisk.provisioning',"
+        "'bayesrisk.stress.results','bayesrisk.stress.engine') if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'StressStep' in nikodym.stress.__all__"
+        "assert 'StressStep' in bayesrisk.stress.__all__"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -304,7 +304,7 @@ def test_helpers_config_y_engines_economicos() -> None:
         ),
     )
     ecl_obj, provision_obj = object(), object()
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.artifacts.set("provisioning_ifrs9", "engine", ecl_obj)
     study.artifacts.set("provisioning", "engine", provision_obj)
     assert step_module._read_economic_engines(study, cfg=provision_cfg) == (ecl_obj, provision_obj)
@@ -474,7 +474,7 @@ def test_determinismo_byte_equivalente() -> None:
 def test_ct1_falta_forward_y_ecl_input_incompatible() -> None:
     """CT-1 exige artefactos forward; un contrato ECL incompatible falla como dependencia."""
     cfg = _stress_cfg(metrics=("pd_marginal",))
-    empty_study = Study(NikodymConfig(stress=cfg))
+    empty_study = Study(BayesRiskConfig(stress=cfg))
     with pytest.raises(ArtifactNotFoundError, match=r"\('forward', 'macro_projection'\)"):
         StressStep.from_config(cfg).execute(empty_study, np.random.default_rng(ROOT_SEED))
 
@@ -494,7 +494,7 @@ def test_study_end_to_end_survival_markov_forward_stress(tmp_path: Path) -> None
     """``Study`` encadena survival + markov + forward + stress y publica el resultado stress."""
     coefficients = _coefficient_table(tmp_path)
     study = Study(
-        NikodymConfig(
+        BayesRiskConfig(
             survival=_survival_cfg(),
             markov=_markov_cfg(),
             forward=_forward_cfg(coefficients),
@@ -672,7 +672,7 @@ def _stress_study(
     """Arma un ``Study`` con artefactos forward sintéticos y devuelve snapshots profundos."""
     term = _forward_term_structure(hazards if hazards is not None else [0.02])
     macro = _macro_projection(periods)
-    study = Study(NikodymConfig(stress=cfg))
+    study = Study(BayesRiskConfig(stress=cfg))
     study.artifacts.set("forward", "macro_projection", macro)
     study.artifacts.set("forward", "satellite_model", SatelliteStub())
     study.artifacts.set("forward", "term_structure", term)

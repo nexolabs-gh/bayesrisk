@@ -1,0 +1,496 @@
+"""Paso orquestable de la capa ``report`` (SDD-26 §4/§7/§9; CT-1).
+
+``ReportStep`` implementa el :class:`~bayesrisk.core.steps.Step` nativo del dominio ``report``:
+exige las ocho cards canónicas de F1, toma un snapshot defensivo del ``Study`` mediante
+:class:`~bayesrisk.report.builder.ReportBuilder`, genera narrativa básica o IA opcional, renderiza
+el HTML determinístico y publica el bundle, el manifiesto y el resultado agregado bajo
+``domain='report'``.
+
+El módulo evita importar Jinja2, WeasyPrint, SDKs IA o librerías gráficas en import time. El
+renderer y los narradores se cargan dentro de ``execute`` para que ``import bayesrisk.core`` siga
+liviano y para que ``bayesrisk.report`` pueda registrar el step sin activar dependencias opcionales.
+
+**Estable (SemVer 2.x).**
+"""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Collection
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Final, TypeAlias
+
+from bayesrisk.core.audit import AuditEvent
+from bayesrisk.core.exceptions import ArtifactNotFoundError
+from bayesrisk.core.mixins import AuditableMixin
+from bayesrisk.core.registry import register
+from bayesrisk.core.steps import ArtifactKey, ContextoDeResolucion
+from bayesrisk.report.builder import OPTIONAL_REPORT_INPUTS, ReportBuilder
+from bayesrisk.report.config import ReportConfig
+from bayesrisk.report.document import PER_OBSERVATION_TABLES, max_visible_rows
+from bayesrisk.report.exceptions import ReportExportError
+from bayesrisk.report.exports import DATA_EXPORT_FORMATS, write_data_exports
+from bayesrisk.report.results import (
+    AiNarrationBlock,
+    ReportInputBundle,
+    ReportManifest,
+    ReportResult,
+)
+
+if TYPE_CHECKING:
+    import numpy as np
+
+    from bayesrisk.core.study import Study
+else:
+    Study: TypeAlias = Any
+
+__all__ = ["REPORT_ARTIFACTS", "REPORT_REQUIRED_CARDS", "ReportStep"]
+
+REPORT_REQUIRED_CARDS: Final[tuple[ArtifactKey, ...]] = (
+    ("eda", "eda_card"),
+    ("binning", "binning_card"),
+    ("selection", "selection_card"),
+    ("model", "model_card"),
+    ("scorecard", "card"),
+    ("calibration", "card"),
+    ("performance", "card"),
+    ("stability", "card"),
+)
+REPORT_ARTIFACTS: Final[tuple[str, ...]] = (
+    "input_bundle",
+    "manifest",
+    "result",
+)
+
+
+@register("standard", domain="report")
+class ReportStep(AuditableMixin):
+    """Orquesta el reporte canónico F1 y publica ``domain='report'``."""
+
+    name: str = "report"
+    requires: tuple[ArtifactKey, ...] = REPORT_REQUIRED_CARDS
+    provides: tuple[ArtifactKey, ...] = tuple(("report", key) for key in REPORT_ARTIFACTS)
+    #: Lo que el builder **adopta si existe** y de lo que no depende (D-FX-3). No participa en la
+    #: validación de prerequisitos; sólo evita que una clave que el informe sí lee se declare
+    #: INERTE al inyectarla por ``bayesrisk.run(..., artifacts=...)`` (D-ART-5). Incluye las ocho
+    #: cards canónicas: una card **filtrada** de ``requires`` sigue siendo un consumo legítimo.
+    optional_requires: tuple[ArtifactKey, ...] = OPTIONAL_REPORT_INPUTS
+
+    def __init__(
+        self,
+        config: ReportConfig,
+        *,
+        active_domains: Collection[str] | None = None,
+    ) -> None:
+        """Construye el paso desde la sección ``ReportConfig`` ya validada.
+
+        ``requires`` se **deriva** del config, y desde D-FX-3 es una **doble intersección**: una
+        card se exige si su dominio está en ``config.sections.required_sections`` **y** entre los
+        dominios que corren en esta invocación (``active_domains``).
+
+        Las dos condiciones responden preguntas distintas y por eso hacen falta las dos. La primera
+        es *«¿el informe espera esta sección?»*; la segunda, *«¿alguien va a producirla?»*. Sin la
+        segunda, el preset F1 con ``eda`` apagado hacía inejecutable el config entero
+        (``_validate_pipeline`` rechaza un prerequisito que ningún paso aguas arriba produce), y el
+        usuario recibía un ``ConfigError`` del DAG en vez de la decisión que ``missing_policy``
+        existe para tomar. El filtro vale para **cualquier** dominio, no sólo ``eda``: sacar
+        ``eda`` del default habría parcheado un preset dejando viva la clase entera.
+
+        ``active_domains=None`` significa *«no se sabe»*, no *«ninguno»*: conserva el
+        comportamiento histórico (filtrar sólo por ``required_sections``) para el uso standalone
+        —``ReportStep.from_config(ReportConfig())`` sigue exigiendo las ocho cards—. El contexto
+        real lo entrega el resolver por :meth:`from_config_with_context`.
+
+        ``required_sections`` **no se muta**: el builder necesita la lista original para saber qué
+        falta y aplicar ``missing_policy``. ``REPORT_REQUIRED_CARDS`` es el mapeo canónico
+        dominio→card y tampoco se altera; sólo se filtra.
+        """
+        self.config = config
+        required_domains = set(config.sections.required_sections)
+        self.requires = tuple(
+            (domain, key)
+            for domain, key in REPORT_REQUIRED_CARDS
+            if domain in required_domains and (active_domains is None or domain in active_domains)
+        )
+
+    @classmethod
+    def from_config(cls, cfg: ReportConfig) -> ReportStep:
+        """Construye ``ReportStep`` desde ``BayesRiskConfig.report`` (firma histórica)."""
+        return cls(cfg)
+
+    @classmethod
+    def from_config_with_context(
+        cls,
+        cfg: ReportConfig,
+        *,
+        contexto: ContextoDeResolucion,
+    ) -> ReportStep:
+        """Fábrica contextual del resolver (D-FX-2): recibe el contexto de ESTA invocación.
+
+        ``Study._resolve_step`` la prefiere sobre :meth:`from_config` cuando existe. Es la extensión
+        genérica del resolver, no un caso especial de ``report``: cualquier dominio cuyo contrato
+        dependa de la invocación puede exponerla, y el que no la exponga no cambia.
+
+        ⚠️ ``report`` sólo usa ``dominios_activos``, que es lo que el contexto ya traía cuando era un
+        ``frozenset`` a secas (D-REQ-2). Lo que cambió es la **forma**: el DTO permitió que otro
+        paso necesitara más sin obligar a éste a enterarse.
+        """
+        return cls(cfg, active_domains=contexto.dominios_activos)
+
+    def emit(self, event: AuditEvent) -> None:
+        """Permite pasar el step como ``AuditSink`` si un motor futuro lo requiere."""
+        self._audit.emit(event)
+
+    def execute(self, study: Study, rng: np.random.Generator) -> ReportResult:
+        """Ejecuta report determinístico sin consumir ``rng`` y publica tres artefactos."""
+        del rng
+        cfg = _report_config_from_study(study, fallback=self.config)
+        _validate_required_cards(study, self.requires, step_name=self.name)
+        _preflight_output_dir(cfg)
+
+        builder = ReportBuilder.from_config(cfg)
+        bundle = builder.collect(study)
+        sections = builder.build_sections(bundle)
+        bundle = bundle.model_copy(update={"sections": sections}, deep=True)
+
+        ai_blocks = _narration_blocks(bundle, cfg)
+        renderer = _html_renderer(cfg)
+        html = renderer.render(bundle, ai_blocks=ai_blocks)
+        manifest = _manifest_for_html(renderer, html, config=cfg)
+        result = ReportResult(
+            manifest=manifest,
+            input_bundle=bundle,
+            html_path=_resolve_html_path(cfg, manifest),
+            pdf_path=_maybe_write_pdf(cfg, html, manifest=manifest),
+            md_path=_maybe_write_markdown(cfg, bundle, ai_blocks=ai_blocks, manifest=manifest),
+            docx_path=_maybe_write_docx(cfg, bundle, ai_blocks=ai_blocks, manifest=manifest),
+            data_exports=_maybe_write_data_exports(cfg, bundle, manifest=manifest),
+            ai_blocks=ai_blocks,
+        )
+        self._log_report_decisions(bundle=bundle, manifest=manifest, result=result, config=cfg)
+        self._publish_artifacts(study, result)
+        return result
+
+    def _publish_artifacts(self, study: Study, result: ReportResult) -> None:
+        """Publica los tres artefactos estables del dominio ``report``."""
+        study.artifacts.set("report", "input_bundle", result.input_bundle.model_copy(deep=True))
+        study.artifacts.set("report", "manifest", result.manifest.model_copy(deep=True))
+        study.artifacts.set("report", "result", result.model_copy(deep=True))
+
+    def _log_report_decisions(
+        self,
+        *,
+        bundle: ReportInputBundle,
+        manifest: ReportManifest,
+        result: ReportResult,
+        config: ReportConfig,
+    ) -> None:
+        """Registra decisiones auditables de ensamblado, IA, truncamiento y export."""
+        self.log_decision(
+            regla="report_sections",
+            umbral=tuple(config.sections.required_sections),
+            valor={
+                "sections": tuple(section.id for section in bundle.sections),
+                "missing_sections": bundle.missing_sections,
+            },
+            accion="renderizar_reporte",
+        )
+        for table_key, total_rows, max_rows in _truncated_tables(bundle, config):
+            self.log_decision(
+                regla="report_table_truncation",
+                umbral=max_rows,
+                valor={"table_key": table_key, "total_rows": total_rows},
+                accion="truncar_visualizacion",
+            )
+        _log_ai_decision(self, result.ai_blocks, config)
+        if manifest.path:
+            self.log_decision(
+                regla="report_export_html",
+                umbral=config.output_dir,
+                valor={"path": manifest.path, "sha256": manifest.sha256},
+                accion="publicar_html_local",
+            )
+        for regla, path, accion in (
+            ("report_export_pdf", result.pdf_path, "publicar_pdf_local"),
+            ("report_export_md", result.md_path, "publicar_qmd_local"),
+            ("report_export_docx", result.docx_path, "publicar_docx_local"),
+        ):
+            if path:
+                self.log_decision(
+                    regla=regla,
+                    umbral=config.output_dir,
+                    valor={"path": path},
+                    accion=accion,
+                )
+        if result.data_exports:
+            self.log_decision(
+                regla="report_export_datos",
+                umbral=config.output_dir,
+                valor={"files": tuple(sorted(result.data_exports))},
+                accion="publicar_tablas_por_observacion",
+            )
+
+
+def _report_config_from_study(study: Study, *, fallback: ReportConfig) -> ReportConfig:
+    """Lee ``BayesRiskConfig.report`` y usa el config del paso como respaldo standalone."""
+    raw_config = getattr(study.config, "report", None)
+    if raw_config is None:
+        return fallback
+    if isinstance(raw_config, ReportConfig):
+        return raw_config
+    return ReportConfig.model_validate(raw_config)
+
+
+def _validate_required_cards(
+    study: Study,
+    required: tuple[ArtifactKey, ...],
+    *,
+    step_name: str,
+) -> None:
+    """Valida CT-1 para llamadas directas a ``execute`` y preserva ``ArtifactNotFoundError``."""
+    for domain, key in required:
+        if not study.artifacts.has(domain, key):
+            raise ArtifactNotFoundError(
+                f"El paso '{step_name}' requiere el artefacto ('{domain}', '{key}'), "
+                "ausente del ArtifactStore."
+            )
+
+
+def _resolve_html_path(config: ReportConfig, manifest: ReportManifest) -> str | None:
+    """Ruta real del HTML escrito, para que consumidores puedan abrirlo (SDD-23 §4.3).
+
+    ``ReportResult.html_path`` es la ruta real en disco = ``output_dir`` + el nombre del archivo.
+    Sin ``output_dir`` no se escribe archivo → ``None`` (reporte sólo-en-memoria).
+
+    ⚠️ **``manifest.path`` NO es siempre un basename, y de ahí sale el único bug posible aquí.**
+    ``HtmlReportRenderer.write`` lo construye con ``_manifest_path``, que devuelve el basename
+    **sólo si ``output_dir`` es absoluto**; si es relativo devuelve ``output_dir/basename``, porque
+    esa forma es la portable para el golden del manifiesto. Concatenar ``output_dir`` con eso
+    duplicaba el directorio (``reports/reports/scorecard_report.html``) y publicaba una ruta que no
+    existe — con el ``output_dir`` relativo del preset F1, que es el caso por defecto de quien use
+    la librería por código. Por eso se toma el **nombre** de ``manifest.path``, no la ruta entera.
+    Los otros tres formatos no pasaban por aquí y nunca tuvieron el defecto.
+    """
+    output_dir = config.output_dir.strip()
+    if not output_dir or not manifest.path:
+        return None
+    return str(Path(output_dir) / Path(manifest.path).name)
+
+
+def _maybe_write_pdf(
+    config: ReportConfig,
+    html: str,
+    *,
+    manifest: ReportManifest,
+) -> str | None:
+    """Escribe el PDF opt-in del reporte y devuelve su ruta real, o ``None`` (SDD-26 §7).
+
+    ``formats`` es la fuente de verdad del step: el PDF se genera **si y sólo si** ``"pdf"`` está en
+    ``config.formats`` (``config.pdf.enabled`` sólo guía el uso directo de ``PdfReportRenderer``, no
+    el step). Sale del MISMO ``html`` ya renderizado —que incluye la narrativa IA vía ``ai_blocks``—
+    sin re-renderizar. Requiere un ``output_dir`` escribible (``manifest.path`` no vacío, igual que
+    :func:`_resolve_html_path`); si WeasyPrint degrada con gracia devuelve ``None``. El PDF NO entra
+    al manifest: sólo se refleja como ``ReportResult.pdf_path``.
+    """
+    if "pdf" not in config.formats:
+        return None
+    output_dir = config.output_dir.strip()
+    if not output_dir or not manifest.path:
+        return None
+    from bayesrisk.report.renderer import PdfReportRenderer
+
+    path = PdfReportRenderer.from_config(config).write_pdf_from_html(html, output_dir=output_dir)
+    return str(path) if path is not None else None
+
+
+def _maybe_write_markdown(
+    config: ReportConfig,
+    bundle: ReportInputBundle,
+    *,
+    ai_blocks: tuple[AiNarrationBlock, ...],
+    manifest: ReportManifest,
+) -> str | None:
+    """Escribe el ``.qmd`` (fuente editable) si ``"md"`` está en ``formats``; si no, ``None``.
+
+    Clon de :func:`_maybe_write_pdf`: ``formats`` es la fuente de verdad del step. No requiere
+    extras —el ``.qmd`` es texto—, así que no hay degradación posible: si se pide, se emite. Las
+    figuras se materializan junto al archivo (ver :meth:`MarkdownReportRenderer.write`).
+    """
+    output_dir = _export_dir(config, manifest)
+    if "md" not in config.formats or output_dir is None:
+        return None
+    from bayesrisk.report.markdown import MarkdownReportRenderer
+
+    renderer = MarkdownReportRenderer.from_config(config)
+    markdown = renderer.render(bundle, ai_blocks=ai_blocks)
+    md_manifest = renderer.write(markdown, output_dir=output_dir)
+    return str(Path(output_dir) / Path(md_manifest.path).name)
+
+
+def _maybe_write_docx(
+    config: ReportConfig,
+    bundle: ReportInputBundle,
+    *,
+    ai_blocks: tuple[AiNarrationBlock, ...],
+    manifest: ReportManifest,
+) -> str | None:
+    """Escribe el ``.docx`` (Word) si ``"docx"`` está en ``formats``; si no, ``None``.
+
+    Clon de :func:`_maybe_write_pdf`, incluida la degradación con gracia: sin el extra ``docx``
+    emite un warning y devuelve ``None`` (o falla, con ``docx.fail_if_unavailable=True``). El
+    ``.docx`` NO entra al manifest: se refleja como ``ReportResult.docx_path``.
+    """
+    output_dir = _export_dir(config, manifest)
+    if "docx" not in config.formats or output_dir is None:
+        return None
+    from bayesrisk.report.docx import DocxReportRenderer
+
+    path = DocxReportRenderer.from_config(config).write_docx_from_bundle(
+        bundle, output_dir=output_dir, ai_blocks=ai_blocks
+    )
+    return str(path) if path is not None else None
+
+
+def _maybe_write_data_exports(
+    config: ReportConfig,
+    bundle: ReportInputBundle,
+    *,
+    manifest: ReportManifest,
+) -> dict[str, str]:
+    """Escribe los adjuntos de datos (``csv``/``xlsx``) y devuelve ``{archivo: ruta}``.
+
+    Es lo que puebla ``ReportResult.data_exports``. Las tablas por observación salieron del
+    documento (:data:`~bayesrisk.report.document.PER_OBSERVATION_TABLES`); aquí se entregan
+    **completas**, que es la única forma en que sirven para algo.
+    """
+    output_dir = _export_dir(config, manifest)
+    if output_dir is None or not (set(config.formats) & DATA_EXPORT_FORMATS):
+        return {}
+    return write_data_exports(bundle.tables, config=config, output_dir=output_dir)
+
+
+def _export_dir(config: ReportConfig, manifest: ReportManifest) -> str | None:
+    """Directorio de escritura de los formatos derivados, o ``None`` (reporte sólo-en-memoria).
+
+    Mismo criterio que :func:`_resolve_html_path`: sin ``output_dir`` escribible (``manifest.path``
+    vacío) no se escribe ningún archivo, y los formatos derivados no inventan una ruta propia.
+    """
+    output_dir = config.output_dir.strip()
+    if not output_dir or not manifest.path:
+        return None
+    return output_dir
+
+
+def _preflight_output_dir(config: ReportConfig) -> None:
+    """Falla temprano si el export local configurado no es escribible."""
+    output_dir = config.output_dir.strip()
+    if not output_dir:
+        return
+    directory = Path(output_dir)
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ReportExportError(
+            "No se pudo crear el directorio de salida del reporte: dominio='report', "
+            f"output_dir='{config.output_dir}', acción='verifique permisos de la ruta padre'."
+        ) from exc
+    if not directory.is_dir() or not os.access(directory, os.W_OK):
+        raise ReportExportError(
+            "El directorio de salida del reporte no es escribible: dominio='report', "
+            f"output_dir='{config.output_dir}', acción='ajuste permisos o use otra ruta'."
+        )
+
+
+def _narration_blocks(
+    bundle: ReportInputBundle,
+    config: ReportConfig,
+) -> tuple[AiNarrationBlock, ...]:
+    """Genera narrativa básica y, si corresponde, la ruta IA con fallback elegante."""
+    from bayesrisk.report.ai import AINarrator, RuleBasedNarrator
+
+    basic = RuleBasedNarrator().narrate(bundle)
+    if not config.ai.enabled:
+        return basic
+    return AINarrator(config.ai).enrich(bundle)
+
+
+def _html_renderer(config: ReportConfig) -> Any:
+    """Construye el renderer HTML cargando Jinja2 sólo cuando ``render`` lo necesite."""
+    from bayesrisk.report.renderer import HtmlReportRenderer
+
+    return HtmlReportRenderer.from_config(config)
+
+
+def _manifest_for_html(
+    renderer: Any,
+    html: str,
+    *,
+    config: ReportConfig,
+) -> ReportManifest:
+    """Escribe HTML si hay ``output_dir``; si no, usa el manifest canónico del renderer."""
+    output_dir = config.output_dir.strip()
+    if output_dir:
+        manifest = renderer.write(html, output_dir=output_dir)
+        return ReportManifest.model_validate(manifest)
+
+    manifest = renderer.build_manifest(html)
+    return ReportManifest.model_validate(manifest)
+
+
+def _truncated_tables(
+    bundle: ReportInputBundle,
+    config: ReportConfig,
+) -> tuple[tuple[str, int, int], ...]:
+    """Detecta tablas cuyo render aplica truncamiento visual explícito: (clave, filas, tope).
+
+    Las tablas por observación quedan fuera: ya no se renderizan (salen como adjunto completo), así
+    que auditarlas como "truncadas" sería registrar una decisión que el motor no toma. El tope es
+    el que el render aplica de verdad a cada tabla (:func:`max_visible_rows`): el configurable, o
+    el contractual de la tasa por período o cohorte cuando es menor.
+    """
+    truncated: list[tuple[str, int, int]] = []
+    for key, table in bundle.tables.items():
+        if key in PER_OBSERVATION_TABLES:
+            continue
+        max_rows = max_visible_rows(key, config.sections.max_table_rows)
+        row_count = len(getattr(table, "index", ()))
+        if row_count > max_rows:
+            truncated.append((key, row_count, max_rows))
+    return tuple(truncated)
+
+
+def _log_ai_decision(
+    step: ReportStep,
+    ai_blocks: tuple[AiNarrationBlock, ...],
+    config: ReportConfig,
+) -> None:
+    """Audita si la IA quedó deshabilitada, se usó o degradó a narrativa básica."""
+    if not config.ai.enabled:
+        step.log_decision(
+            regla="report_ai_disabled",
+            umbral=False,
+            valor={"provider": config.ai.provider},
+            accion="usar_narrativa_basica",
+        )
+        return
+
+    generated = sum(1 for block in ai_blocks if block.generated)
+    warnings = tuple(block.warning for block in ai_blocks if block.warning)
+    if generated:
+        step.log_decision(
+            regla="report_ai_usage",
+            umbral=True,
+            valor={
+                "provider": config.ai.provider,
+                "generated_blocks": generated,
+                "input_payload_hashes": tuple(block.input_payload_hash for block in ai_blocks),
+            },
+            accion="usar_narrativa_ia",
+        )
+        return
+    step.log_decision(
+        regla="report_ai_fallback",
+        umbral=True,
+        valor={"provider": config.ai.provider, "warnings": warnings},
+        accion="usar_narrativa_basica",
+    )

@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.survival.step import _METODOS_SIN_EXTRA
+from bayesrisk.survival.step import _METODOS_SIN_EXTRA
 
 _RAIZ = Path(__file__).resolve().parents[2]
 

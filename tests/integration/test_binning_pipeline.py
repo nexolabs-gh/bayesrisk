@@ -6,12 +6,12 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from nikodym.binning.config import BinningConfig
-from nikodym.binning.step import BINNING_ARTIFACTS
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.exceptions import ArtifactNotFoundError
-from nikodym.core.study import Study
-from nikodym.data.config import (
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.binning.step import BINNING_ARTIFACTS
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     CohortSplitConfig,
     ColumnSpec,
     DataConfig,
@@ -21,10 +21,10 @@ from nikodym.data.config import (
     SchemaConfig,
     TargetConfig,
 )
-from nikodym.data.partition import PARTITION_COL, TTD_COL, PartitionResult
-from nikodym.data.step import INPUT_FRAME_KEY
-from nikodym.data.target import LabeledFrame, TargetSummary
-from nikodym.testing import assert_bitwise_reproducible
+from bayesrisk.data.partition import PARTITION_COL, TTD_COL, PartitionResult
+from bayesrisk.data.step import INPUT_FRAME_KEY
+from bayesrisk.data.target import LabeledFrame, TargetSummary
+from bayesrisk.testing import assert_bitwise_reproducible
 
 ROOT_SEED = 20_240_627
 
@@ -95,7 +95,7 @@ def _binning_config() -> BinningConfig:
 def _study() -> Study:
     """Study con secciones ``data`` y ``binning`` activas."""
     return Study(
-        NikodymConfig(
+        BayesRiskConfig(
             repro=ReproConfig(seed=ROOT_SEED),
             data=_data_config(),
             binning=_binning_config(),
@@ -176,7 +176,7 @@ def test_study_run_data_binning_end_to_end_puebla_los_seis_artefactos() -> None:
 
 def test_binning_requires_exige_los_cuatro_artefactos_de_data_antes_de_execute() -> None:
     """Si falta ``data.special``, CT-1 levanta ``ArtifactNotFoundError`` antes de ejecutar."""
-    study = Study(NikodymConfig(binning=BinningConfig(feature_columns=("score",))))
+    study = Study(BayesRiskConfig(binning=BinningConfig(feature_columns=("score",))))
     _manual_data_artifacts(study)
 
     with pytest.raises(ArtifactNotFoundError, match=r"\('data', 'special'\)"):

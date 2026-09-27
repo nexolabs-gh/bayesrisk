@@ -1,7 +1,9 @@
 name: Release
 
 # Publica en PyPI vía Trusted Publishing (OIDC, sin tokens). Se dispara al pushear un tag `vX.Y.Z`.
-# El publisher está registrado en PyPI: repo nexolabs-gh/nikodym · workflow release.yml · environment pypi.
+# El publisher está registrado en PyPI: repo nexolabs-gh/nikodym · workflow release.yml · environment pypi,
+# en el proyecto `nikodym` (capa de compatibilidad, job `publish-compat`) y —desde el OK de A7 del
+# renombre— en `bayesrisk` (la librería, job `publish`). Un solo tag `vX.Y.Z` publica los dos.
 #
 # 🔴 Release por PROMOCIÓN, no por rebuild. La decisión es D-PKG-9, aprobada en B2.0; el cableado
 # que la hace verdadera es del 2026-08-26 (SDD-25 §7.7, B2.5).
@@ -52,6 +54,12 @@ jobs:
       wheel_sha256: ${{ steps.promocion.outputs.wheel_sha256 }}
       sdist_name: ${{ steps.promocion.outputs.sdist_name }}
       sdist_sha256: ${{ steps.promocion.outputs.sdist_sha256 }}
+      version: ${{ steps.promocion.outputs.version }}
+      compat_version: ${{ steps.promocion.outputs.compat_version }}
+      compat_wheel_name: ${{ steps.promocion.outputs.compat_wheel_name }}
+      compat_wheel_sha256: ${{ steps.promocion.outputs.compat_wheel_sha256 }}
+      compat_sdist_name: ${{ steps.promocion.outputs.compat_sdist_name }}
+      compat_sdist_sha256: ${{ steps.promocion.outputs.compat_sdist_sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,7 +77,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          PKG="$(grep -oE '__version__ = "[^"]+"' src/nikodym/__init__.py | cut -d'"' -f2)"
+          PKG="$(grep -oE '__version__ = "[^"]+"' src/bayesrisk/__init__.py | cut -d'"' -f2)"
           echo "tag=$TAG package=$PKG"
           if [ "$TAG" != "$PKG" ]; then
             echo "::error::El tag ($TAG) no coincide con __version__ ($PKG)"
@@ -211,6 +219,29 @@ jobs:
           gh run download "$CI_RUN_ID" -n candidate-distributions-with-evidence -D candidate
           find candidate -type f | sort
 
+      # Renombre (enmienda RENOMBRE-BAYESRISK, D-REN-11): `nikodym` 1.21, la capa de compatibilidad,
+      # es un candidato PROPIO que el mismo run de CI construyó e inspeccionó. Se promueve con la
+      # misma disciplina: del run de ESTE ref, sin rebuild, con su SHA256SUMS en ambos sentidos.
+      - name: Descargar y verificar el candidato de compatibilidad (nikodym)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CI_RUN_ID: ${{ steps.ci.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p compat-candidate
+          gh run download "$CI_RUN_ID" -n candidate-compat-distributions -D compat-candidate
+          cd compat-candidate
+          test -f SHA256SUMS
+          sha256sum -c --strict SHA256SUMS
+          sed -E 's/^[0-9a-f]{64} [ *]//' SHA256SUMS | sort > /tmp/rutas-compat-manifestadas
+          find . -type f ! -name SHA256SUMS | sort > /tmp/rutas-compat-reales
+          diff -u /tmp/rutas-compat-manifestadas /tmp/rutas-compat-reales
+
+      - name: Re-ejecutar el gate del candidato de compatibilidad
+        run: uv run --isolated --no-project python scripts/check_compat_distribution.py compat-candidate
+
       - name: Verificar SHA256SUMS del candidate en ambos sentidos
         shell: bash
         run: |
@@ -244,7 +275,7 @@ jobs:
           echo "wheel=${wheels[0]}" >> "$GITHUB_OUTPUT"
           echo "sdist=${sdists[0]}" >> "$GITHUB_OUTPUT"
 
-      # El checker importa `nikodym.ui._static_index`, la semántica canónica del index (enmienda
+      # El checker importa `bayesrisk.ui._static_index`, la semántica canónica del index (enmienda
       # B2.2, E-B2.2-6). Sin este sync el paso siguiente corre con `--no-sync` sobre un entorno sin
       # el proyecto y muere en el import, antes de validar un solo byte. Se sincroniza el ÁRBOL
       # FUENTE del tag, nunca el candidate: auditar un wheel con su propio código es dejar que un
@@ -270,7 +301,7 @@ jobs:
       #
       # Esto ata los bytes que se van a publicar al árbol versionado en git de este mismo tag, que
       # `ci.yml` obliga a estar limpio y a reproducirse byte a byte (`git diff --exit-code --
-      # src/nikodym/ui/static`). Se lee con `git show <sha>:<ruta>` y no del working tree para no
+      # src/bayesrisk/ui/static`). Se lee con `git show <sha>:<ruta>` y no del working tree para no
       # depender de la conversión de fin de línea del checkout.
       - name: Atar el bundle estático publicado al árbol versionado
         shell: bash
@@ -287,7 +318,7 @@ jobs:
           import zipfile
 
           wheel_path, sha = sys.argv[1], sys.argv[2]
-          prefijo = "nikodym/ui/static/"
+          prefijo = "bayesrisk/ui/static/"
 
           with zipfile.ZipFile(wheel_path) as wheel:
               estaticos = sorted(n for n in wheel.namelist() if n.startswith(prefijo))
@@ -325,7 +356,7 @@ jobs:
           WHEEL: ${{ steps.unidad.outputs.wheel }}
         run: |
           set -euo pipefail
-          PKG="$(grep -oE '__version__ = "[^"]+"' src/nikodym/__init__.py | cut -d'"' -f2)"
+          PKG="$(grep -oE '__version__ = "[^"]+"' src/bayesrisk/__init__.py | cut -d'"' -f2)"
           uv run --isolated --no-project python - "$WHEEL" "$PKG" <<'PY'
           from __future__ import annotations
 
@@ -376,8 +407,25 @@ jobs:
             echo "wheel_sha256=$(sha256sum "$WHEEL" | cut -d' ' -f1)"
             echo "sdist_name=$(basename "$SDIST")"
             echo "sdist_sha256=$(sha256sum "$SDIST" | cut -d' ' -f1)"
+            echo "version=$(grep -oE '__version__ = "[^"]+"' src/bayesrisk/__init__.py | cut -d'"' -f2)"
+            echo "compat_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' compat/nikodym/pyproject.toml)"
           } >> "$GITHUB_OUTPUT"
           sha256sum "$WHEEL" "$SDIST"
+
+          # La distribución de compatibilidad, aparte: su propio dist/ para su propio job.
+          mkdir -p dist-compat
+          cp compat-candidate/*.whl compat-candidate/*.tar.gz dist-compat/
+          compat=(dist-compat/*)
+          test "${#compat[@]}" -eq 2
+          compat_whl=(dist-compat/*.whl)
+          compat_sdist=(dist-compat/*.tar.gz)
+          {
+            echo "compat_wheel_name=$(basename "${compat_whl[0]}")"
+            echo "compat_wheel_sha256=$(sha256sum "${compat_whl[0]}" | cut -d' ' -f1)"
+            echo "compat_sdist_name=$(basename "${compat_sdist[0]}")"
+            echo "compat_sdist_sha256=$(sha256sum "${compat_sdist[0]}" | cut -d' ' -f1)"
+          } >> "$GITHUB_OUTPUT"
+          sha256sum dist-compat/*
 
       - name: Check distribution metadata
         run: uvx twine check dist/*
@@ -389,14 +437,25 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+      - name: Upload dist-compat artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-compat
+          path: dist-compat/
+          if-no-files-found: error
+
   publish:
     name: Publish to PyPI
     needs: promote
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
+      contents: read    # checkout del script de cotejo (sólo lectura)
       id-token: write   # requerido por OIDC / Trusted Publishing
     steps:
+      - name: Checkout (script de cotejo por archivo)
+        uses: actions/checkout@v4
+
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:
@@ -427,5 +486,78 @@ jobs:
             "$SDIST_SHA256" "$SDIST_NAME" \
             | sha256sum -c --strict -
 
+      # Por ARCHIVO, no por versión (enmienda RENOMBRE-BAYESRISK, D-REN-11; pasada 2 de Codex): un
+      # reintento tras una subida a medias sube sólo lo que falta, y un nombre que PyPI ya sirve con
+      # OTROS bytes detiene la release en rojo antes de subir nada.
+      - name: Cotejar con PyPI antes de subir
+        env:
+          VERSION: ${{ needs.promote.outputs.version }}
+        run: python3 scripts/pypi_cotejar_publicacion.py --antes bayesrisk "$VERSION" dist
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+      - name: Exigir que PyPI sirva los dos archivos promovidos
+        env:
+          VERSION: ${{ needs.promote.outputs.version }}
+        run: python3 scripts/pypi_cotejar_publicacion.py --despues bayesrisk "$VERSION" dist
+
+  # `nikodym` 1.21, la capa de compatibilidad, DESPUÉS de bayesrisk (D-REN-11): así
+  # `pip install nikodym` nunca ve un nikodym cuya dependencia `bayesrisk>=2.0` todavía no existe.
+  # En las releases siguientes de bayesrisk el candidato se sigue construyendo e inspeccionando, y
+  # el cotejo por archivo lo encuentra ya publicado con los mismos bytes: no sube nada.
+  publish-compat:
+    name: Publish nikodym (compatibilidad) to PyPI
+    needs: [promote, publish]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout (script de cotejo por archivo)
+        uses: actions/checkout@v4
+
+      - name: Download dist-compat artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-compat
+          path: dist/
+
+      - name: Exigir que llegan exactamente los bytes que pasaron los gates
+        shell: bash
+        env:
+          WHEEL_NAME: ${{ needs.promote.outputs.compat_wheel_name }}
+          WHEEL_SHA256: ${{ needs.promote.outputs.compat_wheel_sha256 }}
+          SDIST_NAME: ${{ needs.promote.outputs.compat_sdist_name }}
+          SDIST_SHA256: ${{ needs.promote.outputs.compat_sdist_sha256 }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          publicables=(dist/*)
+          if [ "${#publicables[@]}" -ne 2 ]; then
+            echo "::error::dist/ debe contener exactamente el wheel y el sdist de nikodym promovidos"
+            printf '%s\n' "${publicables[@]}"
+            exit 1
+          fi
+          printf '%s  dist/%s\n%s  dist/%s\n' \
+            "$WHEEL_SHA256" "$WHEEL_NAME" \
+            "$SDIST_SHA256" "$SDIST_NAME" \
+            | sha256sum -c --strict -
+
+      - name: Cotejar con PyPI antes de subir
+        env:
+          VERSION: ${{ needs.promote.outputs.compat_version }}
+        run: python3 scripts/pypi_cotejar_publicacion.py --antes nikodym "$VERSION" dist
+
+      - name: Publish nikodym to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+      - name: Exigir que PyPI sirva los dos archivos de nikodym
+        env:
+          VERSION: ${{ needs.promote.outputs.compat_version }}
+        run: python3 scripts/pypi_cotejar_publicacion.py --despues nikodym "$VERSION" dist

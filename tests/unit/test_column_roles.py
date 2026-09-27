@@ -32,26 +32,26 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel, Field
 
-from nikodym.binning.config import BinningConfig
-from nikodym.calibration.config import CalibrationConfig
-from nikodym.core.config.schema import (
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.calibration.config import CalibrationConfig
+from bayesrisk.core.config.schema import (
     cargar_configs_de_dominio,
     cargar_configs_expandibles,
 )
-from nikodym.core.dataset_check import (
+from bayesrisk.core.dataset_check import (
     CLAVE_ROL,
     ROL_ENTRADA,
     ROL_INDICE,
     ROLES,
     _rol,
 )
-from nikodym.data.config import DataConfig
-from nikodym.eda.config import EdaConfig
-from nikodym.performance.config import PerformanceConfig
-from nikodym.scorecard.config import ScorecardConfig
-from nikodym.selection.config import SelectionConfig
-from nikodym.stability.config import StabilityConfig
-from nikodym.survival.config import SurvivalConfig
+from bayesrisk.data.config import DataConfig
+from bayesrisk.eda.config import EdaConfig
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.scorecard.config import ScorecardConfig
+from bayesrisk.selection.config import SelectionConfig
+from bayesrisk.stability.config import StabilityConfig
+from bayesrisk.survival.config import SurvivalConfig
 
 #: Secciones cuyo campo `*_col*` está OBLIGADO a declarar rol, por el criterio de sufijo.
 #:

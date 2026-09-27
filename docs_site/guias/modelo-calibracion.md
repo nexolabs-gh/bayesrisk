@@ -4,14 +4,14 @@ Esta guía cubre el corazón numérico del scorecard F1: cómo se ajusta el **mo
 de PD** sobre las variables WoE seleccionadas, cómo esos coeficientes se **escalan a un puntaje**
 entero y cómo la PD cruda se **calibra** a una tasa central de negocio. Son tres pasos
 consecutivos del pipeline (`… → selección → **modelo → scorecard → calibración** → desempeño →
-estabilidad`), cada uno gobernado por su sección del `NikodymConfig`. Ver
+estabilidad`), cada uno gobernado por su sección del `BayesRiskConfig`. Ver
 [Conceptos](../concepts.md) para el modelo mental del pipeline completo.
 
-!!! note "Estabilidad (SemVer 1.x)"
+!!! note "Estabilidad (SemVer 2.x)"
     Las secciones `scorecard` y `calibration` son parte del pipeline de scorecard F1 y desde la versión 1,0
-    son **API estable** (no rompen hasta una versión 2,0). La sección `model` (estimador PD) sigue
+    son **API estable** (no rompen hasta una versión 3,0). La sección `model` (estimador PD) sigue
     **experimental** —las familias de estimador crecen aditivamente—, fuera de la garantía SemVer
-    1.x. Las tres son computacionales y entran al `config_hash` de la corrida.
+    2.x. Las tres son computacionales y entran al `config_hash` de la corrida.
 
 Los valores concretos de esta guía provienen de una **corrida de ejemplo**: el preset estándar
 F1 sobre el dataset sintético de consumo de comportamiento (`fixtures/demo`). No son cifras
@@ -21,21 +21,21 @@ inventadas ni benchmarks; son la salida de reejecutar ese preset. Para reproduci
 from pathlib import Path
 from tempfile import mkdtemp
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.ui.datasets import materialize
-from nikodym.ui.presets import standard_preset
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.ui.datasets import materialize
+from bayesrisk.ui.presets import standard_preset
 
-workdir = Path(mkdtemp(prefix="nikodym-guia-"))
+workdir = Path(mkdtemp(prefix="bayesrisk-guia-"))
 preset = standard_preset()
 data_path = materialize(preset["dataset_id"], workdir=workdir)
 
 cfg_dict = preset["config"]
 cfg_dict["data"]["load"]["source"] = str(data_path)
-config = NikodymConfig.model_validate(cfg_dict)
+config = BayesRiskConfig.model_validate(cfg_dict)
 
 # `run_dir` recibe la evidencia de la corrida (el preset trae la auditoría encendida).
-study = nikodym.run(config, run_dir=workdir / "corrida")
+study = bayesrisk.run(config, run_dir=workdir / "corrida")
 assert study.run_context.status == "done"
 ```
 
@@ -65,7 +65,7 @@ siguiente: cada bin aporta una cantidad fija de log-odds.
 
 ### Política de signos de beta (`sign_policy`)
 
-Con la convención de Nikodym `WoE = ln(%Buenos / %Malos)`, una variable que **realmente
+Con la convención de bayesrisk `WoE = ln(%Buenos / %Malos)`, una variable que **realmente
 discrimina riesgo** debe tener coeficiente **negativo**: más WoE (más "bueno") reduce el
 log-odds de incumplimiento. Por eso `expected_beta_sign` es una **constante fija en `negative`**
 (no un valor a elegir): es una verdad económica del WoE, no un hiperparámetro.
@@ -149,7 +149,7 @@ determinista y auditable. La escala se ancla con tres parámetros de negocio (`S
 
 ### La fórmula de escalado
 
-Nikodym deriva dos constantes de escala a partir de esos tres parámetros:
+bayesrisk deriva dos constantes de escala a partir de esos tres parámetros:
 
 ```
 factor = pdo / ln(2)

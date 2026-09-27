@@ -1,8 +1,8 @@
 """Gate: la capa de interfaz nunca reconstruye un objeto Python desde bytes del cliente (D-PUE-1).
 
-La puerta de artefactos por código (`nikodym.run(config, artifacts=…)`) acepta **cualquier** objeto:
-un `LabeledFrame`, un binning fiteado, lo que el paso consumidor sepa leer. Abrirla por HTTP con esa
-misma generalidad habría exigido un formato de serialización de objetos, o sea el vector que
+La puerta de artefactos por código (`bayesrisk.run(config, artifacts=…)`) acepta **cualquier**
+objeto: un `LabeledFrame`, un binning fiteado, lo que el paso consumidor sepa leer. Abrirla por HTTP
+con esa misma generalidad habría exigido un formato de serialización de objetos, o sea el vector que
 `Study.load(trust=False)` rechaza a propósito (`core/study.py:791-794`). D-ART-9 dejó HTTP fuera
 justamente por esa pregunta sin contestar.
 
@@ -22,7 +22,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-_UI = Path(__file__).resolve().parents[2] / "src" / "nikodym" / "ui"
+_UI = Path(__file__).resolve().parents[2] / "src" / "bayesrisk" / "ui"
 
 #: Módulos que reconstruyen objetos Python arbitrarios desde bytes. Importar cualquiera de ellos en
 #: la capa de interfaz abre el vector que D-PUE-1 cierra.
@@ -50,7 +50,7 @@ def test_el_barrido_recorre_la_capa_entera() -> None:
 
 
 def test_la_capa_ui_no_importa_deserializadores_de_objetos() -> None:
-    """Ningún módulo de `nikodym/ui/` importa pickle, joblib ni sus equivalentes."""
+    """Ningún módulo de `bayesrisk/ui/` importa pickle, joblib ni sus equivalentes."""
     ofensores: list[str] = []
     for ruta in _archivos_de_la_capa():
         arbol = ast.parse(ruta.read_text(encoding="utf-8"))

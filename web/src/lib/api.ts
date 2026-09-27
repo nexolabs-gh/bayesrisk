@@ -1,5 +1,5 @@
 /**
- * Cliente HTTP mínimo del backend FastAPI de Nikodym (SDD-23 §4.2).
+ * Cliente HTTP mínimo del backend FastAPI de bayesrisk (SDD-23 §4.2).
  *
  * B23.4a deja SOLO el cableado base: firmas tipadas de los 6 endpoints REST,
  * sin consumirlas todavía (el motor de formulario y los visores son B23.4b/B23.5).
@@ -41,7 +41,7 @@ export type { ResultsResponse } from "@/lib/results-types"
 export const API_BASE = ""
 
 /** Literal que el launcher sustituye en memoria; en la demo estática queda sin sustituir. */
-const TOKEN_PLACEHOLDER = "__NIKODYM_TOKEN__"
+const TOKEN_PLACEHOLDER = "__BAYESRISK_TOKEN__"
 
 /**
  * Token efímero de la sesión local, inyectado por el launcher en un `<meta>` del index.
@@ -51,7 +51,7 @@ const TOKEN_PLACEHOLDER = "__NIKODYM_TOKEN__"
  */
 export function sessionToken(): string | null {
   if (typeof document === "undefined") return null
-  const meta = document.querySelector('meta[name="nikodym-token"]')
+  const meta = document.querySelector('meta[name="bayesrisk-token"]')
   const value = meta?.getAttribute("content")?.trim() ?? ""
   return value && value !== TOKEN_PLACEHOLDER ? value : null
 }
@@ -59,7 +59,7 @@ export function sessionToken(): string | null {
 /** Cabecera de sesión para las llamadas al backend local (vacía si no hay token). */
 export function tokenHeaders(): Record<string, string> {
   const token = sessionToken()
-  return token ? { "X-Nikodym-Token": token } : {}
+  return token ? { "X-bayesrisk-Token": token } : {}
 }
 
 // ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ export function tokenHeaders(): Record<string, string> {
 // B23.4b al consumir /api/schema). Se tipa laxo lo que aún no se explota.
 // ---------------------------------------------------------------------------
 
-/** Config declarativo editado en el front (dict JSON-able de NikodymConfig). */
+/** Config declarativo editado en el front (dict JSON-able de BayesRiskConfig). */
 export type ConfigDict = Record<string, unknown>
 
 /** GET /api/schema */
@@ -344,7 +344,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 // Stubs tipados de los 6 endpoints (aún sin uso en B23.4a; ver SDD-23 §4.2)
 // ---------------------------------------------------------------------------
 
-/** GET /api/schema — JSON-Schema de NikodymConfig + defaults + orden de secciones. */
+/** GET /api/schema — JSON-Schema de BayesRiskConfig + defaults + orden de secciones. */
 export function getSchema(): Promise<SchemaResponse> {
   return request<SchemaResponse>("schema")
 }
@@ -389,7 +389,7 @@ export function preflightDataset(
 
 /**
  * POST /api/config/to-yaml — exporta el config editado a YAML canónico (round-trip, SDD-23
- * §3.4). El backend reconstruye `NikodymConfig` y delega en `dump_config`; lanza `ApiError`
+ * §3.4). El backend reconstruye `BayesRiskConfig` y delega en `dump_config`; lanza `ApiError`
  * (422 con `{detail:[{loc,msg,type}]}`) si el config no reconstruye un modelo válido.
  */
 export function configToYaml(config: ConfigDict): Promise<ConfigToYamlResponse> {
@@ -486,7 +486,7 @@ export async function uploadDataset(file: File): Promise<UploadedDataset> {
   return (await res.json()) as UploadedDataset
 }
 
-/** POST /api/run — ejecuta la corrida (síncrona) vía nikodym.run. */
+/** POST /api/run — ejecuta la corrida (síncrona) vía bayesrisk.run. */
 export function runPipeline(
   config: ConfigDict,
   datasetId: string,

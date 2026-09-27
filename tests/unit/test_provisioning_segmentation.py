@@ -10,9 +10,9 @@ import textwrap
 import pytest
 from pydantic import ValidationError
 
-from nikodym.provisioning import segmentation
-from nikodym.provisioning.cmf import engine as cmf_engine
-from nikodym.provisioning.segmentation import (
+from bayesrisk.provisioning import segmentation
+from bayesrisk.provisioning.cmf import engine as cmf_engine
+from bayesrisk.provisioning.segmentation import (
     REGIME_REGISTRY,
     SchemeOwner,
     SegmentationScheme,
@@ -103,7 +103,7 @@ def test_todo_regimen_registrado_tiene_motor_implementado() -> None:
     assert known_regimes(), "El registro de regímenes no puede quedar vacío."
     for regime_id, spec in REGIME_REGISTRY.items():
         assert spec.regime_id == regime_id
-        modulo = importlib.import_module(f"nikodym.provisioning.{spec.engine}")
+        modulo = importlib.import_module(f"bayesrisk.provisioning.{spec.engine}")
         assert modulo is not None
         assert spec.scheme.regime == regime_id
 
@@ -194,6 +194,6 @@ def test_vocabulario_sin_duplicados() -> None:
 
 
 def test_modulo_no_arrastra_pandas() -> None:
-    """``import nikodym.provisioning`` debe seguir siendo liviano (SDD-17)."""
+    """``import bayesrisk.provisioning`` debe seguir siendo liviano (SDD-17)."""
     fuente = inspect.getsource(segmentation)
     assert "import pandas" not in fuente

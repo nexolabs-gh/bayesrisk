@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from nikodym.testing import assert_bitwise_reproducible
+from bayesrisk.testing import assert_bitwise_reproducible
 
 
 def test_assert_bitwise_reproducible_acepta_resultado_estable() -> None:

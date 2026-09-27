@@ -4,14 +4,14 @@ import { expect, test, type ConsoleMessage, type Request, type Response } from "
  * B2.4 — clean-room de la interfaz distribuida.
  *
  * Lo que este arnés cubre y ninguno de los gates anteriores cubría: **que el bundle JS/CSS que
- * viaja dentro del wheel se ejecute**. Hasta la 1.11.0 el árbol de `nikodym/ui/static` se verificaba
+ * viaja dentro del wheel se ejecute**. Hasta la 1.11.0 el árbol de `bayesrisk/ui/static` se verificaba
  * por SHA-256 contra su procedencia y no lo cargaba jamás un navegador; `vitest` corre sin DOM y
  * `scripts/smoke_instalacion_pip.py` llama a la app in-process con `TestClient`. Un bundle íntegro
  * pero roto —un import muerto, un asset renombrado, una API de React mal empaquetada— pasaba los
  * dieciséis jobs y llegaba a PyPI.
  *
  * El servidor lo levanta quien invoca el arnés, desde un venv con el wheel candidato instalado
- * FUERA del checkout, y su URL llega por `NIKODYM_UI_URL`.
+ * FUERA del checkout, y su URL llega por `BAYESRISK_UI_URL`.
  */
 
 /** Errores de consola que no son defectos del producto y que ignorar aquí no esconde nada. */

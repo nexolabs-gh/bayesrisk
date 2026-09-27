@@ -1,4 +1,4 @@
-"""Smoke de la instalación REAL: lo que recibe quien hace ``pip install nikodym``.
+"""Smoke de la instalación REAL: lo que recibe quien hace ``pip install bayesrisk``.
 
 Este script existe porque el CI puede estar entero en verde mientras el paquete publicado no
 arranca. El CI corre con ``uv sync --locked``, es decir, con las versiones exactas del ``uv.lock``;
@@ -6,30 +6,30 @@ el usuario de PyPI no tiene ese lock: pip resuelve **libre** dentro de los rango
 wheel, y se lleva lo más nuevo que exista ese día. Cuando el mundo se mueve —una dependencia
 publica un major que rompe a otra—, el lock nos protege a nosotros y a nadie más.
 
-Ya pasó, y en serio: con ``nikodym`` 1.1.1 recién publicado, un ``pip install nikodym[scoring,ui]``
-limpio traía ``scikit-learn`` 1.9 (que eliminó el ``force_all_finite`` que ``optbinning`` invoca) y
-``pandas`` 3.0 (que hace fallar la serialización de resultados). La corrida del preset estándar
-—el primer gesto de cualquier usuario nuevo— moría, en las tres versiones publicadas hasta
-entonces, con el CI verde.
+Ya pasó, y en serio: con ``nikodym`` 1.1.1 recién publicado, un ``pip install
+bayesrisk[scoring,ui]`` limpio traía ``scikit-learn`` 1.9 (que eliminó el ``force_all_finite`` que
+``optbinning`` invoca) y ``pandas`` 3.0 (que hace fallar la serialización de resultados). La corrida
+del preset estándar —el primer gesto de cualquier usuario nuevo— moría, en las tres versiones
+publicadas hasta entonces, con el CI verde.
 
 El smoke recorre la ruta COMPLETA hasta el usuario: instala, corre el preset y verifica que el
-entregable llegue entero. No basta con que ``import nikodym`` funcione: importar siempre funciona.
+entregable llegue entero. No basta con que ``import bayesrisk`` funcione: importar siempre funciona.
 
 Dos modos, según el preset:
 
 * **F1 scorecard (por defecto).** Sin argumentos —como lo llama el CI— corre el preset estándar de
   scorecard y verifica resultados, informe HTML y la base editable con sus figuras.
 * **Preset explícito (p. ej. ``f4-ifrs9-retail``).** Con un ``preset_id`` por argumento CLI o por la
-  variable de entorno ``NIKODYM_SMOKE_PRESET``, corre ese preset por la vía REST y —si es un preset
-  IFRS 9— exige que ``provisioning_ifrs9`` salga con staging (Stage 1/2/3) y ECL/cobertura. Es el
-  gate del wheel para la demo IFRS 9, que la ruta F1 no ejerce (usa ``survival``/``lifelines``,
-  fuera del extra ``scoring``).
+  variable de entorno ``BAYESRISK_SMOKE_PRESET``, corre ese preset por la vía REST y —si es un
+  preset IFRS 9— exige que ``provisioning_ifrs9`` salga con staging (Stage 1/2/3) y ECL/cobertura.
+  Es el gate del wheel para la demo IFRS 9, que la ruta F1 no ejerce (usa
+  ``survival``/``lifelines``, fuera del extra ``scoring``).
 
 Uso (el CI lo llama con el intérprete de un venv donde ya instaló el wheel con pip)::
 
     python scripts/smoke_instalacion_pip.py                    # F1 scorecard (por defecto)
     python scripts/smoke_instalacion_pip.py f4-ifrs9-retail    # IFRS 9 / ECL
-    NIKODYM_SMOKE_PRESET=f4-ifrs9-retail python scripts/smoke_instalacion_pip.py
+    BAYESRISK_SMOKE_PRESET=f4-ifrs9-retail python scripts/smoke_instalacion_pip.py
 """
 
 from __future__ import annotations
@@ -46,14 +46,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from starlette.testclient import TestClient
 
-_ENV_PRESET = "NIKODYM_SMOKE_PRESET"
+_ENV_PRESET = "BAYESRISK_SMOKE_PRESET"
 
 
 def _banner_versiones() -> None:
-    """Imprime la versión instalada de ``nikodym`` y de las libs de núcleo."""
-    import nikodym
+    """Imprime la versión instalada de ``bayesrisk`` y de las libs de núcleo."""
+    import bayesrisk
 
-    print(f"nikodym instalado: {nikodym.__version__}")
+    print(f"bayesrisk instalado: {bayesrisk.__version__}")
     for paquete in ("pandas", "sklearn", "numpy"):
         modulo = __import__(paquete)
         print(f"  {paquete:8} {getattr(modulo, '__version__', '?')}")
@@ -70,9 +70,9 @@ def _crear_cliente() -> TestClient:
     """
     from fastapi.testclient import TestClient
 
-    from nikodym.ui.runtime import TOKEN_HEADER, build_runtime
-    from nikodym.ui.server import create_app
-    from nikodym.ui.settings import UiConfig
+    from bayesrisk.ui.runtime import TOKEN_HEADER, build_runtime
+    from bayesrisk.ui.server import create_app
+    from bayesrisk.ui.settings import UiConfig
 
     workdir = Path(mkdtemp(prefix="smoke-pip-"))
     runtime = build_runtime(port=8000, workdir=workdir)

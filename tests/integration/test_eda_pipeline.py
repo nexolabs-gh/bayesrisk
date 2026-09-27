@@ -6,9 +6,9 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.study import Study
-from nikodym.data.config import (
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     ColumnSpec,
     DataConfig,
     PartitionConfig,
@@ -18,16 +18,16 @@ from nikodym.data.config import (
     SchemaConfig,
     TargetConfig,
 )
-from nikodym.data.step import INPUT_FRAME_KEY
-from nikodym.eda.card import EdaCardSection
-from nikodym.eda.config import (
+from bayesrisk.data.step import INPUT_FRAME_KEY
+from bayesrisk.eda.card import EdaCardSection
+from bayesrisk.eda.config import (
     DefaultRateConfig,
     EdaConfig,
     TemporalStabilityConfig,
     UnivariateConfig,
 )
-from nikodym.eda.step import EDA_ARTIFACTS
-from nikodym.testing import assert_bitwise_reproducible
+from bayesrisk.eda.step import EDA_ARTIFACTS
+from bayesrisk.testing import assert_bitwise_reproducible
 
 ROOT_SEED = 20_240_626
 
@@ -109,7 +109,7 @@ def _eda_config() -> EdaConfig:
 def _study() -> Study:
     """Study con secciones ``data`` y ``eda`` activas."""
     return Study(
-        NikodymConfig(
+        BayesRiskConfig(
             repro=ReproConfig(seed=ROOT_SEED),
             data=_data_config(),
             eda=_eda_config(),

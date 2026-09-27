@@ -11,8 +11,8 @@ import sys
 import pytest
 from pydantic import ValidationError
 
-from nikodym.tuning.exceptions import TuningSearchSpaceError
-from nikodym.tuning.search_space import (
+from bayesrisk.tuning.exceptions import TuningSearchSpaceError
+from bayesrisk.tuning.search_space import (
     CategoricalSpec,
     FloatSpec,
     IntSpec,
@@ -273,8 +273,8 @@ def test_suggest_params_sobre_default_space_xgboost() -> None:
 def test_import_search_space_liviano_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.tuning.search_space;"
-        "import nikodym.tuning.exceptions;"
+        "import bayesrisk.tuning.search_space;"
+        "import bayesrisk.tuning.exceptions;"
         "blocked=[m for m in "
         "('optuna','sklearn','pandas','numpy','xgboost','lightgbm','catboost','scipy') "
         "if m in sys.modules];"

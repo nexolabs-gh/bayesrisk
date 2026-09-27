@@ -14,15 +14,15 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.schema import cargar_configs_expandibles
-from nikodym.core.dataset_check import METODO_REQUISITOS, check_dataset
-from nikodym.data.config import TemporalSplitConfig
-from nikodym.eda.config import DefaultRateConfig
-from nikodym.performance.config import PerformanceConfig
-from nikodym.stability.config import TEMPORAL_CANDIDATE_NAMES, StabilityConfig
-from nikodym.survival.config import SurvivalConfig
-from nikodym.validation.config import ValidationConfig
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.schema import cargar_configs_expandibles
+from bayesrisk.core.dataset_check import METODO_REQUISITOS, check_dataset
+from bayesrisk.data.config import TemporalSplitConfig
+from bayesrisk.eda.config import DefaultRateConfig
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.stability.config import TEMPORAL_CANDIDATE_NAMES, StabilityConfig
+from bayesrisk.survival.config import SurvivalConfig
+from bayesrisk.validation.config import ValidationConfig
 
 #: Columnas de un dataset corriente **sin** ninguna candidata a período.
 SIN_PERIODO = frozenset({"BAD", "LOAN", "DEBTINC"})
@@ -89,7 +89,7 @@ def test_los_nombres_candidatos_son_los_mismos_que_mira_el_motor() -> None:
     Estaba triplicada (`evaluator.py`, `step.py` y la que necesitaba el aviso). El test mira las
     dos referencias que quedan y exige que sean el mismo objeto, no dos listas iguales hoy.
     """
-    from nikodym.stability import evaluator, step
+    from bayesrisk.stability import evaluator, step
 
     assert evaluator.TEMPORAL_CANDIDATE_NAMES is TEMPORAL_CANDIDATE_NAMES
     assert step.TEMPORAL_CANDIDATE_NAMES is TEMPORAL_CANDIDATE_NAMES
@@ -159,7 +159,7 @@ def test_check_dataset_publica_el_requisito_con_su_ruta_absoluta() -> None:
     Sin la ruta absoluta el formulario no puede saltar al campo, que es lo que hace útil al aviso.
     """
     cargar_configs_expandibles()
-    config = NikodymConfig.model_validate(
+    config = BayesRiskConfig.model_validate(
         {"name": "t", "stability": StabilityConfig(temporal_axis="period").model_dump()}
     )
 
@@ -173,7 +173,7 @@ def test_check_dataset_publica_el_requisito_con_su_ruta_absoluta() -> None:
 def test_un_requisito_incumplido_no_es_una_columna_que_falte() -> None:
     """Los dos tipos conviven en el mismo canal sin confundirse (D-INV-2)."""
     cargar_configs_expandibles()
-    config = NikodymConfig.model_validate(
+    config = BayesRiskConfig.model_validate(
         {"name": "t", "stability": StabilityConfig(temporal_axis="period").model_dump()}
     )
 
@@ -247,7 +247,7 @@ def _secciones_del_catalogo() -> frozenset[str]:
     de referencia dejó de ofrecerse, no de correr —por id, por config propio y por el smoke del
     wheel—, así que sus secciones siguen debiendo el protocolo.
     """
-    from nikodym.ui.jobs import list_jobs
+    from bayesrisk.ui.jobs import list_jobs
 
     return frozenset(
         seccion
@@ -402,7 +402,7 @@ def test_eje_de_cohorte_sin_columna_ya_no_predice_un_corte() -> None:
     exploratorio». Desde D-SC-19 esa carencia cuesta la tasa en el tiempo —«no se pudo calcular»,
     con su causa— y la corrida sigue: predecir el corte sería falso, así que no se declara.
     """
-    config = NikodymConfig.model_validate({"eda": {"default_rate": {"axis": "cohort"}}})
+    config = BayesRiskConfig.model_validate({"eda": {"default_rate": {"axis": "cohort"}}})
 
     resultado = check_dataset(config, frozenset({"mora", "cohorte"}))
 
@@ -413,7 +413,7 @@ def test_eje_de_cohorte_sin_columna_ya_no_predice_un_corte() -> None:
 
 def test_eje_de_cohorte_con_su_columna_no_avisa() -> None:
     """La dirección positiva: con la columna, la única exigencia es que exista en el archivo."""
-    config = NikodymConfig.model_validate(
+    config = BayesRiskConfig.model_validate(
         {"eda": {"default_rate": {"axis": "cohort", "cohort_col": "cohorte"}}}
     )
     assert not check_dataset(config, frozenset({"mora", "cohorte"})).mismatches
@@ -422,7 +422,7 @@ def test_eje_de_cohorte_con_su_columna_no_avisa() -> None:
 def test_el_eje_temporal_sin_fecha_no_afirma_nada_desde_los_nombres() -> None:
     """D-INV-4: el preflight recibe nombres, no tipos, y la partición por cohorte vive en otra
     sección; afirmar «no tienes fecha» sería el falso positivo más caro. Se deja medido."""
-    config = NikodymConfig.model_validate({"eda": {"default_rate": {"axis": "period"}}})
+    config = BayesRiskConfig.model_validate({"eda": {"default_rate": {"axis": "period"}}})
     assert not check_dataset(config, frozenset({"mora"})).mismatches
     assert DefaultRateConfig().requisitos_incumplidos(None) == ()
 
@@ -520,9 +520,9 @@ def test_el_preset_de_fabrica_que_usa_survival_no_gana_ningun_aviso() -> None:
     Si esta invariante tuviera un falso positivo, el ejemplo que la aplicación ofrece aparecería
     avisado nada más abrirlo — que es exactamente cómo se aprende a ignorar un aviso.
     """
-    from nikodym.ui.presets import get_preset
+    from bayesrisk.ui.presets import get_preset
 
     cargar_configs_expandibles()
-    config = NikodymConfig.model_validate(get_preset("f4-ifrs9-retail")["config"])
+    config = BayesRiskConfig.model_validate(get_preset("f4-ifrs9-retail")["config"])
     assert config.survival is not None
     assert _rutas(config.survival) == []

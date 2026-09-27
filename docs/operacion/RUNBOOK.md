@@ -11,15 +11,15 @@ traducir estos comandos a `cmd.exe`, WSL o Git Bash:
 ```powershell
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$nikodymUtf8 = New-Object System.Text.UTF8Encoding($false)
-[Console]::InputEncoding = $nikodymUtf8
-[Console]::OutputEncoding = $nikodymUtf8
-$OutputEncoding = $nikodymUtf8
+$bayesriskUtf8 = New-Object System.Text.UTF8Encoding($false)
+[Console]::InputEncoding = $bayesriskUtf8
+[Console]::OutputEncoding = $bayesriskUtf8
+$OutputEncoding = $bayesriskUtf8
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
 
-$nikodymRepo = 'C:\Users\camil\OneDrive\Documents\Proyectos\Nikodym RiskLib'
-Set-Location -LiteralPath $nikodymRepo
+$bayesriskRepo = 'C:\Users\camil\OneDrive\Documents\Proyectos\bayesrisk'
+Set-Location -LiteralPath $bayesriskRepo
 
 git status --short --branch
 if ($LASTEXITCODE -ne 0) { throw 'git status público falló' }
@@ -34,19 +34,19 @@ if ($LASTEXITCODE -ne 0) { throw 'HEAD privado no se pudo leer' }
 git -C privado rev-parse origin/main
 if ($LASTEXITCODE -ne 0) { throw 'origin/main privado no se pudo leer' }
 
-$nikodymHandoff = Get-Item -Force -LiteralPath 'HANDOFF.md'
-$nikodymHandoffTarget = [IO.Path]::GetFullPath([string]$nikodymHandoff.Target)
-$nikodymExpectedHandoff = [IO.Path]::GetFullPath(
-    (Join-Path $nikodymRepo 'privado\HANDOFF.md')
+$bayesriskHandoff = Get-Item -Force -LiteralPath 'HANDOFF.md'
+$bayesriskHandoffTarget = [IO.Path]::GetFullPath([string]$bayesriskHandoff.Target)
+$bayesriskExpectedHandoff = [IO.Path]::GetFullPath(
+    (Join-Path $bayesriskRepo 'privado\HANDOFF.md')
 )
-if ($nikodymHandoff.LinkType -ne 'SymbolicLink') { throw 'HANDOFF.md no es symlink' }
-if ($nikodymHandoffTarget -ne $nikodymExpectedHandoff) {
-    throw "target HANDOFF inesperado: $nikodymHandoffTarget"
+if ($bayesriskHandoff.LinkType -ne 'SymbolicLink') { throw 'HANDOFF.md no es symlink' }
+if ($bayesriskHandoffTarget -ne $bayesriskExpectedHandoff) {
+    throw "target HANDOFF inesperado: $bayesriskHandoffTarget"
 }
-if (-not (Test-Path -LiteralPath $nikodymHandoffTarget -PathType Leaf)) {
-    throw "target HANDOFF ausente: $nikodymHandoffTarget"
+if (-not (Test-Path -LiteralPath $bayesriskHandoffTarget -PathType Leaf)) {
+    throw "target HANDOFF ausente: $bayesriskHandoffTarget"
 }
-$nikodymHandoff | Select-Object FullName,LinkType,Target
+$bayesriskHandoff | Select-Object FullName,LinkType,Target
 ```
 
 El resultado esperado es `main` limpio en ambos repos, cada `HEAD` igual a su `origin/main`, y
@@ -70,20 +70,20 @@ Leer, en orden, `AGENTS.md`, `HANDOFF.md`, este runbook y
   antes de una operación que pueda cambiar el lock o construir un clean-room:
 
 ```powershell
-$nikodymPython = Join-Path $nikodymRepo '.venv\Scripts\python.exe'
-$nikodymUv = 'C:\Users\camil\AppData\Local\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe'
+$bayesriskPython = Join-Path $bayesriskRepo '.venv\Scripts\python.exe'
+$bayesriskUv = 'C:\Users\camil\AppData\Local\Microsoft\WinGet\Packages\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\uv.exe'
 
-$nikodymPythonVersion = (& $nikodymPython --version).Trim()
+$bayesriskPythonVersion = (& $bayesriskPython --version).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Python contractual falló' }
-if ($nikodymPythonVersion -ne 'Python 3.12.10') {
-    throw "Python inesperado: $nikodymPythonVersion"
+if ($bayesriskPythonVersion -ne 'Python 3.12.10') {
+    throw "Python inesperado: $bayesriskPythonVersion"
 }
-$nikodymUvVersion = (& $nikodymUv --version).Trim()
+$bayesriskUvVersion = (& $bayesriskUv --version).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'uv contractual falló' }
-if ($nikodymUvVersion -ne 'uv 0.12.2 (46ead6098 2026-08-05 x86_64-pc-windows-msvc)') {
-    throw "uv inesperado: $nikodymUvVersion"
+if ($bayesriskUvVersion -ne 'uv 0.12.2 (46ead6098 2026-08-05 x86_64-pc-windows-msvc)') {
+    throw "uv inesperado: $bayesriskUvVersion"
 }
-& $nikodymUv lock --check
+& $bayesriskUv lock --check
 if ($LASTEXITCODE -ne 0) { throw 'uv lock --check falló' }
 ```
 
@@ -94,17 +94,17 @@ proceso actual** y ejecutar `pnpm.CMD`; `pnpm.ps1` queda bloqueado por Execution
 de Codex trae versiones distintas (Node 24.14.0/pnpm 11.16.0):
 
 ```powershell
-$nikodymNodeDir = 'C:\Users\camil\AppData\Local\Programs\node-v22.22.2-win-x64'
-$nikodymNode = Join-Path $nikodymNodeDir 'node.exe'
-$nikodymPnpm = Join-Path $nikodymNodeDir 'pnpm.CMD'
-$env:PATH = "$nikodymNodeDir;$env:PATH"
+$bayesriskNodeDir = 'C:\Users\camil\AppData\Local\Programs\node-v22.22.2-win-x64'
+$bayesriskNode = Join-Path $bayesriskNodeDir 'node.exe'
+$bayesriskPnpm = Join-Path $bayesriskNodeDir 'pnpm.CMD'
+$env:PATH = "$bayesriskNodeDir;$env:PATH"
 
-$nikodymNodeVersion = (& $nikodymNode --version).Trim()
+$bayesriskNodeVersion = (& $bayesriskNode --version).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Node contractual falló' }
-if ($nikodymNodeVersion -ne 'v22.22.2') { throw "Node inesperado: $nikodymNodeVersion" }
-$nikodymPnpmVersion = (& $nikodymPnpm --version).Trim()
+if ($bayesriskNodeVersion -ne 'v22.22.2') { throw "Node inesperado: $bayesriskNodeVersion" }
+$bayesriskPnpmVersion = (& $bayesriskPnpm --version).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'pnpm.CMD contractual falló' }
-if ($nikodymPnpmVersion -ne '11.15.0') { throw "pnpm inesperado: $nikodymPnpmVersion" }
+if ($bayesriskPnpmVersion -ne '11.15.0') { throw "pnpm inesperado: $bayesriskPnpmVersion" }
 ```
 
 Las dos salidas deben ser `v22.22.2` y `11.15.0`. No aceptar el verde de un comando `pnpm` sin
@@ -116,29 +116,29 @@ haber demostrado qué binario ejecutó.
 seleccionar `nexolabs-gh` y verificar que quedó activo:
 
 ```powershell
-$nikodymGh = 'C:\Program Files\GitHub CLI\gh.exe'
-$nikodymGhVersion = @(& $nikodymGh --version)
+$bayesriskGh = 'C:\Program Files\GitHub CLI\gh.exe'
+$bayesriskGhVersion = @(& $bayesriskGh --version)
 if ($LASTEXITCODE -ne 0) { throw 'gh contractual falló' }
-if ($nikodymGhVersion[0] -ne 'gh version 2.97.0 (2026-07-31)') {
-    throw "gh inesperado: $($nikodymGhVersion[0])"
+if ($bayesriskGhVersion[0] -ne 'gh version 2.97.0 (2026-07-31)') {
+    throw "gh inesperado: $($bayesriskGhVersion[0])"
 }
-& $nikodymGh auth switch --user nexolabs-gh
+& $bayesriskGh auth switch --user nexolabs-gh
 if ($LASTEXITCODE -ne 0) { throw 'gh auth switch falló' }
-& $nikodymGh auth status
+& $bayesriskGh auth status
 if ($LASTEXITCODE -ne 0) { throw 'gh auth status falló' }
 git remote -v
 if ($LASTEXITCODE -ne 0) { throw 'remoto público no se pudo leer' }
 git -C privado remote -v
 if ($LASTEXITCODE -ne 0) { throw 'remoto privado no se pudo leer' }
-$nikodymPublicRemote = (git remote get-url origin).Trim()
+$bayesriskPublicRemote = (git remote get-url origin).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'URL remota pública no se pudo leer' }
-$nikodymPrivateRemote = (git -C privado remote get-url origin).Trim()
+$bayesriskPrivateRemote = (git -C privado remote get-url origin).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'URL remota privada no se pudo leer' }
-if ($nikodymPublicRemote -ne 'https://github.com/nexolabs-gh/nikodym.git') {
-    throw "remoto público inesperado: $nikodymPublicRemote"
+if ($bayesriskPublicRemote -ne 'https://github.com/nexolabs-gh/nikodym.git') {
+    throw "remoto público inesperado: $bayesriskPublicRemote"
 }
-if ($nikodymPrivateRemote -ne 'https://github.com/nexolabs-gh/nikodym-privado.git') {
-    throw "remoto privado inesperado: $nikodymPrivateRemote"
+if ($bayesriskPrivateRemote -ne 'https://github.com/nexolabs-gh/nikodym-privado.git') {
+    throw "remoto privado inesperado: $bayesriskPrivateRemote"
 }
 ```
 
@@ -152,10 +152,10 @@ de arranque lo corrige **antes** de leer `AGENTS.md` o `HANDOFF.md`; repetirlo s
 proceso PowerShell:
 
 ```powershell
-$nikodymUtf8 = New-Object System.Text.UTF8Encoding($false)
-[Console]::InputEncoding = $nikodymUtf8
-[Console]::OutputEncoding = $nikodymUtf8
-$OutputEncoding = $nikodymUtf8
+$bayesriskUtf8 = New-Object System.Text.UTF8Encoding($false)
+[Console]::InputEncoding = $bayesriskUtf8
+[Console]::OutputEncoding = $bayesriskUtf8
+$OutputEncoding = $bayesriskUtf8
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
 ```
@@ -174,13 +174,13 @@ la ubicación física real.
 Medir esas premisas cuando la tarea dependa de ellas:
 
 ```powershell
-$nikodymCoreSymlinks = (git config --get core.symlinks).Trim()
+$bayesriskCoreSymlinks = (git config --get core.symlinks).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'core.symlinks no se pudo leer' }
-if ($nikodymCoreSymlinks -ne 'false') { throw "core.symlinks inesperado: $nikodymCoreSymlinks" }
-$nikodymLongPaths = Get-ItemPropertyValue `
+if ($bayesriskCoreSymlinks -ne 'false') { throw "core.symlinks inesperado: $bayesriskCoreSymlinks" }
+$bayesriskLongPaths = Get-ItemPropertyValue `
     -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' `
     -Name LongPathsEnabled
-if ($nikodymLongPaths -ne 0) { throw "LongPathsEnabled inesperado: $nikodymLongPaths" }
+if ($bayesriskLongPaths -ne 0) { throw "LongPathsEnabled inesperado: $bayesriskLongPaths" }
 & fsutil behavior query SymlinkEvaluation
 if ($LASTEXITCODE -ne 0) { throw 'SymlinkEvaluation no se pudo leer' }
 ```
@@ -192,54 +192,54 @@ el temp local y demuestra por frontera de directorio que no quedó dentro del ch
 OneDrive:
 
 ```powershell
-$nikodymTempRoot = Join-Path $env:TEMP 'nkr'
-New-Item -ItemType Directory -Force -Path $nikodymTempRoot | Out-Null
-$nikodymCleanRoom = Join-Path $nikodymTempRoot ([guid]::NewGuid().ToString('N'))
-$nikodymCleanRoom = [IO.Path]::GetFullPath($nikodymCleanRoom)
-$nikodymRepoResolved = [IO.Path]::GetFullPath($nikodymRepo)
-$nikodymRepoBoundary = $nikodymRepoResolved.TrimEnd('\') + '\'
-if ($nikodymCleanRoom.StartsWith($nikodymRepoBoundary, [StringComparison]::OrdinalIgnoreCase)) {
-    throw "clean-room dentro del checkout: $nikodymCleanRoom"
+$bayesriskTempRoot = Join-Path $env:TEMP 'nkr'
+New-Item -ItemType Directory -Force -Path $bayesriskTempRoot | Out-Null
+$bayesriskCleanRoom = Join-Path $bayesriskTempRoot ([guid]::NewGuid().ToString('N'))
+$bayesriskCleanRoom = [IO.Path]::GetFullPath($bayesriskCleanRoom)
+$bayesriskRepoResolved = [IO.Path]::GetFullPath($bayesriskRepo)
+$bayesriskRepoBoundary = $bayesriskRepoResolved.TrimEnd('\') + '\'
+if ($bayesriskCleanRoom.StartsWith($bayesriskRepoBoundary, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "clean-room dentro del checkout: $bayesriskCleanRoom"
 }
-$nikodymOneDriveResolved = [IO.Path]::GetFullPath($env:OneDrive)
-$nikodymOneDriveBoundary = $nikodymOneDriveResolved.TrimEnd('\') + '\'
-if ($nikodymCleanRoom.StartsWith($nikodymOneDriveBoundary, [StringComparison]::OrdinalIgnoreCase)) {
-    throw "clean-room dentro de OneDrive: $nikodymCleanRoom"
+$bayesriskOneDriveResolved = [IO.Path]::GetFullPath($env:OneDrive)
+$bayesriskOneDriveBoundary = $bayesriskOneDriveResolved.TrimEnd('\') + '\'
+if ($bayesriskCleanRoom.StartsWith($bayesriskOneDriveBoundary, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "clean-room dentro de OneDrive: $bayesriskCleanRoom"
 }
-New-Item -ItemType Directory -Path $nikodymCleanRoom | Out-Null
-$nikodymSessionPids = New-Object 'System.Collections.Generic.HashSet[int]'
+New-Item -ItemType Directory -Path $bayesriskCleanRoom | Out-Null
+$bayesriskSessionPids = New-Object 'System.Collections.Generic.HashSet[int]'
 ```
 
 Conservar las rutas exactas creadas durante la sesión. Borrarlas sólo con esta comprobación; nunca
 usar globs ni una variable no validada:
 
 ```powershell
-function Remove-NikodymTempDirectory {
+function Remove-BayesRiskTempDirectory {
     param([Parameter(Mandatory=$true)][string]$LiteralPath)
-    $nikodymDeleteTarget = [IO.Path]::GetFullPath($LiteralPath)
-    $nikodymDeleteParent = [IO.Directory]::GetParent($nikodymDeleteTarget).FullName
-    $nikodymExpectedParent = [IO.Path]::GetFullPath($nikodymTempRoot)
-    if ($nikodymDeleteParent -ne $nikodymExpectedParent) {
-        throw "borrado fuera del temp contractual: $nikodymDeleteTarget"
+    $bayesriskDeleteTarget = [IO.Path]::GetFullPath($LiteralPath)
+    $bayesriskDeleteParent = [IO.Directory]::GetParent($bayesriskDeleteTarget).FullName
+    $bayesriskExpectedParent = [IO.Path]::GetFullPath($bayesriskTempRoot)
+    if ($bayesriskDeleteParent -ne $bayesriskExpectedParent) {
+        throw "borrado fuera del temp contractual: $bayesriskDeleteTarget"
     }
-    Remove-Item -LiteralPath $nikodymDeleteTarget -Recurse -Force
-    if (Test-Path -LiteralPath $nikodymDeleteTarget) {
-        throw "el temporal persiste: $nikodymDeleteTarget"
+    Remove-Item -LiteralPath $bayesriskDeleteTarget -Recurse -Force
+    if (Test-Path -LiteralPath $bayesriskDeleteTarget) {
+        throw "el temporal persiste: $bayesriskDeleteTarget"
     }
 }
-Remove-NikodymTempDirectory -LiteralPath $nikodymCleanRoom
+Remove-BayesRiskTempDirectory -LiteralPath $bayesriskCleanRoom
 
-function Remove-NikodymTempFile {
+function Remove-BayesRiskTempFile {
     param([Parameter(Mandatory=$true)][string]$LiteralPath)
-    $nikodymDeleteTarget = [IO.Path]::GetFullPath($LiteralPath)
-    $nikodymDeleteParent = [IO.Directory]::GetParent($nikodymDeleteTarget).FullName
-    $nikodymExpectedParent = [IO.Path]::GetFullPath($nikodymTempRoot)
-    if ($nikodymDeleteParent -ne $nikodymExpectedParent) {
-        throw "borrado fuera del temp contractual: $nikodymDeleteTarget"
+    $bayesriskDeleteTarget = [IO.Path]::GetFullPath($LiteralPath)
+    $bayesriskDeleteParent = [IO.Directory]::GetParent($bayesriskDeleteTarget).FullName
+    $bayesriskExpectedParent = [IO.Path]::GetFullPath($bayesriskTempRoot)
+    if ($bayesriskDeleteParent -ne $bayesriskExpectedParent) {
+        throw "borrado fuera del temp contractual: $bayesriskDeleteTarget"
     }
-    Remove-Item -LiteralPath $nikodymDeleteTarget -Force
-    if (Test-Path -LiteralPath $nikodymDeleteTarget) {
-        throw "el temporal persiste: $nikodymDeleteTarget"
+    Remove-Item -LiteralPath $bayesriskDeleteTarget -Force
+    if (Test-Path -LiteralPath $bayesriskDeleteTarget) {
+        throw "el temporal persiste: $bayesriskDeleteTarget"
     }
 }
 ```
@@ -252,12 +252,12 @@ Get-CimInstance Win32_Process |
     Where-Object {
         $_.ProcessId -ne $PID -and
         $_.Name -in @('python.exe','node.exe') -and
-        $_.CommandLine -match 'nikodym\.ui|uvicorn|vite|pytest|vitest|measure_readiness'
+        $_.CommandLine -match 'bayesrisk\.ui|uvicorn|vite|pytest|vitest|measure_readiness'
     } |
     Select-Object ProcessId,ParentProcessId,Name,CommandLine
 ```
 
-Al lanzar un servicio, agregar de inmediato su PID a `$nikodymSessionPids` y detener sólo los PIDs
+Al lanzar un servicio, agregar de inmediato su PID a `$bayesriskSessionPids` y detener sólo los PIDs
 registrados por esta sesión. El supervisor S3 debe cerrar su árbol por
 Job Object; un barrido posterior es evidencia adicional, no sustituto de `KILL_ON_JOB_CLOSE`.
 
@@ -266,7 +266,7 @@ Job Object; un barrido posterior es evidencia adicional, no sustituto de `KILL_O
 El Mac no es writer ni runner ordinario. Se usa sólo si aparece una falla exclusiva de macOS, la
 matriz CI no aporta evidencia suficiente y hace falta reproducirla. En ese caso:
 
-- usar siempre **`.venv/bin/python`**, no `uv run` ni el console script `nikodym-ui`;
+- usar siempre **`.venv/bin/python`**, no `uv run` ni el console script `bayesrisk-ui`;
 - el shebang y wrappers pueden pasar por `/bin/sh`; SIP puede eliminar `DYLD_*`. El primer proceso
   debe ser el intérprete, sin `sh` ni `nohup` intermedios;
 - `uv run` en workflows Linux de CI sigue siendo deliberado; `uv lock --check` local sí se ejecuta
@@ -276,9 +276,9 @@ matriz CI no aporta evidencia suficiente y hace falta reproducirla. En ese caso:
 Arranque diagnóstico de UI:
 
 ```bash
-.venv/bin/python -m nikodym.ui --no-open
+.venv/bin/python -m bayesrisk.ui --no-open
 # Si 8000 está ocupado:
-.venv/bin/python -m nikodym.ui --no-open --port 8001
+.venv/bin/python -m bayesrisk.ui --no-open --port 8001
 ```
 
 No existe `--host` por diseño. Abrir `http://127.0.0.1:8000` (o el puerto alternativo elegido). Si
@@ -291,30 +291,30 @@ Lista literal completa. Ejecutar el conjunto proporcional al cambio; para un cie
 ejecutarlos todos:
 
 ```powershell
-& $nikodymPython -m pytest
+& $bayesriskPython -m pytest
 if ($LASTEXITCODE -ne 0) { throw 'pytest falló' }
-& $nikodymPython -m mypy
+& $bayesriskPython -m mypy
 if ($LASTEXITCODE -ne 0) { throw 'mypy falló' }
-& $nikodymPython -m ruff check .
+& $bayesriskPython -m ruff check .
 if ($LASTEXITCODE -ne 0) { throw 'ruff check falló' }
-& $nikodymPython -m ruff format --check .
+& $bayesriskPython -m ruff format --check .
 if ($LASTEXITCODE -ne 0) { throw 'ruff format falló' }
 Push-Location -LiteralPath 'web'
 try {
-    & $nikodymPnpm vitest run
+    & $bayesriskPnpm vitest run
     if ($LASTEXITCODE -ne 0) { throw 'vitest falló' }
-    & $nikodymPnpm typecheck
+    & $bayesriskPnpm typecheck
     if ($LASTEXITCODE -ne 0) { throw 'typecheck falló' }
-    & $nikodymPnpm lint
+    & $bayesriskPnpm lint
     if ($LASTEXITCODE -ne 0) { throw 'lint frontend falló' }
-    & $nikodymPnpm build:package
+    & $bayesriskPnpm build:package
     if ($LASTEXITCODE -ne 0) { throw 'build:package falló' }
 } finally {
     Pop-Location
 }
-& $nikodymPython -m mkdocs build --strict
+& $bayesriskPython -m mkdocs build --strict
 if ($LASTEXITCODE -ne 0) { throw 'MkDocs strict falló' }
-& $nikodymUv lock --check
+& $bayesriskUv lock --check
 if ($LASTEXITCODE -ne 0) { throw 'uv lock --check falló' }
 ```
 
@@ -342,19 +342,19 @@ Reglas de lectura del resultado:
 
 | Superficie modificada | Evidencia adicional mínima |
 |---|---|
-| Config/Pydantic/schema | `& $nikodymPython scripts\gen_schema_fixture.py`; revisar diff del fixture; bundle |
-| Catálogo de trabajos/abanico | `& $nikodymPython scripts\gen_jobs_fixture.py`; revisar diff; bundle |
-| Front o artefactos estáticos | Entrar a `web`; ejecutar `& $nikodymPnpm build:package` dos veces si hay riesgo de no determinismo; comparar `src/nikodym/ui/static` |
-| Motor regulatorio | tests canónicos/golden y cobertura de `nikodym.testing.regulatory.REGULATORY_COVERAGE_PATHS` al 100 % |
+| Config/Pydantic/schema | `& $bayesriskPython scripts\gen_schema_fixture.py`; revisar diff del fixture; bundle |
+| Catálogo de trabajos/abanico | `& $bayesriskPython scripts\gen_jobs_fixture.py`; revisar diff; bundle |
+| Front o artefactos estáticos | Entrar a `web`; ejecutar `& $bayesriskPnpm build:package` dos veces si hay riesgo de no determinismo; comparar `src/bayesrisk/ui/static` |
+| Motor regulatorio | tests canónicos/golden y cobertura de `bayesrisk.testing.regulatory.REGULATORY_COVERAGE_PATHS` al 100 % |
 | Informe | verificar el HTML y, si aplica, PDF/Word reales; no sólo snapshots de helpers |
-| Prosa del informe / avisos declarados | `& $nikodymPython -m pytest tests\unit\test_report_codigos_internos.py` y `& $nikodymPython scripts\check_demo_report_copy.py` (motor **y** artefacto publicado) |
-| Marca de estabilidad SemVer | `& $nikodymPython -m pytest tests\unit\test_marca_estabilidad.py`; mover una entrada de `nikodym.testing.stability` exige decisión registrada en `DECISIONES-VIGENTES.md` |
+| Prosa del informe / avisos declarados | `& $bayesriskPython -m pytest tests\unit\test_report_codigos_internos.py` y `& $bayesriskPython scripts\check_demo_report_copy.py` (motor **y** artefacto publicado) |
+| Marca de estabilidad SemVer | `& $bayesriskPython -m pytest tests\unit\test_marca_estabilidad.py`; mover una entrada de `bayesrisk.testing.stability` exige decisión registrada en `DECISIONES-VIGENTES.md` |
 | UI/navegación/copy visible | recorrido en navegador por `127.0.0.1`, incluido el estado adversarial |
-| Bundle estático que se distribuye | además del cotejo por SHA-256, el clean-room B2.4: `web` → `pnpm test:e2e` con `NIKODYM_UI_URL` apuntando a un `nikodym-ui` levantado desde el wheel |
+| Bundle estático que se distribuye | además del cotejo por SHA-256, el clean-room B2.4: `web` → `pnpm test:e2e` con `BAYESRISK_UI_URL` apuntando a un `bayesrisk-ui` levantado desde el wheel |
 | Distribución/release | wheel/sdist, contenido, instalación limpia y auditoría adversarial de todo el rango de release |
-| Docs | `& $nikodymPython -m mkdocs build --strict` y lectura del sitio generado en la página afectada; después, y **nunca en paralelo** (`site/` está en `PUBLIC_COPY_TREES`), `& $nikodymPython -m pytest tests\unit\test_docs_quickstart.py tests\unit\test_docs_gobernanza.py tests\unit\test_docs_site_cifras.py tests\unit\test_public_copy.py tests\unit\test_readiness_h9r_copy_contract.py`; un bloque de código nuevo entra entre marcadores `<!-- nombre:start/end -->` para que un gate lo ejecute |
-| Driver de readiness | `& $nikodymPython -m mypy --strict scripts\measure_readiness_w1.py` y tests focales del arnés/supervisor |
-| Puerta guiada (`src/nikodym/guided/`, `nikodym.Scorecard`) | `& $nikodymPython -m pytest tests\unit\test_guided_scorecard.py tests\unit\test_guided_decisiones.py tests\unit\test_guided_summaries.py tests\unit\test_guided_export.py tests\unit\test_guided_user_splits_real.py tests\unit\test_ui_summaries.py tests\unit\test_esenciales_por_seccion.py`; bit a bit según §12.2-10: la proyección canónica de `tests\unit\_proyeccion_canonica.py` sobre una corrida F1 del preset antes y después (0 diferencias y `config_hash` intacto); el Excel opcional se coteja **celda a celda** con `openpyxl`, nunca por bytes (el `.xlsx` no es determinista); Codex sobre el rango completo de la capa (§11.1): en S18 las pasadas 2 y 3 devolvieron seis high de integridad de archivos con la suite en verde |
+| Docs | `& $bayesriskPython -m mkdocs build --strict` y lectura del sitio generado en la página afectada; después, y **nunca en paralelo** (`site/` está en `PUBLIC_COPY_TREES`), `& $bayesriskPython -m pytest tests\unit\test_docs_quickstart.py tests\unit\test_docs_gobernanza.py tests\unit\test_docs_site_cifras.py tests\unit\test_public_copy.py tests\unit\test_readiness_h9r_copy_contract.py`; un bloque de código nuevo entra entre marcadores `<!-- nombre:start/end -->` para que un gate lo ejecute |
+| Driver de readiness | `& $bayesriskPython -m mypy --strict scripts\measure_readiness_w1.py` y tests focales del arnés/supervisor |
+| Puerta guiada (`src/bayesrisk/guided/`, `bayesrisk.Scorecard`) | `& $bayesriskPython -m pytest tests\unit\test_guided_scorecard.py tests\unit\test_guided_decisiones.py tests\unit\test_guided_summaries.py tests\unit\test_guided_export.py tests\unit\test_guided_user_splits_real.py tests\unit\test_ui_summaries.py tests\unit\test_esenciales_por_seccion.py`; bit a bit según §12.2-10: la proyección canónica de `tests\unit\_proyeccion_canonica.py` sobre una corrida F1 del preset antes y después (0 diferencias y `config_hash` intacto); el Excel opcional se coteja **celda a celda** con `openpyxl`, nunca por bytes (el `.xlsx` no es determinista); Codex sobre el rango completo de la capa (§11.1): en S18 las pasadas 2 y 3 devolvieron seis high de integridad de archivos con la suite en verde |
 
 Regenerar schema/jobs no es recapturar la demo. Los scripts `capture_demo_fixtures*.py` sí lo son y
 requieren un OK nuevo de Cami. Los fixtures de demo salen de corridas reales: jamás editarlos a mano.
@@ -364,29 +364,29 @@ informe sin tolerancia, y WeasyPrint no puede cargar sus librerías nativas aqu�
 2026-08-27, `import weasyprint` muere con `cannot load library 'libgobject-2.0-0'` incluso con el
 paquete instalado, porque falta el runtime de GTK/Pango a nivel de sistema. Por eso la recaptura
 vive en el workflow manual `recapture-demo.yml`, que corre en Linux —donde el job `test-pdf` ya
-demuestra que WeasyPrint funciona—, exige árbol limpio, reinstala `nikodym` para que el lineage
+demuestra que WeasyPrint funciona—, exige árbol limpio, reinstala `bayesrisk` para que el lineage
 firme la versión del árbol y **publica los fixtures como artefacto sin commitearlos**. El writer los
 baja, verifica su procedencia y decide: lo que el contrato exige que sea deliberado no se automatiza.
 
 Después de un cambio de schema o jobs:
 
 ```powershell
-& $nikodymPython scripts\gen_schema_fixture.py
+& $bayesriskPython scripts\gen_schema_fixture.py
 if ($LASTEXITCODE -ne 0) { throw 'gen_schema_fixture falló' }
-& $nikodymPython scripts\gen_jobs_fixture.py
+& $bayesriskPython scripts\gen_jobs_fixture.py
 if ($LASTEXITCODE -ne 0) { throw 'gen_jobs_fixture falló' }
 Push-Location -LiteralPath 'web'
 try {
-    & $nikodymPnpm build:package
+    & $bayesriskPnpm build:package
     if ($LASTEXITCODE -ne 0) { throw 'build:package falló' }
 } finally { Pop-Location }
-git diff -- src/nikodym/ui/static web/src/fixtures
+git diff -- src/bayesrisk/ui/static web/src/fixtures
 if ($LASTEXITCODE -ne 0) { throw 'diff de fixtures falló' }
 ```
 
 Ejecutar sólo el generador que corresponda; el bloque muestra ambos para que los dos nombres queden
 explícitos. Si cambia un fixture de demo con autorización, regenerar también sus firmas con
-`& $nikodymNode scripts\generate_frontend_demo_fixture_signatures.mjs`, comprobar
+`& $bayesriskNode scripts\generate_frontend_demo_fixture_signatures.mjs`, comprobar
 `$LASTEXITCODE` y dejar que CI valide el artefacto.
 
 ### 5.1 Arnés de calibración H9R antes de START
@@ -401,45 +401,45 @@ cerrados.
 Los tres materializan cero unidades START y no alcanzan ningún consumidor candidato.
 
 ```powershell
-$nikodymH9rDriver = Join-Path $nikodymRepo 'scripts\measure_readiness_h9r.py'
-$nikodymH9rCatalogCache = Join-Path $nikodymTempRoot (
+$bayesriskH9rDriver = Join-Path $bayesriskRepo 'scripts\measure_readiness_h9r.py'
+$bayesriskH9rCatalogCache = Join-Path $bayesriskTempRoot (
     'h9r-catalog-cache-' + [guid]::NewGuid().ToString('N')
 )
-New-Item -ItemType Directory -Path $nikodymH9rCatalogCache | Out-Null
+New-Item -ItemType Directory -Path $bayesriskH9rCatalogCache | Out-Null
 try {
-    $nikodymH9rCatalogRaw = @(
-        & $nikodymPython -I -B -S -X "pycache_prefix=$nikodymH9rCatalogCache" `
-            $nikodymH9rDriver catalog
+    $bayesriskH9rCatalogRaw = @(
+        & $bayesriskPython -I -B -S -X "pycache_prefix=$bayesriskH9rCatalogCache" `
+            $bayesriskH9rDriver catalog
     )
     if ($LASTEXITCODE -ne 0) { throw 'catálogo H9R falló' }
-    $nikodymH9rCatalog = ($nikodymH9rCatalogRaw -join [Environment]::NewLine) |
+    $bayesriskH9rCatalog = ($bayesriskH9rCatalogRaw -join [Environment]::NewLine) |
         ConvertFrom-Json
-    if ($nikodymH9rCatalog.materialized_start_units -ne 0) {
+    if ($bayesriskH9rCatalog.materialized_start_units -ne 0) {
         throw 'el catálogo H9R materializó unidades START'
     }
 }
 finally {
-    if (Test-Path -LiteralPath $nikodymH9rCatalogCache) {
-        Remove-NikodymTempDirectory -LiteralPath $nikodymH9rCatalogCache
+    if (Test-Path -LiteralPath $bayesriskH9rCatalogCache) {
+        Remove-BayesRiskTempDirectory -LiteralPath $bayesriskH9rCatalogCache
     }
 }
 
-$nikodymH9rSchemaDir = Join-Path $nikodymTempRoot (
+$bayesriskH9rSchemaDir = Join-Path $bayesriskTempRoot (
     'h9r-schemas-' + [guid]::NewGuid().ToString('N')
 )
-$nikodymH9rSchemaCache = Join-Path $nikodymTempRoot (
+$bayesriskH9rSchemaCache = Join-Path $bayesriskTempRoot (
     'h9r-schema-cache-' + [guid]::NewGuid().ToString('N')
 )
-if (Test-Path -LiteralPath $nikodymH9rSchemaDir) {
-    throw "el destino de schemas H9R ya existe: $nikodymH9rSchemaDir"
+if (Test-Path -LiteralPath $bayesriskH9rSchemaDir) {
+    throw "el destino de schemas H9R ya existe: $bayesriskH9rSchemaDir"
 }
-New-Item -ItemType Directory -Path $nikodymH9rSchemaCache | Out-Null
+New-Item -ItemType Directory -Path $bayesriskH9rSchemaCache | Out-Null
 try {
-    & $nikodymPython -I -B -S -X "pycache_prefix=$nikodymH9rSchemaCache" `
-        $nikodymH9rDriver schemas --directory $nikodymH9rSchemaDir
+    & $bayesriskPython -I -B -S -X "pycache_prefix=$bayesriskH9rSchemaCache" `
+        $bayesriskH9rDriver schemas --directory $bayesriskH9rSchemaDir
     if ($LASTEXITCODE -ne 0) { throw 'schemas H9R falló' }
-    $nikodymH9rSchemaFiles = @(Get-ChildItem -LiteralPath $nikodymH9rSchemaDir -File)
-    $nikodymH9rExpectedSchemas = @(
+    $bayesriskH9rSchemaFiles = @(Get-ChildItem -LiteralPath $bayesriskH9rSchemaDir -File)
+    $bayesriskH9rExpectedSchemas = @(
         'aggregate.schema.json',
         'attempt.schema.json',
         'internal-authorization-gate.schema.json',
@@ -449,72 +449,72 @@ try {
         'pre-start-failure.schema.json',
         'preflight-rejection.schema.json'
     )
-    $nikodymH9rObservedSchemas = @(
-        $nikodymH9rSchemaFiles | Select-Object -ExpandProperty Name | Sort-Object
+    $bayesriskH9rObservedSchemas = @(
+        $bayesriskH9rSchemaFiles | Select-Object -ExpandProperty Name | Sort-Object
     )
-    if (@($nikodymH9rObservedSchemas).Count -ne $nikodymH9rExpectedSchemas.Count -or
-        (Compare-Object $nikodymH9rExpectedSchemas $nikodymH9rObservedSchemas)) {
+    if (@($bayesriskH9rObservedSchemas).Count -ne $bayesriskH9rExpectedSchemas.Count -or
+        (Compare-Object $bayesriskH9rExpectedSchemas $bayesriskH9rObservedSchemas)) {
         throw 'el artefacto de schemas H9R no contiene el censo cerrado de ocho archivos'
     }
-    foreach ($nikodymH9rSchemaFile in $nikodymH9rSchemaFiles) {
-        $null = Get-Content -Raw -Encoding UTF8 -LiteralPath $nikodymH9rSchemaFile.FullName |
+    foreach ($bayesriskH9rSchemaFile in $bayesriskH9rSchemaFiles) {
+        $null = Get-Content -Raw -Encoding UTF8 -LiteralPath $bayesriskH9rSchemaFile.FullName |
             ConvertFrom-Json
     }
 }
 finally {
-    if (Test-Path -LiteralPath $nikodymH9rSchemaDir) {
-        Remove-NikodymTempDirectory -LiteralPath $nikodymH9rSchemaDir
+    if (Test-Path -LiteralPath $bayesriskH9rSchemaDir) {
+        Remove-BayesRiskTempDirectory -LiteralPath $bayesriskH9rSchemaDir
     }
-    if (Test-Path -LiteralPath $nikodymH9rSchemaCache) {
-        Remove-NikodymTempDirectory -LiteralPath $nikodymH9rSchemaCache
+    if (Test-Path -LiteralPath $bayesriskH9rSchemaCache) {
+        Remove-BayesRiskTempDirectory -LiteralPath $bayesriskH9rSchemaCache
     }
 }
 
-$nikodymH9rArtifact = Join-Path $nikodymTempRoot (
+$bayesriskH9rArtifact = Join-Path $bayesriskTempRoot (
     'h9r-harness-test-' + [guid]::NewGuid().ToString('N') + '.json'
 )
-$nikodymH9rHarnessCache = Join-Path $nikodymTempRoot (
+$bayesriskH9rHarnessCache = Join-Path $bayesriskTempRoot (
     'h9r-harness-cache-' + [guid]::NewGuid().ToString('N')
 )
-New-Item -ItemType Directory -Path $nikodymH9rHarnessCache | Out-Null
+New-Item -ItemType Directory -Path $bayesriskH9rHarnessCache | Out-Null
 try {
-    & $nikodymPython -I -B -S -X "pycache_prefix=$nikodymH9rHarnessCache" `
-        $nikodymH9rDriver harness-test --output $nikodymH9rArtifact
+    & $bayesriskPython -I -B -S -X "pycache_prefix=$bayesriskH9rHarnessCache" `
+        $bayesriskH9rDriver harness-test --output $bayesriskH9rArtifact
     if ($LASTEXITCODE -ne 0) { throw 'harness-test H9R falló' }
-    $nikodymH9rHarness = Get-Content -Raw -Encoding UTF8 -LiteralPath $nikodymH9rArtifact |
+    $bayesriskH9rHarness = Get-Content -Raw -Encoding UTF8 -LiteralPath $bayesriskH9rArtifact |
         ConvertFrom-Json
-    if ($nikodymH9rHarness.start_tokens_emitted -ne 0 -or
-        $nikodymH9rHarness.materialized_start_units -ne 0 -or
-        @($nikodymH9rHarness.controls.PSObject.Properties).Count -ne 14) {
+    if ($bayesriskH9rHarness.start_tokens_emitted -ne 0 -or
+        $bayesriskH9rHarness.materialized_start_units -ne 0 -or
+        @($bayesriskH9rHarness.controls.PSObject.Properties).Count -ne 14) {
         throw 'harness-test H9R no acredita 14 controles y cero START/unidades'
     }
 }
 finally {
-    if (Test-Path -LiteralPath $nikodymH9rArtifact) {
-        Remove-NikodymTempFile -LiteralPath $nikodymH9rArtifact
+    if (Test-Path -LiteralPath $bayesriskH9rArtifact) {
+        Remove-BayesRiskTempFile -LiteralPath $bayesriskH9rArtifact
     }
-    if (Test-Path -LiteralPath $nikodymH9rHarnessCache) {
-        Remove-NikodymTempDirectory -LiteralPath $nikodymH9rHarnessCache
+    if (Test-Path -LiteralPath $bayesriskH9rHarnessCache) {
+        Remove-BayesRiskTempDirectory -LiteralPath $bayesriskH9rHarnessCache
     }
 }
 
-$nikodymH9rTests = @(
-    Get-ChildItem -LiteralPath (Join-Path $nikodymRepo 'tests\unit') `
+$bayesriskH9rTests = @(
+    Get-ChildItem -LiteralPath (Join-Path $bayesriskRepo 'tests\unit') `
         -Filter 'test_readiness_h9r_*.py' -File |
         Select-Object -ExpandProperty FullName
 )
-& $nikodymPython -B -m pytest -p no:cacheprovider @nikodymH9rTests
+& $bayesriskPython -B -m pytest -p no:cacheprovider @bayesriskH9rTests
 if ($LASTEXITCODE -ne 0) { throw 'tests focales H9R fallaron' }
-& $nikodymPython -B -m mypy --strict --no-incremental `
+& $bayesriskPython -B -m mypy --strict --no-incremental `
     scripts\measure_readiness_h9r.py scripts\readiness_h9r
 if ($LASTEXITCODE -ne 0) { throw 'mypy estricto H9R falló' }
-& $nikodymPython -B -m ruff check --no-cache `
+& $bayesriskPython -B -m ruff check --no-cache `
     scripts\measure_readiness_h9r.py scripts\readiness_h9r `
-    @nikodymH9rTests
+    @bayesriskH9rTests
 if ($LASTEXITCODE -ne 0) { throw 'ruff focal H9R falló' }
-& $nikodymPython -B -m ruff format --check --no-cache `
+& $bayesriskPython -B -m ruff format --check --no-cache `
     scripts\measure_readiness_h9r.py scripts\readiness_h9r `
-    @nikodymH9rTests
+    @bayesriskH9rTests
 if ($LASTEXITCODE -ne 0) { throw 'ruff format focal H9R falló' }
 ```
 
@@ -565,7 +565,7 @@ print({
     "public_copy_files": assert_no_h9r_capacity_copy(root),
     "catalog": assert_documented_h9r_catalog(root),
 })
-'@ | & $nikodymPython -I -B -
+'@ | & $bayesriskPython -I -B -
 if ($LASTEXITCODE -ne 0) { throw 'copy o catálogo H9R no reconcilia' }
 ```
 
@@ -576,7 +576,7 @@ defecto prometido. Protocolo:
 
 1. Ejecutar el gate en verde y guardar su censo.
 2. Comprobar `git diff` y copiar el archivo afectado a una ruta temporal única creada bajo
-   `$nikodymTempRoot` con el protocolo §2.5.
+   `$bayesriskTempRoot` con el protocolo §2.5.
 3. Inyectar el defecto mínimo con una edición dirigida al archivo; no mezclarlo con el arreglo real.
    (Decía `apply_patch`, que es la herramienta del CLI de Codex; el writer actual edita con sus
    propias herramientas. Lo que importa es que el defecto sea mínimo y esté aislado.)
@@ -636,9 +636,9 @@ Antes de cada push público, seleccionar explícitamente la cuenta correcta; `gh
 parecer sano y el push usar otra identidad:
 
 ```powershell
-& $nikodymGh auth switch --user nexolabs-gh
+& $bayesriskGh auth switch --user nexolabs-gh
 if ($LASTEXITCODE -ne 0) { throw 'gh auth switch falló' }
-& $nikodymGh auth status
+& $bayesriskGh auth status
 if ($LASTEXITCODE -ne 0) { throw 'gh auth status falló' }
 git push origin main
 if ($LASTEXITCODE -ne 0) { throw 'push público falló' }
@@ -655,15 +655,15 @@ Varios commits empujados juntos pueden producir un solo run sobre el último HEA
 Primero mapear por `headSha` y verificar que el commit de interés sea ancestro del HEAD del run:
 
 ```powershell
-& $nikodymGh run list --workflow CI --branch main --limit 20 --json databaseId,headSha,status,conclusion,url
+& $bayesriskGh run list --workflow CI --branch main --limit 20 --json databaseId,headSha,status,conclusion,url
 if ($LASTEXITCODE -ne 0) { throw 'consulta de CI falló' }
 git merge-base --is-ancestor SHA_A_VERIFICAR SHA_DEL_RUN
 if ($LASTEXITCODE -ne 0) { throw 'el SHA no es ancestro del run' }
-& $nikodymGh run view RUN_ID --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'
+& $bayesriskGh run view RUN_ID --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'
 if ($LASTEXITCODE -ne 0) { throw 'detalle de jobs CI falló' }
-& $nikodymGh run list --workflow Deploy --branch main --limit 20 --json databaseId,headSha,status,conclusion,url
+& $bayesriskGh run list --workflow Deploy --branch main --limit 20 --json databaseId,headSha,status,conclusion,url
 if ($LASTEXITCODE -ne 0) { throw 'consulta de Deploy falló' }
-& $nikodymGh run view DEPLOY_RUN_ID --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'
+& $bayesriskGh run view DEPLOY_RUN_ID --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'
 if ($LASTEXITCODE -ne 0) { throw 'detalle de jobs Deploy falló' }
 ```
 
@@ -693,103 +693,103 @@ camino que la publicación recorre sola. Para identificar bytes, la ancestría n
 del run debe ser exactamente el `HEAD` que se va a verificar.
 
 ```powershell
-$nikodymCandidateSha = (git rev-parse HEAD).Trim()
+$bayesriskCandidateSha = (git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'no se pudo leer el SHA candidato' }
-$nikodymCiRowsRaw = @(
-    & $nikodymGh run list -R nexolabs-gh/nikodym -w ci.yml -b main `
-        -c $nikodymCandidateSha --limit 10 `
+$bayesriskCiRowsRaw = @(
+    & $bayesriskGh run list -R nexolabs-gh/nikodym -w ci.yml -b main `
+        -c $bayesriskCandidateSha --limit 10 `
         --json databaseId,headSha,status,conclusion,url
 )
 if ($LASTEXITCODE -ne 0) { throw 'no se pudo consultar CI por SHA exacto' }
-$nikodymCiRows = @(
-    (($nikodymCiRowsRaw -join [Environment]::NewLine) | ConvertFrom-Json) |
-        Where-Object { $_.headSha -eq $nikodymCandidateSha }
+$bayesriskCiRows = @(
+    (($bayesriskCiRowsRaw -join [Environment]::NewLine) | ConvertFrom-Json) |
+        Where-Object { $_.headSha -eq $bayesriskCandidateSha }
 )
-if ($nikodymCiRows.Count -lt 1) { throw 'no existe run CI con headSha exacto' }
-$nikodymCi = $nikodymCiRows | Sort-Object databaseId -Descending | Select-Object -First 1
-& $nikodymGh run watch $nikodymCi.databaseId -R nexolabs-gh/nikodym --exit-status
+if ($bayesriskCiRows.Count -lt 1) { throw 'no existe run CI con headSha exacto' }
+$bayesriskCi = $bayesriskCiRows | Sort-Object databaseId -Descending | Select-Object -First 1
+& $bayesriskGh run watch $bayesriskCi.databaseId -R nexolabs-gh/nikodym --exit-status
 if ($LASTEXITCODE -ne 0) { throw 'el run CI candidato terminó rojo' }
-$nikodymCiViewRaw = @(
-    & $nikodymGh run view $nikodymCi.databaseId -R nexolabs-gh/nikodym `
+$bayesriskCiViewRaw = @(
+    & $bayesriskGh run view $bayesriskCi.databaseId -R nexolabs-gh/nikodym `
         --json headSha,status,conclusion,jobs,url
 )
 if ($LASTEXITCODE -ne 0) { throw 'no se pudo leer el run CI candidato' }
-$nikodymCiView = ($nikodymCiViewRaw -join [Environment]::NewLine) | ConvertFrom-Json
-if ($nikodymCiView.headSha -ne $nikodymCandidateSha) { throw 'headSha CI no reconcilia' }
-if ($nikodymCiView.status -ne 'completed' -or $nikodymCiView.conclusion -ne 'success') {
+$bayesriskCiView = ($bayesriskCiViewRaw -join [Environment]::NewLine) | ConvertFrom-Json
+if ($bayesriskCiView.headSha -ne $bayesriskCandidateSha) { throw 'headSha CI no reconcilia' }
+if ($bayesriskCiView.status -ne 'completed' -or $bayesriskCiView.conclusion -ne 'success') {
     throw 'CI candidato no quedó completed/success'
 }
-$nikodymBadJobs = @($nikodymCiView.jobs | Where-Object { $_.conclusion -ne 'success' })
-if ($nikodymBadJobs.Count -ne 0) { throw 'hay jobs CI no exitosos' }
+$bayesriskBadJobs = @($bayesriskCiView.jobs | Where-Object { $_.conclusion -ne 'success' })
+if ($bayesriskBadJobs.Count -ne 0) { throw 'hay jobs CI no exitosos' }
 ```
 
 Descargar en una ruta corta externa y validar `SHA256SUMS` en ambos sentidos: cada entrada debe
 existir y coincidir, y ningún archivo extra puede quedar fuera del manifiesto.
 
 ```powershell
-$nikodymCandidateDir = Join-Path $nikodymTempRoot (
-    'candidate-' + $nikodymCandidateSha.Substring(0,12) + '-' +
+$bayesriskCandidateDir = Join-Path $bayesriskTempRoot (
+    'candidate-' + $bayesriskCandidateSha.Substring(0,12) + '-' +
     [guid]::NewGuid().ToString('N')
 )
-New-Item -ItemType Directory -Path $nikodymCandidateDir | Out-Null
-& $nikodymGh run download $nikodymCi.databaseId -R nexolabs-gh/nikodym `
-    -n candidate-distributions-with-evidence -D $nikodymCandidateDir
+New-Item -ItemType Directory -Path $bayesriskCandidateDir | Out-Null
+& $bayesriskGh run download $bayesriskCi.databaseId -R nexolabs-gh/nikodym `
+    -n candidate-distributions-with-evidence -D $bayesriskCandidateDir
 if ($LASTEXITCODE -ne 0) { throw 'descarga del candidato falló' }
 
-$nikodymManifest = Join-Path $nikodymCandidateDir 'SHA256SUMS'
-if (-not (Test-Path -LiteralPath $nikodymManifest -PathType Leaf)) {
+$bayesriskManifest = Join-Path $bayesriskCandidateDir 'SHA256SUMS'
+if (-not (Test-Path -LiteralPath $bayesriskManifest -PathType Leaf)) {
     throw 'SHA256SUMS ausente'
 }
-$nikodymCandidateRoot = [IO.Path]::GetFullPath($nikodymCandidateDir)
-$nikodymCandidateBoundary = $nikodymCandidateRoot.TrimEnd('\') + '\'
-$nikodymManifestPaths = @()
-foreach ($nikodymLine in Get-Content -Encoding UTF8 -LiteralPath $nikodymManifest) {
-    if ($nikodymLine -notmatch '^([0-9a-f]{64})  \./(.+)$') {
-        throw "línea SHA256SUMS inválida: $nikodymLine"
+$bayesriskCandidateRoot = [IO.Path]::GetFullPath($bayesriskCandidateDir)
+$bayesriskCandidateBoundary = $bayesriskCandidateRoot.TrimEnd('\') + '\'
+$bayesriskManifestPaths = @()
+foreach ($bayesriskLine in Get-Content -Encoding UTF8 -LiteralPath $bayesriskManifest) {
+    if ($bayesriskLine -notmatch '^([0-9a-f]{64})  \./(.+)$') {
+        throw "línea SHA256SUMS inválida: $bayesriskLine"
     }
-    $nikodymExpectedHash = $Matches[1]
-    $nikodymRelative = $Matches[2] -replace '/', '\'
-    $nikodymArtifact = [IO.Path]::GetFullPath(
-        (Join-Path $nikodymCandidateRoot $nikodymRelative)
+    $bayesriskExpectedHash = $Matches[1]
+    $bayesriskRelative = $Matches[2] -replace '/', '\'
+    $bayesriskArtifact = [IO.Path]::GetFullPath(
+        (Join-Path $bayesriskCandidateRoot $bayesriskRelative)
     )
-    if (-not $nikodymArtifact.StartsWith(
-        $nikodymCandidateBoundary, [StringComparison]::OrdinalIgnoreCase
-    )) { throw "ruta fuera del artefacto: $nikodymRelative" }
-    if (-not (Test-Path -LiteralPath $nikodymArtifact -PathType Leaf)) {
-        throw "archivo manifestado ausente: $nikodymRelative"
+    if (-not $bayesriskArtifact.StartsWith(
+        $bayesriskCandidateBoundary, [StringComparison]::OrdinalIgnoreCase
+    )) { throw "ruta fuera del artefacto: $bayesriskRelative" }
+    if (-not (Test-Path -LiteralPath $bayesriskArtifact -PathType Leaf)) {
+        throw "archivo manifestado ausente: $bayesriskRelative"
     }
-    $nikodymActualHash = (
-        Get-FileHash -Algorithm SHA256 -LiteralPath $nikodymArtifact
+    $bayesriskActualHash = (
+        Get-FileHash -Algorithm SHA256 -LiteralPath $bayesriskArtifact
     ).Hash.ToLowerInvariant()
-    if ($nikodymActualHash -ne $nikodymExpectedHash) {
-        throw "hash incorrecto: $nikodymRelative"
+    if ($bayesriskActualHash -ne $bayesriskExpectedHash) {
+        throw "hash incorrecto: $bayesriskRelative"
     }
-    $nikodymManifestPaths += ('./' + ($nikodymRelative -replace '\\', '/'))
+    $bayesriskManifestPaths += ('./' + ($bayesriskRelative -replace '\\', '/'))
 }
-$nikodymActualPaths = @(
-    Get-ChildItem -LiteralPath $nikodymCandidateRoot -Recurse -File |
-        Where-Object { $_.FullName -ne $nikodymManifest } |
+$bayesriskActualPaths = @(
+    Get-ChildItem -LiteralPath $bayesriskCandidateRoot -Recurse -File |
+        Where-Object { $_.FullName -ne $bayesriskManifest } |
         ForEach-Object {
-            './' + ($_.FullName.Substring($nikodymCandidateBoundary.Length) -replace '\\', '/')
+            './' + ($_.FullName.Substring($bayesriskCandidateBoundary.Length) -replace '\\', '/')
         }
 )
-$nikodymManifestDiff = @(
-    Compare-Object ($nikodymManifestPaths | Sort-Object) ($nikodymActualPaths | Sort-Object)
+$bayesriskManifestDiff = @(
+    Compare-Object ($bayesriskManifestPaths | Sort-Object) ($bayesriskActualPaths | Sort-Object)
 )
-if ($nikodymManifestDiff.Count -ne 0) { throw 'SHA256SUMS no cubre el artefacto exactamente' }
+if ($bayesriskManifestDiff.Count -ne 0) { throw 'SHA256SUMS no cubre el artefacto exactamente' }
 
-$nikodymWheels = @(Get-ChildItem -LiteralPath $nikodymCandidateRoot -Recurse -File -Filter '*.whl')
-$nikodymSdists = @(
-    Get-ChildItem -LiteralPath $nikodymCandidateRoot -Recurse -File |
+$bayesriskWheels = @(Get-ChildItem -LiteralPath $bayesriskCandidateRoot -Recurse -File -Filter '*.whl')
+$bayesriskSdists = @(
+    Get-ChildItem -LiteralPath $bayesriskCandidateRoot -Recurse -File |
         Where-Object { $_.Name -like '*.tar.gz' }
 )
-if ($nikodymWheels.Count -ne 1 -or $nikodymSdists.Count -ne 1) {
+if ($bayesriskWheels.Count -ne 1 -or $bayesriskSdists.Count -ne 1) {
     throw 'el candidato no contiene exactamente un wheel y un sdist'
 }
-$nikodymWheel = $nikodymWheels[0]
-$nikodymSdist = $nikodymSdists[0]
-$nikodymFrontendProvenance = Join-Path `
-    $nikodymCandidateRoot 'frontend-evidence\frontend-provenance.json'
+$bayesriskWheel = $bayesriskWheels[0]
+$bayesriskSdist = $bayesriskSdists[0]
+$bayesriskFrontendProvenance = Join-Path `
+    $bayesriskCandidateRoot 'frontend-evidence\frontend-provenance.json'
 ```
 
 `core.autocrlf=true` materializa `LICENSE` con CRLF en este worktree, mientras wheel y sdist
@@ -799,43 +799,43 @@ mínima del SHA exacto, con `core.autocrlf=false` sólo para ese proceso. Limita
 symlinks históricos que `tar.exe` no puede crear en esta torre:
 
 ```powershell
-$nikodymSourceNonce = [guid]::NewGuid().ToString('N')
-$nikodymSourceView = Join-Path $nikodymTempRoot (
-    'source-lf-' + $nikodymCandidateSha.Substring(0,12) + '-' + $nikodymSourceNonce
+$bayesriskSourceNonce = [guid]::NewGuid().ToString('N')
+$bayesriskSourceView = Join-Path $bayesriskTempRoot (
+    'source-lf-' + $bayesriskCandidateSha.Substring(0,12) + '-' + $bayesriskSourceNonce
 )
-$nikodymSourceArchive = Join-Path $nikodymTempRoot (
-    'source-lf-' + $nikodymCandidateSha.Substring(0,12) + '-' +
-    $nikodymSourceNonce + '.tar'
+$bayesriskSourceArchive = Join-Path $bayesriskTempRoot (
+    'source-lf-' + $bayesriskCandidateSha.Substring(0,12) + '-' +
+    $bayesriskSourceNonce + '.tar'
 )
-foreach ($nikodymSourceTarget in @($nikodymSourceView,$nikodymSourceArchive)) {
-    if (Test-Path -LiteralPath $nikodymSourceTarget) {
-        throw "la vista fuente ya existe: $nikodymSourceTarget"
+foreach ($bayesriskSourceTarget in @($bayesriskSourceView,$bayesriskSourceArchive)) {
+    if (Test-Path -LiteralPath $bayesriskSourceTarget) {
+        throw "la vista fuente ya existe: $bayesriskSourceTarget"
     }
 }
-New-Item -ItemType Directory -Path $nikodymSourceView | Out-Null
-$nikodymTar = (Get-Command tar.exe -CommandType Application -ErrorAction Stop).Source
+New-Item -ItemType Directory -Path $bayesriskSourceView | Out-Null
+$bayesriskTar = (Get-Command tar.exe -CommandType Application -ErrorAction Stop).Source
 git -c core.autocrlf=false archive --format=tar `
-    --output=$nikodymSourceArchive $nikodymCandidateSha -- `
+    --output=$bayesriskSourceArchive $bayesriskCandidateSha -- `
     LICENSE uv.lock `
     scripts/check_distribution_contents.py `
     scripts/distribution_contents_allowlist.json src
 if ($LASTEXITCODE -ne 0) { throw 'git archive LF del candidato falló' }
-& $nikodymTar -xf $nikodymSourceArchive -C $nikodymSourceView
+& $bayesriskTar -xf $bayesriskSourceArchive -C $bayesriskSourceView
 if ($LASTEXITCODE -ne 0) { throw 'extracción de vista fuente LF falló' }
 
-$nikodymPreviousPythonPath = [Environment]::GetEnvironmentVariable('PYTHONPATH','Process')
-$env:PYTHONPATH = Join-Path $nikodymSourceView 'src'
+$bayesriskPreviousPythonPath = [Environment]::GetEnvironmentVariable('PYTHONPATH','Process')
+$env:PYTHONPATH = Join-Path $bayesriskSourceView 'src'
 try {
-    & $nikodymPython `
-        (Join-Path $nikodymSourceView 'scripts\check_distribution_contents.py') `
-        --frontend-provenance $nikodymFrontendProvenance `
-        $nikodymWheel.FullName $nikodymSdist.FullName
+    & $bayesriskPython `
+        (Join-Path $bayesriskSourceView 'scripts\check_distribution_contents.py') `
+        --frontend-provenance $bayesriskFrontendProvenance `
+        $bayesriskWheel.FullName $bayesriskSdist.FullName
     if ($LASTEXITCODE -ne 0) { throw 'contenido del candidato falló' }
 } finally {
-    if ($null -eq $nikodymPreviousPythonPath) {
+    if ($null -eq $bayesriskPreviousPythonPath) {
         Remove-Item Env:\PYTHONPATH -ErrorAction SilentlyContinue
     } else {
-        $env:PYTHONPATH = $nikodymPreviousPythonPath
+        $env:PYTHONPATH = $bayesriskPreviousPythonPath
     }
 }
 ```
@@ -854,55 +854,55 @@ Históricamente se instalaba **ese wheel** en una venv corta fuera de OneDrive, 
 S3 v2. Las salidas usaban nombres nuevos y nunca sobrescribían JSON v1.
 
 ```text
-$nikodymVerifyRoot = Join-Path $nikodymTempRoot (
-    'verify-' + $nikodymCandidateSha.Substring(0,12) + '-' +
+$bayesriskVerifyRoot = Join-Path $bayesriskTempRoot (
+    'verify-' + $bayesriskCandidateSha.Substring(0,12) + '-' +
     [guid]::NewGuid().ToString('N')
 )
-New-Item -ItemType Directory -Path $nikodymVerifyRoot | Out-Null
-$nikodymVerifyVenv = Join-Path $nikodymVerifyRoot 'venv'
-& $nikodymUv venv --python $nikodymPython $nikodymVerifyVenv
+New-Item -ItemType Directory -Path $bayesriskVerifyRoot | Out-Null
+$bayesriskVerifyVenv = Join-Path $bayesriskVerifyRoot 'venv'
+& $bayesriskUv venv --python $bayesriskPython $bayesriskVerifyVenv
 if ($LASTEXITCODE -ne 0) { throw 'creación de venv candidata falló' }
-$nikodymVerifyPython = Join-Path $nikodymVerifyVenv 'Scripts\python.exe'
-$nikodymWheelSpec = $nikodymWheel.FullName + '[scoring,ui,docx]'
+$bayesriskVerifyPython = Join-Path $bayesriskVerifyVenv 'Scripts\python.exe'
+$bayesriskWheelSpec = $bayesriskWheel.FullName + '[scoring,ui,docx]'
 # La cache local puede exponer archivos Cloud Files incompatibles con hardlinks (os error 396).
 # `copy` evita esa dependencia del filesystem sin cambiar resolución ni bytes instalados.
-& $nikodymUv pip install --link-mode copy `
-    --python $nikodymVerifyPython $nikodymWheelSpec httpx2
+& $bayesriskUv pip install --link-mode copy `
+    --python $bayesriskVerifyPython $bayesriskWheelSpec httpx2
 if ($LASTEXITCODE -ne 0) { throw 'instalación del wheel candidato falló' }
 
-$nikodymDriver = Join-Path $nikodymRepo 'scripts\measure_readiness_w1.py'
-$nikodymS0Work = Join-Path $nikodymVerifyRoot 's0-work'
-$nikodymS3Work = Join-Path $nikodymVerifyRoot 's3-v2-work'
-$nikodymS0Output = Join-Path $nikodymVerifyRoot 'readiness-s0-candidate.json'
-$nikodymS3Output = Join-Path $nikodymVerifyRoot 'readiness-s3-v2-candidate.json'
-$nikodymPreviousPythonPath = [Environment]::GetEnvironmentVariable('PYTHONPATH','Process')
-$nikodymPreviousHashSeed = [Environment]::GetEnvironmentVariable('PYTHONHASHSEED','Process')
+$bayesriskDriver = Join-Path $bayesriskRepo 'scripts\measure_readiness_w1.py'
+$bayesriskS0Work = Join-Path $bayesriskVerifyRoot 's0-work'
+$bayesriskS3Work = Join-Path $bayesriskVerifyRoot 's3-v2-work'
+$bayesriskS0Output = Join-Path $bayesriskVerifyRoot 'readiness-s0-candidate.json'
+$bayesriskS3Output = Join-Path $bayesriskVerifyRoot 'readiness-s3-v2-candidate.json'
+$bayesriskPreviousPythonPath = [Environment]::GetEnvironmentVariable('PYTHONPATH','Process')
+$bayesriskPreviousHashSeed = [Environment]::GetEnvironmentVariable('PYTHONHASHSEED','Process')
 $env:PYTHONPATH = ''
 $env:PYTHONHASHSEED = '0'
-Push-Location -LiteralPath $nikodymVerifyRoot
+Push-Location -LiteralPath $bayesriskVerifyRoot
 try {
-    & $nikodymVerifyPython $nikodymDriver --profile S0-smoke `
-        --wheel $nikodymWheel.FullName --sdist $nikodymSdist.FullName `
-        --workdir $nikodymS0Work --output $nikodymS0Output `
-        --source-sha $nikodymCandidateSha
+    & $bayesriskVerifyPython $bayesriskDriver --profile S0-smoke `
+        --wheel $bayesriskWheel.FullName --sdist $bayesriskSdist.FullName `
+        --workdir $bayesriskS0Work --output $bayesriskS0Output `
+        --source-sha $bayesriskCandidateSha
     if ($LASTEXITCODE -ne 0) { throw 'S0 del candidato falló' }
-    & $nikodymVerifyPython $nikodymDriver --profile S3-limite `
-        --wheel $nikodymWheel.FullName --sdist $nikodymSdist.FullName `
-        --workdir $nikodymS3Work --output $nikodymS3Output `
-        --source-sha $nikodymCandidateSha `
-        --s3-bundle (Join-Path $nikodymS0Work 'scorecard-bundle')
+    & $bayesriskVerifyPython $bayesriskDriver --profile S3-limite `
+        --wheel $bayesriskWheel.FullName --sdist $bayesriskSdist.FullName `
+        --workdir $bayesriskS3Work --output $bayesriskS3Output `
+        --source-sha $bayesriskCandidateSha `
+        --s3-bundle (Join-Path $bayesriskS0Work 'scorecard-bundle')
     if ($LASTEXITCODE -ne 0) { throw 'S3 v2 del candidato falló' }
 } finally {
     Pop-Location
-    if ($null -eq $nikodymPreviousPythonPath) {
+    if ($null -eq $bayesriskPreviousPythonPath) {
         Remove-Item Env:\PYTHONPATH -ErrorAction SilentlyContinue
     } else {
-        $env:PYTHONPATH = $nikodymPreviousPythonPath
+        $env:PYTHONPATH = $bayesriskPreviousPythonPath
     }
-    if ($null -eq $nikodymPreviousHashSeed) {
+    if ($null -eq $bayesriskPreviousHashSeed) {
         Remove-Item Env:\PYTHONHASHSEED -ErrorAction SilentlyContinue
     } else {
-        $env:PYTHONHASHSEED = $nikodymPreviousHashSeed
+        $env:PYTHONHASHSEED = $bayesriskPreviousHashSeed
     }
 }
 ```
@@ -911,44 +911,44 @@ Reconciliar schema, estado, hashes, backend, terminación, condiciones y la matr
 N−1/N/N+1:
 
 ```text
-$nikodymS0 = Get-Content -Raw -Encoding UTF8 -LiteralPath $nikodymS0Output | ConvertFrom-Json
-$nikodymS3 = Get-Content -Raw -Encoding UTF8 -LiteralPath $nikodymS3Output | ConvertFrom-Json
-if ($nikodymS0.schema_version -ne 'nikodym.readiness.w1.v1') { throw 'schema S0 inesperado' }
-if ($nikodymS0.profile_status -ne 'pass') { throw 'S0 candidato no dio pass' }
-if ($nikodymS3.schema_version -ne 'nikodym.readiness.w1.v2') { throw 'schema S3 no es v2' }
-if ($nikodymS3.profile_status -ne 'pass') { throw 'S3 candidato no dio pass' }
-if ($nikodymS3.source_sha -ne $nikodymCandidateSha) { throw 'source_sha S3 no reconcilia' }
-if ($nikodymS3.supervisor.backend -ne 'windows_job_object') { throw 'backend S3 inesperado' }
-if ($nikodymS3.supervisor.outcome -ne 'normal') { throw 'S3 no terminó normalmente' }
-if ($nikodymS3.supervisor.returncode.signed -ne 0) { throw 'worker S3 no retornó 0' }
-$nikodymFalseConditions = @(
-    $nikodymS3.pass_conditions.PSObject.Properties | Where-Object { $_.Value -ne $true }
+$bayesriskS0 = Get-Content -Raw -Encoding UTF8 -LiteralPath $bayesriskS0Output | ConvertFrom-Json
+$bayesriskS3 = Get-Content -Raw -Encoding UTF8 -LiteralPath $bayesriskS3Output | ConvertFrom-Json
+if ($bayesriskS0.schema_version -ne 'nikodym.readiness.w1.v1') { throw 'schema S0 inesperado' }
+if ($bayesriskS0.profile_status -ne 'pass') { throw 'S0 candidato no dio pass' }
+if ($bayesriskS3.schema_version -ne 'nikodym.readiness.w1.v2') { throw 'schema S3 no es v2' }
+if ($bayesriskS3.profile_status -ne 'pass') { throw 'S3 candidato no dio pass' }
+if ($bayesriskS3.source_sha -ne $bayesriskCandidateSha) { throw 'source_sha S3 no reconcilia' }
+if ($bayesriskS3.supervisor.backend -ne 'windows_job_object') { throw 'backend S3 inesperado' }
+if ($bayesriskS3.supervisor.outcome -ne 'normal') { throw 'S3 no terminó normalmente' }
+if ($bayesriskS3.supervisor.returncode.signed -ne 0) { throw 'worker S3 no retornó 0' }
+$bayesriskFalseConditions = @(
+    $bayesriskS3.pass_conditions.PSObject.Properties | Where-Object { $_.Value -ne $true }
 )
-if ($nikodymFalseConditions.Count -ne 0) { throw 'hay condiciones S3 falsas' }
-$nikodymWheelHash = (
-    Get-FileHash -Algorithm SHA256 -LiteralPath $nikodymWheel.FullName
+if ($bayesriskFalseConditions.Count -ne 0) { throw 'hay condiciones S3 falsas' }
+$bayesriskWheelHash = (
+    Get-FileHash -Algorithm SHA256 -LiteralPath $bayesriskWheel.FullName
 ).Hash.ToLowerInvariant()
-$nikodymSdistHash = (
-    Get-FileHash -Algorithm SHA256 -LiteralPath $nikodymSdist.FullName
+$bayesriskSdistHash = (
+    Get-FileHash -Algorithm SHA256 -LiteralPath $bayesriskSdist.FullName
 ).Hash.ToLowerInvariant()
-if ($nikodymS3.cleanroom.wheel_sha256 -ne $nikodymWheelHash) { throw 'wheel hash S3 difiere' }
-if ($nikodymS3.cleanroom.sdist_sha256 -ne $nikodymSdistHash) { throw 'sdist hash S3 difiere' }
+if ($bayesriskS3.cleanroom.wheel_sha256 -ne $bayesriskWheelHash) { throw 'wheel hash S3 difiere' }
+if ($bayesriskS3.cleanroom.sdist_sha256 -ne $bayesriskSdistHash) { throw 'sdist hash S3 difiere' }
 
-$nikodymExpectedLimits = [ordered]@{
+$bayesriskExpectedLimits = [ordered]@{
     train_rows = [ordered]@{'999999'='accepted';'1000000'='accepted';'1000001'='rejected'}
     train_variables = [ordered]@{'99'='accepted';'100'='accepted';'101'='rejected'}
     train_cardinality = [ordered]@{'99999'='accepted';'100000'='accepted';'100001'='rejected'}
     batch_rows = [ordered]@{'4999999'='accepted';'5000000'='accepted';'5000001'='rejected'}
 }
-foreach ($nikodymFamily in $nikodymExpectedLimits.Keys) {
-    $nikodymExpectedCases = $nikodymExpectedLimits[$nikodymFamily]
-    $nikodymObservedCases = $nikodymS3.limits.$nikodymFamily.PSObject.Properties
-    if (@($nikodymObservedCases).Count -ne $nikodymExpectedCases.Count) {
-        throw "cantidad de casos S3 incorrecta: $nikodymFamily"
+foreach ($bayesriskFamily in $bayesriskExpectedLimits.Keys) {
+    $bayesriskExpectedCases = $bayesriskExpectedLimits[$bayesriskFamily]
+    $bayesriskObservedCases = $bayesriskS3.limits.$bayesriskFamily.PSObject.Properties
+    if (@($bayesriskObservedCases).Count -ne $bayesriskExpectedCases.Count) {
+        throw "cantidad de casos S3 incorrecta: $bayesriskFamily"
     }
-    foreach ($nikodymCase in $nikodymExpectedCases.Keys) {
-        if ($nikodymS3.limits.$nikodymFamily.$nikodymCase -ne $nikodymExpectedCases[$nikodymCase]) {
-            throw "clasificación S3 incorrecta: $nikodymFamily/$nikodymCase"
+    foreach ($bayesriskCase in $bayesriskExpectedCases.Keys) {
+        if ($bayesriskS3.limits.$bayesriskFamily.$bayesriskCase -ne $bayesriskExpectedCases[$bayesriskCase]) {
+            throw "clasificación S3 incorrecta: $bayesriskFamily/$bayesriskCase"
         }
     }
 }
@@ -958,39 +958,39 @@ Importar ambos JSON y el manifiesto del candidato a nombres privados nuevos **an
 temporales. La copia debe conservar exactamente los bytes medidos:
 
 ```text
-$nikodymEvidenceStamp = Get-Date -Format 'yyyy-MM-dd-HHmmss'
-$nikodymEvidenceSuffix = $nikodymCandidateSha.Substring(0,12)
-$nikodymEvidenceNonce = [guid]::NewGuid().ToString('N').Substring(0,8)
-$nikodymPrivateEvidence = Join-Path $nikodymRepo 'privado\evidencia'
-$nikodymPrivateS0 = Join-Path $nikodymPrivateEvidence (
-    "readiness-w1-s0-candidate-$nikodymEvidenceStamp-$nikodymEvidenceSuffix-$nikodymEvidenceNonce.json"
+$bayesriskEvidenceStamp = Get-Date -Format 'yyyy-MM-dd-HHmmss'
+$bayesriskEvidenceSuffix = $bayesriskCandidateSha.Substring(0,12)
+$bayesriskEvidenceNonce = [guid]::NewGuid().ToString('N').Substring(0,8)
+$bayesriskPrivateEvidence = Join-Path $bayesriskRepo 'privado\evidencia'
+$bayesriskPrivateS0 = Join-Path $bayesriskPrivateEvidence (
+    "readiness-w1-s0-candidate-$bayesriskEvidenceStamp-$bayesriskEvidenceSuffix-$bayesriskEvidenceNonce.json"
 )
-$nikodymPrivateS3 = Join-Path $nikodymPrivateEvidence (
-    "readiness-w1-s3-v2-$nikodymEvidenceStamp-$nikodymEvidenceSuffix-$nikodymEvidenceNonce.json"
+$bayesriskPrivateS3 = Join-Path $bayesriskPrivateEvidence (
+    "readiness-w1-s3-v2-$bayesriskEvidenceStamp-$bayesriskEvidenceSuffix-$bayesriskEvidenceNonce.json"
 )
-$nikodymPrivateManifest = Join-Path $nikodymPrivateEvidence (
-    "readiness-w1-candidate-sha256-$nikodymEvidenceStamp-$nikodymEvidenceSuffix-$nikodymEvidenceNonce.txt"
+$bayesriskPrivateManifest = Join-Path $bayesriskPrivateEvidence (
+    "readiness-w1-candidate-sha256-$bayesriskEvidenceStamp-$bayesriskEvidenceSuffix-$bayesriskEvidenceNonce.txt"
 )
-foreach ($nikodymDestination in @(
-    $nikodymPrivateS0,$nikodymPrivateS3,$nikodymPrivateManifest
+foreach ($bayesriskDestination in @(
+    $bayesriskPrivateS0,$bayesriskPrivateS3,$bayesriskPrivateManifest
 )) {
-    if (Test-Path -LiteralPath $nikodymDestination) {
-        throw "la evidencia privada no se sobrescribe: $nikodymDestination"
+    if (Test-Path -LiteralPath $bayesriskDestination) {
+        throw "la evidencia privada no se sobrescribe: $bayesriskDestination"
     }
 }
-Copy-Item -LiteralPath $nikodymS0Output -Destination $nikodymPrivateS0
-Copy-Item -LiteralPath $nikodymS3Output -Destination $nikodymPrivateS3
-Copy-Item -LiteralPath $nikodymManifest -Destination $nikodymPrivateManifest
-if ((Get-FileHash -Algorithm SHA256 -LiteralPath $nikodymS0Output).Hash -ne
-    (Get-FileHash -Algorithm SHA256 -LiteralPath $nikodymPrivateS0).Hash) {
+Copy-Item -LiteralPath $bayesriskS0Output -Destination $bayesriskPrivateS0
+Copy-Item -LiteralPath $bayesriskS3Output -Destination $bayesriskPrivateS3
+Copy-Item -LiteralPath $bayesriskManifest -Destination $bayesriskPrivateManifest
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath $bayesriskS0Output).Hash -ne
+    (Get-FileHash -Algorithm SHA256 -LiteralPath $bayesriskPrivateS0).Hash) {
     throw 'la copia privada S0 difiere'
 }
-if ((Get-FileHash -Algorithm SHA256 -LiteralPath $nikodymS3Output).Hash -ne
-    (Get-FileHash -Algorithm SHA256 -LiteralPath $nikodymPrivateS3).Hash) {
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath $bayesriskS3Output).Hash -ne
+    (Get-FileHash -Algorithm SHA256 -LiteralPath $bayesriskPrivateS3).Hash) {
     throw 'la copia privada S3 v2 difiere'
 }
-if ((Get-FileHash -Algorithm SHA256 -LiteralPath $nikodymManifest).Hash -ne
-    (Get-FileHash -Algorithm SHA256 -LiteralPath $nikodymPrivateManifest).Hash) {
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath $bayesriskManifest).Hash -ne
+    (Get-FileHash -Algorithm SHA256 -LiteralPath $bayesriskPrivateManifest).Hash) {
     throw 'la copia privada de SHA256SUMS difiere'
 }
 ```
@@ -999,10 +999,10 @@ Sólo después de importar y hashear esa evidencia, eliminar los temporales medi
 validadas de §2.5:
 
 ```text
-Remove-NikodymTempDirectory -LiteralPath $nikodymVerifyRoot
-Remove-NikodymTempDirectory -LiteralPath $nikodymCandidateDir
-Remove-NikodymTempDirectory -LiteralPath $nikodymSourceView
-Remove-NikodymTempFile -LiteralPath $nikodymSourceArchive
+Remove-BayesRiskTempDirectory -LiteralPath $bayesriskVerifyRoot
+Remove-BayesRiskTempDirectory -LiteralPath $bayesriskCandidateDir
+Remove-BayesRiskTempDirectory -LiteralPath $bayesriskSourceView
+Remove-BayesRiskTempFile -LiteralPath $bayesriskSourceArchive
 ```
 
 La evidencia histórica S0/S3 no convierte W1 en PASS. H9=B ya no es la puerta vigente: H9R exige
@@ -1020,20 +1020,20 @@ Antes de entregar:
 - verificar procesos por PID/comando y revisar ambos repos:
 
 ```powershell
-foreach ($nikodymTrackedPid in @($nikodymSessionPids)) {
-    $nikodymTrackedProcess = Get-Process -Id $nikodymTrackedPid -ErrorAction SilentlyContinue
-    if ($null -ne $nikodymTrackedProcess) {
+foreach ($bayesriskTrackedPid in @($bayesriskSessionPids)) {
+    $bayesriskTrackedProcess = Get-Process -Id $bayesriskTrackedPid -ErrorAction SilentlyContinue
+    if ($null -ne $bayesriskTrackedProcess) {
         try {
-            Stop-Process -InputObject $nikodymTrackedProcess -Force -ErrorAction Stop
-            Wait-Process -Id $nikodymTrackedPid -Timeout 10 -ErrorAction SilentlyContinue
+            Stop-Process -InputObject $bayesriskTrackedProcess -Force -ErrorAction Stop
+            Wait-Process -Id $bayesriskTrackedPid -Timeout 10 -ErrorAction SilentlyContinue
         } catch {
-            if ($null -ne (Get-Process -Id $nikodymTrackedPid -ErrorAction SilentlyContinue)) {
-                throw "no se pudo detener PID propio: $nikodymTrackedPid"
+            if ($null -ne (Get-Process -Id $bayesriskTrackedPid -ErrorAction SilentlyContinue)) {
+                throw "no se pudo detener PID propio: $bayesriskTrackedPid"
             }
         }
     }
-    if ($null -ne (Get-Process -Id $nikodymTrackedPid -ErrorAction SilentlyContinue)) {
-        throw "PID propio persiste tras cleanup: $nikodymTrackedPid"
+    if ($null -ne (Get-Process -Id $bayesriskTrackedPid -ErrorAction SilentlyContinue)) {
+        throw "PID propio persiste tras cleanup: $bayesriskTrackedPid"
     }
 }
 Get-CimInstance Win32_Process |
@@ -1042,7 +1042,7 @@ Get-CimInstance Win32_Process |
         $_.Name -in @('python.exe','node.exe','uv.exe') -and
         (
             $_.Name -eq 'uv.exe' -or
-            $_.CommandLine -match 'nikodym\.ui|uvicorn|vite|pytest|vitest|measure_readiness'
+            $_.CommandLine -match 'bayesrisk\.ui|uvicorn|vite|pytest|vitest|measure_readiness'
         )
     } |
     Select-Object ProcessId,ParentProcessId,Name,CommandLine
@@ -1076,13 +1076,13 @@ Si el CI obliga a corregir y crear otro commit público, repetir su push/verific
 el HANDOFF. Confirmar al final:
 
 ```powershell
-$nikodymHandoff = Get-Item -Force -LiteralPath 'HANDOFF.md'
-if ($nikodymHandoff.LinkType -ne 'SymbolicLink') { throw 'HANDOFF.md dejó de ser symlink' }
-$nikodymHandoffTarget = [IO.Path]::GetFullPath([string]$nikodymHandoff.Target)
-if ($nikodymHandoffTarget -ne $nikodymExpectedHandoff) {
-    throw "target HANDOFF final inesperado: $nikodymHandoffTarget"
+$bayesriskHandoff = Get-Item -Force -LiteralPath 'HANDOFF.md'
+if ($bayesriskHandoff.LinkType -ne 'SymbolicLink') { throw 'HANDOFF.md dejó de ser symlink' }
+$bayesriskHandoffTarget = [IO.Path]::GetFullPath([string]$bayesriskHandoff.Target)
+if ($bayesriskHandoffTarget -ne $bayesriskExpectedHandoff) {
+    throw "target HANDOFF final inesperado: $bayesriskHandoffTarget"
 }
-if (-not (Test-Path -LiteralPath $nikodymHandoffTarget -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $bayesriskHandoffTarget -PathType Leaf)) {
     throw 'target HANDOFF final ausente'
 }
 git status --short --branch
@@ -1096,7 +1096,7 @@ if ($LASTEXITCODE -ne 0) { throw 'status final privado falló' }
 Sólo con el OK explícito de Cami para ESA release (AGENTS.md: un OK anterior no se hereda). Así se
 cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en una de las dos.
 
-1. **Bump en un commit propio.** `__version__` en `src/nikodym/__init__.py` (pyproject lo lee),
+1. **Bump en un commit propio.** `__version__` en `src/bayesrisk/__init__.py` (pyproject lo lee),
    `CHANGELOG.md` (`## [No publicado]` → `## [X.Y.Z] — AAAA-MM-DD`), `docs_site/index.md`
    («Estado: X.Y.Z — release estable») y `docs_site/api.md` («código publicado (`X.Y.Z`)»). Suite
    completa sobre ese árbol, push, CI 18/18 job a job (§8).
@@ -1104,7 +1104,7 @@ cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en un
    copy del informe, y sólo con OK de Cami: rama temporal desde el bump
    (`git push -f origin HEAD:refs/heads/recaptura-X.Y.Z`),
    `gh workflow run recapture-demo.yml --ref recaptura-X.Y.Z -f motivo=…`, bajar el artefacto
-   `demo-fixtures-recapturados`, verificar en `results-*.json` que `nikodym == X.Y.Z`, que `git_sha`
+   `demo-fixtures-recapturados`, verificar en `results-*.json` que `bayesrisk == X.Y.Z`, que `git_sha`
    es el del bump y `git_dirty == false`, regenerar las firmas
    (`node scripts/generate_frontend_demo_fixture_signatures.mjs`), correr
    `scripts/check_demo_report_copy.py`, mover los `run_id` que `deploy.yml` busca en vivo (el gate
@@ -1121,19 +1121,19 @@ cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en un
    la Release con «hay runs de CI de <sha> que no terminaron en success». Remedio, en este orden:
    `gh run rerun <run de CI del tag> --failed`, esperar verde, `gh run rerun <run de Release>
    --failed`. Presupuestar ~30 min por esta vía.
-4. **Verificar PyPI.** `curl -s https://pypi.org/pypi/nikodym/json` → `info.version` y los sha256
+4. **Verificar PyPI.** `curl -s https://pypi.org/pypi/bayesrisk/json` → `info.version` y los sha256
    de wheel y sdist, que van al HANDOFF. El índice simple que usa `pip` tarda ~2 min más que el
    JSON en servir la versión («No matching distribution found» transitorio).
 5. **Smoke fuera del repo, en un venv limpio.** `python -m venv %TEMP%\nkr-smoke-venv`,
-   `pip install --no-cache-dir "nikodym[ui,scoring,report]==X.Y.Z"`, cwd en un temporal ajeno al
-   checkout (para que `import nikodym` sea el instalado): `__version__` y metadata coinciden, el
+   `pip install --no-cache-dir "bayesrisk[ui,scoring,report]==X.Y.Z"`, cwd en un temporal ajeno al
+   checkout (para que `import bayesrisk` sea el instalado): `__version__` y metadata coinciden, el
    quickstart público llega a `done` con `audit_trail.jsonl`/`environment.json`/`study` en el
-   `run_dir`, y `nikodym-ui` por HTTP real sirve `/` con su bundle, `/api/jobs`, `/api/schema` y
+   `run_dir`, y `bayesrisk-ui` por HTTP real sirve `/` con su bundle, `/api/jobs`, `/api/schema` y
    rechaza `POST /api/run` sin Origin ni token (403). No usar `starlette.testclient` en ese venv:
    starlette ≥ 1.6 exige `httpx2` (el lock del repo va más atrás; al subirlo, añadir `httpx2` al
    grupo dev porque `tests/unit/_ui_client.py` lo usa).
 6. **Producción la publica el Deploy del último push a `main`, no el tag.** Comprobar
-   `https://docs.nikodym.cl/build-sha.txt` y `https://demo.nikodym.cl/build-sha.txt` = HEAD de
+   `https://docs.bayesadvisory.cl/build-sha.txt` y `https://demo.bayesadvisory.cl/build-sha.txt` = HEAD de
    `main`, «Estado: X.Y.Z» en la portada, la guía y el changelog que la release toca, y el bundle de
    la demo con las corridas publicadas. La regla «producción no retrocede, no pierde un commit verde
    y no se publica a ciegas» vive en `scripts/deploy_no_retroceder_produccion.py` (con sus tests):
@@ -1202,7 +1202,7 @@ el PATH ya esté bien (mismo `400 … requires a newer version`); apagarlo con e
 plugin antes de relanzar, desde PowerShell en la raíz del repo:
 
 ```powershell
-'{"hook_event_name":"SessionEnd","cwd":"C:\\Users\\camil\\OneDrive\\Documents\\Proyectos\\Nikodym RiskLib"}' |
+'{"hook_event_name":"SessionEnd","cwd":"C:\\Users\\camil\\OneDrive\\Documents\\Proyectos\\bayesrisk"}' |
     node "C:\Users\camil\.claude\plugins\cache\openai-codex\codex\<version>\scripts\session-lifecycle-hook.mjs" SessionEnd
 ``` Lanzar desde PowerShell sin `2>&1` (§2). Un job que quedó «running» con PID
 muerto en `status --all` es cosmético: no bloquea revisiones nuevas.
@@ -1236,7 +1236,7 @@ Conteos que un `grep` ingenuo devuelve mal en este árbol. Medidos, no supuestos
 
 | Qué se quiere contar | El grep ingenuo dice | Lo real | Por qué |
 |---|---|---|---|
-| `TODO` pendientes en `src/nikodym` | 41 | **1** (`core/study.py:710`) | las constantes `METODO_*` de `core/dataset_check.py` contienen la subcadena `TODO` |
+| `TODO` pendientes en `src/bayesrisk` | 41 | **1** (`core/study.py:710`) | las constantes `METODO_*` de `core/dataset_check.py` contienen la subcadena `TODO` |
 | Deudas del motor `FALTA-DATO` | 56 | **10 códigos distintos** | 56 son *ocurrencias*; usar `grep -rhoE "FALTA-DATO-[A-Z0-9]+-[0-9]+" \| sort -u` |
 | Dominios cubiertos por la UI | varía | 16 secciones en 10 trabajos (15 del formulario + `stress`, declarada faltante) | las tuplas `sections` de `ui/jobs.py` son multilínea y el grep las parte: importar `_JOBS` con `.venv\Scripts\python.exe` y unir `sections` con `missing_sections` |
 
@@ -1288,7 +1288,7 @@ Reproduce el mismo falso rojo por el mismo mecanismo y hace perder la corrida en
    (`tests/unit/test_copy_del_formulario.py::_campos_visibles`, agrupando por el primer tramo de la
    ruta), perillas de las secciones del módulo, segundos hasta el primer resultado con el dataset
    del paquete, y conceptos que el ejemplo obliga a conocer. Sin línea base no hay «después».
-3. Buscar en `src/nikodym` lo que ya existe: el fondo casi siempre está (`grep -rn` por dominio,
+3. Buscar en `src/bayesrisk` lo que ya existe: el fondo casi siempre está (`grep -rn` por dominio,
    `Step.requires/provides`, los mapas de rótulos de `report/prose.py`, `validation.results`,
    `stability.results`). **Conectar, no reimplementar.** Un segundo motor para lo mismo es un
    defecto, no una mejora.
@@ -1297,7 +1297,7 @@ Reproduce el mismo falso rojo por el mismo mecanismo y hace perder la corrida en
 
 ### 12.2 Al escribir
 
-5. La puerta guiada es un cliente de `nikodym.run`/`Study`: construye el `NikodymConfig`, lo corre y
+5. La puerta guiada es un cliente de `bayesrisk.run`/`Study`: construye el `BayesRiskConfig`, lo corre y
    lee sus artefactos. **Nunca un segundo orquestador**, nunca un cálculo propio: el config sigue
    siendo la verdad y el `config_hash`, la identidad.
 6. **Cero perillas.** Si crees necesitar una, parar: medir que el default falla en un caso real,

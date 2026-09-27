@@ -1,4 +1,4 @@
-"""Tests de ``InternalProvisioningConfig``: invariantes cruzados y cableado con ``NikodymConfig``.
+"""Tests de ``InternalProvisioningConfig``: invariantes cruzados y cableado con ``BayesRiskConfig``.
 
 Un enum declarado sin ruta real degrada en silencio y una columna declarada que el motor nunca abre
 es una mentira del config: ambas cosas se validan aquí (SDD-28 §5.1).
@@ -11,9 +11,9 @@ from typing import Annotated, get_args, get_origin
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.hashing import INFRA_SECTIONS
-from nikodym.provisioning.internal import (
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.hashing import INFRA_SECTIONS
+from bayesrisk.provisioning.internal import (
     InternalConfigError,
     InternalLgdGroupHistorical,
     InternalLgdProvided,
@@ -43,7 +43,7 @@ def test_defaults_del_metodo_interno() -> None:
 
 
 def test_config_es_cerrado_y_frozen() -> None:
-    """``extra='forbid'`` y ``frozen=True`` heredados de ``NikodymBaseConfig``."""
+    """``extra='forbid'`` y ``frozen=True`` heredados de ``BayesRiskBaseConfig``."""
     with pytest.raises(ValidationError):
         InternalProvisioningConfig(campo_inexistente=1)
 
@@ -136,14 +136,14 @@ def test_seccion_es_computacional_y_se_coacciona_desde_dict() -> None:
     """``provisioning_internal`` entra al ``config_hash`` y se valida como sub-config real."""
     assert "provisioning_internal" not in INFRA_SECTIONS
 
-    root = NikodymConfig(provisioning_internal={"grouping": "segment", "group_col": "segmento"})
+    root = BayesRiskConfig(provisioning_internal={"grouping": "segment", "group_col": "segmento"})
 
     assert isinstance(root.provisioning_internal, InternalProvisioningConfig)
     assert root.provisioning_internal.group_col == "segmento"
-    assert NikodymConfig().provisioning_internal is None
+    assert BayesRiskConfig().provisioning_internal is None
 
     ya_validado = InternalProvisioningConfig()
-    assert NikodymConfig(provisioning_internal=ya_validado).provisioning_internal is ya_validado
+    assert BayesRiskConfig(provisioning_internal=ya_validado).provisioning_internal is ya_validado
 
 
 def _es_union_de_submodelos(anotacion: object) -> bool:

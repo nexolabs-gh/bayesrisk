@@ -19,7 +19,7 @@ usas el mismo config, la misma semilla, los mismos datos y el mismo entorno (ver
 El pipeline F1 vive tras el extra `scoring` (optbinning + statsmodels + sklearn):
 
 ```bash
-pip install 'nikodym[scoring]'
+pip install 'bayesrisk[scoring]'
 ```
 
 ## Antes de los seis pasos: el mismo scorecard en 15 líneas
@@ -31,11 +31,11 @@ por etapa (es la misma corrida que recorre el resto del tutorial):
 ```python
 from pathlib import Path
 
-from nikodym import Scorecard
-from nikodym.ui.datasets import materialize
+from bayesrisk import Scorecard
+from bayesrisk.ui.datasets import materialize
 
 # La cartera sintética de consumo del paquete (6.000 operaciones, determinista).
-datos = materialize("consumo_comportamiento", workdir=Path("nikodym-runs"))
+datos = materialize("consumo_comportamiento", workdir=Path("bayesrisk-runs"))
 
 sc = Scorecard(
     data=datos,
@@ -51,12 +51,12 @@ sc.resume()                         # corrida nueva y completa con la decisión;
 ```
 <!-- primer-scorecard:end -->
 
-Lo que sigue abre la **puerta completa**: el `NikodymConfig` sección por sección, para entender
+Lo que sigue abre la **puerta completa**: el `BayesRiskConfig` sección por sección, para entender
 qué decide cada etapa y qué artefacto deja.
 
 ## Los seis pasos del pipeline F1
 
-Una corrida F1 encadena estos pasos, cada uno gobernado por su sección del `NikodymConfig` y cada uno
+Una corrida F1 encadena estos pasos, cada uno gobernado por su sección del `BayesRiskConfig` y cada uno
 publicando artefactos bajo su dominio:
 
 1. **binning** — discretiza cada variable en *bins* con *Weight of Evidence* (WoE) y monotonía.
@@ -78,12 +78,12 @@ La librería trae datasets sintéticos deterministas para probar el pipeline sin
 from pathlib import Path
 from tempfile import mkdtemp
 
-from nikodym.ui.datasets import list_datasets, materialize
+from bayesrisk.ui.datasets import list_datasets, materialize
 
 for ds in list_datasets():
     print(ds["id"], "—", ds["name"])
 
-workdir = Path(mkdtemp(prefix="nikodym-tutorial-"))
+workdir = Path(mkdtemp(prefix="bayesrisk-tutorial-"))
 data_path = materialize("consumo_comportamiento", workdir=workdir)
 ```
 <!-- tutorial-paso-1:end -->
@@ -102,19 +102,19 @@ Cifras — fixture `web/src/fixtures/demo/datasets.json`.
 
 ## Paso 2 — Configurar con el preset estándar
 
-En vez de escribir el `NikodymConfig` a mano, el preset F1 curado trae un config completo y
+En vez de escribir el `BayesRiskConfig` a mano, el preset F1 curado trae un config completo y
 consistente (esquema, partición por cohorte, binning, selección, modelo, scorecard, calibración,
 desempeño, estabilidad y reporte). Solo hay que apuntarlo al archivo de datos:
 
 <!-- tutorial-paso-2:start -->
 ```python
-from nikodym.core.config import NikodymConfig
-from nikodym.ui.presets import standard_preset
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.ui.presets import standard_preset
 
 preset = standard_preset()
 cfg_dict = preset["config"]
 cfg_dict["data"]["load"]["source"] = str(data_path)   # apunta al parquet materializado
-config = NikodymConfig.model_validate(cfg_dict)
+config = BayesRiskConfig.model_validate(cfg_dict)
 ```
 <!-- tutorial-paso-2:end -->
 
@@ -133,15 +133,15 @@ Cifras — fixture `web/src/fixtures/demo/preset-f1.json`.
 
 ## Paso 3 — Correr y verificar el estado
 
-`nikodym.run(config, run_dir=...)` ejecuta el pipeline completo, deja la evidencia de la corrida en
+`bayesrisk.run(config, run_dir=...)` ejecuta el pipeline completo, deja la evidencia de la corrida en
 `run_dir` —el preset trae la auditoría encendida, así que hay que decir dónde va su audit-trail— y
 devuelve un `Study` reproducible:
 
 <!-- tutorial-paso-3:start -->
 ```python
-import nikodym
+import bayesrisk
 
-study = nikodym.run(config, run_dir=workdir / "corrida")
+study = bayesrisk.run(config, run_dir=workdir / "corrida")
 assert study.run_context.status == "done"
 ```
 <!-- tutorial-paso-3:end -->
@@ -394,7 +394,7 @@ audit-trail (`report_export_html`), de modo que el reporte es trazable a la corr
     La sección `report` del config controla `output_dir`, `basename`, `language` (`es`) y `formats`.
     El preset emite HTML con los *assets* embebidos (un único archivo autocontenido). El export a **PDF**
     (WeasyPrint) y la narrativa por IA existen como opciones del mismo config, marcadas experimentales
-    (fuera de la garantía SemVer 1.x).
+    (fuera de la garantía SemVer 2.x).
 
 !!! info "Gobernanza"
     Cada paso publica además su *card* (`study.artifacts.get("model", "model_card")`,
@@ -418,6 +418,6 @@ En una corrida cubriste el pipeline F1 completo:
    desempeño y estabilidad — sabiendo **qué es bueno y qué mirar** en cada métrica.
 4. Recogiste el reporte HTML auditable que la propia corrida generó.
 
-Para el detalle de `run`, `Study` y `NikodymConfig`, ver [Referencia de la API](api.md). Para sustituir
-el preset por datos y política propios, edita el `NikodymConfig` (esquema, binning, modelo, scorecard,
+Para el detalle de `run`, `Study` y `BayesRiskConfig`, ver [Referencia de la API](api.md). Para sustituir
+el preset por datos y política propios, edita el `BayesRiskConfig` (esquema, binning, modelo, scorecard,
 calibración) y apunta `data.load.source` a tu dataset real.

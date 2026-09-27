@@ -1,6 +1,6 @@
 """Gate de la marca de estabilidad: la etiqueta SemVer tiene que ser derivable, no decorativa.
 
-`AGENTS.md` promete que el pipeline scorecard F1 es API estable bajo SemVer 1.x. Hasta 1.11.0 la
+`AGENTS.md` promete que el pipeline scorecard F1 es API estable bajo SemVer 2.x. Hasta 1.11.0 la
 promesa se contradecía **en las dos direcciones a la vez** y ningún test lo notaba:
 
 - ``model`` —la regresión logística PD del propio F1— se autodeclaraba *experimental*;
@@ -9,7 +9,7 @@ promesa se contradecía **en las dos direcciones a la vez** y ningún test lo no
   ``1.4.0`` en un paquete ``1.11.0``.
 
 Tres fuentes, tres respuestas distintas: para quien instala con ``pip``, la etiqueta no significaba
-nada. Este gate ata las tres a :mod:`nikodym.testing.stability`, que es la única que decide.
+nada. Este gate ata las tres a :mod:`bayesrisk.testing.stability`, que es la única que decide.
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ from typing import Final
 
 import pytest
 
-from nikodym import __version__
-from nikodym.testing.stability import (
+from bayesrisk import __version__
+from bayesrisk.testing.stability import (
     EXPERIMENTAL_DOMAINS,
     STABLE_DOMAINS,
     UNMARKED_PACKAGES,

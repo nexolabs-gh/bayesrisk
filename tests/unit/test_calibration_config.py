@@ -1,4 +1,4 @@
-"""Tests de ``CalibrationConfig`` (SDD-10 §5) y su integración con ``NikodymConfig``."""
+"""Tests de ``CalibrationConfig`` (SDD-10 §5) y su integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -12,25 +12,25 @@ import yaml
 from hypothesis import given, settings
 from pydantic import ValidationError
 
-import nikodym.calibration  # importa la capa: puebla el hook _CALIBRATION_CONFIG_CLS
-from nikodym.calibration.calibrator import PDCalibrator
-from nikodym.calibration.config import CalibrationConfig
-from nikodym.calibration.exceptions import (
+import bayesrisk.calibration  # importa la capa: puebla el hook _CALIBRATION_CONFIG_CLS
+from bayesrisk.calibration.calibrator import PDCalibrator
+from bayesrisk.calibration.config import CalibrationConfig
+from bayesrisk.calibration.exceptions import (
     CalibrationError,
     CalibrationFitError,
     CalibrationOffsetExceededError,
     CalibrationTransformError,
 )
-from nikodym.core.config import (
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import ConfigError
-from nikodym.testing.strategies import _config_cls_for_domain, nikodym_config_strategy
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.testing.strategies import _config_cls_for_domain, bayesrisk_config_strategy
 
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 
@@ -121,17 +121,17 @@ def test_round_trip_yaml_default_ancla_media_observada_desarrollo() -> None:
     )
 
 
-def test_nikodymconfig_calibration_instancia() -> None:
-    """Pasar una instancia ``CalibrationConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_calibration_instancia() -> None:
+    """Pasar una instancia ``CalibrationConfig`` a ``BayesRiskConfig`` la conserva."""
     calibration = CalibrationConfig()
-    cfg = NikodymConfig(calibration=calibration)
+    cfg = BayesRiskConfig(calibration=calibration)
     assert isinstance(cfg.calibration, CalibrationConfig)
     assert cfg.calibration is calibration
 
 
-def test_nikodymconfig_calibration_dict_coacciona() -> None:
+def test_bayesriskconfig_calibration_dict_coacciona() -> None:
     """Un dict en ``calibration`` se coacciona a ``CalibrationConfig`` por el hook cargado."""
-    cfg = NikodymConfig(
+    cfg = BayesRiskConfig(
         calibration={
             "target_pd": 0.04,
             "method": "platt_scaling",
@@ -143,29 +143,29 @@ def test_nikodymconfig_calibration_dict_coacciona() -> None:
     assert cfg.calibration.method == "platt_scaling"
 
 
-def test_nikodymconfig_calibration_none_explicito() -> None:
+def test_bayesriskconfig_calibration_none_explicito() -> None:
     """``calibration=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(calibration=None).calibration is None
+    assert BayesRiskConfig(calibration=None).calibration is None
 
 
-def test_nikodymconfig_calibration_core_only_acepta_blob_json(
+def test_bayesriskconfig_calibration_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``calibration`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_CALIBRATION_CONFIG_CLS", None)
-    cfg = NikodymConfig(calibration={"target_pd": 0.04, "method": "intercept_offset"})
+    cfg = BayesRiskConfig(calibration={"target_pd": 0.04, "method": "intercept_offset"})
     assert cfg.calibration == {"target_pd": 0.04, "method": "intercept_offset"}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_calibration_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_calibration_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``calibration`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_CALIBRATION_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(calibration=blob)
+        BayesRiskConfig(calibration=blob)
 
 
 @pytest.mark.parametrize(
@@ -184,16 +184,16 @@ def test_nikodymconfig_calibration_core_only_rechaza_json_no_canonico(
 )
 def test_config_hash_cambia_al_variar_calibration(calibration: CalibrationConfig) -> None:
     """``calibration`` no es INFRA: método, ancla y tolerancia cambian la identidad."""
-    base = config_hash(NikodymConfig(calibration=CalibrationConfig()))
-    variado = config_hash(NikodymConfig(calibration=calibration))
+    base = config_hash(BayesRiskConfig(calibration=CalibrationConfig()))
+    variado = config_hash(BayesRiskConfig(calibration=calibration))
     assert "calibration" not in INFRA_SECTIONS
     assert variado != base
 
 
 @settings(max_examples=12, deadline=None)
-@given(cfg=nikodym_config_strategy(sections=["calibration"]))
-def test_nikodym_config_strategy_genera_configs_calibration_validos(
-    cfg: NikodymConfig,
+@given(cfg=bayesrisk_config_strategy(sections=["calibration"]))
+def test_bayesrisk_config_strategy_genera_configs_calibration_validos(
+    cfg: BayesRiskConfig,
 ) -> None:
     """La estrategia pública genera configs raíz válidos con ``calibration`` activo."""
     assert isinstance(cfg.calibration, CalibrationConfig)
@@ -385,7 +385,7 @@ def test_campos_calibration_tienen_metadatos_ui() -> None:
         assert {"ui_widget", "ui_group", "ui_order"} <= set(extra)
 
 
-def test_calibration_errors_descienden_de_nikodym_error() -> None:
+def test_calibration_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``calibration`` cuelgan de la raíz propia de la capa."""
     for error_cls in (CalibrationError, CalibrationFitError, CalibrationTransformError):
         with pytest.raises(CalibrationError, match="fallo calibration"):
@@ -404,17 +404,17 @@ def test_calibration_errors_descienden_de_nikodym_error() -> None:
 
 
 def test_import_calibration_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.calibration`` registra el hook sin arrastrar stack tabular/scoring."""
+    """``import bayesrisk.calibration`` registra el hook sin arrastrar stack tabular/scoring."""
     code = (
-        "import nikodym.calibration, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.calibration.config import CalibrationConfig;"
+        "import bayesrisk.calibration, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.calibration.config import CalibrationConfig;"
         "bloqueados=[m for m in ('pandas','scipy','sklearn') if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
         # D-ANC-1: con el hook registrado el dict SÍ se coacciona, así que el par tiene que ser
         # válido — la fuente que usa el número. (El test hermano de abajo lo deja sin
         # `anchor_source` a propósito: ahí la sección queda blob opaco y nadie la valida.)
-        "cfg=NikodymConfig(calibration="
+        "cfg=BayesRiskConfig(calibration="
         "{'target_pd': 0.04, 'anchor_source': 'business_input'});"
         "assert isinstance(cfg.calibration, CalibrationConfig)"
     )
@@ -422,13 +422,13 @@ def test_import_calibration_liviano_y_registra_hook_en_proceso_fresco() -> None:
 
 
 def test_core_valida_calibration_como_blob_opaco_sin_importar_calibration() -> None:
-    """El core acepta ``calibration`` JSON/dict sin importar ``nikodym.calibration``."""
+    """El core acepta ``calibration`` JSON/dict sin importar ``bayesrisk.calibration``."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(calibration={'target_pd': 0.04});"
+        "cfg=BayesRiskConfig(calibration={'target_pd': 0.04});"
         "assert cfg.calibration == {'target_pd': 0.04};"
-        "assert 'nikodym.calibration' not in sys.modules"
+        "assert 'bayesrisk.calibration' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -437,22 +437,22 @@ def test_calibration_getattr_desconocido_levanta_attributeerror() -> None:
     """La reexportación perezosa falla con ``AttributeError`` para nombres desconocidos."""
     atributo = "no_existe"
     with pytest.raises(AttributeError, match="no_existe"):
-        getattr(nikodym.calibration, atributo)
+        getattr(bayesrisk.calibration, atributo)
 
 
 def test_calibration_getattr_carga_export_perezoso(monkeypatch: pytest.MonkeyPatch) -> None:
     """La ruta positiva de ``__getattr__`` carga y cachea un símbolo bajo demanda."""
     atributo = "CalibrationConfigLazy"
     monkeypatch.setitem(
-        nikodym.calibration._LAZY_EXPORTS,
+        bayesrisk.calibration._LAZY_EXPORTS,
         atributo,
-        ("nikodym.calibration.config", "CalibrationConfig"),
+        ("bayesrisk.calibration.config", "CalibrationConfig"),
     )
     try:
-        assert getattr(nikodym.calibration, atributo) is CalibrationConfig
-        assert getattr(nikodym.calibration, atributo) is CalibrationConfig
+        assert getattr(bayesrisk.calibration, atributo) is CalibrationConfig
+        assert getattr(bayesrisk.calibration, atributo) is CalibrationConfig
     finally:
-        monkeypatch.delattr(nikodym.calibration, atributo, raising=False)
+        monkeypatch.delattr(bayesrisk.calibration, atributo, raising=False)
 
 
 def test_config_cls_for_domain_resuelve_calibration() -> None:
@@ -462,7 +462,7 @@ def test_config_cls_for_domain_resuelve_calibration() -> None:
 
 def test_config_hash_default_con_calibration_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``calibration`` con valor None."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def _sigmoid(value: float) -> float:

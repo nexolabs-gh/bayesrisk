@@ -12,8 +12,8 @@ from typing import Any
 import numpy as np
 import pytest
 
-from nikodym.core.base import NikodymClassifier
-from nikodym.core.steps import ArtifactKey, Step, StepAdapter
+from bayesrisk.core.base import BayesRiskClassifier
+from bayesrisk.core.steps import ArtifactKey, Step, StepAdapter
 
 
 class _StepNativo:
@@ -82,13 +82,13 @@ def test_step_nativo_execute_usa_rng() -> None:
 
 def test_step_adapter_name_es_domain() -> None:
     """``StepAdapter.name == domain`` (invariante de naming, única fuente del dominio)."""
-    adapter = StepAdapter("model", NikodymClassifier())
+    adapter = StepAdapter("model", BayesRiskClassifier())
     assert adapter.name == "model"
 
 
 def test_step_adapter_es_un_step() -> None:
     """Un ``StepAdapter`` satisface el Protocol ``Step`` (tiene los 4 miembros)."""
-    adapter = StepAdapter("model", NikodymClassifier())
+    adapter = StepAdapter("model", BayesRiskClassifier())
     assert isinstance(adapter, Step)
 
 
@@ -96,13 +96,13 @@ def test_step_adapter_propaga_claves_io() -> None:
     """Las claves de I/O pasadas al constructor quedan en ``requires``/``provides``."""
     requires: tuple[ArtifactKey, ...] = (("data", "panel"),)
     provides: tuple[ArtifactKey, ...] = (("model", "fit"),)
-    adapter = StepAdapter("model", NikodymClassifier(), requires=requires, provides=provides)
+    adapter = StepAdapter("model", BayesRiskClassifier(), requires=requires, provides=provides)
     assert adapter.requires == requires
     assert adapter.provides == provides
 
 
 def test_step_adapter_execute_difiere_ruidoso() -> None:
     """En F0, ``StepAdapter.execute`` difiere con ``NotImplementedError`` (no no-op silencioso)."""
-    adapter = StepAdapter("model", NikodymClassifier())
+    adapter = StepAdapter("model", BayesRiskClassifier())
     with pytest.raises(NotImplementedError, match="primer estimador de dominio"):
         adapter.execute(None, np.random.default_rng(0))

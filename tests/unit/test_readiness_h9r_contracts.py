@@ -488,7 +488,7 @@ def test_estadistica_conserva_maximo_y_aplica_mad_u_sin_outliers() -> None:
 def test_copy_gate_censa_arbol_real_y_detecta_inyeccion(tmp_path: Path) -> None:
     assert assert_no_h9r_capacity_copy(ROOT) > 0
     injected = tmp_path / "README.md"
-    injected.write_text("Nikodym funciona en 4 CPU y 8 GB de RAM.\n", encoding="utf-8")
+    injected.write_text("bayesrisk funciona en 4 CPU y 8 GB de RAM.\n", encoding="utf-8")
     findings = scan_capacity_claims([injected])
     assert [(finding["line"], finding["literal"]) for finding in findings] == [
         (1, "4 CPU"),

@@ -17,15 +17,15 @@ import pandas as pd
 import pytest
 from scipy import stats
 
-import nikodym.validation.calibration_tests as ct
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.validation.calibration_tests import (
+import bayesrisk.validation.calibration_tests as ct
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.validation.calibration_tests import (
     binomial_by_grade,
     brier_score,
     hosmer_lemeshow,
     traffic_light,
 )
-from nikodym.validation.exceptions import CalibrationTestError, ValidationDataError
+from bayesrisk.validation.exceptions import CalibrationTestError, ValidationDataError
 
 # ─────────────────────────── Hosmer-Lemeshow ───────────────────────────
 
@@ -440,14 +440,14 @@ def test_hosmer_lemeshow_error_accionable_si_falta_scipy(monkeypatch: pytest.Mon
     y_true = np.tile(np.array([1.0, 1, 1, 1, 0, 0, 0, 0, 0, 0]), 10)
     pd_pred = np.full(100, 0.2)
 
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[scoring\]"):
         hosmer_lemeshow(y_true, pd_pred)
 
 
 def test_import_calibration_tests_no_arrastra_scipy_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.validation.calibration_tests as ct;"
+        "import bayesrisk.validation.calibration_tests as ct;"
         "blocked=[m for m in ('scipy','sklearn','statsmodels') if m in sys.modules];"
         "assert not blocked, blocked;"
         "assert callable(ct.hosmer_lemeshow) and callable(ct.brier_score)"

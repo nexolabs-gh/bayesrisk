@@ -6,7 +6,7 @@ defaults efectivos las omite en vez de inventarlas (D-OBL-1/2) y el trabajo las 
 idioma de negocio (D-OBL-6).
 
 **Por qué el gate es bidireccional, y por qué eso es lo único que lo hace útil.** Los paths se
-declaran a mano en ``nikodym/ui/jobs.py`` —tienen que ser literales, porque esa capa es
+declaran a mano en ``bayesrisk/ui/jobs.py`` —tienen que ser literales, porque esa capa es
 *domain-agnostic* por otro gate—, así que sin nada que los ate al motor se separarían en silencio en
 las dos direcciones:
 
@@ -26,11 +26,11 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from nikodym.core.config.schema import (
+from bayesrisk.core.config.schema import (
     cargar_configs_de_dominio,
     cargar_configs_expandibles,
 )
-from nikodym.ui.jobs import decisiones_de, list_jobs
+from bayesrisk.ui.jobs import decisiones_de, list_jobs
 
 #: Las 16 secciones que el formulario ofrece. Espejo del catálogo del front; el gate de deriva de
 #: esa lista vive en `test_column_roles.py`, y aquí sólo acota el barrido a lo navegable.
@@ -150,7 +150,7 @@ def test_todo_campo_obligatorio_del_formulario_tiene_su_pregunta() -> None:
     )
     assert faltan == [], (
         f"campos obligatorios sin pregunta declarada: {faltan}. Añádeles su entrada en "
-        "`_DECISIONES_POR_SECCION` de `nikodym/ui/jobs.py`, con la pregunta en idioma de negocio."
+        "`_DECISIONES_POR_SECCION` de `bayesrisk/ui/jobs.py`, con la pregunta en idioma de negocio."
     )
 
 
@@ -198,7 +198,7 @@ def test_los_dos_trabajos_con_survival_preguntan_cinco_cosas() -> None:
 #: sólo signifique algo dentro del código (D-OBL-9). El usuario lee negocio, no coordenadas.
 _JERGA = re.compile(
     r"\b(None|True|False|null|bad_rule|good_rule|target_col|duration_col|event_col|strategy|"
-    r"partition|BaseModel|NikodymConfig|config_hash|DataFrame|dataframe)\b"
+    r"partition|BaseModel|BayesRiskConfig|config_hash|DataFrame|dataframe)\b"
 )
 
 

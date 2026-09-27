@@ -5,7 +5,8 @@ El paso se ejercita end-to-end con ``RandomForest`` + ``optuna`` **reales** (ext
 tests unitarios de las funciones puras (monotonía derivada del binning, lectura de artefactos,
 resolución de config, invariante ``best_config``). Cubre: publicación de las siete claves, la deuda
 regulatoria de monotonía por variable (no ``-1`` uniforme), el reúso del ``TuningOptimizer`` sin
-recodificar, el cableado ``tuning`` **antes** de ``ml``, y el import liviano de ``nikodym.tuning``.
+recodificar, el cableado ``tuning`` **antes** de ``ml``, y el import liviano de
+``bayesrisk.tuning``.
 """
 
 from __future__ import annotations
@@ -23,35 +24,35 @@ import pytest
 optuna = pytest.importorskip("optuna")
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-import nikodym.tuning  # noqa: E402,F401  (registra @register('standard', domain='tuning') + hook)
-from nikodym.core import study as study_module  # noqa: E402
-from nikodym.core.audit import InMemoryAuditSink  # noqa: E402
-from nikodym.core.config import NikodymConfig  # noqa: E402
-from nikodym.core.exceptions import ArtifactNotFoundError  # noqa: E402
-from nikodym.core.registry import REGISTRY  # noqa: E402
-from nikodym.core.steps import ContextoDeResolucion  # noqa: E402
-from nikodym.core.study import Study  # noqa: E402
-from nikodym.ml.config import (  # noqa: E402
+import bayesrisk.tuning  # noqa: E402,F401  (registra @register('standard', domain='tuning') + hook)
+from bayesrisk.core import study as study_module  # noqa: E402
+from bayesrisk.core.audit import InMemoryAuditSink  # noqa: E402
+from bayesrisk.core.config import BayesRiskConfig  # noqa: E402
+from bayesrisk.core.exceptions import ArtifactNotFoundError  # noqa: E402
+from bayesrisk.core.registry import REGISTRY  # noqa: E402
+from bayesrisk.core.steps import ContextoDeResolucion  # noqa: E402
+from bayesrisk.core.study import Study  # noqa: E402
+from bayesrisk.ml.config import (  # noqa: E402
     MLConfig,
     MLTrainConfig,
     MonotonicConfig,
     RandomForestParams,
 )
-from nikodym.tuning import step as tuning_step  # noqa: E402
-from nikodym.tuning.config import (  # noqa: E402
+from bayesrisk.tuning import step as tuning_step  # noqa: E402
+from bayesrisk.tuning.config import (  # noqa: E402
     TuningConfig,
     TuningSamplerConfig,
     TuningValidationConfig,
 )
-from nikodym.tuning.exceptions import (  # noqa: E402
+from bayesrisk.tuning.exceptions import (  # noqa: E402
     TuningConfigError,
     TuningDataError,
     TuningOptimizeError,
 )
-from nikodym.tuning.optimizer import TuningOptimizer  # noqa: E402
-from nikodym.tuning.results import TuningCardSection, TuningResult  # noqa: E402
-from nikodym.tuning.search_space import IntSpec, SearchSpaceConfig  # noqa: E402
-from nikodym.tuning.step import (  # noqa: E402
+from bayesrisk.tuning.optimizer import TuningOptimizer  # noqa: E402
+from bayesrisk.tuning.results import TuningCardSection, TuningResult  # noqa: E402
+from bayesrisk.tuning.search_space import IntSpec, SearchSpaceConfig  # noqa: E402
+from bayesrisk.tuning.step import (  # noqa: E402
     TuningStep,
     _as_dataframe,
     _as_string_tuple,
@@ -150,7 +151,7 @@ def _study(
 ) -> Study:
     """Construye un ``Study`` con sink en memoria y los artefactos de binning/data inyectados."""
     arts = arts if arts is not None else _artifacts()
-    study = Study(NikodymConfig(tuning=tuning_cfg or _tuning_config(), ml=ml_cfg or _ml_config()))
+    study = Study(BayesRiskConfig(tuning=tuning_cfg or _tuning_config(), ml=ml_cfg or _ml_config()))
     study.set_audit_sink(InMemoryAuditSink())
     study.artifacts.set("data", "labels", arts["labels"])
     study.artifacts.set("data", "splits", arts["splits"])
@@ -281,7 +282,7 @@ def test_e2e_no_muta_los_artefactos_de_entrada() -> None:
     study.run(["tuning"])
 
     pd.testing.assert_frame_equal(study.artifacts.get("binning", "woe_frame"), woe_before)
-    assert study.config.ml == ml_before  # NikodymConfig.ml intacta
+    assert study.config.ml == ml_before  # BayesRiskConfig.ml intacta
 
 
 def test_e2e_audita_todas_las_reglas_del_paso() -> None:
@@ -334,10 +335,10 @@ def test_data_raw_esta_diferido() -> None:
 
 
 def test_ml_ausente_levanta_config_error() -> None:
-    """Sin ``NikodymConfig.ml`` no hay challenger que tunear ⇒ ``TuningConfigError`` (§8)."""
+    """Sin ``BayesRiskConfig.ml`` no hay challenger que tunear ⇒ ``TuningConfigError`` (§8)."""
     step = TuningStep.from_config(_tuning_config())
     step._audit = InMemoryAuditSink()
-    study = Study(NikodymConfig(tuning=_tuning_config()))
+    study = Study(BayesRiskConfig(tuning=_tuning_config()))
     with pytest.raises(TuningConfigError, match="requiere una sección 'ml'"):
         step.execute(study, np.random.default_rng(0))
 
@@ -347,7 +348,7 @@ def test_artefacto_requerido_ausente_en_execute() -> None:
     arts = _artifacts()
     step = TuningStep.from_config(_tuning_config())
     step._audit = InMemoryAuditSink()
-    study = Study(NikodymConfig(tuning=_tuning_config(), ml=_ml_config()))
+    study = Study(BayesRiskConfig(tuning=_tuning_config(), ml=_ml_config()))
     study.artifacts.set("data", "labels", arts["labels"])
     study.artifacts.set("data", "splits", arts["splits"])  # falta binning.* → execute lo detecta
     with pytest.raises(ArtifactNotFoundError, match="woe_frame"):
@@ -356,9 +357,9 @@ def test_artefacto_requerido_ausente_en_execute() -> None:
 
 def test_validate_pipeline_rechaza_requires_sin_proveedor() -> None:
     """Pre-run: un ``requires`` sin proveedor aguas arriba es config inejecutable (ConfigError)."""
-    from nikodym.core.exceptions import ConfigError
+    from bayesrisk.core.exceptions import ConfigError
 
-    study = Study(NikodymConfig(tuning=_tuning_config(), ml=_ml_config()))
+    study = Study(BayesRiskConfig(tuning=_tuning_config(), ml=_ml_config()))
     study.set_audit_sink(InMemoryAuditSink())
     study.artifacts.set("data", "labels", _artifacts()["labels"])
     study.artifacts.set("data", "splits", _artifacts()["splits"])
@@ -586,14 +587,14 @@ def test_core_study_cablea_tuning_antes_de_ml() -> None:
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order[order.index("calibration") + 1] == "tuning"
     assert order[order.index("tuning") + 1] == "ml"
-    assert study_module._DOMAIN_MODULES["tuning"] == "nikodym.tuning"
+    assert study_module._DOMAIN_MODULES["tuning"] == "bayesrisk.tuning"
     assert study_module._DOMAIN_CONFIG_CLASSES["tuning"] == (
-        "nikodym.tuning.config",
+        "bayesrisk.tuning.config",
         "TuningConfig",
     )
     assert REGISTRY.resolve("tuning", "standard") is TuningStep
 
-    study = Study(NikodymConfig(tuning=TuningConfig(), ml=_ml_config()))
+    study = Study(BayesRiskConfig(tuning=TuningConfig(), ml=_ml_config()))
     assert study._default_step_names() == ["tuning", "ml"]
     assert isinstance(study._resolve_step("tuning"), TuningStep)
 
@@ -602,7 +603,7 @@ def test_emit_delega_al_sink() -> None:
     """``TuningStep.emit`` reenvía el evento al ``AuditSink`` inyectado (sink futuro)."""
     from datetime import UTC, datetime
 
-    from nikodym.core.audit import AuditEvent
+    from bayesrisk.core.audit import AuditEvent
 
     sink = InMemoryAuditSink()
     step = TuningStep.from_config(_tuning_config())
@@ -633,11 +634,11 @@ def test_no_reimplementa_metricas_ni_importa_shap_backends() -> None:
 
 
 def test_import_tuning_es_liviano() -> None:
-    """``import nikodym.tuning`` no arrastra optuna/pandas/numpy ni los backends ML (§9)."""
+    """``import bayesrisk.tuning`` no arrastra optuna/pandas/numpy ni los backends ML (§9)."""
     code = (
-        "import nikodym.tuning, sys; "
+        "import bayesrisk.tuning, sys; "
         "heavy = [m for m in "
-        "('optuna','sklearn','xgboost','lightgbm','catboost','pandas','numpy','nikodym.ml') "
+        "('optuna','sklearn','xgboost','lightgbm','catboost','pandas','numpy','bayesrisk.ml') "
         "if m in sys.modules]; "
         "assert not heavy, heavy"
     )

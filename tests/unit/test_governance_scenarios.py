@@ -1,4 +1,4 @@
-"""Tests del scenario log y overlays de ``nikodym.governance``."""
+"""Tests del scenario log y overlays de ``bayesrisk.governance``."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from nikodym.governance import GovernanceError, OverlayRecord, ScenarioLog, ScenarioRecord
+from bayesrisk.governance import GovernanceError, OverlayRecord, ScenarioLog, ScenarioRecord
 
 _TS = datetime(2026, 6, 25, 12, 0, 0, tzinfo=UTC)
 _GOLDEN_SCENARIO_LINE = (

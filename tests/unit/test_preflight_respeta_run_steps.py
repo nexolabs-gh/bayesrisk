@@ -10,16 +10,16 @@ allí era una rama de config apagada, aquí un paso que la invocación excluye.
 
 ⚠️ Atenuante medido, que acota el alcance pero no lo absuelve: ``run`` **no está en
 ``CONFIG_SECTIONS``**, así que desde el formulario no es alcanzable. Sí lo es por YAML y por código,
-que es como se usa esto **como librería** — y ``nikodym.check_dataset`` es API pública.
+que es como se usa esto **como librería** — y ``bayesrisk.check_dataset`` es API pública.
 """
 
 from __future__ import annotations
 
 import pytest
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.schema import cargar_configs_de_dominio
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.schema import cargar_configs_de_dominio
 
 _COLUMNAS = ("ingreso", "mora", "fecha_obs")
 
@@ -40,7 +40,9 @@ _BASE: dict[str, object] = {
 def _avisos(steps: list[str] | None) -> list[str]:
     cargar_configs_de_dominio()
     extra: dict[str, object] = {} if steps is None else {"run": {"steps": steps}}
-    veredicto = nikodym.check_dataset(NikodymConfig.model_validate({**_BASE, **extra}), _COLUMNAS)
+    veredicto = bayesrisk.check_dataset(
+        BayesRiskConfig.model_validate({**_BASE, **extra}), _COLUMNAS
+    )
     return sorted(m.path for m in veredicto.mismatches if m.kind == "unmet_requirement")
 
 
@@ -89,11 +91,11 @@ def test_un_paso_excluido_tampoco_exige_sus_columnas() -> None:
         "survival": {"input": {"duration_col": "columna_fantasma", "event_col": "target"}},
     }
 
-    con_survival = nikodym.check_dataset(NikodymConfig.model_validate(cfg), _COLUMNAS)
+    con_survival = bayesrisk.check_dataset(BayesRiskConfig.model_validate(cfg), _COLUMNAS)
     assert "columna_fantasma" in [m.declared for m in con_survival.mismatches]
 
-    sin_survival = nikodym.check_dataset(
-        NikodymConfig.model_validate({**cfg, "run": {"steps": ["data"]}}), _COLUMNAS
+    sin_survival = bayesrisk.check_dataset(
+        BayesRiskConfig.model_validate({**cfg, "run": {"steps": ["data"]}}), _COLUMNAS
     )
     assert "columna_fantasma" not in [m.declared for m in sin_survival.mismatches]
 
@@ -101,7 +103,7 @@ def test_un_paso_excluido_tampoco_exige_sus_columnas() -> None:
 def test_check_pipeline_y_check_dataset_dejan_de_contradecirse() -> None:
     """El síntoma que lo destapó: uno decía «cero pasos» y el otro avisaba sobre dos."""
     cargar_configs_de_dominio()
-    modelo = NikodymConfig.model_validate({**_BASE, "run": {"steps": []}})
+    modelo = BayesRiskConfig.model_validate({**_BASE, "run": {"steps": []}})
 
-    assert nikodym.check_pipeline(modelo).steps == ()
+    assert bayesrisk.check_pipeline(modelo).steps == ()
     assert _avisos([]) == [], "no se puede avisar sobre un pipeline que no ejecuta nada"

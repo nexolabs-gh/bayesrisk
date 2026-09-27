@@ -11,26 +11,26 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pandas.testing import assert_frame_equal, assert_series_equal
 
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ConfigError, DataValidationError
-from nikodym.data.config import (
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ConfigError, DataValidationError
+from bayesrisk.data.config import (
     CohortSplitConfig,
     ColumnSplitConfig,
     PartitionConfig,
     RandomSplitConfig,
     TemporalSplitConfig,
 )
-from nikodym.data.partition import (
+from bayesrisk.data.partition import (
     Partition,
     Partitioner,
     PartitionResult,
     _stable_uniform,
     _validate_temporal_precedence,
 )
-from nikodym.data.target import LabeledFrame, TargetSummary
+from bayesrisk.data.target import LabeledFrame, TargetSummary
 
 if "HYPOTHESIS_PROFILE" not in os.environ:
-    settings.load_profile("nikodym_deterministic")
+    settings.load_profile("bayesrisk_deterministic")
 
 ROOT_SEED = 20_240_624
 

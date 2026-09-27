@@ -12,7 +12,7 @@
  * quien instala esto. Los presets siguen existiendo como «ver un ejemplo con datos de muestra»:
  * camino explícito y secundario, nunca el estado inicial.
  *
- * ⚠️ **La demo estática de `demo.nikodym.cl` sí sigue sembrando, y no es una excepción de
+ * ⚠️ **La demo estática de `demo.bayesadvisory.cl` sí sigue sembrando, y no es una excepción de
  * conveniencia** (D-JOB-19): esa build no tiene backend, no recalcula y no acepta datasets propios
  * —lo dice su copy en pantalla—, así que arrancarla vacía la dejaría sin poder hacer lo único que
  * pediría. Quien entra ahí sí viene a ver una demostración; el reproche que originó D-JOB-2 es que

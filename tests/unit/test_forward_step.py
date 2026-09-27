@@ -15,14 +15,14 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.forward as forward_pkg
-import nikodym.forward.step as step_module
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, MissingDependencyError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.forward.config import (
+import bayesrisk.forward as forward_pkg
+import bayesrisk.forward.step as step_module
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, MissingDependencyError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.forward.config import (
     ForwardConfig,
     ForwardInputConfig,
     MacroModelConfig,
@@ -32,17 +32,17 @@ from nikodym.forward.config import (
     ScenarioDefinitionConfig,
     TtcReversionConfig,
 )
-from nikodym.forward.exceptions import ForwardInputError, PitConsistencyError
-from nikodym.forward.results import ForwardResult
-from nikodym.forward.step import FORWARD_ARTIFACTS, ForwardStep
-from nikodym.markov.config import (
+from bayesrisk.forward.exceptions import ForwardInputError, PitConsistencyError
+from bayesrisk.forward.results import ForwardResult
+from bayesrisk.forward.step import FORWARD_ARTIFACTS, ForwardStep
+from bayesrisk.markov.config import (
     MarkovConfig,
     MarkovDynamicsConfig,
     MarkovEstimationConfig,
     MarkovInputConfig,
     MarkovStateConfig,
 )
-from nikodym.survival.config import (
+from bayesrisk.survival.config import (
     DiscreteHazardConfig,
     SurvivalConfig,
     SurvivalInputConfig,
@@ -116,15 +116,15 @@ def test_from_config_registro_exports_ct1_dinamico_e_import_liviano(tmp_path: Pa
     )
 
     code = (
-        "import nikodym.core, sys;"
-        "assert 'nikodym.forward' not in sys.modules;"
-        "import nikodym.forward;"
+        "import bayesrisk.core, sys;"
+        "assert 'bayesrisk.forward' not in sys.modules;"
+        "import bayesrisk.forward;"
         "blocked=[m for m in ('statsmodels','pmdarima','pandas','scipy') if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'nikodym.provisioning.ifrs9' not in sys.modules;"
-        "assert 'nikodym.forward.step' in sys.modules;"
-        "assert 'nikodym.forward.results' not in sys.modules;"
-        "assert 'ForwardStep' in nikodym.forward.__all__"
+        "assert 'bayesrisk.provisioning.ifrs9' not in sys.modules;"
+        "assert 'bayesrisk.forward.step' in sys.modules;"
+        "assert 'bayesrisk.forward.results' not in sys.modules;"
+        "assert 'ForwardStep' in bayesrisk.forward.__all__"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -140,7 +140,7 @@ def test_execute_publica_artifacts_ct2_auditoria_warning_codes_no_mutacion(
     term_structure = _term_structure("survival", pd_basis="ttc")
     macro_snapshot = macro_history.copy(deep=True)
     term_snapshot = term_structure.copy(deep=True)
-    study = Study(NikodymConfig(forward=cfg))
+    study = Study(BayesRiskConfig(forward=cfg))
     study.artifacts.set("forward", "macro_history", macro_history)
     study.artifacts.set("survival", "term_structure", term_structure)
     sink = InMemoryAuditSink()
@@ -205,7 +205,7 @@ def test_ct1_y_casos_borde_fallan_con_excepciones_propias(tmp_path: Path) -> Non
     """CT-1, macro ausente y PIT desconocido fallan en la frontera correcta."""
     coeffs = _coefficient_table(tmp_path)
     artifact_cfg = _forward_cfg(coeffs, sources=("survival",))
-    missing_term_study = Study(NikodymConfig(forward=artifact_cfg))
+    missing_term_study = Study(BayesRiskConfig(forward=artifact_cfg))
     missing_term_study.artifacts.set("forward", "macro_history", _macro_history())
 
     with pytest.raises(ArtifactNotFoundError, match=r"\('survival', 'term_structure'\)"):
@@ -215,7 +215,7 @@ def test_ct1_y_casos_borde_fallan_con_excepciones_propias(tmp_path: Path) -> Non
         )
 
     dataframe_cfg = _forward_cfg(coeffs, sources=("survival",), macro_type="dataframe")
-    missing_macro_study = Study(NikodymConfig(forward=dataframe_cfg))
+    missing_macro_study = Study(BayesRiskConfig(forward=dataframe_cfg))
     missing_macro_study.artifacts.set("survival", "term_structure", _term_structure("survival"))
     with pytest.raises(ForwardInputError, match="macro_history"):
         ForwardStep.from_config(dataframe_cfg).execute(
@@ -224,7 +224,7 @@ def test_ct1_y_casos_borde_fallan_con_excepciones_propias(tmp_path: Path) -> Non
         )
 
     unknown_basis = _term_structure("survival", pd_basis="misterio")
-    pit_study = Study(NikodymConfig(forward=artifact_cfg))
+    pit_study = Study(BayesRiskConfig(forward=artifact_cfg))
     pit_study.artifacts.set("forward", "macro_history", _macro_history())
     pit_study.artifacts.set("survival", "term_structure", unknown_basis)
     with pytest.raises(PitConsistencyError, match="pd_basis"):
@@ -245,7 +245,7 @@ def test_path_macro_source_y_helpers_defensivos(
         macro_type="path",
         macro_path=str(macro_path),
     )
-    study = Study(NikodymConfig(forward=cfg))
+    study = Study(BayesRiskConfig(forward=cfg))
     study.artifacts.set("markov", "term_structure", _term_structure("markov", pd_basis="ttc"))
 
     result = ForwardStep.from_config(cfg).execute(study, np.random.default_rng(ROOT_SEED))
@@ -278,7 +278,7 @@ def test_helpers_defensivos_y_ramas_perezosas(
     """Cubre rutas auxiliares de fuentes, warnings, hashes y dependencias opcionales."""
     coeffs = _coefficient_table(tmp_path)
     cfg = _forward_cfg(coeffs, sources=("survival",), macro_type="dataframe")
-    study = Study(NikodymConfig(forward=cfg))
+    study = Study(BayesRiskConfig(forward=cfg))
     macro_history = _macro_history()
     study.artifacts.set("forward", "macro_history", macro_history)
     loaded_macro, macro_context = step_module._macro_history_from_source(study, cfg=cfg, pd=pd)
@@ -415,7 +415,7 @@ def test_study_end_to_end_con_survival_markov_forward(tmp_path: Path) -> None:
     coeffs = _coefficient_table(tmp_path)
     forward_cfg = _forward_cfg(coeffs, sources=("survival", "markov"))
     study = Study(
-        NikodymConfig(
+        BayesRiskConfig(
             survival=_survival_cfg(),
             markov=_markov_cfg(),
             forward=forward_cfg,
@@ -543,7 +543,7 @@ def _term_structure(source: str, *, pd_basis: str | None = "ttc") -> pd.DataFram
 
 def _run_forward(cfg: ForwardConfig, terms: dict[str, pd.DataFrame]) -> ForwardResult:
     """Ejecuta forward directo con artefactos sintéticos."""
-    study = Study(NikodymConfig(forward=cfg))
+    study = Study(BayesRiskConfig(forward=cfg))
     study.artifacts.set("forward", "macro_history", _macro_history())
     for source, frame in terms.items():
         study.artifacts.set(source, "term_structure", frame)

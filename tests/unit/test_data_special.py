@@ -8,10 +8,10 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
 
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import DataValidationError
-from nikodym.data.config import MissingConfig, SpecialValueSpec
-from nikodym.data.special import MaskedFrame, SpecialValuePolicy
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import DataValidationError
+from bayesrisk.data.config import MissingConfig, SpecialValueSpec
+from bayesrisk.data.special import MaskedFrame, SpecialValuePolicy
 
 
 def _spec(

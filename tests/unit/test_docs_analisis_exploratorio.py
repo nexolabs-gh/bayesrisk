@@ -13,12 +13,12 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.eda.default_rate import (
+from bayesrisk.eda.default_rate import (
     AXIS_LABELS,
     DEFAULT_RATE_NOT_EVALUABLE_REASON_LABELS,
 )
-from nikodym.eda.quality import QUALITY_FLAG_LABELS
-from nikodym.eda.stability import NOT_EVALUABLE_REASON_LABELS, STABILITY_INDICATOR_LABELS
+from bayesrisk.eda.quality import QUALITY_FLAG_LABELS
+from bayesrisk.eda.stability import NOT_EVALUABLE_REASON_LABELS, STABILITY_INDICATOR_LABELS
 
 _RAIZ = Path(__file__).resolve().parents[2]
 _GUIA = _RAIZ / "docs_site" / "guias" / "analisis-exploratorio.md"

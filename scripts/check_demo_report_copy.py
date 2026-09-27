@@ -32,11 +32,11 @@ from typing import Final
 _ROOT: Final = Path(__file__).resolve().parents[1]
 _FIXTURES: Final = _ROOT / "web" / "src" / "fixtures" / "demo"
 
-#: Las dos marcas del contrato, con o sin sufijo de familia. Se leen de `nikodym.core.markers` si el
-#: paquete es importable, y si no del literal: el script tiene que poder correr en un runner que
+#: Las dos marcas del contrato, con o sin sufijo de familia. Se leen de `bayesrisk.core.markers` si
+#: el paquete es importable, y si no del literal: el script tiene que poder correr en un runner que
 #: todavía no instaló el árbol.
 try:
-    from nikodym.core.markers import DECLARED_MARKERS
+    from bayesrisk.core.markers import DECLARED_MARKERS
 except ModuleNotFoundError:  # pragma: no cover - ruta de runner sin el paquete instalado
     DECLARED_MARKERS = ("FALTA-DATO", "DATO-INSTITUCIONAL")
 

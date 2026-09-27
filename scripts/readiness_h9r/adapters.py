@@ -183,16 +183,16 @@ _SERVICE_PLACEHOLDERS: Final = frozenset(
 )
 _CANDIDATE_FORBIDDEN_ENVIRONMENT_KEYS: Final = frozenset(
     {
-        "NIKODYM_H9R_OUTPUT_ROOT",
-        "NIKODYM_H9R_BOUNDARY_JSONL",
-        "NIKODYM_H9R_FILESYSTEM_JSONL",
-        "NIKODYM_H9R_NATIVE_POOLS_JSONL",
-        "NIKODYM_H9R_ADAPTER_AUDIT_JSONL",
-        "NIKODYM_H9R_UI_FIRST_BYTE_JSONL",
-        "NIKODYM_H9R_WORKER_CAPABILITY",
-        "NIKODYM_H9R_ADAPTER_CAPABILITY",
-        "NIKODYM_H9R_CANDIDATE_CAPABILITY",
-        "NIKODYM_H9R_UI_CLIENT_CAPABILITY",
+        "BAYESRISK_H9R_OUTPUT_ROOT",
+        "BAYESRISK_H9R_BOUNDARY_JSONL",
+        "BAYESRISK_H9R_FILESYSTEM_JSONL",
+        "BAYESRISK_H9R_NATIVE_POOLS_JSONL",
+        "BAYESRISK_H9R_ADAPTER_AUDIT_JSONL",
+        "BAYESRISK_H9R_UI_FIRST_BYTE_JSONL",
+        "BAYESRISK_H9R_WORKER_CAPABILITY",
+        "BAYESRISK_H9R_ADAPTER_CAPABILITY",
+        "BAYESRISK_H9R_CANDIDATE_CAPABILITY",
+        "BAYESRISK_H9R_UI_CLIENT_CAPABILITY",
     }
 )
 
@@ -1265,8 +1265,8 @@ def _validate_candidate_controller_launch(
 _CANDIDATE_BOOTSTRAP = r"""
 import json, os, runpy, socket, sys, threading
 
-request_path = os.environ.pop("NIKODYM_H9R_CANDIDATE_REQUEST", None)
-request_sha = os.environ.pop("NIKODYM_H9R_CANDIDATE_REQUEST_SHA256", None)
+request_path = os.environ.pop("BAYESRISK_H9R_CANDIDATE_REQUEST", None)
+request_sha = os.environ.pop("BAYESRISK_H9R_CANDIDATE_REQUEST_SHA256", None)
 if request_path is None or request_sha is None:
     raise SystemExit("candidate bootstrap sin request")
 import hashlib
@@ -1343,7 +1343,7 @@ else:
     })
 argv = [replacements.get(item, item) for item in request["argv_template"]]
 for key in list(os.environ):
-    if key.startswith("NIKODYM_H9R_"):
+    if key.startswith("BAYESRISK_H9R_"):
         raise SystemExit("entorno candidato filtró variable H9R reservada")
 sys.argv = [request["script_path"], *argv]
 sys.path[:] = [request["candidate_root"], *[item for item in sys.path if item]]
@@ -1464,8 +1464,8 @@ def _candidate_child_environment(
     environment["TEMP"] = str(temp_root)
     environment["TMP"] = str(temp_root)
     environment["NUMBER_OF_PROCESSORS"] = str(logical_cpu_count)
-    environment["NIKODYM_H9R_CANDIDATE_REQUEST"] = str(request_path.resolve())
-    environment["NIKODYM_H9R_CANDIDATE_REQUEST_SHA256"] = request_sha256
+    environment["BAYESRISK_H9R_CANDIDATE_REQUEST"] = str(request_path.resolve())
+    environment["BAYESRISK_H9R_CANDIDATE_REQUEST_SHA256"] = request_sha256
     return environment
 
 
@@ -1950,8 +1950,8 @@ def run_candidate_request(
     _remaining_before_deadline(workload_deadline, context="antes de validar el runtime aislado")
     _validate_pycache_isolation(workdir, role="candidate")
     normalized = validate_candidate_launch_request(request)
-    snapshot_manifest_path = os.environ.get("NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST")
-    snapshot_manifest_sha = os.environ.get("NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256")
+    snapshot_manifest_path = os.environ.get("BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST")
+    snapshot_manifest_sha = os.environ.get("BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256")
     if snapshot_manifest_path is None or snapshot_manifest_sha is None:
         raise ContractError("candidate controller no recibió snapshot atestiguado")
     gate_tooling = cast(dict[str, Any], authorization_gate["tooling"])
@@ -3041,7 +3041,7 @@ class _CandidateHttpProxy:
                 request_line, headers = self._headers(request_headers, response=False)
                 if request_line != f"POST {self.ingress['path']} HTTP/1.1":
                     raise ContractError("request-line no reconcilia POST/path")
-                if headers.get("x-nikodym-request-id") != self.ingress["request_id"]:
+                if headers.get("x-bayesrisk-request-id") != self.ingress["request_id"]:
                     raise ContractError("request_id HTTP no reconcilia")
                 try:
                     content_length = int(headers.get("content-length", ""))
@@ -3275,7 +3275,7 @@ def run_ui_client_request(
         connection.putheader("Connection", "close")
         connection.putheader("Content-Type", "application/octet-stream")
         connection.putheader("Content-Length", str(body["logical_bytes"]))
-        connection.putheader("X-Nikodym-Request-Id", str(normalized["request_id"]))
+        connection.putheader("X-BayesRisk-Request-Id", str(normalized["request_id"]))
         connection.endheaders()
         with body_path.open("rb") as body_handle:
             while chunk := body_handle.read(1024 * 1024):
@@ -3941,18 +3941,18 @@ def _candidate_controller_environment(
         temp_root=temp_root,
         logical_cpu_count=logical_cpu_count,
     )
-    environment.pop("NIKODYM_H9R_CANDIDATE_REQUEST", None)
-    environment.pop("NIKODYM_H9R_CANDIDATE_REQUEST_SHA256", None)
-    environment["NIKODYM_H9R_CANDIDATE_CAPABILITY"] = candidate_capability_secret
-    environment["NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST"] = cast(str, snapshot["path"])
-    environment["NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256"] = cast(str, snapshot["sha256"])
+    environment.pop("BAYESRISK_H9R_CANDIDATE_REQUEST", None)
+    environment.pop("BAYESRISK_H9R_CANDIDATE_REQUEST_SHA256", None)
+    environment["BAYESRISK_H9R_CANDIDATE_CAPABILITY"] = candidate_capability_secret
+    environment["BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST"] = cast(str, snapshot["path"])
+    environment["BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256"] = cast(str, snapshot["sha256"])
     return environment
 
 
 def _candidate_controller_command(
     launch: Mapping[str, Any], *, workdir: Path
 ) -> tuple[list[str], dict[str, str]]:
-    secret = os.environ.pop("NIKODYM_H9R_CANDIDATE_CAPABILITY", None)
+    secret = os.environ.pop("BAYESRISK_H9R_CANDIDATE_CAPABILITY", None)
     if secret is None:
         raise ContractError("adapter no recibió capability candidate del supervisor")
     request = cast(dict[str, Any], launch["candidate_request"])

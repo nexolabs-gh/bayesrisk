@@ -25,12 +25,12 @@ from typing import Any
 import pytest
 
 pytest.importorskip("fastapi", reason="el catálogo de trabajos vive en la capa ui")
-pytest.importorskip("optbinning", reason="el pipeline del scorecard exige nikodym[scoring]")
+pytest.importorskip("optbinning", reason="el pipeline del scorecard exige bayesrisk[scoring]")
 
 from test_jobs_ejecutables import _esqueleto
 
-from nikodym.core.config.effective_defaults import build_effective_defaults
-from nikodym.ui.jobs import list_jobs
+from bayesrisk.core.config.effective_defaults import build_effective_defaults
+from bayesrisk.ui.jobs import list_jobs
 
 #: El dataset de la demo, el mismo con el que se recorre el trabajo en cámara.
 DATASET = "consumo_comportamiento"
@@ -82,7 +82,7 @@ def _config_del_trabajo(*, con_override: bool = True) -> dict[str, Any]:
 
 
 def _corre(config: dict[str, Any], workdir: Path) -> dict[str, Any]:
-    from nikodym.ui import routes
+    from bayesrisk.ui import routes
 
     return routes.run_pipeline(config, DATASET, workdir=workdir)
 
@@ -97,7 +97,7 @@ def corrida(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
 
 
 def _resultados(corrida: dict[str, Any]) -> dict[str, Any]:
-    from nikodym.ui import runs
+    from bayesrisk.ui import runs
 
     return runs.load_results(corrida["resultado"]["run_id"], workdir=corrida["workdir"])
 
@@ -241,7 +241,7 @@ def test_sin_el_override_del_catalogo_la_corrida_se_rompe(tmp_path: Path) -> Non
     verde con la corrida terminando bien, el override sobraría; si el de arriba se rompiera, el
     override sería lo que falta.
     """
-    from nikodym.ui import runs
+    from bayesrisk.ui import runs
 
     resultado = _corre(_config_del_trabajo(con_override=False), tmp_path)
 

@@ -16,17 +16,17 @@ from typing import Any
 import pandas as pd
 import pytest
 
-import nikodym.validation.evaluator as evaluator_module
-from nikodym.validation.calibration_tests import binomial_by_grade, hosmer_lemeshow, traffic_light
-from nikodym.validation.config import (
+import bayesrisk.validation.evaluator as evaluator_module
+from bayesrisk.validation.calibration_tests import binomial_by_grade, hosmer_lemeshow, traffic_light
+from bayesrisk.validation.config import (
     BacktestingValidationConfig,
     CalibrationValidationConfig,
     DiscriminationValidationConfig,
     ValidationConfig,
 )
-from nikodym.validation.evaluator import ValidationEvaluator
-from nikodym.validation.exceptions import ValidationConfigError, ValidationDataError
-from nikodym.validation.results import (
+from bayesrisk.validation.evaluator import ValidationEvaluator
+from bayesrisk.validation.exceptions import ValidationConfigError, ValidationDataError
+from bayesrisk.validation.results import (
     BacktestRecord,
     CalibrationTestRecord,
     GradeBinomialRecord,
@@ -902,7 +902,7 @@ def test_validate_backtesting_columnas_estimadas_ausentes_falla() -> None:
 
 
 def test_validate_backtesting_columnas_estimadas_ausentes_marca_brecha_del_motor() -> None:
-    """Sin las columnas que produce IFRS 9, la carencia es de Nikodym: ``FALTA-DATO``.
+    """Sin las columnas que produce IFRS 9, la carencia es de bayesrisk: ``FALTA-DATO``.
 
     Rotularla ``DATO-INSTITUCIONAL`` diría que el dato lo debe aportar el banco, y lo que falta es
     una salida del propio motor.
@@ -1166,7 +1166,7 @@ def test_dependency_versions_omite_libreria_ausente(monkeypatch: pytest.MonkeyPa
 def test_stability_has_frame_vacio_es_falso() -> None:
     """Un frame de estabilidad vacío no registra ninguna decisión (la regla vive en ``results``,
     junto a la consolidación que el DTO exige; el evaluador la delega)."""
-    from nikodym.validation import results as results_module
+    from bayesrisk.validation import results as results_module
 
     assert results_module._stability_has(pd.DataFrame({"decision": []}), "fail") is False
 

@@ -1067,7 +1067,7 @@ export function provisioningSectionCopy(
       title: "Provisiones — se reporta el método interno",
       description:
         "La corrida usa directamente el método interno. El Cap. B-1 permite esa ruta sólo cuando " +
-        "el método fue evaluado y no objetado; Nikodym no verifica esa condición.",
+        "el método fue evaluado y no objetado; bayesrisk no verifica esa condición.",
     }
   }
   return {
@@ -1595,7 +1595,7 @@ export interface LineageRowData {
 export function lineageRows(lineage: RunLineage): LineageRowData[] {
   return [
     { label: "data_hash", value: lineage.data_hash },
-    { label: "versión", value: lineage.library_versions.nikodym ?? null },
+    { label: "versión", value: lineage.library_versions.bayesrisk ?? null },
     { label: "código", value: gitStamp(lineage) },
     { label: "semilla", value: String(lineage.root_seed) },
     { label: "entorno", value: lineage.uv_lock_hash },
@@ -1631,7 +1631,7 @@ export function panelConfigHash(
 // El espejo de las bandas de estabilidad vive en `charts/chart-theme.ts` (`BAND_LABELS`), junto
 // a sus colores, y lo cubre el mismo gate.
 
-/** Espejo de `nikodym.selection.results.REASON_LABELS`. */
+/** Espejo de `bayesrisk.selection.results.REASON_LABELS`. */
 export const SELECTION_REASON_LABELS: Record<string, string> = {
   included: "inclusión",
   business_exclude: "exclusión de negocio",
@@ -1655,7 +1655,7 @@ export function selectionReasonLabel(reason: string): string {
   return SELECTION_REASON_LABELS[reason] ?? reason
 }
 
-/** Espejo de `nikodym.binning.results.IV_BAND_LABELS` (las palabras del glosario). */
+/** Espejo de `bayesrisk.binning.results.IV_BAND_LABELS` (las palabras del glosario). */
 export const IV_BAND_LABELS: Record<string, string> = {
   none: "sin poder",
   weak: "débil",
@@ -1669,7 +1669,7 @@ export function ivBandLabel(band: string): string {
   return IV_BAND_LABELS[band] ?? band
 }
 
-/** Espejo de `nikodym.stability.results.PSI_METRIC_LABELS`: la identidad del resumen A1. */
+/** Espejo de `bayesrisk.stability.results.PSI_METRIC_LABELS`: la identidad del resumen A1. */
 export const PSI_METRIC_LABELS: Record<string, string> = {
   score_psi: "score",
   pd_psi: "PD calibrada",
@@ -1741,7 +1741,7 @@ export function psiSummaryRows(
  *
  * 🔴 Son las corridas guardadas por una versión anterior a la enmienda del resumen PSI: publicaban
  * el máximo entre score y PD como valor, pero la banda **sólo desde el score**
- * (`nikodym/stability/results.py`, que por eso se salta ahí su propia validación de coherencia), y
+ * (`bayesrisk/stability/results.py`, que por eso se salta ahí su propia validación de coherencia), y
  * `load_results` sirve el JSON persistido sin migrarlo. Con score 0,05 y PD 0,12 esa card dice
  * «0,1200» y «estable» a la vez. Pintarlas juntas reintroduciría en la pantalla exactamente la
  * contradicción que la enmienda cerró en el informe, así que el resumen se omite y la sección lo
@@ -1911,12 +1911,12 @@ export function selectionDecisionRows(
 // --- validación formal (D-SC-9) ---------------------------------------------
 //
 // Mismo contrato que los espejos de arriba: cada mapa replica una fuente única de
-// `nikodym.validation.results` y el gate de Python los compara en los dos sentidos. Ninguna de
+// `bayesrisk.validation.results` y el gate de Python los compara en los dos sentidos. Ninguna de
 // estas funciones calcula nada: el veredicto, el conteo de pruebas y la cobertura por grado son
 // los que publicó el motor, y aquí sólo se ordenan y se traducen.
 
 /**
- * Espejo de `nikodym.validation.results.VALIDATION_STATUS_LABELS` (D-SC-9). La cuarta palabra
+ * Espejo de `bayesrisk.validation.results.VALIDATION_STATUS_LABELS` (D-SC-9). La cuarta palabra
  * (D-VAL-17) es la misma que las bandas del PSI y sale sólo cuando no hay evidencia evaluable
  * alguna: antes ese caso decía «Pasa».
  */
@@ -1932,7 +1932,7 @@ export function validationStatusLabel(status: string): string {
   return VALIDATION_STATUS_LABELS[status] ?? status
 }
 
-/** Espejo de `nikodym.validation.results.VALIDATION_FAMILY_LABELS`. */
+/** Espejo de `bayesrisk.validation.results.VALIDATION_FAMILY_LABELS`. */
 export const VALIDATION_FAMILY_LABELS: Record<string, string> = {
   discrimination: "Discriminación",
   calibration: "Calibración",
@@ -1940,7 +1940,7 @@ export const VALIDATION_FAMILY_LABELS: Record<string, string> = {
   backtesting: "Backtesting",
 } as const
 
-/** Espejo de `nikodym.validation.results.VALIDATION_DECISION_LABELS`. */
+/** Espejo de `bayesrisk.validation.results.VALIDATION_DECISION_LABELS`. */
 export const VALIDATION_DECISION_LABELS: Record<string, string> = {
   pass: "Pasa",
   fail: "Falla",
@@ -1948,7 +1948,7 @@ export const VALIDATION_DECISION_LABELS: Record<string, string> = {
 } as const
 
 /**
- * Espejo de `nikodym.validation.results.HL_NOT_EVALUABLE_REASON_LABELS` (D-VAL-17): por qué un
+ * Espejo de `bayesrisk.validation.results.HL_NOT_EVALUABLE_REASON_LABELS` (D-VAL-17): por qué un
  * Hosmer-Lemeshow quedó sin veredicto, en palabras. La fila lo dice junto a «Sin veredicto».
  */
 export const HL_NOT_EVALUABLE_REASON_LABELS: Record<string, string> = {
@@ -1963,52 +1963,52 @@ export function hlNotEvaluableReasonLabel(reason: string): string {
   return HL_NOT_EVALUABLE_REASON_LABELS[reason] ?? reason
 }
 
-/** Espejo de `nikodym.validation.results.CALIBRATION_TEST_LABELS`. */
+/** Espejo de `bayesrisk.validation.results.CALIBRATION_TEST_LABELS`. */
 export const CALIBRATION_TEST_LABELS: Record<string, string> = {
   hosmer_lemeshow: "Hosmer-Lemeshow",
   brier: "Puntaje de Brier",
 } as const
 
-/** Espejo de `nikodym.validation.results.TRAFFIC_LIGHT_LABELS`. */
+/** Espejo de `bayesrisk.validation.results.TRAFFIC_LIGHT_LABELS`. */
 export const TRAFFIC_LIGHT_LABELS: Record<string, string> = {
   green: "Verde",
   amber: "Ámbar",
   red: "Rojo",
 } as const
 
-/** Espejo de `nikodym.validation.results.DISCRIMINATION_STATUS_LABELS`. */
+/** Espejo de `bayesrisk.validation.results.DISCRIMINATION_STATUS_LABELS`. */
 export const DISCRIMINATION_STATUS_LABELS: Record<string, string> = {
   ok: "Evaluada",
   not_evaluable: "No evaluable",
 } as const
 
-/** Espejo de `nikodym.validation.results.DISCRIMINATION_SOURCE_LABELS`. */
+/** Espejo de `bayesrisk.validation.results.DISCRIMINATION_SOURCE_LABELS`. */
 export const DISCRIMINATION_SOURCE_LABELS: Record<string, string> = {
   performance_artifact: "Reusada de la etapa de desempeño",
   recomputed: "Recalculada en esta etapa",
 } as const
 
-/** Espejo de `nikodym.validation.results.STABILITY_SOURCE_LABELS` (D-VAL-16). */
+/** Espejo de `bayesrisk.validation.results.STABILITY_SOURCE_LABELS` (D-VAL-16). */
 export const STABILITY_SOURCE_LABELS: Record<string, string> = {
   stability_artifact: "Reusado de la etapa de estabilidad",
   recomputed: "Recalculado en esta etapa",
 } as const
 
-/** Espejo de `nikodym.validation.results.BACKTEST_PARAMETER_LABELS`. */
+/** Espejo de `bayesrisk.validation.results.BACKTEST_PARAMETER_LABELS`. */
 export const BACKTEST_PARAMETER_LABELS: Record<string, string> = {
   pd: "Probabilidad de incumplimiento",
   lgd: "Severidad",
   ead: "Exposición",
 } as const
 
-/** Espejo de `nikodym.validation.results.BACKTEST_TEST_LABELS`. */
+/** Espejo de `bayesrisk.validation.results.BACKTEST_TEST_LABELS`. */
 export const BACKTEST_TEST_LABELS: Record<string, string> = {
   t_test: "t de Student",
   binomial: "Binomial",
   jeffreys: "Jeffreys",
 } as const
 
-/** Espejo de `nikodym.validation.results.PD_TEST_LABELS`. */
+/** Espejo de `bayesrisk.validation.results.PD_TEST_LABELS`. */
 export const PD_TEST_LABELS: Record<string, string> = {
   jeffreys: "Jeffreys",
   binomial: "Binomial",
@@ -2083,7 +2083,7 @@ export function calibrationRowsSplit(validation: ValidationResult | null | undef
   }
 }
 
-/** Espejo de `nikodym.stability.results.STABILITY_METRIC_LABELS`: qué mide cada fila del PSI. */
+/** Espejo de `bayesrisk.stability.results.STABILITY_METRIC_LABELS`: qué mide cada fila del PSI. */
 export const STABILITY_METRIC_LABELS: Record<string, string> = {
   score_psi: "PSI del score",
   pd_psi: "PSI de la PD",
@@ -2223,25 +2223,25 @@ export function trafficLightCuts(
 
 // --- análisis exploratorio (D-SC-5) --------------------------------------------
 //
-// Mismo contrato que los espejos de arriba: cada mapa replica una fuente única de `nikodym.eda` y
+// Mismo contrato que los espejos de arriba: cada mapa replica una fuente única de `bayesrisk.eda` y
 // el gate de Python los compara en los dos sentidos. Ninguna de estas funciones calcula nada: la
 // tasa, la señal temporal y las marcas de calidad son las que publicó el motor, y aquí sólo se
 // traducen y se ordenan.
 
-/** Espejo de `nikodym.eda.default_rate.AXIS_LABELS`: con qué se agrupó la tasa. */
+/** Espejo de `bayesrisk.eda.default_rate.AXIS_LABELS`: con qué se agrupó la tasa. */
 export const EDA_AXIS_LABELS: Record<string, string> = {
   period: "por fecha de observación",
   cohort: "por cohorte",
 } as const
 
-/** Espejo de `nikodym.eda.stability.STABILITY_INDICATOR_LABELS`: el indicador configurado. */
+/** Espejo de `bayesrisk.eda.stability.STABILITY_INDICATOR_LABELS`: el indicador configurado. */
 export const EDA_STABILITY_INDICATOR_LABELS: Record<string, string> = {
   cv: "variación relativa",
   max_relative_drift: "peor desvío",
   trend_slope: "tendencia",
 } as const
 
-/** Espejo de `nikodym.eda.stability.NOT_EVALUABLE_REASON_LABELS`: por qué no se evaluó. */
+/** Espejo de `bayesrisk.eda.stability.NOT_EVALUABLE_REASON_LABELS`: por qué no se evaluó. */
 export const EDA_NOT_EVALUABLE_REASON_LABELS: Record<string, string> = {
   eje_cohorte: "eje de cohorte, sin orden cronológico",
   no_calculable: "no se pudo calcular",
@@ -2252,7 +2252,7 @@ export const EDA_NOT_EVALUABLE_REASON_LABELS: Record<string, string> = {
 } as const
 
 /**
- * Espejo de `nikodym.eda.default_rate.DEFAULT_RATE_NOT_EVALUABLE_REASON_LABELS` (D-SC-17): por
+ * Espejo de `bayesrisk.eda.default_rate.DEFAULT_RATE_NOT_EVALUABLE_REASON_LABELS` (D-SC-17): por
  * qué la TASA no se pudo agrupar. Distinto del de arriba, que explica la SEÑAL temporal.
  */
 export const EDA_DEFAULT_RATE_NOT_EVALUABLE_REASON_LABELS: Record<string, string> = {
@@ -2266,7 +2266,7 @@ export function edaDefaultRateReasonLabel(reason: string): string {
 }
 
 /**
- * Espejo de `nikodym.eda.card.FAILED_ANALYSIS_LABELS` (D-SC-20): sujeto y predicado de cada
+ * Espejo de `bayesrisk.eda.card.FAILED_ANALYSIS_LABELS` (D-SC-20): sujeto y predicado de cada
  * sub-análisis que puede fallar —las figuras, en plural—, en el orden del paso, que es el orden
  * del aviso.
  */
@@ -2280,7 +2280,7 @@ export const EDA_FAILED_ANALYSIS_LABELS: Record<string, string> = {
 
 /**
  * Los sub-análisis que no se pudieron calcular, cada uno como la frase que escribe el motor
- * (`nikodym.eda.card.failed_analysis_sentence`): «<sujeto> no se pudo calcular: «<causa>»». La
+ * (`bayesrisk.eda.card.failed_analysis_sentence`): «<sujeto> no se pudo calcular: «<causa>»». La
  * causa va citada —es el mensaje del motor tal cual— y sin su punto final. Un payload sin
  * `failed_analyses` —anterior a D-SC-19— no tiene ninguno.
  */
@@ -2302,7 +2302,7 @@ export function edaFailedAnalyses(eda: EdaResult): string[] {
   return frases
 }
 
-/** Espejo de `nikodym.eda.quality.QUALITY_FLAG_LABELS`: las tres marcas de calidad. */
+/** Espejo de `bayesrisk.eda.quality.QUALITY_FLAG_LABELS`: las tres marcas de calidad. */
 export const EDA_QUALITY_FLAG_LABELS: Record<string, string> = {
   near_constant: "casi constante",
   near_unique: "casi única",
@@ -2333,7 +2333,7 @@ export function edaChartKind(eda: EdaResult | null | undefined): "line" | "bar" 
 
 /**
  * Barras de la tasa por cohorte que se grafican como máximo (espejo de
- * `nikodym.report.charts._MAX_EDA_RATE_BARS`, con gate): el eje de cohorte acepta cualquier columna
+ * `bayesrisk.report.charts._MAX_EDA_RATE_BARS`, con gate): el eje de cohorte acepta cualquier columna
  * y una casi única daría una barra por fila. La tabla trae todas; el gráfico, las primeras.
  */
 export const EDA_MAX_RATE_BARS = 60

@@ -11,10 +11,10 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-import nikodym.tuning as tuning_pkg
-from nikodym.core.base import NikodymClassifier
-from nikodym.ml.config import MLConfig, XGBoostParams
-from nikodym.tuning.results import (
+import bayesrisk.tuning as tuning_pkg
+from bayesrisk.core.base import BayesRiskClassifier
+from bayesrisk.ml.config import MLConfig, XGBoostParams
+from bayesrisk.tuning.results import (
     SamplerMetadata,
     TuningCardSection,
     TuningResult,
@@ -22,8 +22,8 @@ from nikodym.tuning.results import (
 )
 
 
-class _FakeChallenger(NikodymClassifier):
-    """Emula el ``MLChallenger`` (subclase de ``NikodymClassifier``) que crea B12.4."""
+class _FakeChallenger(BayesRiskClassifier):
+    """Emula el ``MLChallenger`` (subclase de ``BayesRiskClassifier``) que crea B12.4."""
 
 
 # ─────────────────────────── helpers ───────────────────────────
@@ -296,7 +296,7 @@ def test_result_term_structure_es_none() -> None:
 
 
 def test_reexport_perezoso_desde_paquete() -> None:
-    """Los DTOs se alcanzan vía `nikodym.tuning.<Nombre>` (reexport perezoso)."""
+    """Los DTOs se alcanzan vía `bayesrisk.tuning.<Nombre>` (reexport perezoso)."""
     assert tuning_pkg.TuningResult is TuningResult
     assert tuning_pkg.TuningTrialRecord is TuningTrialRecord
     assert tuning_pkg.SamplerMetadata is SamplerMetadata
@@ -309,9 +309,9 @@ def test_reexport_atributo_desconocido_falla() -> None:
 
 
 def test_import_results_no_arrastra_optuna_ni_backends() -> None:
-    """`import nikodym.tuning.results` no carga optuna/pandas/backends en import time."""
+    """`import bayesrisk.tuning.results` no carga optuna/pandas/backends en import time."""
     code = (
-        "import nikodym.tuning.results, sys;"
+        "import bayesrisk.tuning.results, sys;"
         "bloqueados=[m for m in "
         "('optuna','pandas','numpy','sklearn','xgboost','lightgbm','catboost') "
         "if m in sys.modules];"

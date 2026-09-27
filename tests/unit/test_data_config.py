@@ -1,24 +1,24 @@
-"""Tests de ``DataConfig`` (SDD-02 §5) y su integración con ``NikodymConfig`` (endurecimiento B2a).
+"""Tests de ``DataConfig`` (SDD-02 §5) y su integración con ``BayesRiskConfig`` (B2a).
 
 Cubre: árbol Pydantic (defaults, ``extra='forbid'``, ``frozen``), alias ``schema`` con
 ``populate_by_name``, unión discriminada anidada de la estrategia de partición, los
 ``model_validator`` (fracciones que suman 1, regla no vacía), y la coerción/validación de la
-sección ``data`` de ``NikodymConfig`` vía el hook ``_DATA_CONFIG_CLS`` (golden ``config_hash``
+sección ``data`` de ``BayesRiskConfig`` vía el hook ``_DATA_CONFIG_CLS`` (golden ``config_hash``
 invariante con ``data=None``; identidad sensible a ``data`` poblado; round-trip YAML por alias).
 """
 
 import pytest
 from pydantic import ValidationError
 
-import nikodym.data  # noqa: F401  — importa la capa: puebla el hook _DATA_CONFIG_CLS
-from nikodym.core.config import (
-    NikodymConfig,
+import bayesrisk.data  # noqa: F401  — importa la capa: puebla el hook _DATA_CONFIG_CLS
+from bayesrisk.core.config import (
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.data.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.data.config import (
     CohortSplitConfig,
     DataConfig,
     PartitionConfig,
@@ -30,7 +30,7 @@ from nikodym.data.config import (
     TemporalSplitConfig,
 )
 
-# Golden de NikodymConfig() por defecto (idéntico a tests/repro/test_config_hash_golden.py): B11.5
+# Golden de BayesRiskConfig() por defecto (idéntico a tests/repro/test_config_hash_golden.py): B11.5
 # añadió la clave computacional `stability=None`; cargar `data` no debe moverlo adicionalmente.
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 
@@ -159,18 +159,18 @@ def test_predicate_value_strict_no_coacciona_bool() -> None:
     assert pred.value is True and isinstance(pred.value, bool)
 
 
-# ── integración con NikodymConfig (hook poblado) ──────────────────────────────
-def test_nikodymconfig_data_instancia() -> None:
-    """Pasar una instancia ``DataConfig`` a ``NikodymConfig`` la conserva (rama isinstance)."""
+# ── integración con BayesRiskConfig (hook poblado) ──────────────────────────────
+def test_bayesriskconfig_data_instancia() -> None:
+    """Pasar una instancia ``DataConfig`` a ``BayesRiskConfig`` la conserva (rama isinstance)."""
     data = _data_config_minimo()
-    cfg = NikodymConfig(data=data)
+    cfg = BayesRiskConfig(data=data)
     assert isinstance(cfg.data, DataConfig)
     assert cfg.data is data
 
 
-def test_nikodymconfig_data_dict_coacciona() -> None:
+def test_bayesriskconfig_data_dict_coacciona() -> None:
     """Un dict en ``data`` se coacciona a ``DataConfig`` (rama model_validate)."""
-    cfg = NikodymConfig(
+    cfg = BayesRiskConfig(
         data={
             "target": {"bad_rule": {"all_of": [{"col": "max_dpd_12m", "op": ">=", "value": 90}]}},
             "partition": {"strategy": {"type": "random"}},
@@ -180,10 +180,10 @@ def test_nikodymconfig_data_dict_coacciona() -> None:
     assert isinstance(cfg.data.partition.strategy, RandomSplitConfig)
 
 
-def test_nikodymconfig_data_extra_forbid() -> None:
+def test_bayesriskconfig_data_extra_forbid() -> None:
     """Un campo extra dentro de la sección ``data`` se rechaza (extra=forbid de DataConfig)."""
     with pytest.raises(ValidationError):
-        NikodymConfig(
+        BayesRiskConfig(
             data={
                 "target": {"bad_rule": {"all_of": [{"col": "x", "op": ">=", "value": 1}]}},
                 "partition": {"strategy": {"type": "random"}},
@@ -192,28 +192,28 @@ def test_nikodymconfig_data_extra_forbid() -> None:
         )
 
 
-def test_nikodymconfig_data_none_explicito() -> None:
+def test_bayesriskconfig_data_none_explicito() -> None:
     """``data=None`` explícito pasa por el validador y queda None (rama None)."""
-    cfg = NikodymConfig(data=None)
+    cfg = BayesRiskConfig(data=None)
     assert cfg.data is None
 
 
 # ── identidad (config_hash) ───────────────────────────────────────────────────
 def test_config_hash_data_none_invariante() -> None:
     """Importar la capa ``data`` y endurecer el campo NO mueve el golden (data=None -> null)."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_config_hash_cambia_con_data_poblado() -> None:
     """``data`` es sección computacional (no INFRA): poblarla cambia la identidad de la corrida."""
-    con_data = config_hash(NikodymConfig(data=_data_config_minimo()))
+    con_data = config_hash(BayesRiskConfig(data=_data_config_minimo()))
     assert con_data != GOLDEN_DEFAULT_CONFIG_HASH
 
 
 # ── round-trip YAML ───────────────────────────────────────────────────────────
 def test_round_trip_yaml_con_data() -> None:
     """``loads_config(dump_config(cfg))`` con sección ``data`` preserva igualdad e identidad."""
-    cfg = NikodymConfig(name="scorecard", data=_data_config_minimo())
+    cfg = BayesRiskConfig(name="scorecard", data=_data_config_minimo())
     recargado = loads_config(dump_config(cfg))
     assert recargado == cfg
     assert config_hash(recargado) == config_hash(cfg)

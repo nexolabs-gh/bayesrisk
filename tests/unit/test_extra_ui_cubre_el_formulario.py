@@ -2,7 +2,7 @@
 
 Un extra llamado `ui` que instala la interfaz pero no el motor que esa interfaz dispara es una
 promesa falsa por su propio nombre, y rompe el criterio de cierre de B2: el tercero sin checkout
-escribe el comando obvio —`pip install nikodym[ui]`— y espera que funcione.
+escribe el comando obvio —`pip install bayesrisk[ui]`— y espera que funcione.
 
 Medido el 2026-07-28 en venv limpio desde PyPI (`1.8.0`), antes de este gate: el extra traía sólo
 el servidor + `[excel]` + `[docx]`, la interfaz arrancaba y los **tres** presets fallaban — F1 y F3
@@ -24,15 +24,15 @@ _RAIZ = Path(__file__).resolve().parents[2]
 _PYPROJECT = _RAIZ / "pyproject.toml"
 _SCHEMA_TS = _RAIZ / "web" / "src" / "lib" / "schema.ts"
 
-#: Extra que exige el motor de cada sección, medido con los mensajes `instale nikodym[<extra>]` que
-#: emite `src/nikodym/<seccion>/`. Se escribe A MANO, no se deriva del código: un recorrido
+#: Extra que exige el motor de cada sección, medido con los mensajes `instale bayesrisk[<extra>]`
+#: que emite `src/bayesrisk/<seccion>/`. Se escribe A MANO, no se deriva del código: un recorrido
 #: automático que se rompiera daría cero incumplimientos y verde permanente.
 #:
 #: `provisioning*` comparte el motor de `provisioning/`, que sólo declara `scoring`.
 EXTRA_POR_SECCION = {
     "data": None,  # el núcleo lee CSV/Parquet; `excel` (xlsx) ya viaja en `[ui]`
     # `eda` corre sobre pandas y numpy, que son dependencias base: no importa ningún motor
-    # opcional ni emite «instale nikodym[...]» (medido sobre `src/nikodym/eda/`).
+    # opcional ni emite «instale bayesrisk[...]» (medido sobre `src/bayesrisk/eda/`).
     "eda": None,
     "binning": "scoring",
     "selection": "scoring",
@@ -43,7 +43,7 @@ EXTRA_POR_SECCION = {
     "stability": "scoring",
     # `validation` reúsa los motores de `performance` y `stability` y añade Hosmer-Lemeshow,
     # binomial/Jeffreys y el t-test, que importan `scipy` de forma perezosa y traducen su ausencia
-    # a «requiere scipy; instale nikodym[scoring]». Ningún extra propio: `scoring` ya lo trae.
+    # a «requiere scipy; instale bayesrisk[scoring]». Ningún extra propio: `scoring` ya lo trae.
     "validation": "scoring",
     "survival": "survival",  # además de `scoring`: `cox_ph`/`aft` exigen lifelines (KM no)
     "provisioning_cmf": "scoring",
@@ -64,7 +64,7 @@ EXTRA_POR_SECCION = {
     # transitiva copyleft que el cierre redistribuible no acepta—. Degrada con gracia (aviso +
     # `pdf_path=None`) y ya venía en los `formats` del preset antes de esta sección.
     "report": "report",
-    # La ficha del modelo la escribe el núcleo (`nikodym.governance` no es un extra, D-GOB-10).
+    # La ficha del modelo la escribe el núcleo (`bayesrisk.governance` no es un extra, D-GOB-10).
     # El interruptor `publish_to_inventory` sí pide `[tracking]` —un servidor MLflow—, y `[ui]` no
     # lo trae a propósito: es opt-in, viene apagado, y encenderlo sin el extra falla con el error
     # ruidoso de `assemble_run` que la UI muestra como cualquier error de corrida (enmienda
@@ -82,7 +82,7 @@ def _sections_del_formulario() -> set[str]:
 
 
 def _extras_de_ui() -> set[str]:
-    """Extras de Nikodym que `[ui]` compone (`nikodym[x]` → `x`), resueltos en un nivel."""
+    """Extras de bayesrisk que `[ui]` compone (`bayesrisk[x]` → `x`), resueltos en un nivel."""
     datos = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))
     opcionales = datos["project"]["optional-dependencies"]
 
@@ -94,7 +94,7 @@ def _extras_de_ui() -> set[str]:
             continue
         vistos.add(extra)
         for req in opcionales.get(extra, []):
-            anidado = re.fullmatch(r"nikodym\[([a-z0-9,_-]+)\]", req.strip())
+            anidado = re.fullmatch(r"bayesrisk\[([a-z0-9,_-]+)\]", req.strip())
             if anidado:
                 pendientes.extend(anidado.group(1).split(","))
     return vistos
@@ -111,7 +111,7 @@ def test_el_formulario_no_ofrece_secciones_que_el_extra_ui_no_puede_ejecutar() -
     instalados = _extras_de_ui()
     faltan = sorted(
         {
-            f"{seccion} → nikodym[{EXTRA_POR_SECCION[seccion]}]"
+            f"{seccion} → bayesrisk[{EXTRA_POR_SECCION[seccion]}]"
             for seccion in ofrecidas
             if EXTRA_POR_SECCION.get(seccion) is not None
             and EXTRA_POR_SECCION[seccion] not in instalados
@@ -119,8 +119,9 @@ def test_el_formulario_no_ofrece_secciones_que_el_extra_ui_no_puede_ejecutar() -
     )
 
     assert not faltan, (
-        f"El formulario ofrece secciones cuyo motor `nikodym[ui]` no instala: {faltan}. "
-        "Quien haga `pip install nikodym[ui]` verá el formulario y la corrida fallará pidiendo el "
+        f"El formulario ofrece secciones cuyo motor `bayesrisk[ui]` no instala: {faltan}. "
+        "Quien haga `pip install bayesrisk[ui]` verá el formulario y la corrida fallará "
+        "pidiendo el "
         "extra. Agrégalo al extra `ui` en pyproject.toml, o retira la sección del formulario."
     )
 

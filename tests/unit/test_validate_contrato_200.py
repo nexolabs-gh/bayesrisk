@@ -28,8 +28,8 @@ from typing import Any
 
 import pytest
 
-from nikodym.core.exceptions import ConfigError
-from nikodym.ui.presets import get_preset
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.ui.presets import get_preset
 
 
 def _cliente():  # type: ignore[no-untyped-def]
@@ -84,11 +84,11 @@ def test_toda_excepcion_de_config_de_dominio_hereda_del_error_de_config() -> Non
     import inspect
     import pkgutil
 
-    import nikodym
+    import bayesrisk
 
     escapan: list[str] = []
     vistas: list[str] = []
-    for mod in pkgutil.walk_packages(nikodym.__path__, "nikodym."):
+    for mod in pkgutil.walk_packages(bayesrisk.__path__, "bayesrisk."):
         try:
             modulo = importlib.import_module(mod.name)
         except Exception:  # pragma: no cover - un extra ausente no invalida el barrido

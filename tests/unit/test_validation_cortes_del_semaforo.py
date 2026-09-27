@@ -26,14 +26,14 @@ from datetime import UTC, datetime
 import pandas as pd
 import pytest
 
-from nikodym.core.lineage import LineageBundle
-from nikodym.report.builder import ReportBuilder
-from nikodym.report.config import ReportConfig
-from nikodym.report.renderer import HtmlReportRenderer, _table_view
-from nikodym.report.results import ReportInputBundle
-from nikodym.validation.config import CalibrationValidationConfig, ValidationConfig
-from nikodym.validation.evaluator import ValidationEvaluator
-from nikodym.validation.results import ValidationResult
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.report.builder import ReportBuilder
+from bayesrisk.report.config import ReportConfig
+from bayesrisk.report.renderer import HtmlReportRenderer, _table_view
+from bayesrisk.report.results import ReportInputBundle
+from bayesrisk.validation.config import CalibrationValidationConfig, ValidationConfig
+from bayesrisk.validation.evaluator import ValidationEvaluator
+from bayesrisk.validation.results import ValidationResult
 
 #: Las trece columnas que la tabla del documento pintaba antes de la capa A, en su orden. Es un
 #: literal a propósito —no ``_CALIBRATION_COLUMNS[:-2]``—: el gate promete que el documento no
@@ -119,7 +119,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "1.16.0"},
+        library_versions={"bayesrisk": "1.16.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 9, 14, 12, 0, tzinfo=UTC),
         schema_version="1.0.0",
@@ -194,7 +194,7 @@ def test_la_prosa_no_redondea_un_corte_hasta_describir_otra_politica() -> None:
     con cortes de más de cuatro decimales la frase decía «0,05» para un corte 0,05004 —un grado
     con p = 0,05002 queda en ámbar en el motor mientras el informe afirma que debería estar en
     verde—. Los cortes se escriben con todos sus dígitos, sin notación científica."""
-    from nikodym.report.prose import _cut
+    from bayesrisk.report.prose import _cut
 
     assert _cut(0.05004) == "0,05004"
     assert _cut(0.01004) == "0,01004"
@@ -254,7 +254,7 @@ def test_el_word_conserva_las_trece_columnas_y_lleva_los_cortes_en_prosa(contras
     from docx.table import Table
     from docx.text.paragraph import Paragraph
 
-    from nikodym.report.docx import DocxReportRenderer
+    from bayesrisk.report.docx import DocxReportRenderer
 
     payload = DocxReportRenderer.from_config(
         ReportConfig(sections={"missing_policy": "skip"})
@@ -292,7 +292,7 @@ def test_el_word_conserva_las_trece_columnas_y_lleva_los_cortes_en_prosa(contras
 def test_el_pdf_lleva_los_cortes_en_prosa_y_no_como_columnas() -> None:
     from pypdf import PdfReader
 
-    from nikodym.report.pdf import render_pdf
+    from bayesrisk.report.pdf import render_pdf
 
     pdf = render_pdf(_html(_resultado(contraste=True)))
     texto = "".join(page.extract_text() for page in PdfReader(io.BytesIO(pdf)).pages)

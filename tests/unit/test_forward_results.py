@@ -14,19 +14,19 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.forward as forward_pkg
-import nikodym.forward.results as forward_results
-from nikodym.forward.config import (
+import bayesrisk.forward as forward_pkg
+import bayesrisk.forward.results as forward_results
+from bayesrisk.forward.config import (
     MacroModelKind as ConfigMacroModelKind,
 )
-from nikodym.forward.config import (
+from bayesrisk.forward.config import (
     SatelliteMode as ConfigSatelliteMode,
 )
-from nikodym.forward.config import (
+from bayesrisk.forward.config import (
     TargetComponent as ConfigTargetComponent,
 )
-from nikodym.forward.exceptions import ForwardPredictionError
-from nikodym.forward.results import (
+from bayesrisk.forward.exceptions import ForwardPredictionError
+from bayesrisk.forward.results import (
     ForwardCard,
     ForwardDiagnostics,
     ForwardEclInput,
@@ -677,14 +677,14 @@ def test_forward_results_import_liviano_y_exports_publicos() -> None:
     """``results`` y los exports lazy no cargan pandas/numpy ni forecasting pesado."""
     code = (
         "import sys;"
-        "import nikodym.forward;"
-        "assert 'nikodym.forward.results' not in sys.modules;"
+        "import bayesrisk.forward;"
+        "assert 'bayesrisk.forward.results' not in sys.modules;"
         "baseline=set(sys.modules);"
         "blocked=[m for m in ('statsmodels','pmdarima','pandas','scipy') if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'ForwardResult' in nikodym.forward.__all__;"
-        "_=nikodym.forward.ForwardResult;"
-        "assert 'nikodym.forward.results' in sys.modules;"
+        "assert 'ForwardResult' in bayesrisk.forward.__all__;"
+        "_=bayesrisk.forward.ForwardResult;"
+        "assert 'bayesrisk.forward.results' in sys.modules;"
         "blocked=[m for m in ('statsmodels','pmdarima','pandas','scipy') if m in sys.modules];"
         "assert not blocked, blocked;"
         "assert not any(m.startswith('numpy') and m not in baseline for m in sys.modules)"

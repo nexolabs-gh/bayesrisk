@@ -14,14 +14,14 @@ import math
 import pandas as pd
 import pytest
 
-from nikodym.binning.diagnostics import (
+from bayesrisk.binning.diagnostics import (
     EVENT_RATE_BY_PARTITION_COLUMNS,
     MIN_FILAS_POR_TRAMO,
     event_rate_by_partition,
 )
-from nikodym.binning.step import BINNING_ARTIFACTS, BinningStep
-from nikodym.selection.diagnostics import IV_BY_PARTITION_COLUMNS, iv_by_partition
-from nikodym.selection.step import SELECTION_ARTIFACTS, SelectionStep
+from bayesrisk.binning.step import BINNING_ARTIFACTS, BinningStep
+from bayesrisk.selection.diagnostics import IV_BY_PARTITION_COLUMNS, iv_by_partition
+from bayesrisk.selection.step import SELECTION_ARTIFACTS, SelectionStep
 
 
 def _frame(filas: list[tuple[str, str, int]]) -> tuple[pd.DataFrame, pd.Series, pd.Series]:

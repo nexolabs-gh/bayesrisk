@@ -15,25 +15,25 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
 
-import nikodym.survival.discrete_hazard as dh_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import MissingDependencyError, NotFittedError
-from nikodym.survival import DiscreteTimeHazardModel as ExportedDiscreteTimeHazardModel
-from nikodym.survival.base import BaseSurvivalModel
-from nikodym.survival.config import (
+import bayesrisk.survival.discrete_hazard as dh_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import MissingDependencyError, NotFittedError
+from bayesrisk.survival import DiscreteTimeHazardModel as ExportedDiscreteTimeHazardModel
+from bayesrisk.survival.base import BaseSurvivalModel
+from bayesrisk.survival.config import (
     DiscreteHazardConfig,
     SurvivalConfig,
     SurvivalInputConfig,
     SurvivalTimeGridConfig,
 )
-from nikodym.survival.discrete_hazard import DiscreteTimeHazardModel
-from nikodym.survival.exceptions import (
+from bayesrisk.survival.discrete_hazard import DiscreteTimeHazardModel
+from bayesrisk.survival.exceptions import (
     SurvivalConfigError,
     SurvivalFitError,
     SurvivalInputError,
     SurvivalTransformError,
 )
-from nikodym.survival.results import SurvivalDiagnostics
+from bayesrisk.survival.results import SurvivalDiagnostics
 
 _TERM_COLUMNS: tuple[str, ...] = (
     "row_id",
@@ -586,11 +586,13 @@ def test_missing_dependency_import_guards_y_np_integer_en_diagnostics(
             raise ModuleNotFoundError("No module named 'statsmodels'", name="statsmodels")
         return real_import(name)
 
-    monkeypatch.setattr("nikodym.survival.discrete_hazard.importlib.import_module", blocked_import)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    monkeypatch.setattr(
+        "bayesrisk.survival.discrete_hazard.importlib.import_module", blocked_import
+    )
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         dh_module._import_statsmodels_components()
     monkeypatch.setattr(
-        "nikodym.survival.discrete_hazard.importlib.import_module",
+        "bayesrisk.survival.discrete_hazard.importlib.import_module",
         lambda name: (
             (_ for _ in ()).throw(ModuleNotFoundError("No module named 'pandas'", name="pandas"))
             if name == "pandas"
@@ -600,7 +602,7 @@ def test_missing_dependency_import_guards_y_np_integer_en_diagnostics(
     with pytest.raises(MissingDependencyError, match="pandas"):
         dh_module._import_pandas()
     monkeypatch.setattr(
-        "nikodym.survival.discrete_hazard.importlib.import_module",
+        "bayesrisk.survival.discrete_hazard.importlib.import_module",
         lambda name: (
             (_ for _ in ()).throw(ModuleNotFoundError("No module named 'numpy'", name="numpy"))
             if name == "numpy"
@@ -624,12 +626,12 @@ def test_missing_dependency_import_guards_y_np_integer_en_diagnostics(
     assert not isinstance(diagnostics.fit_statistics["n_obs"], float)
 
     code = (
-        "import nikodym.core, sys;"
-        "assert 'nikodym.survival' not in sys.modules;"
-        "import nikodym.survival;"
+        "import bayesrisk.core, sys;"
+        "assert 'bayesrisk.survival' not in sys.modules;"
+        "import bayesrisk.survival;"
         "blocked=[m for m in ('statsmodels','lifelines','sksurv') if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'DiscreteTimeHazardModel' in nikodym.survival.__all__"
+        "assert 'DiscreteTimeHazardModel' in bayesrisk.survival.__all__"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 

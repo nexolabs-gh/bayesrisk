@@ -1,6 +1,6 @@
 # Gobernanza y ficha del modelo
 
-La gobernanza en Nikodym tiene tres capas, y conviene saber cuál viene sola y cuál se enciende:
+La gobernanza en bayesrisk tiene tres capas, y conviene saber cuál viene sola y cuál se enciende:
 
 | Capa | Cuándo existe | Dónde queda |
 |---|---|---|
@@ -88,12 +88,12 @@ import json
 from pathlib import Path
 from tempfile import mkdtemp
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.ui.datasets import materialize
-from nikodym.ui.presets import standard_preset
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.ui.datasets import materialize
+from bayesrisk.ui.presets import standard_preset
 
-workdir = Path(mkdtemp(prefix="nikodym-gobernanza-"))
+workdir = Path(mkdtemp(prefix="bayesrisk-gobernanza-"))
 preset = standard_preset()
 data_path = materialize(preset["dataset_id"], workdir=workdir)
 
@@ -106,10 +106,10 @@ cfg_dict["governance"] = {
     "limitations": ["No aplica a clientes con menos de seis meses de historia"],
     "review_period_months": 12,
 }
-config = NikodymConfig.model_validate(cfg_dict)
+config = BayesRiskConfig.model_validate(cfg_dict)
 
 run_dir = workdir / "corrida"
-study = nikodym.run(config, run_dir=run_dir)
+study = bayesrisk.run(config, run_dir=run_dir)
 assert study.run_context.status == "done"
 
 # La ficha queda en disco, en JSON canónico y en Markdown, junto al audit-trail.
@@ -122,7 +122,7 @@ print(len(card["decisions"]), "decisiones registradas;", len(card["metrics"]), "
 
 Los campos de `GovernanceConfig` y la estructura de `ModelCard` están en la
 [Referencia de la API](../api.md#gobernanza). La sección es experimental —fuera de la garantía
-SemVer 1.x—, así que sus campos pueden crecer dentro de la serie 1.x.
+SemVer 2.x—, así que sus campos pueden crecer dentro de la serie 2.x.
 
 ## Ver también
 

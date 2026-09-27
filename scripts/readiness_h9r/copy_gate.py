@@ -103,7 +103,7 @@ PUBLIC_COPY_TREES = (
     "web",
     # Los tooltips Pydantic, cards del backend, paneles y prosa de informes pueden nacer
     # en cualquier subpaquete. Tokenizar Python evita convertir comentarios internos en copy.
-    "src/nikodym",
+    "src/bayesrisk",
 )
 _IGNORED_PUBLIC_TREE_PARTS = frozenset({"__pycache__", "node_modules", "coverage"})
 _REPARSE_FLAG = int(getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
@@ -152,7 +152,9 @@ _NON_VISIBLE_HTML_CONTAINERS = frozenset({"script", "style"})
 # liberación a START y a la quiescencia acreditada, y liberación exigida sólo en `success`
 # (la retención sin quiescencia acreditada se declara). El digest se refija sobre el
 # archivo revisado en el cierre de esa capa, tras la revisión adversarial de Codex.
-_CATALOG_CONTRACTS_SHA256 = "8f72c7b2e130c74872524592851be1e614fcf29406aa3355bbd43d47bbe6eaf6"
+# Re-anclado el 2026-09-27 por el renombre nikodym → bayesrisk (D-REN-11): sólo cambió la
+# distribución que el contrato exige (`"distribution": {"const": "bayesrisk"}`).
+_CATALOG_CONTRACTS_SHA256 = "63d10309d01becbd902d5d728389183f54f547bc716ae0a76885c15353ea4475"
 _APPROVED_DOCUMENT_SECTION_SHA256 = {
     4: "74419bba83db8dedbf2325dc3d57c419afbcebc6f31312868eb4e426581018e9",
     6: "662a49bef5c75672218c9de196b01c3b6eb04b85e0a7602e1439910504cdb4e5",

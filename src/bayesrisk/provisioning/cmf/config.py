@@ -1,0 +1,535 @@
+"""Config declarativo de la capa ``provisioning.cmf`` (SDD-15 §5).
+
+:class:`CmfProvisioningConfig` es la sección ``provisioning_cmf`` de
+:class:`~bayesrisk.core.config.BayesRiskConfig`: cálculo determinista de provisiones regulatorias
+CMF B-1/B-3 con matrices versionadas y defaults conservadores. Toda clase hereda de
+:class:`~bayesrisk.core.config.BayesRiskBaseConfig` (``extra='forbid'`` y ``frozen=True``); cada
+campo declara ``title``/``description`` y metadatos ``ui_*`` para que la UI (SDD-23) sea un editor
+del mismo config. La sección es computacional, por lo que entra al ``config_hash`` global cuando
+está activa.
+
+**Experimental (fuera de la garantía SemVer 2.x).**
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Annotated, Literal, Self
+
+from pydantic import Field, field_validator, model_validator
+
+from bayesrisk.core.config import BayesRiskBaseConfig
+from bayesrisk.core.dataset_check import ContextoConfig, Requisito
+from bayesrisk.provisioning.cmf.exceptions import CmfConfigError
+
+CmfPdSourceDomain = Literal["model", "calibration"]
+CmfPdMappingMethod = Literal["provided_cmf_category", "pd_breaks"]
+CmfRoundingPolicy = Literal["none", "currency_2dp", "integer_currency"]
+CmfFinancialGuaranteePolicy = Literal["fail", "ignore_if_missing", "use_recoverable_amount"]
+ProbabilityBreak = Annotated[float, Field(ge=0.0, le=1.0)]
+
+__all__ = [
+    "CmfExposureConfig",
+    "CmfFinancialGuaranteePolicy",
+    "CmfGuaranteeConfig",
+    "CmfMatrixConfig",
+    "CmfPdMappingConfig",
+    "CmfPdMappingMethod",
+    "CmfPdSourceDomain",
+    "CmfProvisioningConfig",
+    "CmfRoundingPolicy",
+]
+
+#: Prefijo del ``loc`` de los errores de esta sección (D-EXI-5). Vive en un solo sitio para que un
+#: renombrado de la sección no haya que perseguirlo por cada ``raise``: la ruta que el error declara
+#: es **absoluta desde la raíz del config** —el ``except`` que la traduce vive en el endpoint y
+#: atrapa la validación del ``BayesRiskConfig`` entero, así que ahí ya no se sabe qué sección la
+#: emitió—. ⚠️ Es ``provisioning_cmf`` y no ``cmf``: el nombre del paquete no es el de la sección.
+_LOC_SECCION: tuple[str, ...] = ("provisioning_cmf",)
+
+_ROOT_COLUMN_FIELDS: tuple[str, ...] = (
+    "as_of_date_col",
+    "portfolio_col",
+    "debtor_id_col",
+    "category_col",
+    "days_past_due_col",
+    "product_type_col",
+)
+_EXPOSURE_COLUMN_FIELDS: tuple[str, ...] = (
+    "direct_exposure_col",
+    "contingent_amount_col",
+    "contingent_type_col",
+    "is_default_col",
+)
+
+
+class CmfMatrixConfig(BayesRiskBaseConfig):
+    """Configuración de matrices regulatorias CMF versionadas."""
+
+    # La fecha de cotejo vive en `data/manifest.json` y hasta ahora no llegaba a NINGUNA superficie
+    # que lea un humano: se emitía como decisión de auditoría, y el sink por defecto de los presets
+    # es nulo, así que con la config de fábrica se perdía entera. Este campo es el único de la
+    # sección que el formulario muestra y habla de la versión normativa, así que es donde la fecha
+    # se lee sin buscarla. Ojo: el identificador dice `2025_01` por la última circular incorporada,
+    # no porque todas las matrices sean de esa fecha — la más antigua en uso es de 2014, y decir
+    # sólo «2025» invitaría a leer todo el bundle como reciente.
+    active_version: str = Field(
+        default="cmf_b1_b3_2025_01",
+        title="Versión normativa activa",
+        description=(
+            "Identificador del bundle B-1/B-3 empaquetado que se usará para el cálculo CMF."
+        ),
+        json_schema_extra={
+            "ui_help": (
+                "Identificador del bundle B-1/B-3 empaquetado que se usará para el cálculo "
+                "CMF. Es un caso de referencia congelado: sus tablas se extrajeron del texto "
+                "oficial el 2026-06-23 y no se actualizan con cada circular, así que exigen "
+                "validación humana contra la norma vigente antes de cualquier uso productivo. "
+                "Cada matriz tiene además su propia fecha de vigencia y la más antigua en uso "
+                "es de 2014; el identificador nombra la última circular incorporada, no la "
+                "antigüedad del conjunto."
+            ),
+            "ui_widget": "selectbox",
+            "ui_group": "Matrices",
+            "ui_order": 1,
+        },
+    )
+    require_verified_rows: bool = Field(
+        default=True,
+        title="Exigir filas verificadas",
+        description=(
+            "Si está activado, rechaza las filas de matriz cuyo estado sea pendiente o no "
+            "verificado."
+        ),
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Matrices", "ui_order": 2},
+    )
+    # ⚠️ Las DOS ramas levantan, medido: `cmf/engine.py:714-724` construye el error y lo lanza sin
+    # condición, y este flag sólo elige la CLASE de excepción (`CmfMissingRegulatoryDataError` o
+    # `CmfMappingError`) con el mismo mensaje. Desactivarlo no deja pasar nada, así que el copy
+    # anterior —«si está activado… detiene la corrida»— prometía una elección cuyo desenlace no
+    # cambia.
+    fail_on_unmapped_contingent_type: bool = Field(
+        default=True,
+        title="Fallar ante tipo contingente no mapeado",
+        description=(
+            "Un tipo contingente sin fila B-3 verificada detiene la corrida en los dos casos: "
+            "este interruptor sólo cambia cómo se clasifica el error, no si ocurre. Desactivarlo "
+            "no permite continuar sin la fila normativa."
+        ),
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Matrices", "ui_order": 3},
+    )
+    fail_on_source_mismatch: bool = Field(
+        default=True,
+        title="Fallar ante hash/fuente inconsistente",
+        description=(
+            "Si está activado, una inconsistencia de hash, manifiesto o fuente normativa detiene "
+            "la corrida."
+        ),
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Matrices", "ui_order": 4},
+    )
+
+
+class CmfPdMappingConfig(BayesRiskBaseConfig):
+    """Configuración del mapeo opcional desde PD de modelo a categoría CMF."""
+
+    pd_source_domain: CmfPdSourceDomain = Field(
+        default="model",
+        title="Dominio fuente PD",
+        description="Dominio fuente PD; solo se lee con method='pd_breaks'.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "PD a PI", "ui_order": 1},
+    )
+    pd_source_key: str = Field(
+        default="raw_pd_frame",
+        title="Artefacto fuente PD",
+        description="Artefacto fuente PD; solo se lee con method='pd_breaks'.",
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "PD a PI", "ui_order": 2},
+    )
+    # Vive en el frame de PD que produce otro paso, no en el archivo del usuario.
+    pd_column: str = Field(
+        default="pd_raw",
+        title="Columna PD",
+        description="Columna PD; solo se lee con method='pd_breaks'.",
+        json_schema_extra={
+            "column_role": "derived",
+            "ui_widget": "text_input",
+            "ui_group": "PD a PI",
+            "ui_order": 3,
+        },
+    )
+    method: CmfPdMappingMethod = Field(
+        default="provided_cmf_category",
+        title="Método PD a categoría/PI",
+        description="Método para usar categoría CMF provista o cortes PD explícitos.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "PD a PI", "ui_order": 4},
+    )
+    pd_breaks: tuple[ProbabilityBreak, ...] = Field(
+        default_factory=tuple,
+        title="Cortes PD para categorías",
+        description="Cortes PD en [0, 1], estrictamente crecientes, para asignar categorías CMF.",
+        json_schema_extra={"ui_widget": "number_list", "ui_group": "PD a PI", "ui_order": 5},
+    )
+    categories: tuple[str, ...] = Field(
+        default_factory=tuple,
+        title="Categorías CMF resultantes",
+        description="Categorías CMF resultantes; con pd_breaks deben ser len(pd_breaks)+1.",
+        json_schema_extra={"ui_widget": "text_list", "ui_group": "PD a PI", "ui_order": 6},
+    )
+
+    @field_validator("pd_breaks", mode="after")
+    @classmethod
+    def _normaliza_pd_breaks(cls, value: tuple[float, ...]) -> tuple[float, ...]:
+        """Normaliza ``-0.0`` a ``0.0`` y rechaza cortes no finitos."""
+        normalized: list[float] = []
+        for item in value:
+            if not math.isfinite(item):
+                raise CmfConfigError(
+                    "pd_breaks debe contener números finitos en [0, 1].",
+                    # D-EXI-5: el error se ANCLA a su campo, para que el formulario pueda llevar
+                    # ahí al usuario en vez de dejarle un mensaje sin control.
+                    loc=(*_LOC_SECCION, "pd_mapping", "pd_breaks"),
+                )
+            normalized.append(0.0 if item == 0.0 else float(item))
+        return tuple(normalized)
+
+    @model_validator(mode="after")
+    def _check_pd_mapping(self) -> Self:
+        """Valida monotonicidad y cardinalidad de cortes/categorías de SDD-15 §5."""
+        _require_non_empty_strings(
+            {
+                "pd_source_key": self.pd_source_key,
+                "pd_column": self.pd_column,
+            },
+            context="pd_mapping",
+        )
+        categorias_vacias = [
+            idx for idx, category in enumerate(self.categories) if not category.strip()
+        ]
+        if categorias_vacias:
+            raise CmfConfigError(
+                f"Las categorías CMF de pd_mapping no pueden estar vacías: {categorias_vacias}.",
+                loc=(*_LOC_SECCION, "pd_mapping", "categories"),  # D-EXI-5
+            )
+        if any(
+            next_break <= current
+            for current, next_break in zip(self.pd_breaks, self.pd_breaks[1:], strict=False)
+        ):
+            raise CmfConfigError(
+                "pd_breaks debe ser estrictamente creciente.",
+                loc=(*_LOC_SECCION, "pd_mapping", "pd_breaks"),  # D-EXI-5
+            )
+        if self.method == "pd_breaks" and len(self.categories) != len(self.pd_breaks) + 1:
+            # SIN `loc` a propósito (D-EXI-5): es una invariante de CARDINALIDAD entre dos campos
+            # —`categories` y `pd_breaks`— y ninguno es el culpable. Añadir un corte y añadir una
+            # categoría la satisfacen por igual, así que anclar en uno mandaría al usuario al campo
+            # que no era en la mitad de los casos. Vacío significa «no pertenece a un campo».
+            raise CmfConfigError(
+                "pd_mapping.method='pd_breaks' exige len(categories) == len(pd_breaks) + 1."
+            )
+        return self
+
+    def requisitos_incumplidos_por_contexto(
+        self, contexto: ContextoConfig
+    ) -> tuple[Requisito, ...]:
+        """Lo que derivar la categoría desde la PD exige del resto del config (D-ABA-8).
+
+        🔴 **Aquí el DAG no puede ayudar, y ésa es la diferencia con sus tres hermanas de
+        provisiones.** ``CmfProvisioningStep.requires`` es **estático** —medido: con
+        ``method='pd_breaks'`` sigue declarando sólo el frame de datos— mientras el paso exige en
+        ejecución el artefacto de PD del dominio elegido. Las otras tres secciones de provisiones
+        reconstruyen su ``requires`` desde el config; ésta no, así que ni el orden de los pasos ni
+        ``check_pipeline`` pueden avisar, y el fallo llega con la carga ya pagada.
+
+        Con ``method='provided_cmf_category'`` no se exige nada: la categoría viene del archivo y
+        ``pd_source_domain`` **no se lee** — declararlo igual sería el falso positivo que D-RAM-1
+        documentó, un aviso sobre una rama que el motor nunca abre.
+        """
+        if self.method != "pd_breaks" or self.pd_source_domain in contexto.secciones_activas:
+            return ()
+        return (
+            Requisito(
+                path="pd_source_domain",
+                declared=self.pd_source_domain,
+                message=(
+                    "Pediste derivar la categoría de riesgo desde la probabilidad de incumplir, y "
+                    "la etapa que la produce no está activa en esta corrida. Actívala, elige la "
+                    "otra procedencia de esa probabilidad, o trae la categoría ya clasificada en "
+                    "tu archivo."
+                ),
+            ),
+        )
+
+
+class CmfExposureConfig(BayesRiskBaseConfig):
+    """Configuración de columnas y políticas de exposición CMF."""
+
+    direct_exposure_col: str = Field(
+        default="exposure_amount",
+        title="Exposición directa",
+        description="Columna con el saldo o exposición directa antes de contingentes.",
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Exposición",
+            "ui_order": 1,
+        },
+    )
+    contingent_amount_col: str = Field(
+        default="contingent_amount",
+        title="Monto contingente",
+        description="Columna con el monto contingente sujeto a factor B-3.",
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Exposición", "ui_order": 2},
+    )
+    contingent_type_col: str = Field(
+        default="contingent_type",
+        title="Tipo contingente B-3",
+        description="Columna con el tipo de crédito contingente para mapear a B-3.",
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Exposición", "ui_order": 3},
+    )
+    is_default_col: str = Field(
+        default="is_default",
+        title="Indicador incumplimiento",
+        description=("Columna booleana con el incumplimiento declarado por el banco."),
+        json_schema_extra={
+            "ui_help": (
+                "Columna booleana con el incumplimiento declarado por el banco: fuerza el "
+                "factor de conversión B-3 a 100 % en contingentes y, en cartera consumo, "
+                "clasifica al deudor en incumplimiento (PI 100 %) aunque su mora sea menor a "
+                "90 días."
+            ),
+            "ui_widget": "text_input",
+            "ui_group": "Exposición",
+            "ui_order": 4,
+        },
+    )
+    allow_negative_exposure: bool = Field(
+        default=False,
+        title="Permitir exposición negativa",
+        description=(
+            "Si está desactivado, una exposición directa o contingente negativa detiene la corrida."
+        ),
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Exposición", "ui_order": 5},
+    )
+    rounding: CmfRoundingPolicy = Field(
+        default="none",
+        title="Redondeo de provisión",
+        description="Política explícita de redondeo contable de la provisión calculada.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Exposición", "ui_order": 6},
+    )
+
+    @model_validator(mode="after")
+    def _check_columnas_exposure(self) -> Self:
+        """Valida que las columnas de exposición no estén vacías."""
+        _require_non_empty_strings(
+            _column_values(self, _EXPOSURE_COLUMN_FIELDS), context="exposure"
+        )
+        return self
+
+
+class CmfGuaranteeConfig(BayesRiskBaseConfig):
+    """Configuración de garantías y brechas regulatorias CMF."""
+
+    enable_aval_substitution: bool = Field(
+        default=True,
+        title="Aplicar sustitución por aval",
+        description="Activa la sustitución proporcional por avales/fianzas cuando aplique.",
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Garantías", "ui_order": 1},
+    )
+    financial_guarantee_policy: CmfFinancialGuaranteePolicy = Field(
+        default="fail",
+        title="Política ante aforos financieros faltantes",
+        description=(
+            "Tratamiento de las garantías financieras cuyos aforos no están verificados en la "
+            "normativa recopilada."
+        ),
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Garantías", "ui_order": 2},
+    )
+    recoverable_amount_col: str | None = Field(
+        default=None,
+        title="Columna monto recuperable",
+        description=(
+            "Columna con recoverable_amount validado por el usuario; obligatoria si "
+            "financial_guarantee_policy='use_recoverable_amount'."
+        ),
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Garantías",
+            "ui_order": 3,
+        },
+    )
+    # 🔴 SIN EFECTO HOY, medido: cero lecturas en `cmf/engine.py` y `cmf/step.py` — sus únicos usos
+    # en todo el árbol son esta declaración, un preset que lo fija y un test que comprueba que el
+    # preset lo trae. El copy prometía una elección que nada consume, y un interruptor que no hace
+    # nada enseña a desconfiar de los que sí lo hacen. Se dice en la descripción, que es copy
+    # público y se lee sin hover, en vez de retirar el campo —lo que movería el `config_hash` de
+    # todo config existente— o de callarlo.
+    require_recoverable_for_default: bool = Field(
+        default=True,
+        title="Exigir R para C1-C6",
+        description=(
+            "Sin efecto por ahora: el motor no lo consulta, así que activarlo o desactivarlo no "
+            "cambia el resultado de la corrida. Se conserva porque la regla que expresa —exigir "
+            "recupero para encasillar los incumplimientos C1-C6— sigue siendo la intención."
+        ),
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Garantías", "ui_order": 4},
+    )
+
+    @model_validator(mode="after")
+    def _check_recoverable_amount(self) -> Self:
+        """Valida la política ``use_recoverable_amount`` de SDD-15 §5."""
+        if self.recoverable_amount_col is not None and not self.recoverable_amount_col.strip():
+            raise CmfConfigError(
+                "recoverable_amount_col no puede estar vacío si se informa.",
+                loc=(*_LOC_SECCION, "guarantees", "recoverable_amount_col"),  # D-EXI-5
+            )
+        if (
+            self.financial_guarantee_policy == "use_recoverable_amount"
+            and self.recoverable_amount_col is None
+        ):
+            # El ancla va en lo que FALTA (`recoverable_amount_col`), no en la opción que lo exige:
+            # mismo criterio que «lgd.method='workout' exige recovery_col» (D-EXI-5).
+            raise CmfConfigError(
+                "financial_guarantee_policy='use_recoverable_amount' exige recoverable_amount_col.",
+                loc=(*_LOC_SECCION, "guarantees", "recoverable_amount_col"),
+            )
+        return self
+
+
+class CmfProvisioningConfig(BayesRiskBaseConfig):
+    """Calcula la provisión regulatoria CMF (Cap. B-1 y B-3) con el bundle de matrices versionado.
+
+    El bundle activo se elige en ``matrices.active_version``.
+
+    Motor experimental: fuera de la garantía SemVer 2.x.
+    """
+
+    schema_version: str = Field(
+        default="1.0.0",
+        title="Versión del sub-schema provisioning_cmf",
+        description="Versión local del schema de provisiones CMF para migraciones futuras.",
+        json_schema_extra={"ui_widget": "hidden", "ui_group": "General", "ui_order": 0},
+    )
+    type: Literal["standard"] = Field(
+        default="standard",
+        title="Tipo de sección provisioning_cmf",
+        description="Variante de la sección de provisiones CMF; hoy solo existe la estándar.",
+        json_schema_extra={"ui_widget": "hidden", "ui_group": "General", "ui_order": 1},
+    )
+    as_of_date_col: str = Field(
+        default="as_of_date",
+        title="Fecha de cálculo",
+        description="Columna con la fecha de cálculo o cierre contable de la provisión.",
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Columnas",
+            "ui_order": 1,
+        },
+    )
+    portfolio_col: str = Field(
+        # 🔴 D-SEG-9 ENMENDADO por D-JUR-8: los dos defaults YA NO están alineados, y es deliberado.
+        # Su razón original —la regla del máximo compara ambos motores sobre las MISMAS carteras,
+        # así que un default distinto los desalinea en toda config que no fije los dos— sigue
+        # siendo CIERTA, y su consecuencia se asume: al comparar con los defaults de fábrica hay
+        # que declarar `portfolio_col` en una de las dos secciones. La fricción la paga el caso
+        # chileno, que es el que tiene una norma detrás, y no el neutro, que es el caso general.
+        # `check_dataset` la señala antes de correr, así que no se descubre a mitad de una corrida.
+        # Este default sí es legítimamente chileno: nombra la cartera regulatoria de la CMF, que es
+        # el contenido de este motor. El que dejó de serlo es el del método interno.
+        default="cmf_portfolio",
+        title="Cartera CMF",
+        description="Columna con la cartera regulatoria CMF aplicable a cada exposición.",
+        json_schema_extra={
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Columnas",
+            "ui_order": 2,
+        },
+    )
+    debtor_id_col: str = Field(
+        default="debtor_id",
+        title="Identificador de deudor",
+        description="Columna de identificador de deudor para consolidaciones regulatorias.",
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Columnas", "ui_order": 3},
+    )
+    category_col: str = Field(
+        default="cmf_category",
+        title="Categoría CMF",
+        description=(
+            "Columna con la categoría o tramo CMF ya provisto en los datos; la lee el método "
+            "provided_cmf_category, que evita derivar la categoría desde la PD de un modelo."
+        ),
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Columnas", "ui_order": 4},
+    )
+    days_past_due_col: str = Field(
+        default="days_past_due",
+        title="Días de mora",
+        description=(
+            "Columna con días de mora usados por matrices de cartera grupal, consumo y vivienda."
+        ),
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Columnas", "ui_order": 5},
+    )
+    product_type_col: str = Field(
+        default="cmf_product_type",
+        title="Tipo producto CMF",
+        description="Columna con tipo de producto regulatorio para resolver matrices CMF.",
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Columnas", "ui_order": 6},
+    )
+    matrices: CmfMatrixConfig = Field(
+        default_factory=CmfMatrixConfig,
+        title="Matrices",
+        description="Configuración del bundle normativo B-1/B-3 activo.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Matrices", "ui_order": 1},
+    )
+    pd_mapping: CmfPdMappingConfig = Field(
+        default_factory=CmfPdMappingConfig,
+        title="PD a PI",
+        description="Configuración de categoría CMF provista o cortes PD explícitos.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "PD a PI", "ui_order": 1},
+    )
+    exposure: CmfExposureConfig = Field(
+        default_factory=CmfExposureConfig,
+        title="Exposición",
+        description="Configuración de columnas de exposición y política de redondeo.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Exposición", "ui_order": 1},
+    )
+    guarantees: CmfGuaranteeConfig = Field(
+        default_factory=CmfGuaranteeConfig,
+        title="Garantías",
+        description="Configuración de avales, garantías financieras y recuperos.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Garantías", "ui_order": 1},
+    )
+
+    @model_validator(mode="after")
+    def _check_invariantes(self) -> Self:
+        """Valida columnas y modo standalone de SDD-15 §5."""
+        if self.pd_mapping.method == "provided_cmf_category" and not self.category_col.strip():
+            # El ancla va en lo que falta —`category_col`, en la RAÍZ de la sección—, no en el
+            # método que lo exige, que vive un nivel más abajo en `pd_mapping` (D-EXI-5).
+            raise CmfConfigError(
+                "pd_mapping.method='provided_cmf_category' exige category_col no vacío.",
+                loc=(*_LOC_SECCION, "category_col"),
+            )
+        _require_non_empty_strings(
+            _column_values(self, _ROOT_COLUMN_FIELDS),
+            context="provisioning_cmf",
+        )
+        return self
+
+
+def _column_values(cfg: object, fields: tuple[str, ...]) -> dict[str, str]:
+    """Devuelve nombres de columnas configurados para validar strings no vacíos."""
+    return {field: getattr(cfg, field) for field in fields}
+
+
+def _require_non_empty_strings(values: dict[str, str], *, context: str) -> None:
+    """Valida que los nombres de campos/columnas declarativos no sean vacíos.
+
+    SIN ``loc`` a propósito (D-EXI-5). Dos razones, y basta cualquiera de las dos: el error acusa a
+    un CONJUNTO de campos —``empty`` puede traer varios, y el mensaje los enumera—, así que no hay
+    un campo único al que llevar al usuario; y la ruta tendría que componerse en runtime a partir
+    del nombre recibido, forma que el gate de rutas no sabe evaluar estáticamente y por eso rechaza.
+    """
+    empty = [name for name, value in values.items() if not value.strip()]
+    if empty:
+        raise CmfConfigError(f"Los campos de {context} no pueden estar vacíos: {empty}.")

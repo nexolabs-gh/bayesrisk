@@ -1662,7 +1662,7 @@
         },
         "theme": {
           "has_default": true,
-          "value": "nikodym"
+          "value": "bayesrisk"
         }
       },
       "report__PdfRenderConfig": {
@@ -4189,7 +4189,7 @@
           },
           "theme": {
             "has_default": true,
-            "value": "nikodym"
+            "value": "bayesrisk"
           }
         },
         "language": {
@@ -9787,10 +9787,10 @@
             "ui_widget": "text_input"
           },
           "theme": {
-            "default": "nikodym",
+            "default": "bayesrisk",
             "description": "Tema visual aplicado al HTML básico.",
             "enum": [
-              "nikodym",
+              "bayesrisk",
               "plain"
             ],
             "title": "Tema visual",
@@ -11930,7 +11930,7 @@
       }
     },
     "additionalProperties": false,
-    "description": "Configuración completa del estudio: todas las secciones del pipeline en un solo objeto.\n\nCada sección es opcional: la que se deja vacía no se ejecuta, y ``NikodymConfig()`` sin\nargumentos construye un estudio con todas las secciones vacías. El orden de ejecución lo fija\nel motor, no el orden de los campos; ``audit``, ``governance`` y ``tracking`` documentan y\nregistran la corrida, pero no son pasos del pipeline.",
+    "description": "Configuración completa del estudio: todas las secciones del pipeline en un solo objeto.\n\nCada sección es opcional: la que se deja vacía no se ejecuta, y ``BayesRiskConfig()`` sin\nargumentos construye un estudio con todas las secciones vacías. El orden de ejecución lo fija\nel motor, no el orden de los campos; ``audit``, ``governance`` y ``tracking`` documentan y\nregistran la corrida, pero no son pasos del pipeline.",
     "properties": {
       "audit": {
         "default": null,
@@ -12290,7 +12290,7 @@
                   }
                 ],
                 "default": "auto_asc_desc",
-                "description": "Default Nikodym: escoger automáticamente event rate ascendente/descendente.",
+                "description": "Default bayesrisk: escoger automáticamente event rate ascendente/descendente.",
                 "title": "Monotonía por defecto",
                 "ui_essential": true,
                 "ui_group": "Monotonía",
@@ -13338,7 +13338,7 @@
             "properties": {
               "backend": {
                 "default": "xgboost",
-                "description": "GBDT canónico 'xgboost' por defecto (requiere nikodym[xgboost]); svm/random_forest corren con el extra base [ml].",
+                "description": "GBDT canónico 'xgboost' por defecto (requiere bayesrisk[xgboost]); svm/random_forest corren con el extra base [ml].",
                 "enum": [
                   "svm",
                   "random_forest",
@@ -13568,7 +13568,7 @@
                 "title": "Iteraciones máximas del ajuste",
                 "type": "integer",
                 "ui_group": "Ajuste",
-                "ui_help": "Número máximo de iteraciones que puede dar el ajuste estadístico antes de declarar que no convergió. Subirlo puede ayudar en modelos con varias variables que convergen lento; Nikodym eleva a propósito el límite por defecto de statsmodels. No controla las rondas del stepwise, que se fijan en model.stepwise.max_iter.",
+                "ui_help": "Número máximo de iteraciones que puede dar el ajuste estadístico antes de declarar que no convergió. Subirlo puede ayudar en modelos con varias variables que convergen lento; bayesrisk eleva a propósito el límite por defecto de statsmodels. No controla las rondas del stepwise, que se fijan en model.stepwise.max_iter.",
                 "ui_order": 4,
                 "ui_widget": "number_input"
               },
@@ -14157,7 +14157,7 @@
         "anyOf": [
           {
             "additionalProperties": false,
-            "description": "Calcula la provisión regulatoria CMF (Cap. B-1 y B-3) con el bundle de matrices versionado.\n\nEl bundle activo se elige en ``matrices.active_version``.\n\nMotor experimental: fuera de la garantía SemVer 1.x.",
+            "description": "Calcula la provisión regulatoria CMF (Cap. B-1 y B-3) con el bundle de matrices versionado.\n\nEl bundle activo se elige en ``matrices.active_version``.\n\nMotor experimental: fuera de la garantía SemVer 2.x.",
             "properties": {
               "as_of_date_col": {
                 "column_role": "input",
@@ -14282,7 +14282,7 @@
         "anyOf": [
           {
             "additionalProperties": false,
-            "description": "Calcula las provisiones contables IFRS 9: staging y pérdida esperada (ECL).\n\nMotor experimental: fuera de la garantía SemVer 1.x.",
+            "description": "Calcula las provisiones contables IFRS 9: staging y pérdida esperada (ECL).\n\nMotor experimental: fuera de la garantía SemVer 2.x.",
             "properties": {
               "as_of_date_col": {
                 "column_role": "input",
@@ -14426,7 +14426,7 @@
         "anyOf": [
           {
             "additionalProperties": false,
-            "description": "Calcula las provisiones del método interno del banco por grupo homogéneo.\n\nMotor experimental: fuera de la garantía SemVer 1.x.",
+            "description": "Calcula las provisiones del método interno del banco por grupo homogéneo.\n\nMotor experimental: fuera de la garantía SemVer 2.x.",
             "properties": {
               "as_of_date_col": {
                 "column_role": "input",
@@ -15908,7 +15908,7 @@
         "title": "Validación avanzada"
       }
     },
-    "title": "NikodymConfig",
+    "title": "BayesRiskConfig",
     "type": "object"
   },
   "section_order": [

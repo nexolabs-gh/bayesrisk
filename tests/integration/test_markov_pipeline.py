@@ -6,9 +6,9 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.study import Study
-from nikodym.data.config import (
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     ColumnSpec,
     DataConfig,
     PartitionConfig,
@@ -18,11 +18,11 @@ from nikodym.data.config import (
     SchemaConfig,
     TargetConfig,
 )
-from nikodym.data.step import INPUT_FRAME_KEY
-from nikodym.markov.config import MarkovConfig, MarkovDynamicsConfig, MarkovInputConfig
-from nikodym.markov.results import MarkovResult
-from nikodym.markov.step import MARKOV_ARTIFACTS
-from nikodym.testing import assert_bitwise_reproducible
+from bayesrisk.data.step import INPUT_FRAME_KEY
+from bayesrisk.markov.config import MarkovConfig, MarkovDynamicsConfig, MarkovInputConfig
+from bayesrisk.markov.results import MarkovResult
+from bayesrisk.markov.step import MARKOV_ARTIFACTS
+from bayesrisk.testing import assert_bitwise_reproducible
 
 ROOT_SEED = 20_260_629
 
@@ -101,7 +101,7 @@ def _markov_config() -> MarkovConfig:
 def _study() -> Study:
     """Study con secciones ``data`` y ``markov`` activas."""
     return Study(
-        NikodymConfig(
+        BayesRiskConfig(
             repro=ReproConfig(seed=ROOT_SEED),
             data=_data_config(),
             markov=_markov_config(),

@@ -22,7 +22,7 @@ import numpy as np
 import pytest
 
 pytest.importorskip("fastapi", reason="el catálogo de trabajos vive en la capa ui")
-pytest.importorskip("optbinning", reason="el pipeline del scorecard exige nikodym[scoring]")
+pytest.importorskip("optbinning", reason="el pipeline del scorecard exige bayesrisk[scoring]")
 
 from test_trabajo_scorecard_llega_a_done import DATASET, _config_del_trabajo, _corre
 
@@ -47,7 +47,7 @@ def corrida(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
 
 
 def _resultados(corrida: dict[str, Any]) -> dict[str, Any]:
-    from nikodym.ui import runs
+    from bayesrisk.ui import runs
 
     return runs.load_results(corrida["resultado"]["run_id"], workdir=corrida["workdir"])
 
@@ -89,7 +89,7 @@ def test_las_filas_recalculadas_son_las_del_paso_de_estabilidad(corrida: dict[st
 
 
 def test_el_informe_dice_de_donde_salio_el_psi(corrida: dict[str, Any]) -> None:
-    from nikodym.ui import runs
+    from bayesrisk.ui import runs
 
     html = runs.load_report(corrida["resultado"]["run_id"], workdir=corrida["workdir"])
     assert html

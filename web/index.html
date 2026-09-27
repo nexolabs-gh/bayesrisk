@@ -8,7 +8,7 @@
     <script>
       ;(function () {
         try {
-          var t = localStorage.getItem("nikodym-theme")
+          var t = localStorage.getItem("bayesrisk-theme")
           if (t !== "light") document.documentElement.classList.add("dark")
         } catch (e) {
           document.documentElement.classList.add("dark")
@@ -17,13 +17,13 @@
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--
-      Token efímero de la sesión local: el launcher (`nikodym-ui`) sustituye este placeholder EN
+      Token efímero de la sesión local: el launcher (`bayesrisk-ui`) sustituye este placeholder EN
       MEMORIA al servir el index, y la respuesta va con `Cache-Control: no-store`. El archivo en
       disco conserva siempre el literal. Debe aparecer exactamente UNA vez: el preflight cuenta las
       ocurrencias y falla antes de bind si no. En la demo estática nadie lo sustituye, y el front
       trata el literal como "sin token" (ver `sessionToken()` en `src/lib/api.ts`).
     -->
-    <meta name="nikodym-token" content="__NIKODYM_TOKEN__" />
+    <meta name="bayesrisk-token" content="__BAYESRISK_TOKEN__" />
     <!--
       La descripción se lee sola (buscador, previsualización de un link), así que la salvedad viaja
       dentro de ella: el motor calcula IFRS 9, CMF y stress, pero la interfaz llega al scorecard y a
@@ -33,7 +33,7 @@
       name="description"
       content="Motor de riesgo de crédito en Python (Apache-2.0). PD, LGD y EAD, validación de modelos, provisiones IFRS 9/ECL, stress testing y forward-looking; cada corrida entrega el informe de validación que la respalda. La normativa local se aterriza encima."
     />
-    <title>Nikodym RiskLib</title>
+    <title>bayesrisk</title>
   </head>
   <body>
     <div id="root"></div>

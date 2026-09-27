@@ -11,9 +11,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from nikodym.ui import datasets
-from nikodym.ui.datasets import list_datasets, materialize
-from nikodym.ui.exceptions import UiDatasetError
+from bayesrisk.ui import datasets
+from bayesrisk.ui.datasets import list_datasets, materialize
+from bayesrisk.ui.exceptions import UiDatasetError
 
 _ROLES_ESPERADOS = {"id", "feature", "segment", "cohort", "target"}
 
@@ -212,8 +212,8 @@ def test_provisiones_consumo_alimenta_el_motor_cmf_real() -> None:
     de verdad (la PE de un deudor al día sin hipotecario debe ser PI 6,6 % x PDI 56,6 % = 3,74 %) y
     que exista cartera en incumplimiento, que es donde la PI es del 100 % y donde está la plata.
     """
-    from nikodym.provisioning.cmf import CmfProvisioningConfig
-    from nikodym.provisioning.cmf.engine import CmfProvisioningEngine
+    from bayesrisk.provisioning.cmf import CmfProvisioningConfig
+    from bayesrisk.provisioning.cmf.engine import CmfProvisioningEngine
 
     frame = datasets._generate("provisiones_consumo")
     resultado = CmfProvisioningEngine.from_config(CmfProvisioningConfig()).calculate(
@@ -312,11 +312,11 @@ def test_materialize_workdir_relativo_conserva_ruta_portable(
 ) -> None:
     """Un workdir relativo no se expande a una ruta absoluta dependiente del checkout."""
     monkeypatch.chdir(tmp_path)
-    workdir = Path(".nikodym_ui")
+    workdir = Path(".bayesrisk_ui")
 
     ruta = materialize("consumo_comportamiento", workdir=workdir)
 
-    assert ruta == Path(".nikodym_ui/datasets/consumo_comportamiento.parquet")
+    assert ruta == Path(".bayesrisk_ui/datasets/consumo_comportamiento.parquet")
     assert ruta.is_file()
     assert not ruta.is_absolute()
 

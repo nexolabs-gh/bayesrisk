@@ -1,13 +1,13 @@
 # Soporte
 
-Nikodym es software libre (Apache-2.0) mantenido por **Nexo Labs**. Esta página dice quién responde
+bayesrisk es software libre (Apache-2.0) mantenido por **Bayes Advisory**. Esta página dice quién responde
 qué, para que sepas a qué atenerte antes de apoyarte en la librería.
 
 ## Antes de preguntar
 
-- **[Documentación](https://docs.nikodym.cl)** — guías, referencia de configuración y el detalle de
+- **[Documentación](https://docs.bayesadvisory.cl)** — guías, referencia de configuración y el detalle de
   cada dominio.
-- **[Demo](https://demo.nikodym.cl)** — tres corridas reales del motor (scorecard, provisiones CMF,
+- **[Demo](https://demo.bayesadvisory.cl)** — tres corridas reales del motor (scorecard, provisiones CMF,
   IFRS 9) con sus informes descargables.
 - **[CHANGELOG](CHANGELOG.md)** — qué cambió en cada versión, incluidas las correcciones de cálculo.
 
@@ -18,7 +18,7 @@ qué, para que sepas a qué atenerte antes de apoyarte en la librería.
 | Reportar un bug | [Issues](https://github.com/nexolabs-gh/nikodym/issues) | Mejor esfuerzo. Incluye versión, config mínimo y traza completa. |
 | Proponer una capacidad | [Issues](https://github.com/nexolabs-gh/nikodym/issues) | Se evalúa contra el roadmap; toda capacidad nueva pasa por un documento de diseño. |
 | Reportar una vulnerabilidad | Ver [SECURITY.md](SECURITY.md) | **No uses issues públicos.** |
-| Implantación, adaptación regulatoria o validación | [Nexo Labs](https://www.nikodym.cl/#contact) | Servicio comercial, con acuerdo y plazos por contrato. |
+| Implantación, adaptación regulatoria o validación | [Bayes Advisory](https://www.bayesadvisory.cl/#contact) | Servicio comercial, con acuerdo y plazos por contrato. |
 
 ## Lo que este proyecto no promete
 

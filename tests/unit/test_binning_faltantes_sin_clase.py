@@ -29,21 +29,21 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym
-import nikodym.binning.transformer as transformer_module
-from nikodym.binning.config import BinningConfig, VariableBinningConfig
-from nikodym.binning.exceptions import BinningFitError
-from nikodym.binning.step import _active_overrides
-from nikodym.binning.transformer import WoEBinner
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.data.special import MaskedFrame
-from nikodym.guided.summaries import _bins_asignados
-from nikodym.scorecard.bundle import FittedScorecardBundle
-from nikodym.scorecard.config import PointOverrideConfig
-from nikodym.scorecard.exceptions import ScorecardFitError
-from nikodym.scorecard.scaler import PointsScaler
+import bayesrisk
+import bayesrisk.binning.transformer as transformer_module
+from bayesrisk.binning.config import BinningConfig, VariableBinningConfig
+from bayesrisk.binning.exceptions import BinningFitError
+from bayesrisk.binning.step import _active_overrides
+from bayesrisk.binning.transformer import WoEBinner
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.data.special import MaskedFrame
+from bayesrisk.guided.summaries import _bins_asignados
+from bayesrisk.scorecard.bundle import FittedScorecardBundle
+from bayesrisk.scorecard.config import PointOverrideConfig
+from bayesrisk.scorecard.exceptions import ScorecardFitError
+from bayesrisk.scorecard.scaler import PointsScaler
 
-# Importar `nikodym` no arrastra OptBinning (import perezoso); ajustar sí.
+# Importar `bayesrisk` no arrastra OptBinning (import perezoso); ajustar sí.
 pytest.importorskip("optbinning")
 
 
@@ -425,8 +425,8 @@ def _archivo_con_faltantes(tmp_path: Path) -> Path:
     return ruta
 
 
-def _puerta(ruta: Path, tmp_path: Path, nombre: str) -> nikodym.Scorecard:
-    sc = nikodym.Scorecard(
+def _puerta(ruta: Path, tmp_path: Path, nombre: str) -> bayesrisk.Scorecard:
+    sc = bayesrisk.Scorecard(
         ruta,
         target={"col": "bad_flag", "op": "==", "value": 1},
         id="loan_id",
@@ -438,7 +438,7 @@ def _puerta(ruta: Path, tmp_path: Path, nombre: str) -> nikodym.Scorecard:
     return sc
 
 
-def _decisiones_del_trail(sc: nikodym.Scorecard, regla: str) -> list[dict[str, Any]]:
+def _decisiones_del_trail(sc: bayesrisk.Scorecard, regla: str) -> list[dict[str, Any]]:
     trail = Path(sc.project_dir) / "run" / "audit_trail.jsonl"
     eventos = [json.loads(linea) for linea in trail.read_text(encoding="utf-8").splitlines()]
     return [
@@ -497,7 +497,7 @@ def test_override_en_la_referencia_llega_al_bundle_y_en_el_bin_asignado_se_recha
             }
         )
 
-    study = nikodym.run(con_override(asignado.reference_bin), run_dir=tmp_path / "referencia")
+    study = bayesrisk.run(con_override(asignado.reference_bin), run_dir=tmp_path / "referencia")
     assert study.run_context.status == "done", study.run_context.error
     datos = pd.read_parquet(_archivo_con_faltantes)
     faltan = datos.index[datos["antiguedad"].isna()]
@@ -510,7 +510,7 @@ def test_override_en_la_referencia_llega_al_bundle_y_en_el_bin_asignado_se_recha
     por_fila = aplicado.application_frame.set_index("input_position")["score"].astype(float)
     assert (por_fila.loc[faltan] - score.loc[faltan, "score"].astype(float)).abs().max() == 0.0
 
-    rechazado = nikodym.run(con_override("Missing"), run_dir=tmp_path / "asignado")
+    rechazado = bayesrisk.run(con_override("Missing"), run_dir=tmp_path / "asignado")
     assert rechazado.run_context.status == "failed"
     assert rechazado.run_context.error is not None
     assert "comparte los puntos de su tramo de referencia" in rechazado.run_context.error.message

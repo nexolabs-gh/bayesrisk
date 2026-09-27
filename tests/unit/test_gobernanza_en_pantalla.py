@@ -6,7 +6,7 @@ preespecifica en su §6 para la capa 11/12/13/14, con las tres respuestas de Cam
 - §6.4 · los 10 trabajos ofrecen ``governance`` y sigue apagada de fábrica —en los cuatro presets
   **y** en el esqueleto de cada trabajo, que la declara **latente** (§8.1-3)—;
 - §6.5 / §6.10 · ``purpose`` en blanco se rechaza en el motor (``GovernanceConfig`` y
-  ``NikodymConfig``) y en ``/api/validate``, con el ``loc`` del campo y el mensaje en español
+  ``BayesRiskConfig``) y en ``/api/validate``, con el ``loc`` del campo y el mensaje en español
   (§8.1-1); la tercera capa —la tarjeta de decisiones— vive en ``web/src/lib/jobs.test.ts``;
 - §6.6 · ``scenario_log_filename`` no aparece en la superficie del formulario (D-GOB-14, D-SUB);
 - §6.8 / D-GOB-13 · las 12 descripciones visibles son el copy aprobado, palabra por palabra, y
@@ -45,19 +45,19 @@ import pytest
 from _ui_f1 import full_f1_config, write_behavior_parquet
 from pydantic import BaseModel, ValidationError
 
-import nikodym
-from nikodym.audit import AuditConfig, EnvironmentSnapshot
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.schema import build_full_json_schema, rama_objeto
-from nikodym.data.card import DataCardSection
-from nikodym.governance.config import GovernanceConfig
-from nikodym.governance.model_card import DecisionRecord, ModelCard
-from nikodym.ui import routes
-from nikodym.ui._static_index import resolve_local_resources
-from nikodym.ui.jobs import _SECCIONES_LATENTES, list_jobs
-from nikodym.ui.presets import get_preset, list_presets
-from nikodym.ui.serializers import serialize_study
-from nikodym.ui.settings import UiConfig
+import bayesrisk
+from bayesrisk.audit import AuditConfig, EnvironmentSnapshot
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.schema import build_full_json_schema, rama_objeto
+from bayesrisk.data.card import DataCardSection
+from bayesrisk.governance.config import GovernanceConfig
+from bayesrisk.governance.model_card import DecisionRecord, ModelCard
+from bayesrisk.ui import routes
+from bayesrisk.ui._static_index import resolve_local_resources
+from bayesrisk.ui.jobs import _SECCIONES_LATENTES, list_jobs
+from bayesrisk.ui.presets import get_preset, list_presets
+from bayesrisk.ui.serializers import serialize_study
+from bayesrisk.ui.settings import UiConfig
 
 _RAIZ = Path(__file__).resolve().parents[2]
 _SCHEMA_TS = _RAIZ / "web" / "src" / "lib" / "schema.ts"
@@ -120,7 +120,7 @@ COPY_APROBADO: dict[str, str] = {
 #: los literales de Python. Anclado abajo contra el texto viejo real, para que el detector no
 #: pueda estar midiendo la nada.
 _CODIGOS_INTERNOS = re.compile(
-    r"nikodym\.|SR 11-7|effective challenge|FALTA-DATO|DATO-INSTITUCIONAL|Registry|JSONL|"
+    r"bayesrisk\.|SR 11-7|effective challenge|FALTA-DATO|DATO-INSTITUCIONAL|Registry|JSONL|"
     r"append-only|earnings-management|\b(None|True|False)\b"
 )
 
@@ -218,10 +218,10 @@ def test_governance_config_rechaza_purpose_en_blanco(en_blanco: str) -> None:
 
 
 @pytest.mark.parametrize("en_blanco", _EN_BLANCO, ids=["vacio", "espacios", "tab_y_salto"])
-def test_nikodym_config_rechaza_purpose_en_blanco_con_el_loc_del_campo(en_blanco: str) -> None:
+def test_bayesrisk_config_rechaza_purpose_en_blanco_con_el_loc_del_campo(en_blanco: str) -> None:
     """El mismo veredicto desde la raíz del config, que es lo que `/api/run` valida primero."""
     with pytest.raises(ValidationError) as capturado:
-        NikodymConfig.model_validate({"governance": {"purpose": en_blanco}})
+        BayesRiskConfig.model_validate({"governance": {"purpose": en_blanco}})
     assert [tuple(e["loc"]) for e in capturado.value.errors()] == [("governance", "purpose")]
 
 
@@ -360,7 +360,7 @@ def test_la_decision_de_purpose_reusa_frases_del_copy_aprobado() -> None:
 # ─────────────────── §6.7 / D-GOB-15/16: la ficha se pinta y su tipo es el real ───────────────────
 
 _RESULTS_TYPES_TS = _RAIZ / "web" / "src" / "lib" / "results-types.ts"
-_STATIC = _RAIZ / "src" / "nikodym" / "ui" / "static"
+_STATIC = _RAIZ / "src" / "bayesrisk" / "ui" / "static"
 _FIXTURES_DEL_BUNDLE = (
     _RAIZ / "web" / "src" / "fixtures" / "schema.json",
     _RAIZ / "web" / "src" / "fixtures" / "jobs.json",
@@ -423,7 +423,7 @@ def card_serializado(fake_binning_process: object, tmp_path: Path) -> dict[str, 
     config = full_f1_config(
         str(parquet), audit=AuditConfig(enabled=True, trail_filename=str(trail))
     )
-    study = nikodym.run(config)
+    study = bayesrisk.run(config)
     assert study.run_context.status == "done"
     payload = serialize_study(
         study, governance=GovernanceConfig(purpose="Ficha en pantalla (S4)"), trail_path=trail
@@ -503,7 +503,7 @@ def test_la_demo_f1_trae_su_ficha_y_la_ifrs9_sigue_sin_ella() -> None:
     assert por_nombre["results-ifrs9.json"]["model_card"] is None
     ficha = por_nombre["results-f1.json"]["model_card"]
     assert isinstance(ficha, dict)
-    assert ficha["purpose"].startswith("Demostración pública de Nikodym RiskLib")
+    assert ficha["purpose"].startswith("Demostración pública de bayesrisk")
 
 
 def test_el_bundle_servido_pinta_la_ficha_del_modelo() -> None:

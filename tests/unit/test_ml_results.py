@@ -12,9 +12,9 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.ml.results as ml_results
-from nikodym.core.base import NikodymClassifier
-from nikodym.ml.results import (
+import bayesrisk.ml.results as ml_results
+from bayesrisk.core.base import BayesRiskClassifier
+from bayesrisk.ml.results import (
     MLBackendMetadata,
     MLCardSection,
     MLComparisonRecord,
@@ -22,8 +22,8 @@ from nikodym.ml.results import (
 )
 
 
-class _FakeChallenger(NikodymClassifier):
-    """Emula el ``MLChallenger`` (subclase de ``NikodymClassifier``) que crea B12.4."""
+class _FakeChallenger(BayesRiskClassifier):
+    """Emula el ``MLChallenger`` (subclase de ``BayesRiskClassifier``) que crea B12.4."""
 
 
 # ── MLComparisonRecord ──────────────────────────────────────────────────────────────────────────
@@ -359,9 +359,9 @@ def test_result_comparison_frame_vacio() -> None:
 def test_ml_results_import_liviano_y_all_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.ml;"
+        "import bayesrisk.ml;"
         "assert 'pandas' not in sys.modules, 'pandas';"
-        "import nikodym.ml.results as r;"
+        "import bayesrisk.ml.results as r;"
         "blocked=[m for m in ('pandas','numpy','sklearn','xgboost','lightgbm','catboost') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"

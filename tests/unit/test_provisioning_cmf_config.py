@@ -1,4 +1,4 @@
-"""Tests de ``CmfProvisioningConfig`` (SDD-15 §5) e integración con ``NikodymConfig``."""
+"""Tests de ``CmfProvisioningConfig`` (SDD-15 §5) e integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -12,24 +12,24 @@ import yaml
 from hypothesis import given, settings
 from pydantic import ValidationError
 
-import nikodym.provisioning.cmf as cmf_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.provisioning.cmf as cmf_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.provisioning.cmf.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.provisioning.cmf.config import (
     CmfExposureConfig,
     CmfGuaranteeConfig,
     CmfMatrixConfig,
     CmfPdMappingConfig,
     CmfProvisioningConfig,
 )
-from nikodym.provisioning.cmf.exceptions import (
+from bayesrisk.provisioning.cmf.exceptions import (
     CmfCalculationError,
     CmfConfigError,
     CmfInputError,
@@ -38,7 +38,7 @@ from nikodym.provisioning.cmf.exceptions import (
     CmfMissingRegulatoryDataError,
     CmfProvisioningError,
 )
-from nikodym.testing.strategies import _config_cls_for_domain, nikodym_config_strategy
+from bayesrisk.testing.strategies import _config_cls_for_domain, bayesrisk_config_strategy
 
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 
@@ -135,44 +135,44 @@ def test_round_trip_yaml_cmfprovisioningconfig() -> None:
     assert CmfProvisioningConfig.model_validate(yaml.safe_load(text)) == cfg
 
 
-def test_nikodymconfig_provisioning_cmf_instancia() -> None:
-    """Pasar una instancia ``CmfProvisioningConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_provisioning_cmf_instancia() -> None:
+    """Pasar una instancia ``CmfProvisioningConfig`` a ``BayesRiskConfig`` la conserva."""
     provisioning = CmfProvisioningConfig()
-    cfg = NikodymConfig(provisioning_cmf=provisioning)
+    cfg = BayesRiskConfig(provisioning_cmf=provisioning)
     assert isinstance(cfg.provisioning_cmf, CmfProvisioningConfig)
     assert cfg.provisioning_cmf is provisioning
 
 
-def test_nikodymconfig_provisioning_cmf_dict_coacciona() -> None:
+def test_bayesriskconfig_provisioning_cmf_dict_coacciona() -> None:
     """Un dict en ``provisioning_cmf`` se coacciona por el hook cargado."""
-    cfg = NikodymConfig(provisioning_cmf={"exposure": {"rounding": "integer_currency"}})
+    cfg = BayesRiskConfig(provisioning_cmf={"exposure": {"rounding": "integer_currency"}})
     assert isinstance(cfg.provisioning_cmf, CmfProvisioningConfig)
     assert cfg.provisioning_cmf.exposure.rounding == "integer_currency"
 
 
-def test_nikodymconfig_provisioning_cmf_none_explicito() -> None:
+def test_bayesriskconfig_provisioning_cmf_none_explicito() -> None:
     """``provisioning_cmf=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(provisioning_cmf=None).provisioning_cmf is None
+    assert BayesRiskConfig(provisioning_cmf=None).provisioning_cmf is None
 
 
-def test_nikodymconfig_provisioning_cmf_core_only_acepta_blob_json(
+def test_bayesriskconfig_provisioning_cmf_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``provisioning_cmf`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_PROVISIONING_CMF_CONFIG_CLS", None)
-    cfg = NikodymConfig(provisioning_cmf={"exposure": {"rounding": "integer_currency"}})
+    cfg = BayesRiskConfig(provisioning_cmf={"exposure": {"rounding": "integer_currency"}})
     assert cfg.provisioning_cmf == {"exposure": {"rounding": "integer_currency"}}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_provisioning_cmf_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_provisioning_cmf_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``provisioning_cmf`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_PROVISIONING_CMF_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(provisioning_cmf=blob)
+        BayesRiskConfig(provisioning_cmf=blob)
 
 
 def test_pd_breaks_validos_normalizan_menos_cero() -> None:
@@ -331,16 +331,16 @@ def test_config_hash_cambia_al_variar_provisioning_cmf(
     provisioning: CmfProvisioningConfig,
 ) -> None:
     """``provisioning_cmf`` no es INFRA: matrices, mapping, garantías y redondeo cambian hash."""
-    base = config_hash(NikodymConfig(provisioning_cmf=CmfProvisioningConfig()))
-    variado = config_hash(NikodymConfig(provisioning_cmf=provisioning))
+    base = config_hash(BayesRiskConfig(provisioning_cmf=CmfProvisioningConfig()))
+    variado = config_hash(BayesRiskConfig(provisioning_cmf=provisioning))
     assert "provisioning_cmf" not in INFRA_SECTIONS
     assert variado != base
 
 
 @settings(max_examples=12, deadline=None)
-@given(cfg=nikodym_config_strategy(sections=["provisioning_cmf"]))
-def test_nikodym_config_strategy_genera_configs_provisioning_cmf_validos(
-    cfg: NikodymConfig,
+@given(cfg=bayesrisk_config_strategy(sections=["provisioning_cmf"]))
+def test_bayesrisk_config_strategy_genera_configs_provisioning_cmf_validos(
+    cfg: BayesRiskConfig,
 ) -> None:
     """La estrategia pública genera configs raíz válidos con ``provisioning_cmf`` activo."""
     assert isinstance(cfg.provisioning_cmf, CmfProvisioningConfig)
@@ -372,7 +372,7 @@ def test_cmf_public_api_minimo() -> None:
     assert "CmfProvisioningConfig" in cmf_pkg.__all__
 
 
-def test_cmf_errors_descienden_de_nikodym_error() -> None:
+def test_cmf_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``provisioning.cmf`` cuelgan de la raíz propia de la librería."""
     for error_cls in (
         CmfProvisioningError,
@@ -383,22 +383,22 @@ def test_cmf_errors_descienden_de_nikodym_error() -> None:
         CmfMissingRegulatoryDataError,
         CmfCalculationError,
     ):
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
     assert issubclass(CmfMissingRegulatoryDataError, CmfMatrixError)
 
 
 def test_import_provisioning_cmf_config_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.provisioning.cmf.config`` registra hook sin arrastrar stack pesado."""
+    """``import bayesrisk.provisioning.cmf.config`` registra hook sin arrastrar stack pesado."""
     code = (
-        "import nikodym.provisioning.cmf.config, nikodym.core, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.provisioning.cmf.config import CmfProvisioningConfig;"
+        "import bayesrisk.provisioning.cmf.config, bayesrisk.core, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.provisioning.cmf.config import CmfProvisioningConfig;"
         "bloqueados=[m for m in "
-        "('nikodym.data','pandera','pyarrow','pandas','nikodym.tracking','mlflow') "
+        "('bayesrisk.data','pandera','pyarrow','pandas','bayesrisk.tracking','mlflow') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "assert 'nikodym.provisioning.cmf.matrices' not in sys.modules;"
-        "cfg=NikodymConfig(provisioning_cmf={'exposure': {'rounding': 'currency_2dp'}});"
+        "assert 'bayesrisk.provisioning.cmf.matrices' not in sys.modules;"
+        "cfg=BayesRiskConfig(provisioning_cmf={'exposure': {'rounding': 'currency_2dp'}});"
         "assert isinstance(cfg.provisioning_cmf, CmfProvisioningConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -407,11 +407,11 @@ def test_import_provisioning_cmf_config_liviano_y_registra_hook_en_proceso_fresc
 def test_core_valida_provisioning_cmf_como_blob_opaco_sin_importar_cmf() -> None:
     """El core acepta ``provisioning_cmf`` JSON/dict sin importar la capa CMF."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(provisioning_cmf={'exposure': {'rounding': 'integer_currency'}});"
+        "cfg=BayesRiskConfig(provisioning_cmf={'exposure': {'rounding': 'integer_currency'}});"
         "assert cfg.provisioning_cmf == {'exposure': {'rounding': 'integer_currency'}};"
-        "assert 'nikodym.provisioning.cmf' not in sys.modules"
+        "assert 'bayesrisk.provisioning.cmf' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -423,4 +423,4 @@ def test_config_cls_for_domain_resuelve_provisioning_cmf() -> None:
 
 def test_config_hash_default_con_provisioning_cmf_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``provisioning_cmf`` con valor None."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH

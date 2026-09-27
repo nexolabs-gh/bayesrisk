@@ -10,7 +10,7 @@ import random
 
 import pytest
 
-from nikodym.core.seeding import SeedManager
+from bayesrisk.core.seeding import SeedManager
 
 # — Golden values congelados (SeedManager(42)) —
 GOLDEN_BINNING_INTS = [35866044, 1925873718, 1338300275, 1612367033, 1074782850]

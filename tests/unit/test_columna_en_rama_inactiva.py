@@ -25,9 +25,9 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel, Field
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.schema import cargar_configs_de_dominio
-from nikodym.core.dataset_check import (
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.schema import cargar_configs_de_dominio
+from bayesrisk.core.dataset_check import (
     CLAVE_ROL,
     METODO_COLUMNAS_INACTIVAS,
     ROL_ENTRADA,
@@ -35,8 +35,8 @@ from nikodym.core.dataset_check import (
     _rol,
     check_dataset,
 )
-from nikodym.core.study import _DOMAIN_CONFIG_CLASSES
-from nikodym.eda.config import DefaultRateConfig
+from bayesrisk.core.study import _DOMAIN_CONFIG_CLASSES
+from bayesrisk.eda.config import DefaultRateConfig
 
 #: Nombre que no está en ningún dataset: si el preflight lo mira, lo acusa.
 FANTASMA = "columna_que_no_existe_en_ningun_archivo"
@@ -172,13 +172,13 @@ def _columnas_declaradas_bajo(valor: object) -> tuple[str, ...]:
     return tuple(ruta for ruta, _rol_, _col in _declaraciones(valor))
 
 
-def _config_ifrs9(subseccion: str, valores: dict[str, object]) -> NikodymConfig:
+def _config_ifrs9(subseccion: str, valores: dict[str, object]) -> BayesRiskConfig:
     """Un config con `provisioning_ifrs9` y `valores` escritos en una de sus sub-secciones."""
     cargar_configs_de_dominio()
-    return NikodymConfig.model_validate({"provisioning_ifrs9": {subseccion: valores}})
+    return BayesRiskConfig.model_validate({"provisioning_ifrs9": {subseccion: valores}})
 
 
-def _acusa(config: NikodymConfig, columna: str) -> bool:
+def _acusa(config: BayesRiskConfig, columna: str) -> bool:
     """¿El preflight señala `columna` como ausente?"""
     resultado = check_dataset(config, COLUMNAS)
     return any(m.declared == columna for m in resultado.mismatches)
@@ -201,10 +201,10 @@ _CASO_SUBSECCION_INERTE: tuple[dict[str, object], dict[str, object]] = (
 )
 
 
-def _config_interno(valores: dict[str, object]) -> NikodymConfig:
+def _config_interno(valores: dict[str, object]) -> BayesRiskConfig:
     """Un config con `provisioning_internal` agrupando por una columna que el dataset sí trae."""
     cargar_configs_de_dominio()
-    return NikodymConfig.model_validate(
+    return BayesRiskConfig.model_validate(
         {
             "provisioning_internal": {
                 "portfolio_col": "cartera",
@@ -307,10 +307,10 @@ _CASOS_VALIDATION: tuple[tuple[str, dict[str, object], dict[str, object]], ...] 
 )
 
 
-def _config_validation(valores: dict[str, object]) -> NikodymConfig:
+def _config_validation(valores: dict[str, object]) -> BayesRiskConfig:
     """Un config con la sección `validation` escrita tal cual."""
     cargar_configs_de_dominio()
-    return NikodymConfig.model_validate({"validation": valores})
+    return BayesRiskConfig.model_validate({"validation": valores})
 
 
 @pytest.mark.parametrize(("campo", "apagada", "encendida"), _CASOS_VALIDATION)
@@ -356,10 +356,10 @@ _CASOS_EDA: tuple[tuple[str, dict[str, object], dict[str, object]], ...] = (
 )
 
 
-def _config_eda(valores: dict[str, object]) -> NikodymConfig:
+def _config_eda(valores: dict[str, object]) -> BayesRiskConfig:
     """Un config con la sección `eda` escrita tal cual."""
     cargar_configs_de_dominio()
-    return NikodymConfig.model_validate({"eda": valores})
+    return BayesRiskConfig.model_validate({"eda": valores})
 
 
 @pytest.mark.parametrize(("campo", "apagada", "encendida"), _CASOS_EDA)
@@ -424,7 +424,7 @@ def test_el_preflight_sigue_viendo_las_columnas_de_data_con_validation_podada() 
     sección se siga viendo.
     """
     cargar_configs_de_dominio()
-    config = NikodymConfig.model_validate(
+    config = BayesRiskConfig.model_validate(
         {
             "validation": {"families": ["discrimination"], "calibration": {"grade_col": FANTASMA}},
             "binning": {"feature_columns": [FANTASMA]},
@@ -594,14 +594,14 @@ def test_una_columna_que_el_pipeline_produce_no_se_exige_del_archivo(derivada: s
     )
 
 
-def _config_con_segmento(columna: str) -> NikodymConfig:
+def _config_con_segmento(columna: str) -> BayesRiskConfig:
     """Config con `data` activa y `survival.input.segment_col` apuntando a `columna`.
 
     Se usa `survival` y no `stability` porque `StabilityConfig` tiene un anticolisión propio
     (`config.py:213`) que rechaza `temporal_column="partition"` antes de construir — o sea que ahí
     el caso es inalcanzable por otra razón, y probarlo mediría el validador, no el preflight.
     """
-    return NikodymConfig.model_validate(
+    return BayesRiskConfig.model_validate(
         {
             "data": _DATA_MINIMA,
             "survival": {
@@ -625,7 +625,7 @@ def test_ancla_una_columna_inventada_si_se_sigue_acusando() -> None:
 def test_sin_la_seccion_data_no_se_produce_nada() -> None:
     """Si el paso que las escribe no corre, sus columnas no existen: se vuelven a exigir."""
     cargar_configs_de_dominio()
-    config = NikodymConfig.model_validate(
+    config = BayesRiskConfig.model_validate(
         {
             "survival": {
                 "input": {"duration_col": "mora", "event_col": "pd", "segment_col": "target"}
@@ -645,11 +645,11 @@ def test_la_columna_de_target_sale_del_CONFIG_y_no_de_una_constante() -> None:  
     target = {**_DATA_MINIMA["target"], "target_col": "mi_target"}  # type: ignore[dict-item]
     data = {**_DATA_MINIMA, "target": target}
     survival = {"input": {"duration_col": "mora", "event_col": "pd"}}
-    nuevo = NikodymConfig.model_validate(
+    nuevo = BayesRiskConfig.model_validate(
         {"data": data, "survival": {"input": {**survival["input"], "segment_col": "mi_target"}}}
     )
     assert not _acusa(nuevo, "mi_target")
-    viejo = NikodymConfig.model_validate(
+    viejo = BayesRiskConfig.model_validate(
         {"data": data, "survival": {"input": {**survival["input"], "segment_col": "target"}}}
     )
     assert _acusa(viejo, "target"), "con el target renombrado, «target» ya no lo produce nadie"
@@ -680,14 +680,14 @@ def test_los_presets_de_fabrica_siguen_compatibles() -> None:
     import tempfile
     from pathlib import Path
 
-    from nikodym.ui.datasets import materialize
-    from nikodym.ui.presets import get_preset
-    from nikodym.ui.routes import _columnas_del_parquet
+    from bayesrisk.ui.datasets import materialize
+    from bayesrisk.ui.presets import get_preset
+    from bayesrisk.ui.routes import _columnas_del_parquet
 
     cargar_configs_de_dominio()
     for preset_id in ("f3-provisiones-consumo", "f4-ifrs9-retail"):
         preset = get_preset(preset_id)
-        config = NikodymConfig.model_validate(preset["config"])
+        config = BayesRiskConfig.model_validate(preset["config"])
         with tempfile.TemporaryDirectory() as tmp:
             ruta = materialize(preset["dataset_id"], workdir=Path(tmp))
             columnas, indices = _columnas_del_parquet(ruta)
@@ -737,7 +737,7 @@ def test_una_seccion_NO_se_acredita_sus_propias_columnas(derivada: str) -> None:
         **_DATA_MINIMA,
         "schema": {"columns": [{"name": derivada, "dtype": "str"}]},
     }
-    config = NikodymConfig.model_validate({"data": data})
+    config = BayesRiskConfig.model_validate({"data": data})
     assert _acusa(config, derivada), (
         f"«{derivada}» la escribe la propia sección `data` al final de su paso: su esquema, que se "
         f"valida al principio, sigue necesitándola del archivo"
@@ -751,7 +751,7 @@ def test_la_regla_del_target_no_puede_leer_el_target() -> None:
         **_DATA_MINIMA,
         "target": {"bad_rule": {"all_of": [{"col": "target", "op": "==", "value": 1}]}},
     }
-    assert _acusa(NikodymConfig.model_validate({"data": data}), "target")
+    assert _acusa(BayesRiskConfig.model_validate({"data": data}), "target")
 
 
 def test_ancla_otra_seccion_SI_se_acredita_las_de_data() -> None:  # noqa: N802

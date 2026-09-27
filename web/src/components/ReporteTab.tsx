@@ -334,7 +334,7 @@ export function ReporteTab({ onNavigate }: ReporteTabProps) {
           Este informe lo escribe el motor. Defenderlo ante Validación —el corte que elegiste, el
           ancla de calibración, los supuestos— no.{" "}
           <a
-            href="https://www.nikodym.cl/?ref=demo-reporte#contact"
+            href="https://www.bayesadvisory.cl/?ref=demo-reporte#contact"
             target="_blank"
             rel="noreferrer"
             className="text-eyebrow underline underline-offset-4 hover:no-underline"

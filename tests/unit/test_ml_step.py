@@ -19,13 +19,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.ml  # noqa: F401  (registra @register('standard', domain='ml') + hook de config)
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError
-from nikodym.core.study import Study
-from nikodym.ml import step as ml_step
-from nikodym.ml.config import (
+import bayesrisk.ml  # noqa: F401  (registra @register('standard', domain='ml') + hook de config)
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError
+from bayesrisk.core.study import Study
+from bayesrisk.ml import step as ml_step
+from bayesrisk.ml.config import (
     MLComparisonConfig,
     MLConfig,
     MLOutputConfig,
@@ -33,9 +33,9 @@ from nikodym.ml.config import (
     MonotonicConfig,
     RandomForestParams,
 )
-from nikodym.ml.exceptions import MLComparisonError, MLConfigError, MLDataError
-from nikodym.ml.results import MLBackendMetadata, MLCardSection, MLComparisonRecord, MLResult
-from nikodym.ml.step import (
+from bayesrisk.ml.exceptions import MLComparisonError, MLConfigError, MLDataError
+from bayesrisk.ml.results import MLBackendMetadata, MLCardSection, MLComparisonRecord, MLResult
+from bayesrisk.ml.step import (
     MLStep,
     _apply_tuning_best_config,
     _as_dataframe,
@@ -113,7 +113,7 @@ def _artifacts(per: int = 40) -> dict[str, Any]:
 def _study(ml_cfg: MLConfig, arts: dict[str, Any] | None = None) -> Study:
     """Construye un ``Study`` con sink en memoria y los artefactos de binning/model inyectados."""
     arts = arts if arts is not None else _artifacts()
-    study = Study(NikodymConfig(ml=ml_cfg))
+    study = Study(BayesRiskConfig(ml=ml_cfg))
     study.set_audit_sink(InMemoryAuditSink())
     study.artifacts.set("data", "labels", arts["labels"])
     study.artifacts.set("data", "splits", arts["splits"])
@@ -219,7 +219,7 @@ def test_e2e_comparacion_challenger_supera_al_campeon_debil() -> None:
 
 def test_e2e_reuso_performance_evaluator_consistente() -> None:
     """El AUC/Gini/KS del campeón que publica ``ml`` coincide con ``PerformanceEvaluator`` (§11)."""
-    from nikodym.performance.evaluator import PerformanceEvaluator
+    from bayesrisk.performance.evaluator import PerformanceEvaluator
 
     arts = _artifacts()
     study = _study(_rf_config(monotonic=MonotonicConfig(mode="off")), arts=arts)
@@ -274,7 +274,7 @@ def test_e2e_selection_woe_usa_columnas_seleccionadas() -> None:
     """``feature_source='selection_woe'`` entrena sólo sobre las columnas seleccionadas."""
     arts = _artifacts()
     study = Study(
-        NikodymConfig(
+        BayesRiskConfig(
             ml=_rf_config(feature_source="selection_woe", monotonic=MonotonicConfig(mode="off"))
         )
     )
@@ -341,7 +341,7 @@ def test_data_raw_esta_diferido() -> None:
     """``feature_source='data_raw'`` levanta ``MLConfigError`` (FALTA-DATO-ML-1)."""
     step = MLStep.from_config(MLConfig(backend="xgboost", feature_source="data_raw"))
     step._audit = InMemoryAuditSink()
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     with pytest.raises(MLConfigError, match="data_raw"):
         step.execute(study, np.random.default_rng(0))
 
@@ -351,7 +351,7 @@ def test_artefacto_requerido_ausente() -> None:
     arts = _artifacts()
     step = MLStep.from_config(_rf_config(monotonic=MonotonicConfig(mode="off")))
     step._audit = InMemoryAuditSink()
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.artifacts.set("data", "labels", arts["labels"])
     study.artifacts.set("data", "splits", arts["splits"])
     study.artifacts.set("binning", "woe_frame", arts["woe_frame"])
@@ -556,7 +556,7 @@ def test_ml_config_from_study_resuelve_fuente() -> None:
 
 def test_calibration_config_from_study_resuelve_fuente() -> None:
     """Lee ``config.calibration`` como config, dict o ``None`` (default)."""
-    from nikodym.calibration.config import CalibrationConfig
+    from bayesrisk.calibration.config import CalibrationConfig
 
     none_study = types.SimpleNamespace(config=types.SimpleNamespace(calibration=None))
     assert isinstance(_calibration_config_from_study(none_study), CalibrationConfig)
@@ -719,7 +719,7 @@ def test_emit_delega_al_sink() -> None:
     """``MLStep.emit`` reenvía el evento al ``AuditSink`` inyectado (contrato de sink futuro)."""
     from datetime import UTC, datetime
 
-    from nikodym.core.audit import AuditEvent
+    from bayesrisk.core.audit import AuditEvent
 
     sink = InMemoryAuditSink()
     step = MLStep.from_config(_rf_config())
@@ -730,9 +730,9 @@ def test_emit_delega_al_sink() -> None:
 
 
 def test_import_ml_es_liviano() -> None:
-    """``import nikodym.ml`` no arrastra pandas/numpy ni los backends ML (§9)."""
+    """``import bayesrisk.ml`` no arrastra pandas/numpy ni los backends ML (§9)."""
     code = (
-        "import nikodym.ml, sys; "
+        "import bayesrisk.ml, sys; "
         "heavy = [m for m in ('pandas','numpy','sklearn','xgboost','lightgbm','catboost') "
         "if m in sys.modules]; "
         "assert not heavy, heavy"

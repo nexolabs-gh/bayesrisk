@@ -6,13 +6,13 @@ build-backend = "hatchling.build"
 
 # ─────────────────────────── metadata (PEP 621) ──────────────────────
 [project]
-name = "nikodym"
+name = "bayesrisk"
 description = "Librería de riesgo de crédito: PD (scorecards, ML, survival), LGD y EAD, validación de modelos, provisiones IFRS 9/ECL, forward-looking y stress testing, con informe reproducible y su lineage."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"                      # SPDX (PEP 639); LICENSE en la raíz
 license-files = ["LICENSE"]
-authors = [{ name = "Nikodym", email = "admin@nxlabs.cl" }]
+authors = [{ name = "Bayes Advisory", email = "admin@nxlabs.cl" }]
 keywords = ["credit-risk", "ifrs9", "ecl", "cmf", "chile", "scorecard", "provisioning"]
 classifiers = [
   # 4 - Beta, no 3 - Alpha: el pipeline de scorecard (F1) es API estable bajo garantía SemVer 1.x
@@ -31,12 +31,12 @@ classifiers = [
 ]
 dynamic = ["version"]                       # ver [tool.hatch.version]
 
-# Núcleo BASE: se instala SIEMPRE con `pip install nikodym`. Solo deps permisivas y livianas.
+# Núcleo BASE: se instala SIEMPRE con `pip install bayesrisk`. Solo deps permisivas y livianas.
 dependencies = [
   "pydantic>=2.5",        # config, LineageBundle, AuditEvent (MIT)
   "numpy>=1.22",          # SeedSequence/Generator (BSD)
   # TECHO <3 (regla dura): pandas 3.0 rompe el motor en producción. La resolución de pip para un
-  # `pip install nikodym` limpio trae hoy pandas 3.0.x, y la serialización de resultados muere con
+  # `pip install bayesrisk` limpio trae hoy pandas 3.0.x, y la serialización de resultados muere con
   # un 500 (`json.dumps(allow_nan=False)` sobre valores que 3.0 emite como NaN). El CI no lo veía:
   # corre con `uv sync --locked`, y el lock fija 2.3.3. El techo se levanta cuando el motor se
   # pruebe contra pandas 3, no antes.
@@ -56,16 +56,16 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/nexolabs-gh/nikodym"
 Source = "https://github.com/nexolabs-gh/nikodym"
-Documentation = "https://docs.nikodym.cl"
-Demo = "https://demo.nikodym.cl"
+Documentation = "https://docs.bayesadvisory.cl"
+Demo = "https://demo.bayesadvisory.cl"
 Changelog = "https://github.com/nexolabs-gh/nikodym/blob/main/CHANGELOG.md"
 # PyPI usa la clave literal como texto del enlace en su barra lateral.
-"Consultoría (Nexo Labs)" = "https://www.nikodym.cl/?ref=pypi#contact"
+"Consultoría (Bayes Advisory)" = "https://www.bayesadvisory.cl/?ref=pypi#contact"
 
-# Primer console script de la librería (B2.2). `python -m nikodym.ui` y `nikodym-ui` recorren el
+# Primer console script de la librería (B2.2). `python -m bayesrisk.ui` y `bayesrisk-ui` recorren el
 # mismo camino: el módulo expone `main(argv) -> int` y el entry point sólo lo cablea.
 [project.scripts]
-nikodym-ui = "nikodym.ui.__main__:main"
+bayesrisk-ui = "bayesrisk.ui.__main__:main"
 
 # ───────────────── EXTRAS de USUARIO (se redistribuyen en el wheel) ───────────────
 [project.optional-dependencies]
@@ -86,7 +86,7 @@ scoring = [
 # `xgboost-cpu` SOLO en Linux (mismo proyecto, mismas versiones, Apache-2.0): allí el wheel estándar
 # `xgboost` arrastra `nvidia-nccl-cu12` (~303 MB, `License-Expression: LicenseRef-NVIDIA-Proprietary`),
 # que el gate de licencias runtime rechaza por no verificable — y que ningún banco quiere en un
-# `pip install`. Nikodym no tiene una sola ruta GPU/CUDA, así que la variante CPU no pierde capacidad.
+# `pip install`. bayesrisk no tiene una sola ruta GPU/CUDA, así que la variante CPU no pierde capacidad.
 # Fuera de Linux el wheel estándar NO trae esa transitiva (su marker es `sys_platform == 'linux'`) y
 # `xgboost-cpu` ni siquiera publica wheels de macOS, así que allí se mantiene `xgboost`.
 xgboost  = [
@@ -121,10 +121,10 @@ tracking = ["mlflow>=2.10"]                # Apache-2.0 (runs/registry, SDD-04)
 # 2026-08-03. Lo que NO entra es lo que el formulario no
 # ofrece (`ml`, `tuning`, `explain`, `markov`, `forward`) ni `[pdf]`, que arrastra copyleft y por eso
 # tampoco está en `all`. El gate `tests/unit/test_extra_ui_cubre_el_formulario.py` lo hace cumplir.
-ui       = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9", "nikodym[scoring]", "nikodym[survival]", "nikodym[excel]", "nikodym[docx]", "nikodym[report]"]   # MIT / BSD-3 / Apache-2.0 / PSF (interfaz local completa, SDD-23); multipart = uploads UploadFile; `report` = matplotlib, porque el formulario ofrece `report.html.render_charts` y viene en True
+ui       = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9", "bayesrisk[scoring]", "bayesrisk[survival]", "bayesrisk[excel]", "bayesrisk[docx]", "bayesrisk[report]"]   # MIT / BSD-3 / Apache-2.0 / PSF (interfaz local completa, SDD-23); multipart = uploads UploadFile; `report` = matplotlib, porque el formulario ofrece `report.html.render_charts` y viene en True
 # RETIRADO 2026-07-24 — extra `sweep` (hydra-core + omegaconf, "barridos CLI"): nunca tuvo consumidor
-# (no existe `src/nikodym/sweep/` ni un import de hydra/omegaconf en el paquete), pero entraba en `all`,
-# así que todo `pip install "nikodym[all]"` bajaba hydra-core, omegaconf y antlr4-python3-runtime para
+# (no existe `src/bayesrisk/sweep/` ni un import de hydra/omegaconf en el paquete), pero entraba en `all`,
+# así que todo `pip install "bayesrisk[all]"` bajaba hydra-core, omegaconf y antlr4-python3-runtime para
 # nada y el gate de licencias auditaba ese cierre muerto. Si algún día se implementan barridos por CLI
 # (SDD-05 §5.6), el extra se reintroduce junto con el código que lo usa, no antes.
 polars   = ["polars>=0.20"]                # MIT — backend de carga opcional de data
@@ -146,10 +146,10 @@ ml       = ["scikit-learn>=1.6"]           # BSD — modelos sklearn-native (SVM
 # por transitividad no declarada, y se habría roto en silencio el día que `scoring` dejara de listar
 # scipy explícito. Toda exclusión de `all` tiene que ser una decisión escrita, no una omisión.
 all = [
-  "nikodym[scoring]", "nikodym[ml]", "nikodym[xgboost]", "nikodym[lightgbm]", "nikodym[catboost]",
-  "nikodym[tuning]", "nikodym[explain]", "nikodym[forecasting]", "nikodym[survival]",
-  "nikodym[markov]", "nikodym[tracking]", "nikodym[ui]", "nikodym[polars]",
-  "nikodym[excel]", "nikodym[report]", "nikodym[docx]", "nikodym[ai]",
+  "bayesrisk[scoring]", "bayesrisk[ml]", "bayesrisk[xgboost]", "bayesrisk[lightgbm]", "bayesrisk[catboost]",
+  "bayesrisk[tuning]", "bayesrisk[explain]", "bayesrisk[forecasting]", "bayesrisk[survival]",
+  "bayesrisk[markov]", "bayesrisk[tracking]", "bayesrisk[ui]", "bayesrisk[polars]",
+  "bayesrisk[excel]", "bayesrisk[report]", "bayesrisk[docx]", "bayesrisk[ai]",
 ]
 
 # ───────────── GRUPOS de DESARROLLO (PEP 735 — NO se redistribuyen) ─────────────
@@ -192,10 +192,10 @@ dev = [
 
 # ─────────────────────────── hatchling (build) ───────────────────────────
 [tool.hatch.version]
-path = "src/nikodym/__init__.py"           # __version__ = "x.y.z" (fuente única del SemVer)
+path = "src/bayesrisk/__init__.py"           # __version__ = "x.y.z" (fuente única del SemVer)
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/nikodym"]                 # SOLO el paquete; tests/docs NO entran al wheel
+packages = ["src/bayesrisk"]                 # SOLO el paquete; tests/docs NO entran al wheel
 exclude = ["*.parquet", "*.csv"]           # defensa en profundidad: ningún dato en el wheel
 
 [tool.hatch.build.targets.sdist]
@@ -217,7 +217,7 @@ required-version = ">=0.5"
 default-groups = ["dev"]    # qué grupos sincroniza `uv sync` sin flags (dev incluye test/lint/docs).
                             # Entorno limpio sin grupos: `uv sync --no-default-groups`.
 # `ortools` llega solo como transitiva de `optbinning` en el extra `scoring`; este constraint
-# acota la resolución al primer tramo con wheels cp313 sin convertirla en dependencia directa de Nikodym.
+# acota la resolución al primer tramo con wheels cp313 sin convertirla en dependencia directa de bayesrisk.
 # No usamos override: si una versión upstream fija un techo, uv debe elegir otra versión compatible
 # dentro de nuestro rango declarado en vez de reemplazar metadata de terceros.
 # `optbinning 0.20.0` llama `sklearn.utils.check_array(force_all_finite=...)`; sklearn 1.6/1.7
@@ -247,7 +247,7 @@ python_version = "3.12"                      # 3.12 (no 3.11) por los stubs de n
                                             # runtime 3.11 lo cubre la matriz de tests. Desviación de SDD-25
                                             # (que fijó 3.11) a ratificar al revisar el SDD.
 mypy_path = "src"                           # src/ layout: encuentra el paquete sin requerir install
-packages = ["nikodym"]
+packages = ["bayesrisk"]
 strict = true                               # STRICT por defecto en TODO el paquete (ESPEC §10, §12).
 [[tool.mypy.overrides]]
 # Toda lib de terceros sin stubs de tipos que el paquete importe (base o extras).
@@ -258,7 +258,7 @@ module = [
   "pyarrow.*", "polars.*", "joblib.*", "weasyprint.*", "pypdf", "pypdf.*",
   # python-docx SÍ trae `py.typed`: cuando el extra `docx` está instalado, mypy usa sus tipos reales.
   # Está aquí sólo para que el job Quality del CI (que instala `--group lint --extra ui`, sin `docx`)
-  # no falle por el import perezoso de `nikodym.report.docx`. Mismo caso que `weasyprint`.
+  # no falle por el import perezoso de `bayesrisk.report.docx`. Mismo caso que `weasyprint`.
   "docx.*",
 ]
 ignore_missing_imports = true               # libs sin stubs; relajar SOLO el import, no el strict del código propio
@@ -302,13 +302,13 @@ filterwarnings = [
   "ignore:No se pudo generar el PDF:RuntimeWarning",
   "ignore:No se pudo generar el \\.docx:RuntimeWarning",
   # Tercer hermano, por la misma razón y con el mismo contrato: el prefijo ancla
-  # `nikodym.report.exports._XLSX_MISSING_MSG`, y si ese mensaje cambia el filtro deja de aplicar
+  # `bayesrisk.report.exports._XLSX_MISSING_MSG`, y si ese mensaje cambia el filtro deja de aplicar
   # en silencio. La degradación sigue verificada con `pytest.warns` en tests/unit/test_report_exports.py.
   "ignore:No se pudo generar el export \\.xlsx:RuntimeWarning",
 ]
 
 [tool.coverage.run]
-source = ["nikodym"]
+source = ["bayesrisk"]
 branch = true
 [tool.coverage.report]
 fail_under = 90              # gate GLOBAL (SDD-24 §11). El 100% por-módulo se cabla en un job aparte (CI).

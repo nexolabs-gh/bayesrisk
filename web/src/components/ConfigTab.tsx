@@ -1021,7 +1021,7 @@ export function ConfigTab({
     setYamlBusy(true)
     try {
       const { yaml } = await configToYaml(config)
-      triggerDownload(yaml, "nikodym-config.yaml")
+      triggerDownload(yaml, "bayesrisk-config.yaml")
     } catch (err) {
       setYamlError(yamlErrorMessage(err))
     } finally {

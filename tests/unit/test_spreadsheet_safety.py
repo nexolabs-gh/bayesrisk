@@ -11,7 +11,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from nikodym.core.spreadsheet_safety import FORMULA_PREFIXES, neutralize_formula_prefixes
+from bayesrisk.core.spreadsheet_safety import FORMULA_PREFIXES, neutralize_formula_prefixes
 
 _VENENOSOS = [
     '=HYPERLINK("http://x.invalid";"ver")',

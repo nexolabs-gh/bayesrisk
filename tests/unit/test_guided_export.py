@@ -19,14 +19,14 @@ import pandas as pd
 import pytest
 from _ui_f1 import write_stacked_behavior_parquet
 
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.guided import Scorecard, ScorecardInputError, ScorecardRunError
-from nikodym.guided import export as export_module
-from nikodym.guided.export import DECISIONS_BOOK, EXCEL_SUBDIR, STAGE_BOOKS
-from nikodym.guided.summaries import STAGE_LABELS, StageSummary, partition_label
-from nikodym.report.document import PER_OBSERVATION_TABLES, table_title
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.guided import Scorecard, ScorecardInputError, ScorecardRunError
+from bayesrisk.guided import export as export_module
+from bayesrisk.guided.export import DECISIONS_BOOK, EXCEL_SUBDIR, STAGE_BOOKS
+from bayesrisk.guided.summaries import STAGE_LABELS, StageSummary, partition_label
+from bayesrisk.report.document import PER_OBSERVATION_TABLES, table_title
 
-openpyxl = pytest.importorskip("openpyxl", reason="el Excel opcional exige nikodym[excel]")
+openpyxl = pytest.importorskip("openpyxl", reason="el Excel opcional exige bayesrisk[excel]")
 
 
 @pytest.fixture(autouse=True)
@@ -145,7 +145,7 @@ def test_export_excel_sin_correr_se_detiene_y_sin_openpyxl_dice_el_comando(
         sc.export_excel()
     sc.run(until="data")
     monkeypatch.setattr(export_module, "_openpyxl_disponible", lambda: False)
-    with pytest.raises(MissingDependencyError, match=r"nikodym\[excel\]"):
+    with pytest.raises(MissingDependencyError, match=r"bayesrisk\[excel\]"):
         sc.export_excel()
 
 
@@ -344,7 +344,7 @@ def test_export_excel_reemplaza_la_carpeta_entera_y_un_fallo_no_deja_una_mezcla(
     }
     antes = {p.name: p.read_bytes() for p in carpeta.iterdir()}
 
-    from nikodym.report import exports as exports_module
+    from bayesrisk.report import exports as exports_module
 
     original = exports_module.write_workbook  # el export lo importa al llamar, desde aquí
     llamadas = {"n": 0}
@@ -417,7 +417,7 @@ def test_export_excel_exige_la_evidencia_propia_y_el_candado(fuente: Path, tmp_p
     with pytest.raises(ScorecardInputError, match="otra corrida ocupó la carpeta"):
         primero.export(tmp_path / "primero.zip")
     assert segundo.export_excel()  # el dueño de la evidencia sí exporta
-    from nikodym.guided.scorecard import _LOCK_NAME, _bloquear_carpeta, _liberar_carpeta
+    from bayesrisk.guided.scorecard import _LOCK_NAME, _bloquear_carpeta, _liberar_carpeta
 
     candado = _bloquear_carpeta(segundo.project_dir / _LOCK_NAME)
     try:

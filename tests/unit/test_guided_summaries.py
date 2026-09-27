@@ -16,14 +16,14 @@ from typing import Any
 import pytest
 from _ui_f1 import write_stacked_behavior_parquet
 
-from nikodym.binning.results import IV_BAND_LABELS
-from nikodym.core.markers import DECLARED_MARKERS
-from nikodym.eda.default_rate import AXIS_LABELS
-from nikodym.eda.quality import QUALITY_FLAG_LABELS
-from nikodym.eda.stability import NOT_EVALUABLE_REASON_LABELS, STABILITY_INDICATOR_LABELS
-from nikodym.guided import STAGE_LABELS, Scorecard, StageSummary
-from nikodym.guided.summaries import STAGE_ORDER, build_stage_summary
-from nikodym.report.prose import (
+from bayesrisk.binning.results import IV_BAND_LABELS
+from bayesrisk.core.markers import DECLARED_MARKERS
+from bayesrisk.eda.default_rate import AXIS_LABELS
+from bayesrisk.eda.quality import QUALITY_FLAG_LABELS
+from bayesrisk.eda.stability import NOT_EVALUABLE_REASON_LABELS, STABILITY_INDICATOR_LABELS
+from bayesrisk.guided import STAGE_LABELS, Scorecard, StageSummary
+from bayesrisk.guided.summaries import STAGE_ORDER, build_stage_summary
+from bayesrisk.report.prose import (
     _ANCHOR_KINDS,
     _ANCHOR_SOURCES,
     _CALIBRATION_METHODS,
@@ -32,9 +32,9 @@ from nikodym.report.prose import (
     _MONOTONIC_LABELS,
     _STEPWISE_DIRECTIONS,
 )
-from nikodym.selection.results import REASON_LABELS
-from nikodym.stability.results import BAND_LABELS, PSI_METRIC_LABELS, STABILITY_METRIC_LABELS
-from nikodym.validation.results import (
+from bayesrisk.selection.results import REASON_LABELS
+from bayesrisk.stability.results import BAND_LABELS, PSI_METRIC_LABELS, STABILITY_METRIC_LABELS
+from bayesrisk.validation.results import (
     CALIBRATION_TEST_LABELS,
     HL_NOT_EVALUABLE_REASON_LABELS,
     VALIDATION_DECISION_LABELS,
@@ -95,7 +95,7 @@ def corrida(tmp_path_factory: pytest.TempPathFactory) -> Scorecard:
     """
     from conftest import FakeBinningProcess
 
-    import nikodym.binning.transformer as transformer_module
+    import bayesrisk.binning.transformer as transformer_module
 
     with pytest.MonkeyPatch.context() as parche:
         parche.setenv("PYTHONHASHSEED", "0")

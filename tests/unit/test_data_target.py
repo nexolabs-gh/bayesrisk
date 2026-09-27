@@ -7,18 +7,18 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.data.config as data_config_module
-import nikodym.data.target as data_target_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ConfigError, DataValidationError
-from nikodym.data.config import (
+import bayesrisk.data.config as data_config_module
+import bayesrisk.data.target as data_target_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ConfigError, DataValidationError
+from bayesrisk.data.config import (
     ExclusionRule,
     PerformanceWindow,
     Predicate,
     Rule,
     TargetConfig,
 )
-from nikodym.data.target import LabeledFrame, TargetDefinition
+from bayesrisk.data.target import LabeledFrame, TargetDefinition
 
 
 def _predicate(

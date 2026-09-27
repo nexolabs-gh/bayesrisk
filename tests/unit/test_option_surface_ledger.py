@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.ui import jobs, option_surface
-from nikodym.ui.option_surface import (
+from bayesrisk.ui import jobs, option_surface
+from bayesrisk.ui.option_surface import (
     UnclassifiedOptionSurfaceError,
     classified_option_surface,
     measured_literal_pairs,

@@ -20,7 +20,7 @@
       "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": [
         "-m",
-        "nikodym.ui",
+        "bayesrisk.ui",
         "--port",
         "5210",
         "--no-open"
@@ -33,7 +33,7 @@
       "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": [
         "-m",
-        "nikodym.ui",
+        "bayesrisk.ui",
         "--port",
         "5211",
         "--no-open",

@@ -1,0 +1,1081 @@
+/* Tema "bayesrisk": informe de validación con estética editorial tipo Quarto (sidebar de secciones +
+   contenido legible + índice lateral "En esta página"). Determinista y autocontenido: sin @import
+   ni activos remotos; la tipografía es la del sitio (docs.bayesadvisory.cl sirve Roboto) y el renderer
+   antepone a esta hoja las @font-face de Roboto 400 y 700 incrustadas en base64 desde
+   `templates/fonts` (capa C de FLUJO-GUIADO-SCORECARD), con la pila del sistema detrás para los
+   glifos que el subconjunto no trae. Marca oficial bayesrisk (kit de marca): navy #0A2240, azul
+   #1859E0, cyan #4FC3E8 —la misma paleta que docs_site/stylesheets/extra.css—, alineada al símbolo
+   N-red embebido en la portada y el sidebar. El MISMO markup sirve pantalla y print: el sidebar y
+   el índice lateral son de PANTALLA (se ocultan en @media print) y el documento colapsa a una
+   columna A4 para el PDF (WeasyPrint). */
+
+:root {
+  color-scheme: light;
+
+  /* marca */
+  --navy: #0a2240;
+  --navy-deep: #051528;
+  --brand: #1859e0;
+  --brand-2: #2e6ff2;
+  --cyan: #4fc3e8;
+
+  /* tinta / neutros (sesgo frío hacia el navy de marca) */
+  --ink: #14202e;
+  --muted: #5a6b7d;
+  --faint: #8a97a6;
+  --line: #e1e7ee;
+  --line-soft: #eef2f7;
+
+  /* superficies */
+  --paper: #ffffff;
+  --canvas: #eceff4;
+  --rail: #f5f7fb;
+  --code-bg: #f3f6fb;
+  --brand-tint: #eaf1fd;
+  --brand-ink: #0a2240;
+
+  /* semáforo (separado del acento de marca) */
+  --ok: #12703f;
+  --ok-bg: #e6f3ec;
+  --ok-line: #bcdcc8;
+  --warn: #8a5a00;
+  --warn-bg: #fbf3e0;
+  --warn-line: #ecd8ac;
+  --alert: #8a1f1f;
+  --alert-bg: #f8e9e9;
+  --alert-line: #e6c3c3;
+  --ai-ink: #7b2f00;
+  --ai-bg: #fff1dd;
+
+  --shadow: 0 1px 2px rgba(10, 34, 64, 0.06), 0 10px 30px rgba(10, 34, 64, 0.07);
+  --mono: "SFMono-Regular", "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, "Courier New", monospace;
+  --sans: Roboto, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--canvas);
+  line-height: 1.62;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ─────────────────────────── layout: sidebar · doc · rail ─────────────────────────── */
+
+.doc-shell {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr) 236px;
+  /* 1.920 px: en una pantalla de 2.560 la columna de contenido pasa de 756 a ~1.316 px y nueve de
+     las diez tablas que se desplazaban caben. Sin tope, las tarjetas de tres columnas de la
+     portada se separarían más de lo que se leen en un monitor ultra ancho. */
+  max-width: 1920px;
+  margin: 0 auto;
+  align-items: start;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.doc-nav,
+.doc-rail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 26px 22px;
+}
+
+.doc-nav {
+  background: var(--rail);
+  border-right: 1px solid var(--line);
+}
+
+.doc-rail {
+  padding-top: 40px;
+}
+
+main {
+  min-width: 0;
+  background: var(--paper);
+  padding: 40px 52px 88px;
+}
+
+/* marca en el sidebar (símbolo N-red embebido + wordmark) */
+.doc-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+  text-decoration: none;
+}
+
+.doc-brand svg {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.doc-brand .doc-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.14;
+}
+
+.doc-brand strong {
+  font-size: 18px;
+  letter-spacing: -.01em;
+  color: var(--navy);
+  font-weight: 800;
+}
+
+.doc-brand span {
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+.rail-heading {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 12px;
+}
+
+/* nav de secciones (sidebar) */
+.doc-secnav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13.5px;
+}
+
+.doc-secnav a {
+  color: var(--muted);
+  padding: 5px 12px;
+  border-left: 2px solid transparent;
+  border-radius: 0 4px 4px 0;
+}
+
+.doc-secnav a:hover {
+  color: var(--ink);
+  background: var(--brand-tint);
+  text-decoration: none;
+}
+
+.doc-secnav a.lvl-1 {
+  color: var(--ink);
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.doc-secnav a.lvl-2 {
+  padding-left: 24px;
+  font-size: 12.5px;
+}
+
+.doc-secnav a.active {
+  color: var(--brand);
+  border-left-color: var(--brand);
+  background: var(--brand-tint);
+  font-weight: 600;
+}
+
+/* índice lateral "En esta página" + entregables (right rail) */
+.doc-otp {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-left: 1px solid var(--line);
+  padding-left: 14px;
+  font-size: 12.5px;
+}
+
+.doc-otp a {
+  color: var(--muted);
+}
+
+.doc-otp a.active {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.doc-downloads {
+  margin-top: 28px;
+  padding-left: 14px;
+}
+
+.doc-downloads .dl {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 0;
+  font-size: 13px;
+  color: var(--ink);
+  border-top: 1px solid var(--line-soft);
+}
+
+.doc-downloads .dl:first-of-type {
+  border-top: 0;
+}
+
+.doc-downloads .dl .tag {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+.doc-downloads .dl svg {
+  flex: 0 0 auto;
+  color: var(--brand);
+}
+
+/* ─────────────────────────── portada ─────────────────────────── */
+
+.cover {
+  border-top: 4px solid var(--brand);
+  padding: 26px 0 36px;
+  margin-bottom: 8px;
+}
+
+.cover-brand {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brand);
+  margin-bottom: 14px;
+}
+
+.cover-kicker {
+  font-size: 12.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.cover-title {
+  font-size: 37px;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  margin: 0 0 16px;
+  color: var(--navy);
+  font-weight: 800;
+  text-wrap: balance;
+  max-width: 20ch;
+}
+
+.confidential {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--alert);
+  background: var(--alert-bg);
+  border: 1px solid var(--alert-line);
+  padding: 5px 12px;
+  border-radius: 5px;
+  margin: 0 0 26px;
+}
+
+.cover-fields {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px 30px;
+  margin: 0 0 26px;
+}
+
+.cover-field {
+  border-top: 1px solid var(--line);
+  padding-top: 9px;
+}
+
+.cover-fields dt {
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.cover-fields dd {
+  margin: 0 0 2px;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 14.5px;
+}
+
+/* Campo declarado en el config pero vacío: se imprime la línea para llenarla a mano. Nunca se
+   inventa un valor. */
+.to-fill {
+  display: block;
+  border-bottom: 1px solid var(--line);
+  height: 18px;
+  max-width: 320px;
+}
+
+.lineage-box {
+  border: 1px solid var(--line);
+  background: var(--code-bg);
+  border-radius: 7px;
+  padding: 14px 16px;
+  margin: 0 0 26px;
+}
+
+.lineage-box .lineage-caption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.lineage-line {
+  margin: 3px 0;
+}
+
+.lineage-line code {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--brand-ink);
+  word-break: break-all;
+}
+
+.emitted {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 26px;
+}
+
+.emitted strong {
+  color: var(--ink);
+}
+
+/* firmas / gobernanza SR 11-7 */
+.roles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 0;
+}
+
+.roles .role {
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--brand);
+  border-radius: 0 0 7px 7px;
+  padding: 14px 14px 18px;
+}
+
+.roles .role-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--brand-ink);
+  margin: 0 0 26px;
+}
+
+.roles .role-field {
+  border-bottom: 1px solid var(--line);
+  height: 22px;
+}
+
+.roles .role-hint {
+  font-size: 11px;
+  color: var(--faint);
+  margin: 6px 0 0;
+}
+
+/* ─────────────────────────── resumen ejecutivo ─────────────────────────── */
+
+.exec-summary {
+  padding: 8px 0;
+}
+
+.exec-summary > h2 {
+  font-size: 25px;
+  line-height: 1.2;
+  letter-spacing: -.015em;
+  color: var(--ink);
+  margin: 44px 0 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+}
+
+/* veredicto: callout de énfasis (borde ámbar, es acción humana pendiente) */
+.verdict {
+  border: 1px solid var(--warn-line);
+  border-left: 4px solid var(--warn);
+  background: var(--warn-bg);
+  border-radius: 7px;
+  padding: 14px 16px;
+  margin: 20px 0 18px;
+}
+
+.verdict-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--warn);
+  margin: 0 0 10px;
+}
+
+.verdict-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.verdict-options li {
+  position: relative;
+  padding-left: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.verdict-options li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid var(--warn);
+  background: #fff;
+  border-radius: 3px;
+}
+
+.verdict-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.exec-metrics-slot {
+  margin: 0 0 14px;
+}
+
+.exec-metrics {
+  margin: 0;
+}
+
+.exec-metrics td.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* chips de estado (semáforo) */
+.band {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 650;
+  padding: 2px 9px;
+  border-radius: 20px;
+  border: 0;
+  background: var(--line-soft);
+  color: var(--muted);
+}
+
+.band::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.band-ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.band-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.band-alert {
+  background: var(--alert-bg);
+  color: var(--alert);
+}
+
+.scope-note {
+  font-size: 13px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin: 14px 0 0;
+}
+
+/* ─────────────────────────── índice interno del documento ─────────────────────────── */
+
+.toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toc-list li {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 6px 0;
+}
+
+.toc-list a {
+  display: flex;
+  gap: 12px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.toc-list a:hover {
+  color: var(--brand);
+}
+
+.toc-list .toc-number {
+  min-width: 40px;
+  color: var(--brand);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.toc-list .toc-level-2 a {
+  padding-left: 28px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.toc-list li.toc-level-2 {
+  border-bottom: none;
+  padding: 3px 0;
+}
+
+/* ─────────────────────────── callouts (POR COMPLETAR / narrativa) ─────────────────────────── */
+
+.placeholder {
+  border: 1px solid var(--warn-line);
+  border-left: 4px solid var(--warn);
+  background: var(--warn-bg);
+  border-radius: 7px;
+  padding: 12px 16px;
+  margin: 16px 0;
+}
+
+.placeholder-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warn);
+  margin: 0 0 6px;
+}
+
+.placeholder-guidance {
+  margin: 4px 0;
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+.missing {
+  border: 1px solid var(--warn-line);
+  border-left: 4px solid var(--warn);
+  background: var(--warn-bg);
+  border-radius: 7px;
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+
+.narration {
+  margin: 12px 0;
+}
+
+.ai-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ai-ink);
+  background: var(--ai-bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+/* ─────────────────────────── cuerpo por secciones ─────────────────────────── */
+
+.report-section {
+  padding: 0;
+}
+
+.report-section.chapter {
+  padding-top: 8px;
+}
+
+.report-section.subsection {
+  padding-bottom: 4px;
+}
+
+.report-section > h2 {
+  font-size: 25px;
+  line-height: 1.2;
+  letter-spacing: -.015em;
+  color: var(--ink);
+  margin: 48px 0 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.report-section.subsection > h2,
+.subsection-title {
+  font-size: 17.5px;
+  color: var(--ink);
+  margin: 30px 0 4px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  text-transform: none;
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.section-number {
+  color: var(--brand);
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.5ch;
+  font-weight: 700;
+}
+
+.source {
+  font-size: 12px;
+  color: var(--faint);
+  margin: 0 0 8px;
+}
+
+.source code {
+  font-family: var(--mono);
+}
+
+h3,
+h4 {
+  font-size: 12.5px;
+  color: var(--brand-ink);
+  margin: 22px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.table-block {
+  margin: 18px 0;
+  /* Pantalla: una tabla ancha hace scroll dentro de su bloque; nunca desborda el documento. */
+  overflow-x: auto;
+}
+
+.table-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+p {
+  margin: 12px 0;
+  max-width: 68ch;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+dl {
+  display: grid;
+  grid-template-columns: minmax(150px, 260px) 1fr;
+  gap: 8px 16px;
+  margin: 10px 0;
+}
+
+dt {
+  font-weight: 700;
+  color: var(--brand-ink);
+}
+
+dd {
+  margin: 0;
+  min-width: 0;
+  /* Una ruta de archivo no tiene dónde partirse y empujaba la página a 825 px en un teléfono de
+     375: el valor de una lista puede partirse en cualquier punto, como un `<code>` en una celda. */
+  overflow-wrap: anywhere;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px 14px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 4px;
+  font-size: 13.5px;
+}
+
+thead th {
+  text-align: left;
+  color: var(--ink);
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--line);
+  padding: 8px 12px;
+  vertical-align: bottom;
+}
+
+tbody td {
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  padding: 7px 12px;
+  text-align: left;
+  vertical-align: top;
+  /* En pantalla una celda se parte sólo entre palabras, y una cifra nunca. Con `overflow-wrap:
+     anywhere` el navegador podía angostar una columna hasta el ancho de un carácter: bajo un
+     encabezado corto (`iv`, `js`), `0.094802` salía en seis renglones. Una tabla que no cabe se
+     desplaza dentro de su `.table-block`; partir en cualquier punto queda sólo para el papel
+     (`@media print`), donde no hay desplazamiento. */
+}
+
+/* Un identificador o un nombre de archivo en una celda (`<code>`) sí se parte en cualquier punto:
+   no es una cifra, y entero empujaría la página en una pantalla angosta. */
+td code {
+  overflow-wrap: anywhere;
+}
+
+/* Las tablas que no van en un `.table-block` (adjuntos, métricas ejecutivas) también se desplazan
+   dentro de su bloque en pantalla, en vez de ensanchar la página. */
+@media screen {
+  .data-exports,
+  .exec-metrics-slot {
+    overflow-x: auto;
+  }
+
+  /* En pantalla una tabla toma el ancho de su contenido, no el de la columna: con 1.316 px, una
+     tabla de tres columnas estirada al 100 % se lee peor. En papel sigue al 100 %, la regla
+     general, con su `table-layout: fixed`. */
+  table {
+    width: auto;
+  }
+
+  td.num,
+  th.num {
+    white-space: nowrap;
+  }
+}
+
+td.num,
+th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+tbody tr:hover td {
+  background: var(--brand-tint);
+}
+
+.truncated {
+  font-size: 12px;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+figure {
+  margin: 22px 0;
+}
+
+figure svg {
+  max-width: 100%;
+  height: auto;
+}
+
+figcaption {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+/* Slot de gráfico: hueco preparado para el SVG determinista. */
+.chart-slot {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  min-height: 180px;
+  margin: 18px 0;
+  padding: 12px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chart-slot figcaption {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+/* ─────────────────────────── paginación (PDF / print) ─────────────────────────── */
+
+@page {
+  size: A4;
+  margin: 20mm 18mm;
+  @top-right {
+    content: "Informe de Validación de Scorecard — CONFIDENCIAL";
+    font-family: Roboto, Arial, Helvetica, sans-serif;
+    font-size: 8pt;
+    color: #5f6b7a;
+  }
+  @bottom-center {
+    content: "Página " counter(page) " de " counter(pages);
+    font-family: Roboto, Arial, Helvetica, sans-serif;
+    font-size: 8pt;
+    color: #5f6b7a;
+  }
+}
+
+@page :first {
+  @top-right {
+    content: "";
+  }
+  @bottom-center {
+    content: "";
+  }
+}
+
+/* Página apaisada para las tablas anchas. Con A4 vertical (170 mm útiles) una tabla de 20 columnas
+   deja ~8 mm por columna: el encabezado se solapa y cada cifra se parte en tres líneas
+   («505.» / «4441» / «62»), es decir la evidencia de monotonía y lift del scorecard llega ilegible
+   al comité. Apaisada hay 257 mm y la tabla se lee. No se descarta ninguna columna: perder una
+   sería perder trazabilidad. */
+@page wide-table {
+  size: A4 landscape;
+}
+
+@media print {
+  body {
+    background: #fff;
+    font-size: 10.5pt;
+  }
+
+  /* En papel no hay sidebar ni índice lateral: el documento colapsa a una columna A4. */
+  .doc-shell {
+    display: block;
+    max-width: none;
+    margin: 0;
+    box-shadow: none;
+  }
+
+  .doc-nav,
+  .doc-rail {
+    display: none;
+  }
+
+  main {
+    padding: 0;
+  }
+
+  .cover {
+    padding: 0 0 24pt;
+    border-top: none;
+    break-after: page;
+  }
+
+  .exec-summary > h2,
+  .report-section > h2 {
+    font-size: 15pt;
+  }
+
+  /* El salto de página lo manda el CAPÍTULO; las subsecciones fluyen dentro. */
+  .report-section.chapter {
+    break-before: page;
+  }
+
+  .report-section.subsection {
+    break-before: auto;
+  }
+
+  .subsection-title,
+  .report-section > h2 {
+    break-after: avoid;
+  }
+
+  /* En papel la tabla se comprime (ancho fijo + tipografía menor) para que TODAS las columnas entren:
+     perder una columna en el PDF sería perder trazabilidad. */
+  table {
+    table-layout: fixed;
+    font-size: 7.5pt;
+  }
+
+  thead th,
+  tbody td {
+    padding: 3px 4px;
+    border: 1px solid var(--line);
+  }
+
+  /* En papel no hay desplazamiento: una celda larga se parte en cualquier punto antes que empujar la
+     tabla fuera de la hoja. El encabezado se parte igual que la celda. Con `table-layout: fixed` el
+     ancho de columna no cede, así que un nombre largo (`total_exposure_amount`, 21 caracteres)
+     desbordaba su celda e invadía la vecina: en el PDF se leía
+     «total_exposure_amounttotal_provision_amount», tres encabezados encimados. Sólo aquí: en
+     pantalla la misma regla partía las cifras carácter por carácter (ver `tbody td`). */
+  thead th,
+  tbody td {
+    overflow-wrap: anywhere;
+  }
+
+  tbody tr:hover td {
+    background: transparent;
+  }
+
+  .chart-slot,
+  .verdict,
+  .lineage-box,
+  .placeholder,
+  .roles .role {
+    break-inside: avoid;
+  }
+
+  .table-block {
+    overflow-x: visible;
+  }
+
+  /* Tabla ancha (10+ columnas): página propia y apaisada, tipografía menor y celdas sin partir.
+     `table-layout: auto` deja que cada columna tome lo que necesita en vez del reparto uniforme
+     que ahogaba a las de seis decimales. */
+  .table-block--wide {
+    page: wide-table;
+    break-before: page;
+  }
+
+  .table-block--wide table {
+    table-layout: auto;
+    font-size: 6pt;
+  }
+
+  .table-block--wide thead th,
+  .table-block--wide tbody td {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    padding: 2px 3px;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+}
+
+/* ─────────────────────────── responsive (pantalla angosta) ─────────────────────────── */
+
+/* El índice de la derecha («En esta página») repite 13 capítulos que el de la izquierda ya lista:
+   bajo 1.600 px sus 236 px valen más para las tablas. Sólo en pantalla: en papel no hay índices. */
+@media screen and (max-width: 1599px) {
+  .doc-shell {
+    grid-template-columns: 264px minmax(0, 1fr);
+  }
+  .doc-rail {
+    display: none;
+  }
+}
+
+/* En un teléfono, la clave arriba y el valor debajo: en dos columnas el valor quedaba en 59 px.
+   Sólo en pantalla: el PDF conserva sus listas en dos columnas. */
+@media screen and (max-width: 720px) {
+  dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1080px) {
+  .doc-shell {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .doc-rail {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .doc-shell {
+    grid-template-columns: 1fr;
+  }
+  .doc-nav {
+    position: static;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .doc-secnav {
+    flex-flow: row wrap;
+    gap: 2px;
+  }
+  .doc-secnav a,
+  .doc-secnav a.active {
+    border-left: 0;
+    border-radius: 5px;
+  }
+  main {
+    padding: 28px 20px 64px;
+  }
+  .cover-title {
+    font-size: 29px;
+  }
+  .cover-fields,
+  .roles {
+    grid-template-columns: 1fr;
+  }
+}

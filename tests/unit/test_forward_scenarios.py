@@ -11,10 +11,10 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.forward as forward_pkg
-import nikodym.forward.scenarios as scenarios_module
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.forward.config import (
+import bayesrisk.forward as forward_pkg
+import bayesrisk.forward.scenarios as scenarios_module
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.forward.config import (
     ForwardConfig,
     ForwardInputConfig,
     MacroModelConfig,
@@ -24,11 +24,11 @@ from nikodym.forward.config import (
     ScenarioDefinitionConfig,
     TtcReversionConfig,
 )
-from nikodym.forward.exceptions import (
+from bayesrisk.forward.exceptions import (
     ForwardPredictionError,
     ForwardScenarioError,
 )
-from nikodym.forward.scenarios import ScenarioWeighting
+from bayesrisk.forward.scenarios import ScenarioWeighting
 
 _FORWARD_COLUMNS = [
     "row_id",
@@ -739,12 +739,12 @@ def test_validate_probability_columns_rechaza_nan_explicito() -> None:
 def test_imports_perezosos_exports_y_dependencia_faltante(monkeypatch: pytest.MonkeyPatch) -> None:
     code = (
         "import sys;"
-        "import nikodym.forward;"
-        "assert 'nikodym.forward.scenarios' not in sys.modules;"
+        "import bayesrisk.forward;"
+        "assert 'bayesrisk.forward.scenarios' not in sys.modules;"
         "baseline=set(sys.modules);"
-        "assert 'ScenarioWeighting' in nikodym.forward.__all__;"
-        "_=nikodym.forward.ScenarioWeighting;"
-        "assert 'nikodym.forward.scenarios' in sys.modules;"
+        "assert 'ScenarioWeighting' in bayesrisk.forward.__all__;"
+        "_=bayesrisk.forward.ScenarioWeighting;"
+        "assert 'bayesrisk.forward.scenarios' in sys.modules;"
         "blocked=[m for m in ('pandas','numpy','scipy','statsmodels','pmdarima') "
         "if m in sys.modules and m not in baseline];"
         "assert not blocked, blocked"

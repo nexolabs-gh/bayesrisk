@@ -20,7 +20,7 @@ const F5_ID = "f5-provision-interna-generica"
 
 import { esAvisoDeclarado } from "@/lib/markers"
 
-/** Garantía de una superficie: contrato congelado (SemVer 1.x) o experimental. */
+/** Garantía de una superficie: contrato congelado (SemVer 2.x) o experimental. */
 export type Garantia = "estable" | "experimental"
 
 /** Lo que la card/selector muestra de un preset: título por área, garantía y blurb curados. */

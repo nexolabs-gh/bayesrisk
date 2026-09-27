@@ -109,7 +109,7 @@ const SECTIONS: SectionDef[] = [
     label: "Ejecutar",
     icon: Play,
     title: "Ejecutar",
-    cardDescription: "Dispara la corrida vía nikodym.run (síncrona).",
+    cardDescription: "Dispara la corrida vía bayesrisk.run (síncrona).",
     empty:
       "El disparador de la corrida y su estado (done / failed con lineage) aparecerán aquí, sin cálculo propio en el front.",
   },
@@ -335,7 +335,7 @@ function App() {
   }
 
   // Entrada desde el landing. SIN preset (build normal / CTA genérico): flujo completo, arranca en
-  // Datos. CON preset (selector de demos de `demo.nikodym.cl`): resiembra ESE pipeline y entra
+  // Datos. CON preset (selector de demos de `demo.bayesadvisory.cl`): resiembra ESE pipeline y entra
   // directo a Ejecutar, ya cargado y listo para correr —así el dominio elegido (p. ej. IFRS 9) no
   // queda enterrado tras el selector de Ejecutar—. `applyPreset` además deja la sesión en el trabajo
   // del ejemplo (D-JOB-17) y CORTA con la corrida anterior (results/lastRun) para no mostrar el
@@ -473,7 +473,7 @@ function App() {
 
           <p className="mt-8 font-mono text-xs text-muted-foreground">
             {DEMO_MODE
-              ? "Modo demo · corrida real de Nikodym sobre un dataset sintético de ejemplo"
+              ? "Modo demo · corrida real de bayesrisk sobre un dataset sintético de ejemplo"
               : `Backend: ${API_BASE || "same-origin"}`}
           </p>
         </div>

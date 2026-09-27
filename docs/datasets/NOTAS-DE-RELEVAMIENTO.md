@@ -1,4 +1,4 @@
-# HANDOFF — Datasets para Nikodym
+# HANDOFF — Datasets para bayesrisk
 
 **Última sesión:** 2026-07-25
 **Ubicación:** `/Users/camilogonzalez/Downloads/datasets-riesgo-credito` — **no es repo git**
@@ -8,7 +8,7 @@
 
 ## Qué es esto
 
-Catálogo de datasets públicos para desarrollar y validar **Nikodym** (librería de riesgo de
+Catálogo de datasets públicos para desarrollar y validar **bayesrisk** (librería de riesgo de
 crédito). El criterio del catálogo no es "acá hay datos de crédito" sino **qué caso de prueba
 cubre cada dataset que ningún otro cubre**.
 
@@ -97,5 +97,5 @@ Nada. La sesión cerró sin trabajo a medias.
 
 La carpeta vive en `~/Downloads` y **no está bajo git**. Si se quiere versionar, mover los 4
 archivos de documentación (`README.md`, `catalogo.csv`, `descargar.sh`, `INVENTARIO.md`, ~60 KB)
-al repo de Nikodym y dejar `raw/` fuera con `.gitignore`. Los datos se reconstruyen con
+al repo de bayesrisk y dejar `raw/` fuera con `.gitignore`. Los datos se reconstruyen con
 `./descargar.sh get`.

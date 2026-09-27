@@ -1,4 +1,4 @@
-"""Tests de ``ModelConfig`` (SDD-08 §5) y su integración con ``NikodymConfig``."""
+"""Tests de ``ModelConfig`` (SDD-08 §5) y su integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -12,24 +12,24 @@ import yaml
 from hypothesis import given, settings
 from pydantic import ValidationError
 
-import nikodym.model  # importa la capa: puebla el hook _MODEL_CONFIG_CLS
-from nikodym.core.config import (
+import bayesrisk.model  # importa la capa: puebla el hook _MODEL_CONFIG_CLS
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import ConfigError
-from nikodym.model.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.model.config import (
     IvContributionConfig,
     ModelConfig,
     SignPolicyConfig,
     StepwiseConfig,
 )
-from nikodym.model.exceptions import ModelError, ModelFitError, ModelTransformError
-from nikodym.testing.strategies import _config_cls_for_domain, nikodym_config_strategy
+from bayesrisk.model.exceptions import ModelError, ModelFitError, ModelTransformError
+from bayesrisk.testing.strategies import _config_cls_for_domain, bayesrisk_config_strategy
 
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 
@@ -116,18 +116,18 @@ def test_stepwise_validator_acepta_instancia_existente() -> None:
     assert StepwiseConfig._normaliza_direction_none(cfg) is cfg
 
 
-def test_nikodymconfig_model_instancia() -> None:
-    """Pasar una instancia ``ModelConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_model_instancia() -> None:
+    """Pasar una instancia ``ModelConfig`` a ``BayesRiskConfig`` la conserva."""
     model = ModelConfig()
-    cfg = NikodymConfig(model=model)
+    cfg = BayesRiskConfig(model=model)
     assert isinstance(cfg.model, ModelConfig)
     assert cfg.model is model
 
 
-def test_nikodymconfig_model_dict_coacciona() -> None:
+def test_bayesriskconfig_model_dict_coacciona() -> None:
     """Un dict en ``model`` se coacciona a ``ModelConfig`` por el hook cargado."""
     with pytest.warns(DeprecationWarning, match="glm_binomial"):
-        cfg = NikodymConfig(
+        cfg = BayesRiskConfig(
             model={
                 "engine": "glm_binomial",
                 "stepwise": {"entry_p_value": 0.04},
@@ -145,32 +145,34 @@ def test_glm_legacy_conserva_hash_de_la_rama_logit() -> None:
         legacy = ModelConfig(engine="glm_binomial")
     canonical = ModelConfig(engine="logit")
     assert legacy == canonical
-    assert config_hash(NikodymConfig(model=legacy)) == config_hash(NikodymConfig(model=canonical))
+    assert config_hash(BayesRiskConfig(model=legacy)) == config_hash(
+        BayesRiskConfig(model=canonical)
+    )
 
 
-def test_nikodymconfig_model_none_explicito() -> None:
+def test_bayesriskconfig_model_none_explicito() -> None:
     """``model=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(model=None).model is None
+    assert BayesRiskConfig(model=None).model is None
 
 
-def test_nikodymconfig_model_core_only_acepta_blob_json(
+def test_bayesriskconfig_model_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``model`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_MODEL_CONFIG_CLS", None)
-    cfg = NikodymConfig(model={"engine": "logit", "stepwise": {"entry_p_value": 0.05}})
+    cfg = BayesRiskConfig(model={"engine": "logit", "stepwise": {"entry_p_value": 0.05}})
     assert cfg.model == {"engine": "logit", "stepwise": {"entry_p_value": 0.05}}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_model_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_model_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``model`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_MODEL_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(model=blob)
+        BayesRiskConfig(model=blob)
 
 
 @pytest.mark.parametrize(
@@ -184,15 +186,15 @@ def test_nikodymconfig_model_core_only_rechaza_json_no_canonico(
 )
 def test_config_hash_cambia_al_variar_model(model: ModelConfig) -> None:
     """``model`` no es INFRA: engine, stepwise, signos e IV cambian la identidad."""
-    base = config_hash(NikodymConfig(model=ModelConfig()))
-    variado = config_hash(NikodymConfig(model=model))
+    base = config_hash(BayesRiskConfig(model=ModelConfig()))
+    variado = config_hash(BayesRiskConfig(model=model))
     assert "model" not in INFRA_SECTIONS
     assert variado != base
 
 
 @settings(max_examples=12, deadline=None)
-@given(cfg=nikodym_config_strategy(sections=["model"]))
-def test_nikodym_config_strategy_genera_configs_model_validos(cfg: NikodymConfig) -> None:
+@given(cfg=bayesrisk_config_strategy(sections=["model"]))
+def test_bayesrisk_config_strategy_genera_configs_model_validos(cfg: BayesRiskConfig) -> None:
     """La estrategia pública genera configs raíz válidos con ``model`` activo y serializable."""
     assert isinstance(cfg.model, ModelConfig)
     assert cfg.model.type == "standard"
@@ -249,7 +251,7 @@ def test_campos_model_tienen_metadatos_ui() -> None:
             assert {"ui_widget", "ui_group", "ui_order"} <= set(extra)
 
 
-def test_model_errors_descienden_de_nikodym_error() -> None:
+def test_model_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``model`` cuelgan de la raíz propia de la capa."""
     for error_cls in (ModelError, ModelFitError, ModelTransformError):
         with pytest.raises(ModelError, match="fallo model"):
@@ -257,27 +259,27 @@ def test_model_errors_descienden_de_nikodym_error() -> None:
 
 
 def test_import_model_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.model`` registra el hook sin arrastrar scoring ni stack tabular."""
+    """``import bayesrisk.model`` registra el hook sin arrastrar scoring ni stack tabular."""
     code = (
-        "import nikodym.model, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.model.config import ModelConfig;"
+        "import bayesrisk.model, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.model.config import ModelConfig;"
         "bloqueados=[m for m in ('statsmodels','sklearn','scipy','pandas') if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(model={'engine': 'logit'});"
+        "cfg=BayesRiskConfig(model={'engine': 'logit'});"
         "assert isinstance(cfg.model, ModelConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_core_valida_model_como_blob_opaco_sin_importar_model() -> None:
-    """El core acepta ``model`` JSON/dict sin importar ``nikodym.model``."""
+    """El core acepta ``model`` JSON/dict sin importar ``bayesrisk.model``."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(model={'engine': 'logit'});"
+        "cfg=BayesRiskConfig(model={'engine': 'logit'});"
         "assert cfg.model == {'engine': 'logit'};"
-        "assert 'nikodym.model' not in sys.modules"
+        "assert 'bayesrisk.model' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -286,22 +288,22 @@ def test_model_getattr_desconocido_levanta_attributeerror() -> None:
     """La reexportación perezosa falla con ``AttributeError`` para nombres desconocidos."""
     atributo = "no_existe"
     with pytest.raises(AttributeError, match="no_existe"):
-        getattr(nikodym.model, atributo)
+        getattr(bayesrisk.model, atributo)
 
 
 def test_model_getattr_carga_export_perezoso(monkeypatch: pytest.MonkeyPatch) -> None:
     """La ruta positiva de ``__getattr__`` carga y cachea un símbolo bajo demanda."""
     atributo = "ModelConfigLazy"
     monkeypatch.setitem(
-        nikodym.model._LAZY_EXPORTS,
+        bayesrisk.model._LAZY_EXPORTS,
         atributo,
-        ("nikodym.model.config", "ModelConfig"),
+        ("bayesrisk.model.config", "ModelConfig"),
     )
     try:
-        assert getattr(nikodym.model, atributo) is ModelConfig
-        assert getattr(nikodym.model, atributo) is ModelConfig
+        assert getattr(bayesrisk.model, atributo) is ModelConfig
+        assert getattr(bayesrisk.model, atributo) is ModelConfig
     finally:
-        monkeypatch.delattr(nikodym.model, atributo, raising=False)
+        monkeypatch.delattr(bayesrisk.model, atributo, raising=False)
 
 
 def test_config_cls_for_domain_resuelve_model() -> None:
@@ -311,4 +313,4 @@ def test_config_cls_for_domain_resuelve_model() -> None:
 
 def test_config_hash_default_con_model_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``model`` con valor None."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH

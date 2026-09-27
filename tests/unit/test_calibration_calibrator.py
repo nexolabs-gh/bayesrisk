@@ -14,16 +14,16 @@ import pytest
 from pandas.testing import assert_frame_equal
 from sklearn.base import clone
 
-import nikodym.calibration.calibrator as calibrator_module
-from nikodym.calibration.calibrator import PDCalibrator
-from nikodym.calibration.config import CalibrationConfig
-from nikodym.calibration.exceptions import (
+import bayesrisk.calibration.calibrator as calibrator_module
+from bayesrisk.calibration.calibrator import PDCalibrator
+from bayesrisk.calibration.config import CalibrationConfig
+from bayesrisk.calibration.exceptions import (
     CalibrationFitError,
     CalibrationOffsetExceededError,
     CalibrationTransformError,
 )
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ConfigError, MissingDependencyError, NotFittedError
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ConfigError, MissingDependencyError, NotFittedError
 
 
 def test_defaults_estimador_coinciden_con_calibrationconfig() -> None:
@@ -636,7 +636,7 @@ def test_import_calibration_liviano_subprocess() -> None:
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.calibration
+        import bayesrisk.calibration
 
         blocked = [m for m in ("pandas", "scipy", "sklearn") if m in sys.modules]
         assert blocked == [], blocked
@@ -658,7 +658,7 @@ def test_import_calibrator_liviano_subprocess() -> None:
     code = textwrap.dedent(
         """
         import sys
-        from nikodym.calibration.calibrator import PDCalibrator
+        from bayesrisk.calibration.calibrator import PDCalibrator
 
         assert PDCalibrator.__name__ == "PDCalibrator"
         blocked = [m for m in ("pandas", "scipy", "sklearn") if m in sys.modules]
@@ -703,7 +703,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         calibrator_module._import_logistic_regression,
         calibrator_module._import_isotonic_regression,
     ):
-        with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+        with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
             helper()
 
 
@@ -718,7 +718,7 @@ def test_dependency_versions_traduce_dependencia_ausente(
         return real_import(name)
 
     monkeypatch.setattr(calibrator_module.importlib, "import_module", block_scipy)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         calibrator_module._dependency_versions(include_scipy=True, include_sklearn=False)
 
     monkeypatch.setattr(calibrator_module.importlib, "import_module", real_import)

@@ -12,8 +12,8 @@ from typing import Any
 
 import pytest
 
-import nikodym.provisioning.cmf.matrices as matrices_module
-from nikodym.provisioning.cmf.matrices import (
+import bayesrisk.provisioning.cmf.matrices as matrices_module
+from bayesrisk.provisioning.cmf.matrices import (
     CMF_MATRIX_IDS,
     CmfMatrixBundle,
     CmfMatrixError,
@@ -261,10 +261,10 @@ def test_import_liviano_cmf_no_carga_matrices_y_matrices_no_importa_pandas() -> 
 
     code = (
         "import sys;"
-        "import nikodym.provisioning.cmf;"
-        "assert 'nikodym.provisioning.cmf.matrices' not in sys.modules;"
+        "import bayesrisk.provisioning.cmf;"
+        "assert 'bayesrisk.provisioning.cmf.matrices' not in sys.modules;"
         "assert 'pandas' not in sys.modules;"
-        "import nikodym.provisioning.cmf.matrices;"
+        "import bayesrisk.provisioning.cmf.matrices;"
         "assert 'pandas' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)

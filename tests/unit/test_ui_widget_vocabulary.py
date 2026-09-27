@@ -26,7 +26,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from nikodym.core.config.schema import build_full_json_schema
+from bayesrisk.core.config.schema import build_full_json_schema
 
 _FORM_ENGINE = Path(__file__).resolve().parents[2] / "web" / "src" / "lib" / "form-engine.ts"
 

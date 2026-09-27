@@ -16,10 +16,10 @@ import pandas as pd
 import pytest
 from scipy.stats import norm
 
-import nikodym.provisioning.ifrs9.pd_pit as pd_pit_module
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.provisioning.ifrs9 import marginal_to_horizon, vasicek_pit
-from nikodym.provisioning.ifrs9.exceptions import IfrsPdError
+import bayesrisk.provisioning.ifrs9.pd_pit as pd_pit_module
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.provisioning.ifrs9 import marginal_to_horizon, vasicek_pit
+from bayesrisk.provisioning.ifrs9.exceptions import IfrsPdError
 
 # ─────────────────────────── vasicek_pit: golden y orientación ───────────────────────────
 
@@ -245,7 +245,7 @@ def test_vasicek_pit_scipy_ausente(monkeypatch: pytest.MonkeyPatch) -> None:
         return real_import(name)
 
     monkeypatch.setattr(pd_pit_module.importlib, "import_module", block)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         vasicek_pit(np.array([0.02]), rho=0.15, z=np.array([0.0]))
 
 

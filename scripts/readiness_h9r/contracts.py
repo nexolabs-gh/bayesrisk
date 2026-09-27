@@ -1718,8 +1718,8 @@ def _validate_runtime_provenance(value: Any, *, context: str) -> dict[str, Any]:
         raise ContractError(f"{context}.isolation_flags no acredita runtime aislado")
     if provenance["no_site"] is not True:
         raise ContractError(f"{context}.no_site no acredita bootstrap sin site hooks")
-    if provenance["distribution"] != "nikodym":
-        raise ContractError(f"{context}.distribution no identifica nikodym")
+    if provenance["distribution"] != "bayesrisk":
+        raise ContractError(f"{context}.distribution no identifica bayesrisk")
     for name in (
         "version",
         "distribution_root",
@@ -10011,7 +10011,7 @@ def attempt_json_schema() -> dict[str, Any]:
                             },
                             "isolation_flags": {"const": ["-I", "-B", "-S"]},
                             "no_site": {"const": True},
-                            "distribution": {"const": "nikodym"},
+                            "distribution": {"const": "bayesrisk"},
                             "version": path,
                             "distribution_root": path,
                             "dist_info_path": path,

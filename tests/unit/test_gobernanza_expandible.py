@@ -17,8 +17,8 @@ Controles negativos ejecutados al implementar: quitar ``governance`` del mapa IN
 opaco y pone rojo (1); añadirla a ``_DEFAULT_DOMAIN_ORDER`` pone rojo (2), además de
 ``test_survival_step`` y el censo de ``test_canal_metricas``; dejar la unión en sólo dominios pone
 rojo (4). ⚠️ Dejar sólo el loader de dominios en ``validate_config`` **no** enrojece, y se dice:
-``nikodym.ui.serializers`` importa ``nikodym.governance`` al cargarse, así que por la interfaz el
-hueco nunca fue observable; la llamada a la unión en las rutas es blindaje del contrato.
+``bayesrisk.ui.serializers`` importa ``bayesrisk.governance`` al cargarse, así que por la interfaz
+el hueco nunca fue observable; la llamada a la unión en las rutas es blindaje del contrato.
 """
 
 from __future__ import annotations
@@ -33,24 +33,24 @@ from typing import Any
 
 import pytest
 
-from nikodym.core.config import NikodymConfig, config_hash
-from nikodym.core.config import schema as schema_mod
-from nikodym.core.config.hashing import INFRA_SECTIONS
-from nikodym.core.config.schema import (
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+from bayesrisk.core.config import schema as schema_mod
+from bayesrisk.core.config.hashing import INFRA_SECTIONS
+from bayesrisk.core.config.schema import (
     build_full_json_schema,
     cargar_configs_de_dominio,
     cargar_configs_de_infra,
     cargar_configs_expandibles,
     rama_objeto,
 )
-from nikodym.core.study import (
+from bayesrisk.core.study import (
     _DEFAULT_DOMAIN_ORDER,
     _DOMAIN_CONFIG_CLASSES,
     _INFRA_CONFIG_CLASSES,
     Study,
 )
-from nikodym.governance.config import GovernanceConfig
-from nikodym.ui.presets import get_preset, list_presets
+from bayesrisk.governance.config import GovernanceConfig
+from bayesrisk.ui.presets import get_preset, list_presets
 
 #: Los 13 campos de ``GovernanceConfig``, escritos a mano: el gate compara contra esta lista y no
 #: contra ``model_fields``, para que un campo que desaparezca del schema se note.
@@ -113,7 +113,7 @@ def test_el_loader_de_infra_degrada_por_extra_ausente_igual_que_el_de_dominios(
     real_import = importlib.import_module
 
     def fake_import(name: str, package: str | None = None) -> types.ModuleType:
-        if name == "nikodym.governance.config":
+        if name == "bayesrisk.governance.config":
             raise ImportError("simulado: governance ausente")
         return real_import(name, package)
 
@@ -138,11 +138,11 @@ def test_governance_no_es_un_paso_y_los_mapas_no_se_solapan() -> None:
     assert set(_INFRA_CONFIG_CLASSES).isdisjoint(_DOMAIN_CONFIG_CLASSES)
 
     for seccion in _INFRA_CONFIG_CLASSES:
-        assert seccion in NikodymConfig.model_fields, seccion
+        assert seccion in BayesRiskConfig.model_fields, seccion
         assert seccion in INFRA_SECTIONS, f"{seccion} entraría al config_hash"
 
     # Con la sección encendida, el pipeline por defecto sigue sin contenerla.
-    study = Study(NikodymConfig(governance=GovernanceConfig(purpose="Gate de D-GOB-10")))
+    study = Study(BayesRiskConfig(governance=GovernanceConfig(purpose="Gate de D-GOB-10")))
     assert "governance" not in study._default_step_names()
 
 
@@ -184,8 +184,8 @@ def test_expandir_governance_no_mueve_el_config_hash_de_ningun_preset() -> None:
             "review_period_months": 6,
             "cartera": "consumo",
         }
-        assert config_hash(NikodymConfig.model_validate(encendido)) == config_hash(
-            NikodymConfig.model_validate(cfg)
+        assert config_hash(BayesRiskConfig.model_validate(encendido)) == config_hash(
+            BayesRiskConfig.model_validate(cfg)
         ), f"{pid}: encender governance movió el config_hash"
 
 
@@ -212,16 +212,16 @@ _MOTOR_FRESCO = """
 import json
 import sys
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config import schema
-from nikodym.core.config.schema import cargar_configs_de_dominio, cargar_configs_expandibles
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config import schema
+from bayesrisk.core.config.schema import cargar_configs_de_dominio, cargar_configs_expandibles
 
 config = {"governance": {"purpose": "x", "review_period_months": 999}}
 
 
 def acepta():
     try:
-        NikodymConfig.model_validate(config)
+        BayesRiskConfig.model_validate(config)
     except Exception:
         return False
     return True
@@ -231,7 +231,7 @@ medido = {"hook_vacio_al_inicio": schema._GOVERNANCE_CONFIG_CLS is None}
 medido["acepta_sin_loader"] = acepta()
 cargar_configs_de_dominio()
 medido["acepta_tras_dominios"] = acepta()
-medido["governance_importada_por_dominios"] = "nikodym.governance" in sys.modules
+medido["governance_importada_por_dominios"] = "bayesrisk.governance" in sys.modules
 cargar_configs_expandibles()
 medido["acepta_tras_expandibles"] = acepta()
 medido["hook_poblado_al_final"] = schema._GOVERNANCE_CONFIG_CLS is not None
@@ -242,8 +242,8 @@ print(json.dumps(medido))
 def test_el_loader_de_dominios_no_basta_y_la_union_cierra_el_hueco_en_proceso_fresco() -> None:
     """El hueco de D-HASH-5 sobre ``governance``, medido donde existe: en el motor.
 
-    En un proceso fresco ``NikodymConfig`` acepta ``review_period_months: 999`` mientras nadie
-    importe ``nikodym.governance`` —la sección viaja opaca—, y ``cargar_configs_de_dominio()``
+    En un proceso fresco ``BayesRiskConfig`` acepta ``review_period_months: 999`` mientras nadie
+    importe ``bayesrisk.governance`` —la sección viaja opaca—, y ``cargar_configs_de_dominio()``
     **no la importa**: por eso hace falta la unión, y por eso el catálogo, la guarda del fixture y
     las rutas la usan. Es el oráculo que discrimina el loader; control negativo: dejar la unión en
     sólo dominios pone esto en rojo. Si algún día un dominio importara ``governance``, la tercera
@@ -268,7 +268,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from nikodym.ui import routes
+from bayesrisk.ui import routes
 
 config = {"governance": {"purpose": "x", "review_period_months": 999}}
 workdir = Path(tempfile.mkdtemp())
@@ -297,11 +297,11 @@ def test_la_interfaz_juzga_igual_antes_y_despues_del_schema() -> None:
     """``/api/validate`` y el preflight dan el mismo veredicto antes y después de ``/api/schema``.
 
     Es el contrato que D-HASH-5 promete a la interfaz, en un proceso fresco. ⚠️ **No discrimina el
-    loader de ``validate_config``**, y se dice: ``nikodym.ui.serializers`` importa
-    ``nikodym.governance`` al cargarse, así que en un proceso que ya importó ``routes`` el hook está
-    poblado haga lo que haga el endpoint —medido al implementar con el control negativo «sólo el
-    loader de dominios», que no enrojeció—. El oráculo que sí discrimina es el del motor, arriba; la
-    llamada a ``cargar_configs_expandibles()`` en las rutas deja el contrato explícito en vez de
+    loader de ``validate_config``**, y se dice: ``bayesrisk.ui.serializers`` importa
+    ``bayesrisk.governance`` al cargarse, así que en un proceso que ya importó ``routes`` el hook
+    está poblado haga lo que haga el endpoint —medido al implementar con el control negativo «sólo
+    el loader de dominios», que no enrojeció—. El oráculo que sí discrimina es el del motor, arriba;
+    la llamada a ``cargar_configs_expandibles()`` en las rutas deja el contrato explícito en vez de
     heredarlo de esa cadena de imports.
     """
     medido = _en_proceso_fresco(_INTERFAZ_FRESCA)

@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-import nikodym.core.build as build_module
-from nikodym.core.exceptions import ReproducibilityError
+import bayesrisk.core.build as build_module
+from bayesrisk.core.exceptions import ReproducibilityError
 
 
 def test_sdist_con_pyproject_sin_git_confia_en_manifest_embebido(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake_module = tmp_path / "src" / "nikodym" / "core" / "build.py"
+    fake_module = tmp_path / "src" / "bayesrisk" / "core" / "build.py"
     fake_module.parent.mkdir(parents=True)
     fake_module.touch()
     (tmp_path / "pyproject.toml").touch()
@@ -25,7 +25,7 @@ def test_sdist_con_pyproject_sin_git_confia_en_manifest_embebido(
 def test_checkout_git_sin_lock_falla_cerrado(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake_module = tmp_path / "src" / "nikodym" / "core" / "build.py"
+    fake_module = tmp_path / "src" / "bayesrisk" / "core" / "build.py"
     fake_module.parent.mkdir(parents=True)
     fake_module.touch()
     (tmp_path / "pyproject.toml").touch()
@@ -37,7 +37,7 @@ def test_checkout_git_sin_lock_falla_cerrado(
 
 
 def test_el_manifiesto_embebido_no_derivo_del_uv_lock_del_checkout() -> None:
-    """Gate explícito de la deriva ``uv.lock`` ↔ ``src/nikodym/_build_manifest.json``.
+    """Gate explícito de la deriva ``uv.lock`` ↔ ``src/bayesrisk/_build_manifest.json``.
 
     `scripts/check_build_manifest.py` existe pero no lo invocaba **nadie**: ni un test ni un job de
     CI. La comprobación vivía sólo dentro de :func:`build_uv_lock_hash`, o sea que la deriva se
@@ -60,7 +60,7 @@ def test_un_lock_que_no_coincide_con_el_manifiesto_falla_cerrado(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Control negativo del gate anterior: sin esto, el cotejo podría no comparar nada."""
-    fake_module = tmp_path / "src" / "nikodym" / "core" / "build.py"
+    fake_module = tmp_path / "src" / "bayesrisk" / "core" / "build.py"
     fake_module.parent.mkdir(parents=True)
     fake_module.touch()
     (tmp_path / "pyproject.toml").touch()

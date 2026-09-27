@@ -2,7 +2,7 @@
  * Gate del bundle normal: bytes finales, fixtures demo y requests externos.
  *
  * Con `--demo` verifica el OTRO bundle —el de `pnpm build:demo`, que se publica en
- * `demo.nikodym.cl`— y comprueba qué corridas capturadas sirve (D-JUR-9.8).
+ * `demo.bayesadvisory.cl`— y comprueba qué corridas capturadas sirve (D-JUR-9.8).
  */
 
 import { createHash } from "node:crypto"
@@ -19,12 +19,12 @@ const {
   transformStyleAttribute,
 } = REQUIRE_FROM_WEB("lightningcss")
 const FIXTURES = path.join(ROOT, "web", "src", "fixtures", "demo")
-const STATIC = path.join(ROOT, "src", "nikodym", "ui", "static")
+const STATIC = path.join(ROOT, "src", "bayesrisk", "ui", "static")
 const SIGNATURES = path.join(ROOT, "scripts", "frontend_demo_fixture_signatures.json")
 const EVIDENCE = path.join(ROOT, "web", "dist", "evidence")
 const PROVENANCE = path.join(EVIDENCE, "frontend-provenance.json")
 const REPORT = path.join(EVIDENCE, "frontend-bundle-check.json")
-const FIXTURE_SENTINEL = "NIKODYM_DEMO_FIXTURE_ONLY"
+const FIXTURE_SENTINEL = "BAYESRISK_DEMO_FIXTURE_ONLY"
 const FIXTURE_WINDOW_SIZE = 96
 
 export const digest = (bytes) => createHash("sha256").update(bytes).digest("hex")
@@ -333,7 +333,7 @@ function isLoopbackHost(hostname) {
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "[::1]"
 }
 
-const LOCAL_URL_BASE = new URL("http://nikodym.invalid/")
+const LOCAL_URL_BASE = new URL("http://bayesrisk.invalid/")
 
 function isAutomaticExternal(rawUrl, { allowPassiveData = false } = {}) {
   const value = decodeHtmlEntities(rawUrl).trim()
@@ -2001,7 +2001,7 @@ export function mainDemo(demoDirectory = path.join(ROOT, "web", "dist")) {
 
 export function main() {
   if (!existsSync(path.join(STATIC, "index.html"))) {
-    throw new Error("Falta src/nikodym/ui/static/index.html")
+    throw new Error("Falta src/bayesrisk/ui/static/index.html")
   }
   if (!existsSync(PROVENANCE)) throw new Error("Falta manifiesto de procedencia")
   const manifest = JSON.parse(readFileSync(SIGNATURES, "utf8"))

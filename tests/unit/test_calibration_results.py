@@ -12,17 +12,17 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.calibration.results as calibration_results
-from nikodym.calibration.config import (
+import bayesrisk.calibration.results as calibration_results
+from bayesrisk.calibration.config import (
     AnchorKind as ConfigAnchorKind,
 )
-from nikodym.calibration.config import (
+from bayesrisk.calibration.config import (
     AnchorSource as ConfigAnchorSource,
 )
-from nikodym.calibration.config import (
+from bayesrisk.calibration.config import (
     CalibrationMethod as ConfigCalibrationMethod,
 )
-from nikodym.calibration.results import (
+from bayesrisk.calibration.results import (
     CalibrationCardSection,
     CalibrationParameters,
     CalibrationResult,
@@ -212,7 +212,7 @@ def test_calibration_result_valida_dataframe_y_consistencia_card() -> None:
 def test_calibration_results_lazy_exports_y_nucleo_liviano_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.calibration as calibration;"
+        "import bayesrisk.calibration as calibration;"
         "blocked=[m for m in ('pandas','scipy','sklearn') if m in sys.modules];"
         "assert not blocked, blocked;"
         "loaded=[getattr(calibration, name) for name in "

@@ -51,7 +51,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ===== Tema Nikodym: DOS modos on-brand =====
+/* ===== Tema bayesrisk: DOS modos on-brand =====
    `:root` = tema CLARO (papel blanco, texto navy); `.dark` = tema OSCURO navy (la
    identidad, default de la app vía la clase `.dark` en <html>). Los componentes deben
    usar tokens SEMÁNTICOS (foreground, card, border, muted-foreground, eyebrow…) para

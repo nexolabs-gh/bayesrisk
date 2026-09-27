@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from nikodym.ui.option_surface import classified_option_surface
+from bayesrisk.ui.option_surface import classified_option_surface
 
 _TARGET = (
     Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "option_surface_ledger.json"

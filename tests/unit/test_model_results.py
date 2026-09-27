@@ -13,8 +13,8 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-from nikodym.model import results as model_results
-from nikodym.model.results import (
+from bayesrisk.model import results as model_results
+from bayesrisk.model.results import (
     CoefficientRecord,
     ModelCardSection,
     ModelFitStatistics,
@@ -439,7 +439,7 @@ def test_dataframe_floats_normalizan_menos_cero_al_entrar() -> None:
 def test_model_results_lazy_exports_y_nucleo_liviano_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.model as model;"
+        "import bayesrisk.model as model;"
         "blocked=[m for m in ('statsmodels','sklearn','scipy') if m in sys.modules];"
         "assert not blocked, blocked;"
         "assert 'pandas' not in sys.modules, 'pandas cargado antes del lazy export';"

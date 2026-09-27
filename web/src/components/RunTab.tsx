@@ -481,7 +481,7 @@ export function RunTab({ onNavigate }: RunTabProps) {
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
             La corrida es síncrona (
-            <span className="font-mono">nikodym.run</span>): dispara el pipeline
+            <span className="font-mono">bayesrisk.run</span>): dispara el pipeline
             y devuelve su estado. Los artefactos se ven en Resultados.
           </p>
         </CardContent>

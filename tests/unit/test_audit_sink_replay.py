@@ -1,4 +1,4 @@
-"""Tests de ``nikodym.audit``: sink JSONL y replay del audit-trail."""
+"""Tests de ``bayesrisk.audit``: sink JSONL y replay del audit-trail."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.audit import AuditConfig, AuditError, JsonlAuditSink, iter_trail, read_trail
-from nikodym.core.audit import AuditEvent
+from bayesrisk.audit import AuditConfig, AuditError, JsonlAuditSink, iter_trail, read_trail
+from bayesrisk.core.audit import AuditEvent
 
 _TS = datetime(2026, 6, 25, 12, 30, 0, tzinfo=UTC)
 _GOLDEN_START_LINE = (

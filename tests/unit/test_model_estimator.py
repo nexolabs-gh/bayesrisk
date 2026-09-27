@@ -16,28 +16,28 @@ import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
 from sklearn.base import clone
 
-import nikodym.model.estimator as estimator_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ConfigError, MissingDependencyError, NotFittedError
-from nikodym.model.config import (
+import bayesrisk.model.estimator as estimator_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ConfigError, MissingDependencyError, NotFittedError
+from bayesrisk.model.config import (
     IvContributionConfig,
     ModelConfig,
     SignPolicyConfig,
     StepwiseConfig,
 )
-from nikodym.model.estimator import LogisticPDModel
-from nikodym.model.exceptions import ModelFitError, ModelTransformError
+from bayesrisk.model.estimator import LogisticPDModel
+from bayesrisk.model.exceptions import ModelFitError, ModelTransformError
 
 
 def test_import_model_liviano_no_carga_estimator_ni_deps_pesadas() -> None:
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.model
+        import bayesrisk.model
 
         blocked = [
             name for name in (
-                "nikodym.model.estimator",
+                "bayesrisk.model.estimator",
                 "statsmodels",
                 "sklearn",
                 "scipy",
@@ -64,8 +64,8 @@ def test_reexport_logistic_model_sin_sklearn_falla_con_missing_dependency() -> N
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.model
-        from nikodym.core.exceptions import MissingDependencyError
+        import bayesrisk.model
+        from bayesrisk.core.exceptions import MissingDependencyError
 
 
         class BlockSklearn:
@@ -78,9 +78,9 @@ def test_reexport_logistic_model_sin_sklearn_falla_con_missing_dependency() -> N
 
         sys.meta_path.insert(0, BlockSklearn())
         try:
-            nikodym.model.LogisticPDModel
+            bayesrisk.model.LogisticPDModel
         except MissingDependencyError as exc:
-            assert "instale nikodym[scoring]" in str(exc)
+            assert "instale bayesrisk[scoring]" in str(exc)
         else:
             raise AssertionError("LogisticPDModel no tradujo la ausencia de sklearn")
         print("ok")
@@ -113,7 +113,7 @@ def test_import_estimator_sin_sklearn_cubre_rama_top_level(
     module_path = estimator_module.__file__
     assert module_path is not None
     spec = importlib.util.spec_from_file_location(
-        "nikodym.model._missing_sklearn_estimator_test",
+        "bayesrisk.model._missing_sklearn_estimator_test",
         module_path,
     )
     assert spec is not None
@@ -121,7 +121,7 @@ def test_import_estimator_sin_sklearn_cubre_rama_top_level(
     loader = spec.loader
     assert loader is not None
 
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         loader.exec_module(module)
 
 
@@ -134,7 +134,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         return real_import(name)
 
     monkeypatch.setattr(estimator_module.importlib, "import_module", block_pandas)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         estimator_module._import_pandas()
 
     def block_numpy(name: str) -> Any:
@@ -143,7 +143,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         return real_import(name)
 
     monkeypatch.setattr(estimator_module.importlib, "import_module", block_numpy)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         estimator_module._import_numpy()
 
     def block_statsmodels(name: str) -> Any:
@@ -152,7 +152,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         return real_import(name)
 
     monkeypatch.setattr(estimator_module.importlib, "import_module", block_statsmodels)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         estimator_module._import_statsmodels_components()
 
     def block_scipy_stats(name: str) -> Any:
@@ -161,7 +161,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         return real_import(name)
 
     monkeypatch.setattr(estimator_module.importlib, "import_module", block_scipy_stats)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         estimator_module._import_scipy_chi2_sf()
 
     def block_scipy_special(name: str) -> Any:
@@ -170,7 +170,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         return real_import(name)
 
     monkeypatch.setattr(estimator_module.importlib, "import_module", block_scipy_special)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         estimator_module._import_scipy_expit()
 
     def block_dependency_versions(name: str) -> Any:
@@ -179,7 +179,7 @@ def test_imports_perezosos_traducen_dependencias(monkeypatch: pytest.MonkeyPatch
         return real_import(name)
 
     monkeypatch.setattr(estimator_module.importlib, "import_module", block_dependency_versions)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[scoring\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[scoring\]"):
         estimator_module._dependency_versions()
 
 

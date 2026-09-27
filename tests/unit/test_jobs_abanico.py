@@ -27,8 +27,8 @@ from typing import Any, Literal, Union, get_args, get_origin
 import pytest
 from pydantic import BaseModel
 
-from nikodym.core.config.schema import cargar_configs_expandibles
-from nikodym.ui import jobs
+from bayesrisk.core.config.schema import cargar_configs_expandibles
+from bayesrisk.ui import jobs
 
 # --------------------------------------------------------------------------------------------
 # Oráculo: lo que el MOTOR declara, leído de `model_fields`
@@ -381,7 +381,7 @@ def test_una_opcion_no_implementada_explica_por_que() -> None:
 def test_una_opcion_no_implementada_tambien_esta_cerrada_en_el_motor() -> None:
     """D-ABA-5: rotularla sólo en el catálogo deja el defecto vivo para quien llega por código.
 
-    Nikodym es una librería antes que una aplicación, y quien la usa por YAML o por Python no ve
+    bayesrisk es una librería antes que una aplicación, y quien la usa por YAML o por Python no ve
     este catálogo. La opción tiene que ser imposible de construir, no sólo estar en gris.
     """
     clases = cargar_configs_expandibles()
@@ -640,7 +640,7 @@ def test_toda_rama_inelegible_esta_declarada_en_el_abanico() -> None:
 
 _JERGA = re.compile(
     r"\b(None|True|False|null|bad_rule|good_rule|target_col|duration_col|event_col|strategy|"
-    r"partition|BaseModel|NikodymConfig|config_hash|DataFrame|dataframe)\b"
+    r"partition|BaseModel|BayesRiskConfig|config_hash|DataFrame|dataframe)\b"
 )
 
 
@@ -776,12 +776,12 @@ def test_el_abanico_no_mueve_un_solo_config_hash() -> None:
     Control negativo natural: convertir cualquier opción del abanico en un campo de config —que es
     la forma más fácil de equivocarse aquí— movería estos tres.
     """
-    from nikodym.core.config.hashing import config_hash
-    from nikodym.core.config.schema import NikodymConfig
-    from nikodym.ui import presets
+    from bayesrisk.core.config.hashing import config_hash
+    from bayesrisk.core.config.schema import BayesRiskConfig
+    from bayesrisk.ui import presets
 
     for preset_id, esperado in _HASHES_ANTES_DEL_ABANICO.items():
-        config = NikodymConfig.model_validate(presets.get_preset(preset_id)["config"])
+        config = BayesRiskConfig.model_validate(presets.get_preset(preset_id)["config"])
         assert config_hash(config) == esperado, (
             f"{preset_id} cambió de identidad. El abanico declara opciones que YA existen: si "
             "movió un hash, alguna de sus entradas se convirtió en un campo del config."

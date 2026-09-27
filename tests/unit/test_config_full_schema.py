@@ -1,6 +1,6 @@
 """Tests de :func:`build_full_json_schema` (F7-UI, SDD-23): schema completo por composición.
 
-``NikodymConfig.model_json_schema()`` emite las secciones de dominio OPACAS (campos ``Any`` en
+``BayesRiskConfig.model_json_schema()`` emite las secciones de dominio OPACAS (campos ``Any`` en
 runtime, núcleo liviano); ``build_full_json_schema`` las expande empotrando el ``model_json_schema``
 de cada sub-config de dominio instalado, degradando por extra ausente sin romper. El core sigue
 liviano: los dominios se importan solo al LLAMAR la función.
@@ -14,8 +14,8 @@ from typing import Any
 
 import pytest
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config import schema as schema_mod
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config import schema as schema_mod
 
 # Secciones del flujo F1 (deben expandirse con el extra `scoring` instalado — job del CI).
 _F1_SECCIONES = (
@@ -95,11 +95,11 @@ def test_rama_objeto_distingue_expandido_de_opaco() -> None:
 
 def test_build_full_json_schema_conserva_labels_y_no_muta_el_cacheado() -> None:
     """Conserva ``title`` de la sección raíz (etiqueta de la UI) y NO muta el schema cacheado."""
-    opaco = NikodymConfig.model_json_schema()
+    opaco = BayesRiskConfig.model_json_schema()
     full = schema_mod.build_full_json_schema()
     assert full["properties"]["binning"]["title"] == opaco["properties"]["binning"]["title"]
-    # El schema cacheado de ``NikodymConfig`` sigue opaco (no se corrompió al componer una copia).
-    assert "properties" not in NikodymConfig.model_json_schema()["properties"]["binning"]
+    # El schema cacheado de ``BayesRiskConfig`` sigue opaco (no se corrompió al componer una copia).
+    assert "properties" not in BayesRiskConfig.model_json_schema()["properties"]["binning"]
 
 
 def test_build_full_json_schema_shape_contrato() -> None:
@@ -116,7 +116,7 @@ def test_build_full_json_schema_degrada_por_extra_ausente(
     real_import = importlib.import_module
 
     def fake_import(name: str, package: str | None = None) -> types.ModuleType:
-        if name == "nikodym.binning.config":
+        if name == "bayesrisk.binning.config":
             raise ImportError("simulado: extra de binning ausente")
         return real_import(name, package)
 

@@ -510,13 +510,13 @@ def test_el_workflow_aplica_la_regla_y_sella_los_dos_sitios() -> None:
     llamada = "python3 scripts/deploy_no_retroceder_produccion.py"
     assert texto.count(llamada) == 2
     assert texto.index(llamada) < texto.index("- name: Setup uv")
-    assert texto.rindex(llamada) < texto.index("- name: Publicar docs.nikodym.cl")
+    assert texto.rindex(llamada) < texto.index("- name: Publicar docs.bayesadvisory.cl")
     assert "cancel-in-progress: false" in texto
     # El override explícito existe y llega al script; en un `workflow_run` vale `false`.
     assert "forzar:" in texto and "FORZAR: ${{ inputs.forzar || 'false' }}" in texto
     # Los DOS sitios se sellan con el mismo commit y el chequeo en vivo espera las dos huellas.
     assert "> docs_site/build-sha.txt" in texto and "> web/dist/build-sha.txt" in texto
-    assert "https://demo.nikodym.cl/build-sha.txt" in texto
+    assert "https://demo.bayesadvisory.cl/build-sha.txt" in texto
     # Pasada 12: el despacho manual consulta los runs de CI del commit por la API de Actions, y
     # para eso el job necesita `actions: read` y el token en el entorno del script (dos veces).
     assert "actions: read" in texto

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {#
-  Marca Nikodym: metatags Open Graph / Twitter para que al compartir docs.nikodym.cl
+  Marca bayesrisk: metatags Open Graph / Twitter para que al compartir docs.bayesadvisory.cl
   se vea la tarjeta con el avatar navy, y color de tema navy en el navegador.
 #}
 {% block extrahead %}
   {{ super() }}
-  {% set og_image = "https://docs.nikodym.cl/assets/og-card.png" %}
+  {% set og_image = "https://docs.bayesadvisory.cl/assets/og-card.png" %}
   <meta name="theme-color" content="#0a2240">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ config.site_name }}">

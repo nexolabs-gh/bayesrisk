@@ -18,11 +18,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.provisioning.ifrs9.ead as ead_module
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.provisioning.ifrs9 import EadEngine
-from nikodym.provisioning.ifrs9.config import IfrsEadConfig
-from nikodym.provisioning.ifrs9.exceptions import IfrsConfigError, IfrsEadError
+import bayesrisk.provisioning.ifrs9.ead as ead_module
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.provisioning.ifrs9 import EadEngine
+from bayesrisk.provisioning.ifrs9.config import IfrsEadConfig
+from bayesrisk.provisioning.ifrs9.exceptions import IfrsConfigError, IfrsEadError
 
 _CT3 = "FALTA-DATO-IFRS-4"
 _FLOORED = "ead_floored_limit_below_drawn"

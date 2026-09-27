@@ -1,4 +1,4 @@
-"""Tests de ``PerformanceConfig`` (SDD-11 §5) y su integración con ``NikodymConfig``."""
+"""Tests de ``PerformanceConfig`` (SDD-11 §5) y su integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -12,23 +12,23 @@ import yaml
 from hypothesis import given, settings
 from pydantic import ValidationError
 
-import nikodym.performance as performance_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.performance as performance_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import ConfigError
-from nikodym.performance.config import PerformanceConfig
-from nikodym.performance.exceptions import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.performance.exceptions import (
     PerformanceDataError,
     PerformanceError,
     PerformanceMetricError,
 )
-from nikodym.testing.strategies import _config_cls_for_domain, nikodym_config_strategy
+from bayesrisk.testing.strategies import _config_cls_for_domain, bayesrisk_config_strategy
 
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 
@@ -83,45 +83,45 @@ def test_round_trip_yaml_performanceconfig() -> None:
     assert PerformanceConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_performance_instancia() -> None:
-    """Pasar una instancia ``PerformanceConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_performance_instancia() -> None:
+    """Pasar una instancia ``PerformanceConfig`` a ``BayesRiskConfig`` la conserva."""
     performance = PerformanceConfig()
-    cfg = NikodymConfig(performance=performance)
+    cfg = BayesRiskConfig(performance=performance)
     assert isinstance(cfg.performance, PerformanceConfig)
     assert cfg.performance is performance
 
 
-def test_nikodymconfig_performance_dict_coacciona() -> None:
+def test_bayesriskconfig_performance_dict_coacciona() -> None:
     """Un dict en ``performance`` se coacciona a ``PerformanceConfig`` por el hook cargado."""
-    cfg = NikodymConfig(performance={"n_deciles": 20, "evaluation_source": "score"})
+    cfg = BayesRiskConfig(performance={"n_deciles": 20, "evaluation_source": "score"})
     assert isinstance(cfg.performance, PerformanceConfig)
     assert cfg.performance.n_deciles == 20
     assert cfg.performance.evaluation_source == "score"
 
 
-def test_nikodymconfig_performance_none_explicito() -> None:
+def test_bayesriskconfig_performance_none_explicito() -> None:
     """``performance=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(performance=None).performance is None
+    assert BayesRiskConfig(performance=None).performance is None
 
 
-def test_nikodymconfig_performance_core_only_acepta_blob_json(
+def test_bayesriskconfig_performance_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``performance`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_PERFORMANCE_CONFIG_CLS", None)
-    cfg = NikodymConfig(performance={"n_deciles": 20, "evaluation_source": "score"})
+    cfg = BayesRiskConfig(performance={"n_deciles": 20, "evaluation_source": "score"})
     assert cfg.performance == {"n_deciles": 20, "evaluation_source": "score"}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_performance_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_performance_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``performance`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_PERFORMANCE_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(performance=blob)
+        BayesRiskConfig(performance=blob)
 
 
 @pytest.mark.parametrize(
@@ -135,16 +135,16 @@ def test_nikodymconfig_performance_core_only_rechaza_json_no_canonico(
 )
 def test_config_hash_cambia_al_variar_performance(performance: PerformanceConfig) -> None:
     """``performance`` no es INFRA: deciles, umbrales y ranking cambian la identidad."""
-    base = config_hash(NikodymConfig(performance=PerformanceConfig()))
-    variado = config_hash(NikodymConfig(performance=performance))
+    base = config_hash(BayesRiskConfig(performance=PerformanceConfig()))
+    variado = config_hash(BayesRiskConfig(performance=performance))
     assert "performance" not in INFRA_SECTIONS
     assert variado != base
 
 
 @settings(max_examples=12, deadline=None)
-@given(cfg=nikodym_config_strategy(sections=["performance"]))
-def test_nikodym_config_strategy_genera_configs_performance_validos(
-    cfg: NikodymConfig,
+@given(cfg=bayesrisk_config_strategy(sections=["performance"]))
+def test_bayesrisk_config_strategy_genera_configs_performance_validos(
+    cfg: BayesRiskConfig,
 ) -> None:
     """La estrategia pública genera configs raíz válidos con ``performance`` activo."""
     assert isinstance(cfg.performance, PerformanceConfig)
@@ -254,7 +254,7 @@ def test_performance_public_api_minimo() -> None:
     assert "PerformanceStep" in performance_pkg.__all__
 
 
-def test_performance_errors_descienden_de_nikodym_error() -> None:
+def test_performance_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``performance`` cuelgan de la raíz propia de la capa."""
     for error_cls in (PerformanceError, PerformanceDataError, PerformanceMetricError):
         with pytest.raises(PerformanceError, match="fallo performance"):
@@ -262,28 +262,28 @@ def test_performance_errors_descienden_de_nikodym_error() -> None:
 
 
 def test_import_performance_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.performance`` registra el hook sin arrastrar stack tabular/scoring."""
+    """``import bayesrisk.performance`` registra el hook sin arrastrar stack tabular/scoring."""
     code = (
-        "import nikodym.performance, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.performance.config import PerformanceConfig;"
+        "import bayesrisk.performance, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.performance.config import PerformanceConfig;"
         "bloqueados=[m for m in "
         "('pandas','pandera','pyarrow','scipy','sklearn','mlflow') if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(performance={'n_deciles': 12});"
+        "cfg=BayesRiskConfig(performance={'n_deciles': 12});"
         "assert isinstance(cfg.performance, PerformanceConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_core_valida_performance_como_blob_opaco_sin_importar_performance() -> None:
-    """El core acepta ``performance`` JSON/dict sin importar ``nikodym.performance``."""
+    """El core acepta ``performance`` JSON/dict sin importar ``bayesrisk.performance``."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(performance={'n_deciles': 20});"
+        "cfg=BayesRiskConfig(performance={'n_deciles': 20});"
         "assert cfg.performance == {'n_deciles': 20};"
-        "assert 'nikodym.performance' not in sys.modules"
+        "assert 'bayesrisk.performance' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -295,4 +295,4 @@ def test_config_cls_for_domain_resuelve_performance() -> None:
 
 def test_config_hash_default_con_performance_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``performance`` con valor None."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH

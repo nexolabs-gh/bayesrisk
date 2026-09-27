@@ -6,12 +6,12 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from nikodym.binning.config import BinningConfig
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.exceptions import ArtifactNotFoundError
-from nikodym.core.study import Study
-from nikodym.data.config import (
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     CohortSplitConfig,
     ColumnSpec,
     DataConfig,
@@ -21,16 +21,16 @@ from nikodym.data.config import (
     SchemaConfig,
     TargetConfig,
 )
-from nikodym.data.step import INPUT_FRAME_KEY
-from nikodym.selection.config import (
+from bayesrisk.data.step import INPUT_FRAME_KEY
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
     VifSelectionConfig,
 )
-from nikodym.selection.exceptions import SelectionFitError
-from nikodym.selection.step import SELECTION_ARTIFACTS
-from nikodym.testing import assert_bitwise_reproducible
+from bayesrisk.selection.exceptions import SelectionFitError
+from bayesrisk.selection.step import SELECTION_ARTIFACTS
+from bayesrisk.testing import assert_bitwise_reproducible
 
 ROOT_SEED = 20_240_627
 
@@ -111,7 +111,7 @@ def _selection_config(*, min_iv: float = 0.0) -> SelectionConfig:
 def _study(*, selection: SelectionConfig | None = None) -> Study:
     """Study con secciones ``data``, ``binning`` y ``selection`` activas."""
     return Study(
-        NikodymConfig(
+        BayesRiskConfig(
             repro=ReproConfig(seed=ROOT_SEED),
             data=_data_config(),
             binning=_binning_config(),

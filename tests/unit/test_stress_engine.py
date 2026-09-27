@@ -21,12 +21,12 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.forward.step as forward_step_module
-import nikodym.stress as stress_pkg
-import nikodym.stress.engine as engine_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.forward.results import FORWARD_ECL_CONTRACT_VERSION, ForwardEclInput
-from nikodym.stress.config import (
+import bayesrisk.forward.step as forward_step_module
+import bayesrisk.stress as stress_pkg
+import bayesrisk.stress.engine as engine_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.forward.results import FORWARD_ECL_CONTRACT_VERSION, ForwardEclInput
+from bayesrisk.stress.config import (
     ReverseStressConfig,
     SensitivitySweepConfig,
     StressConfig,
@@ -39,8 +39,8 @@ from nikodym.stress.config import (
     StressTargetConfig,
     StressValidationConfig,
 )
-from nikodym.stress.engine import EclEngineLike, ProvisionEngineLike, StressTestEngine
-from nikodym.stress.exceptions import (
+from bayesrisk.stress.engine import EclEngineLike, ProvisionEngineLike, StressTestEngine
+from bayesrisk.stress.exceptions import (
     NonMonotonicStressError,
     ReverseStressError,
     StressDependencyError,
@@ -798,7 +798,7 @@ def test_stress_engine_golden_satellite_ecl_y_attrs() -> None:
         abs=1e-10,
     )
     assert result.diagnostics.scenario_count == 1
-    assert result.diagnostics.dependency_versions["nikodym.stress.engine"] == "B21.4"
+    assert result.diagnostics.dependency_versions["bayesrisk.stress.engine"] == "B21.4"
     assert result.card.metric_sections["scenario_impacts"]["metrics"] == (
         "pd_marginal",
         "pd_cumulative",
@@ -1458,7 +1458,7 @@ def test_hash_frame_canoniza_objetos_opacos_y_estado_publico() -> None:
     seed_code = "\n".join(
         [
             "import pandas as pd",
-            "import nikodym.stress.engine as engine",
+            "import bayesrisk.stress.engine as engine",
             "class Opaque:",
             "    __slots__ = ()",
             "class Public:",
@@ -4640,11 +4640,11 @@ def test_helpers_numericos_missing_e_imports(monkeypatch: pytest.MonkeyPatch) ->
     )
     assert hashable_dataclass[0] == "__object__"
     sort_helpers, payload_helper = engine_module._hash_helper_columns(
-        ("_nikodym_hash_sort_0", "_nikodym_hash_sort_payload"),
+        ("_bayesrisk_hash_sort_0", "_bayesrisk_hash_sort_payload"),
         key_count=1,
     )
-    assert sort_helpers == ("_nikodym_hash_sort_0_1",)
-    assert payload_helper == "_nikodym_hash_sort_payload_1"
+    assert sort_helpers == ("_bayesrisk_hash_sort_0_1",)
+    assert payload_helper == "_bayesrisk_hash_sort_payload_1"
     assert (
         engine_module._satellite_model_lineage(
             _satellite_with_coefficients(
@@ -4961,14 +4961,14 @@ def test_helpers_numericos_missing_e_imports(monkeypatch: pytest.MonkeyPatch) ->
     assert engine_module._forward_ecl_columns(("x",), ({"lgd": 0.4},)) == ("x", "lgd")
     assert engine_module._canonical_payload(pd.DataFrame({"x": [1]}), pd=pd)["value"]["rows"] == 1
     assert engine_module._canonical_payload({"s": {"b", "a"}}, pd=pd) == {
-        "__nikodym_payload_type__": "mapping",
+        "__bayesrisk_payload_type__": "mapping",
         "value": {
             "type": "builtins.dict",
             "items": [
                 [
                     ["builtins.str", "s"],
                     {
-                        "__nikodym_payload_type__": "set",
+                        "__bayesrisk_payload_type__": "set",
                         "value": {"type": "builtins.set", "items": ["a", "b"]},
                     },
                 ]
@@ -5003,7 +5003,7 @@ def test_helpers_numericos_missing_e_imports(monkeypatch: pytest.MonkeyPatch) ->
             np.array([{OpaqueKey(): "left", OpaqueKey(): "right"}], dtype=object)
         )
     assert engine_module._canonical_payload((1, Decimal("-0")), pd=pd) == {
-        "__nikodym_payload_type__": "tuple",
+        "__bayesrisk_payload_type__": "tuple",
         "value": [1, 0.0],
     }
     assert engine_module._canonical_hash({"x": pd.Timestamp("2026-01-01")}, pd=pd) != (
@@ -5016,13 +5016,13 @@ def test_helpers_numericos_missing_e_imports(monkeypatch: pytest.MonkeyPatch) ->
         engine_module._canonical_hash({"x": time(13, 0)}, pd=pd)
     )
     assert engine_module._canonical_payload(Opaque(), pd=pd) == {
-        "__nikodym_payload_type__": "hashable",
+        "__bayesrisk_payload_type__": "hashable",
         "value": [
             "__opaque__",
             f"{__name__}.test_helpers_numericos_missing_e_imports.<locals>.Opaque",
         ],
     }
-    bytes_payload = {"__nikodym_payload_type__": "hashable", "value": ["__bytes__", "78"]}
+    bytes_payload = {"__bayesrisk_payload_type__": "hashable", "value": ["__bytes__", "78"]}
     assert engine_module._canonical_payload(b"x", pd=pd) == bytes_payload
     assert engine_module._canonical_payload(bytearray(b"x"), pd=pd) == bytes_payload
     assert engine_module._canonical_payload(memoryview(b"x"), pd=pd) == bytes_payload
@@ -5105,7 +5105,7 @@ def test_helpers_numericos_missing_e_imports(monkeypatch: pytest.MonkeyPatch) ->
     seed_code = (
         "from decimal import Decimal; "
         "import pandas as pd; "
-        "import nikodym.stress.engine as engine; "
+        "import bayesrisk.stress.engine as engine; "
         "frame=pd.DataFrame({'x': pd.Series([Decimal('-0')], dtype='object'), "
         "'payload': [{'b': {'z', 'a'}, 'a': [Decimal('-0')]}]}); "
         "print(engine._combined_frame_hash((frame,), pd=pd))"
@@ -5164,14 +5164,14 @@ def test_helpers_numericos_missing_e_imports(monkeypatch: pytest.MonkeyPatch) ->
     assert engine_module._frame_warning_codes(pd.DataFrame({"x": [1]})) == ()
     assert (
         engine_module._unique_helper_column(
-            "_nikodym_sort_row_id",
-            taken={"_nikodym_sort_row_id", "_nikodym_sort_row_id_1"},
+            "_bayesrisk_sort_row_id",
+            taken={"_bayesrisk_sort_row_id", "_bayesrisk_sort_row_id_1"},
         )
-        == "_nikodym_sort_row_id_2"
+        == "_bayesrisk_sort_row_id_2"
     )
     with pytest.raises(StressInputError, match=r"pandas\.DataFrame"):
         engine_module._as_dataframe(object(), pd=pd, field_name="frame")
-    assert engine_module._package_version("paquete-nikodym-inexistente-xyz") == "no-disponible"
+    assert engine_module._package_version("paquete-bayesrisk-inexistente-xyz") == "no-disponible"
 
     with pytest.raises(StressInputError, match=r"\(0, 1\)"):
         engine_module._probability(0.0, field_name="p", tol=0.0, open_interval=True)
@@ -5269,7 +5269,7 @@ def test_helpers_numericos_missing_e_imports(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_metodos_exigen_contexto_y_export_lazy_import_guard() -> None:
-    """Escenario/sensibilidad/reverse exigen ``run(...)`` y ``nikodym.stress`` sigue liviano."""
+    """Escenario/sensibilidad/reverse exigen ``run(...)`` y ``bayesrisk.stress`` sigue liviano."""
     cfg = _cfg(metrics=("pd_marginal",))
     engine = StressTestEngine.from_config(cfg)
     with pytest.raises(StressEngineError, match="run\\(\\.\\.\\.\\) primero"):
@@ -5290,8 +5290,8 @@ def test_metodos_exigen_contexto_y_export_lazy_import_guard() -> None:
     assert stress_pkg.StressTestEngine is StressTestEngine
 
     code = (
-        "import sys, nikodym.stress; "
-        "blocked=('pandas','numpy','scipy','statsmodels','nikodym.provisioning'); "
+        "import sys, bayesrisk.stress; "
+        "blocked=('pandas','numpy','scipy','statsmodels','bayesrisk.provisioning'); "
         "loaded=[m for m in blocked if m in sys.modules]; "
         "assert not loaded, loaded"
     )

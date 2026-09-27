@@ -19,12 +19,12 @@ import pytest
 from _proyeccion_canonica import diferencias, proyeccion_canonica
 from _ui_f1 import write_stacked_behavior_parquet
 
-from nikodym.audit.exceptions import AuditError
-from nikodym.core.config import config_hash
-from nikodym.core.study import Study
-from nikodym.guided import Scorecard, ScorecardInputError
-from nikodym.guided import scorecard as scorecard_module
-from nikodym.guided.scorecard import GUIDED_STEP
+from bayesrisk.audit.exceptions import AuditError
+from bayesrisk.core.config import config_hash
+from bayesrisk.core.study import Study
+from bayesrisk.guided import Scorecard, ScorecardInputError
+from bayesrisk.guided import scorecard as scorecard_module
+from bayesrisk.guided.scorecard import GUIDED_STEP
 
 
 @pytest.fixture(autouse=True)
@@ -279,7 +279,7 @@ def test_el_informe_de_una_primera_corrida_fallida_no_lo_pisa_el_reintento(
     """La primera corrida escribe el informe y falla antes de consolidar: no hay `run/` y el
     informe queda en `reports/`; el reintento lo lleva junto a la evidencia fallida
     (`.run.failed.*/reports`) y nunca lo pisa (Codex sobre A2 y A2-bis)."""
-    import nikodym.api as api_module
+    import bayesrisk.api as api_module
 
     sc = _puerta(fuente, tmp_path)
     proyecto = tmp_path / "corridas" / "prueba"
@@ -312,7 +312,7 @@ def test_cada_informe_queda_solo_con_la_evidencia_de_su_corrida(
     """Éxito A → B falla después de escribir su informe → éxito C (Codex sobre A2-bis): el informe
     de A viaja con A a `.run.old.*`, el de B con su evidencia fallida a `.run.failed.*`, y el de
     C queda en `reports/`. Ninguno se mezcla con el trail de otra corrida."""
-    import nikodym.api as api_module
+    import bayesrisk.api as api_module
 
     sc = _puerta(fuente, tmp_path)
     proyecto = tmp_path / "corridas" / "prueba"
@@ -359,7 +359,7 @@ def test_una_corrida_parcial_no_se_apropia_del_informe_de_una_fallida_posterior(
 ) -> None:
     """Parcial A (sin informe) → B completa falla tras escribir su informe → C (Codex sobre
     A2-ter): el informe de B sólo puede estar en la evidencia fallida de B."""
-    import nikodym.api as api_module
+    import bayesrisk.api as api_module
 
     sc = _puerta(fuente, tmp_path)
     proyecto = tmp_path / "corridas" / "prueba"

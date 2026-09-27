@@ -13,25 +13,25 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.provisioning.cmf.engine as engine_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import ConfigError, MissingDependencyError
-from nikodym.provisioning.cmf.config import (
+import bayesrisk.provisioning.cmf.engine as engine_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import ConfigError, MissingDependencyError
+from bayesrisk.provisioning.cmf.config import (
     CmfExposureConfig,
     CmfGuaranteeConfig,
     CmfMatrixConfig,
     CmfPdMappingConfig,
     CmfProvisioningConfig,
 )
-from nikodym.provisioning.cmf.engine import CmfProvisioningEngine
-from nikodym.provisioning.cmf.exceptions import (
+from bayesrisk.provisioning.cmf.engine import CmfProvisioningEngine
+from bayesrisk.provisioning.cmf.exceptions import (
     CmfCalculationError,
     CmfInputError,
     CmfMappingError,
     CmfMatrixError,
     CmfMissingRegulatoryDataError,
 )
-from nikodym.provisioning.cmf.matrices import CmfMatrixBundle, CmfMatrixRow, load_cmf_matrices
+from bayesrisk.provisioning.cmf.matrices import CmfMatrixBundle, CmfMatrixRow, load_cmf_matrices
 
 
 @dataclass(frozen=True)
@@ -1176,8 +1176,8 @@ def test_engine_import_liviano_y_sin_imports_pesados_top_level() -> None:
     assert "df.eval" not in source
     code = (
         "import sys;"
-        "import nikodym.provisioning.cmf.engine;"
-        "bloqueados=[m for m in ('pandas','pandera','pyarrow','nikodym.tracking','mlflow') "
+        "import bayesrisk.provisioning.cmf.engine;"
+        "bloqueados=[m for m in ('pandas','pandera','pyarrow','bayesrisk.tracking','mlflow') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados"
     )

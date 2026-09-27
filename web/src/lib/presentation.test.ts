@@ -27,7 +27,7 @@ const F4 = {
   id: "f4-ifrs9-retail",
   name: "Preset F4 — provisiones IFRS 9 / ECL (retail multi-cartera)",
   description:
-    "Config listo para correr sin scorecard de por medio. IFRS 9 es experimental (SDD-16, fuera de la garantía SemVer 1.x).",
+    "Config listo para correr sin scorecard de por medio. IFRS 9 es experimental (SDD-16, fuera de la garantía SemVer 2.x).",
 }
 
 describe("presetDisplay (títulos por área)", () => {
@@ -84,7 +84,7 @@ describe("presetDisplay (encuadre regulatorio LatAm)", () => {
   })
 
   it("ningún blurb promete Markov: ninguna de las tres corridas de la demo lo ejerce", () => {
-    // El extra `nikodym[markov]` SÍ existe (pyproject: markov = ["scipy>=1.10"]) y el motor lo
+    // El extra `bayesrisk[markov]` SÍ existe (pyproject: markov = ["scipy>=1.10"]) y el motor lo
     // nombra en sus mensajes de error. Lo que el copy no puede prometer es la CAPACIDAD: los tres
     // presets llevan `markov: null` y el fixture de F4 la declara `not_exercised` («La
     // term-structure activa proviene de survival, no de Markov»). Mencionarla vendería una

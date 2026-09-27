@@ -1,0 +1,102 @@
+name: TestPyPI
+
+# Ensayo en TestPyPI de las dos distribuciones del renombre (enmienda RENOMBRE-BAYESRISK, D-REN-11):
+# bayesrisk primero y nikodym (compatibilidad) después, con Trusted Publishing (OIDC, sin tokens).
+# Publicadores pendientes registrados en test.pypi.org el 2026-09-27:
+#   bayesrisk → nexolabs-gh/nikodym · testpypi.yml · environment testpypi
+#   nikodym   → nexolabs-gh/nikodym · testpypi.yml · environment testpypi-nikodym
+# (TestPyPI no admite dos publicadores pendientes con la misma configuración para proyectos
+# distintos: por eso cada paquete publica desde su propio entorno.)
+#
+# Es un ENSAYO, no la promoción de release.yml: construye desde el commit etiquetado. Se dispara
+# con un tag `testpypi-v*` (workflow_dispatch exige el archivo en la rama por defecto, y el
+# renombre vive en una rama hasta el OK de Cami).
+
+"on":
+  push:
+    tags:
+      - "testpypi-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Construir las dos distribuciones
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Construir y comprobar
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv build --out-dir dist/bayesrisk .
+          uv build --out-dir dist/nikodym compat/nikodym
+          uvx twine check --strict dist/bayesrisk/* dist/nikodym/*
+          version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/bayesrisk/__init__.py)"
+          compat="$(sed -n 's/^version = "\(.*\)"$/\1/p' compat/nikodym/pyproject.toml)"
+          shopt -s nullglob
+          a=(dist/bayesrisk/*); b=(dist/nikodym/*)
+          esperado_a="dist/bayesrisk/bayesrisk-${version}-py3-none-any.whl dist/bayesrisk/bayesrisk-${version}.tar.gz"
+          esperado_b="dist/nikodym/nikodym-${compat}-py3-none-any.whl dist/nikodym/nikodym-${compat}.tar.gz"
+          if [ "${a[*]}" != "$esperado_a" ] || [ "${b[*]}" != "$esperado_b" ]; then
+            echo "::error::dist/ no trae exactamente los dos paquetes esperados"
+            printf '%s\n' "${a[@]}" "${b[@]}"
+            exit 1
+          fi
+          sha256sum dist/*/*
+
+      - name: Subir bayesrisk
+        uses: actions/upload-artifact@v4
+        with:
+          name: testpypi-bayesrisk
+          path: dist/bayesrisk/
+          if-no-files-found: error
+
+      - name: Subir nikodym
+        uses: actions/upload-artifact@v4
+        with:
+          name: testpypi-nikodym
+          path: dist/nikodym/
+          if-no-files-found: error
+
+  publish-bayesrisk:
+    name: Publicar bayesrisk en TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write # requerido por OIDC / Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: testpypi-bayesrisk
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  # Depende de bayesrisk: `pip install nikodym` nunca debe ver un nikodym sin su bayesrisk.
+  publish-nikodym:
+    name: Publicar nikodym en TestPyPI
+    needs: publish-bayesrisk
+    runs-on: ubuntu-latest
+    environment: testpypi-nikodym
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: testpypi-nikodym
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true

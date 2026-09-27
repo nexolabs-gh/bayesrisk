@@ -1,4 +1,4 @@
-"""Tests de ``ValidationConfig`` (SDD-22 §5) e integración con ``NikodymConfig``."""
+"""Tests de ``ValidationConfig`` (SDD-22 §5) e integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -13,29 +13,29 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.validation as validation_pkg  # importa la capa: puebla el hook
-from nikodym.core.config import (
+import bayesrisk.validation as validation_pkg  # importa la capa: puebla el hook
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.validation.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.validation.config import (
     BacktestingValidationConfig,
     CalibrationValidationConfig,
     DiscriminationValidationConfig,
     StabilityValidationConfig,
     ValidationConfig,
 )
-from nikodym.validation.exceptions import (
+from bayesrisk.validation.exceptions import (
     BacktestError,
     CalibrationTestError,
     ValidationConfigError,
     ValidationDataError,
 )
-from nikodym.validation.exceptions import (
-    ValidationError as NikodymValidationError,
+from bayesrisk.validation.exceptions import (
+    ValidationError as BayesRiskValidationError,
 )
 
 # Golden del config_hash por defecto tras añadir la sección computacional `validation`.
@@ -159,47 +159,47 @@ def test_round_trip_yaml_validationconfig() -> None:
     assert ValidationConfig.model_validate(yaml.safe_load(text)) == cfg
 
 
-# ─────────────────────────── integración NikodymConfig ───────────────────────────
+# ─────────────────────────── integración BayesRiskConfig ───────────────────────────
 
 
-def test_nikodymconfig_validation_instancia() -> None:
-    """Pasar una instancia ``ValidationConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_validation_instancia() -> None:
+    """Pasar una instancia ``ValidationConfig`` a ``BayesRiskConfig`` la conserva."""
     validation = ValidationConfig()
-    cfg = NikodymConfig(validation=validation)
+    cfg = BayesRiskConfig(validation=validation)
     assert isinstance(cfg.validation, ValidationConfig)
     assert cfg.validation is validation
 
 
-def test_nikodymconfig_validation_dict_coacciona() -> None:
+def test_bayesriskconfig_validation_dict_coacciona() -> None:
     """Un dict en ``validation`` se coacciona por el hook cargado."""
-    cfg = NikodymConfig(validation={"families": ["calibration"]})
+    cfg = BayesRiskConfig(validation={"families": ["calibration"]})
     assert isinstance(cfg.validation, ValidationConfig)
     assert cfg.validation.families == ("calibration",)
 
 
-def test_nikodymconfig_validation_none_explicito() -> None:
+def test_bayesriskconfig_validation_none_explicito() -> None:
     """``validation=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(validation=None).validation is None
+    assert BayesRiskConfig(validation=None).validation is None
 
 
-def test_nikodymconfig_validation_core_only_acepta_blob_json(
+def test_bayesriskconfig_validation_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``validation`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_VALIDATION_CONFIG_CLS", None)
-    cfg = NikodymConfig(validation={"families": ["calibration"]})
+    cfg = BayesRiskConfig(validation={"families": ["calibration"]})
     assert cfg.validation == {"families": ["calibration"]}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_validation_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_validation_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``validation`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_VALIDATION_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(validation=blob)
+        BayesRiskConfig(validation=blob)
 
 
 # ─────────────────────────── validaciones de columnas ───────────────────────────
@@ -317,13 +317,13 @@ def test_literales_y_rangos_invalidos_rechazados_por_pydantic(
 
 def test_config_hash_default_con_validation_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``validation=None``."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
 
 
 def test_config_hash_se_movio_por_seccion_validation() -> None:
     """Añadir ``validation`` movió el golden respecto al valor previo (no es regresión)."""
     assert GOLDEN_DEFAULT_CONFIG_HASH != GOLDEN_PREVIO_SIN_VALIDATION
-    assert config_hash(NikodymConfig()) != GOLDEN_PREVIO_SIN_VALIDATION
+    assert config_hash(BayesRiskConfig()) != GOLDEN_PREVIO_SIN_VALIDATION
 
 
 def test_config_hash_es_puramente_aditivo_sobre_validation() -> None:
@@ -333,7 +333,7 @@ def test_config_hash_es_puramente_aditivo_sobre_validation() -> None:
     ``validation`` en el schema; para reconstruir el estado inmediatamente anterior a ``validation``
     hay que retirar las cuatro claves computacionales nuevas.
     """
-    payload = NikodymConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
+    payload = BayesRiskConfig().model_dump(mode="json", by_alias=True, exclude=set(INFRA_SECTIONS))
     assert payload["validation"] is None
     assert payload["ml"] is None
     assert payload["tuning"] is None
@@ -363,8 +363,8 @@ def test_config_hash_es_puramente_aditivo_sobre_validation() -> None:
 )
 def test_config_hash_cambia_al_variar_validation(validation: ValidationConfig) -> None:
     """``validation`` no es INFRA: familias/deciles/alpha/bandas/test/enabled cambian el hash."""
-    base = config_hash(NikodymConfig(validation=ValidationConfig()))
-    variado = config_hash(NikodymConfig(validation=validation))
+    base = config_hash(BayesRiskConfig(validation=ValidationConfig()))
+    variado = config_hash(BayesRiskConfig(validation=validation))
     assert "validation" not in INFRA_SECTIONS
     assert variado != base
 
@@ -392,22 +392,22 @@ def test_campos_validation_tienen_metadatos_ui() -> None:
 def test_validation_public_api_minimo() -> None:
     """El paquete de validación expone config y excepciones de B22.1."""
     assert validation_pkg.ValidationConfig is ValidationConfig
-    assert validation_pkg.ValidationError is NikodymValidationError
+    assert validation_pkg.ValidationError is BayesRiskValidationError
     assert "ValidationConfig" in validation_pkg.__all__
     assert "ValidationError" in validation_pkg.__all__
 
 
-def test_validation_errors_descienden_de_nikodym_error() -> None:
+def test_validation_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``validation`` cuelgan de la raíz propia de la librería."""
     for error_cls in (
-        NikodymValidationError,
+        BayesRiskValidationError,
         ValidationConfigError,
         ValidationDataError,
         CalibrationTestError,
         BacktestError,
     ):
-        assert issubclass(error_cls, NikodymError)
-        assert issubclass(error_cls, NikodymValidationError)
+        assert issubclass(error_cls, BayesRiskError)
+        assert issubclass(error_cls, BayesRiskValidationError)
 
 
 def test_validation_getattr_desconocido_levanta() -> None:
@@ -420,16 +420,16 @@ def test_validation_getattr_desconocido_levanta() -> None:
 
 
 def test_import_validation_config_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.validation.config`` registra hook sin arrastrar stack pesado."""
+    """``import bayesrisk.validation.config`` registra hook sin arrastrar stack pesado."""
     code = (
-        "import nikodym.validation.config, nikodym.core, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.validation.config import ValidationConfig;"
+        "import bayesrisk.validation.config, bayesrisk.core, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.validation.config import ValidationConfig;"
         "bloqueados=[m for m in "
-        "('pandas','pandera','pyarrow','scipy','sklearn','nikodym.tracking','mlflow') "
+        "('pandas','pandera','pyarrow','scipy','sklearn','bayesrisk.tracking','mlflow') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(validation={'families': ['calibration']});"
+        "cfg=BayesRiskConfig(validation={'families': ['calibration']});"
         "assert isinstance(cfg.validation, ValidationConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -438,11 +438,11 @@ def test_import_validation_config_liviano_y_registra_hook_en_proceso_fresco() ->
 def test_core_valida_validation_como_blob_opaco_sin_importar_la_capa() -> None:
     """El core acepta ``validation`` JSON/dict sin importar la capa de validación."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(validation={'families': ['calibration']});"
+        "cfg=BayesRiskConfig(validation={'families': ['calibration']});"
         "assert cfg.validation == {'families': ['calibration']};"
-        "assert 'nikodym.validation' not in sys.modules"
+        "assert 'bayesrisk.validation' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 

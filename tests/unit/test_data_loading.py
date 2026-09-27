@@ -11,10 +11,10 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from nikodym.core.exceptions import DataValidationError, MissingDependencyError
-from nikodym.data import DataLoader as ExportedDataLoader
-from nikodym.data.config import CsvOptions, LoadingConfig
-from nikodym.data.loading import DataLoader
+from bayesrisk.core.exceptions import DataValidationError, MissingDependencyError
+from bayesrisk.data import DataLoader as ExportedDataLoader
+from bayesrisk.data.config import CsvOptions, LoadingConfig
+from bayesrisk.data.loading import DataLoader
 
 # Los tests que ESCRIBEN un ``.xlsx`` (``df.to_excel``) requieren openpyxl (extra [excel]). El job
 # all-extras del CI lo instala y ahí ejercitan Excel de verdad; los jobs mínimos lo saltan (mismo
@@ -24,7 +24,7 @@ _HAS_OPENPYXL = importlib.util.find_spec("openpyxl") is not None
 
 
 def test_dataloader_exportado_desde_paquete_data() -> None:
-    """La API pública ``nikodym.data`` expone ``DataLoader`` junto a ``DataConfig``."""
+    """La API pública ``bayesrisk.data`` expone ``DataLoader`` junto a ``DataConfig``."""
     assert ExportedDataLoader is DataLoader
 
 
@@ -135,7 +135,7 @@ def test_source_ausente_levanta_datavalidationerror() -> None:
 
 
 def test_source_tipo_no_soportado_levanta_datavalidationerror() -> None:
-    """Una fuente que no sea ruta ni ``DataFrame`` falla con mensaje propio de Nikodym."""
+    """Una fuente que no sea ruta ni ``DataFrame`` falla con mensaje propio de bayesrisk."""
     with pytest.raises(DataValidationError, match="Fuente de datos no soportada"):
         DataLoader().load(object())  # type: ignore[arg-type]
 
@@ -170,7 +170,7 @@ def test_backend_pandas_no_importa_polars(
             raise AssertionError("polars no debe importarse")
         return importlib.import_module(name)
 
-    monkeypatch.setattr("nikodym.data.loading.importlib.import_module", fail_import)
+    monkeypatch.setattr("bayesrisk.data.loading.importlib.import_module", fail_import)
     cargado = DataLoader().load(pd.DataFrame({"saldo": [1]}))
     assert cargado.to_dict(orient="list") == {"saldo": [1]}
 
@@ -185,10 +185,10 @@ def test_backend_polars_sin_extra_levanta_missingdependency(
             raise ImportError("no hay polars")
         return importlib.import_module(name)
 
-    monkeypatch.setattr("nikodym.data.loading.importlib.import_module", missing_polars)
+    monkeypatch.setattr("bayesrisk.data.loading.importlib.import_module", missing_polars)
     loader = DataLoader(LoadingConfig(backend="polars"))
 
-    with pytest.raises(MissingDependencyError, match=r"backend='polars'.*nikodym\[polars\]"):
+    with pytest.raises(MissingDependencyError, match=r"backend='polars'.*bayesrisk\[polars\]"):
         loader.load("cartera.csv")
 
 
@@ -217,7 +217,7 @@ def test_backend_polars_csv_lazy_to_pandas_y_copia(
         return FakeLazyFrame()
 
     fake_polars = SimpleNamespace(scan_csv=scan_csv)
-    monkeypatch.setattr("nikodym.data.loading.importlib.import_module", lambda name: fake_polars)
+    monkeypatch.setattr("bayesrisk.data.loading.importlib.import_module", lambda name: fake_polars)
     loader = DataLoader(
         LoadingConfig(
             backend="polars",
@@ -258,7 +258,7 @@ def test_backend_polars_parquet_lazy_to_pandas(monkeypatch: pytest.MonkeyPatch) 
         return FakeLazyFrame()
 
     fake_polars = SimpleNamespace(scan_parquet=scan_parquet)
-    monkeypatch.setattr("nikodym.data.loading.importlib.import_module", lambda name: fake_polars)
+    monkeypatch.setattr("bayesrisk.data.loading.importlib.import_module", lambda name: fake_polars)
 
     cargado = DataLoader(LoadingConfig(backend="polars")).load("cartera.parquet")
 
@@ -271,7 +271,7 @@ def test_backend_polars_decimal_no_soportado_levanta_datavalidationerror(
 ) -> None:
     """Polars solo admite el selector booleano ``decimal_comma`` para ``.`` o ``,``."""
     fake_polars = SimpleNamespace(scan_csv=lambda *args, **kwargs: None)
-    monkeypatch.setattr("nikodym.data.loading.importlib.import_module", lambda name: fake_polars)
+    monkeypatch.setattr("bayesrisk.data.loading.importlib.import_module", lambda name: fake_polars)
     loader = DataLoader(
         LoadingConfig(
             backend="polars",
@@ -292,7 +292,7 @@ def test_error_de_polars_se_envuelve_en_datavalidationerror(
         raise RuntimeError("falló scan_csv")
 
     fake_polars = SimpleNamespace(scan_csv=scan_csv)
-    monkeypatch.setattr("nikodym.data.loading.importlib.import_module", lambda name: fake_polars)
+    monkeypatch.setattr("bayesrisk.data.loading.importlib.import_module", lambda name: fake_polars)
 
     with pytest.raises(DataValidationError, match="falló scan_csv"):
         DataLoader(LoadingConfig(backend="polars")).load("cartera.csv")
@@ -364,8 +364,8 @@ def test_backend_pandas_excel_sin_extra_levanta_missingdependency(
             raise ImportError("no hay openpyxl")
         return importlib.import_module(name)
 
-    monkeypatch.setattr("nikodym.data.loading.importlib.import_module", missing_openpyxl)
+    monkeypatch.setattr("bayesrisk.data.loading.importlib.import_module", missing_openpyxl)
     loader = DataLoader(LoadingConfig(file_format="excel"))
 
-    with pytest.raises(MissingDependencyError, match=r"\[excel\].*nikodym\[excel\]"):
+    with pytest.raises(MissingDependencyError, match=r"\[excel\].*bayesrisk\[excel\]"):
         loader.load("cartera.xlsx")

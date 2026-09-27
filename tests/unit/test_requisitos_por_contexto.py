@@ -27,8 +27,8 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from pydantic import BaseModel
 
-from nikodym.core.config.schema import NikodymConfig
-from nikodym.core.dataset_check import (
+from bayesrisk.core.config.schema import BayesRiskConfig
+from bayesrisk.core.dataset_check import (
     METODO_REQUISITOS_CONTEXTO,
     ContextoConfig,
     Requisito,
@@ -36,8 +36,8 @@ from nikodym.core.dataset_check import (
     _secciones_activas,
     check_dataset,
 )
-from nikodym.core.study import Study
-from nikodym.ui import presets
+from bayesrisk.core.study import Study
+from bayesrisk.ui import presets
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -51,8 +51,8 @@ _PRESETS: tuple[str, ...] = (
 )
 
 
-def _config_de(preset_id: str) -> NikodymConfig:
-    return NikodymConfig.model_validate(presets.get_preset(preset_id)["config"])
+def _config_de(preset_id: str) -> BayesRiskConfig:
+    return BayesRiskConfig.model_validate(presets.get_preset(preset_id)["config"])
 
 
 # --------------------------------------------------------------------------------------------
@@ -88,10 +88,10 @@ def test_el_contexto_es_inmutable() -> None:
 
 
 def test_ningun_campo_del_contexto_transporta_el_config() -> None:
-    """Control del anterior por TIPO y no por nombre: `secciones: NikodymConfig` también es fuga."""
+    """Control del anterior por TIPO: `secciones: BayesRiskConfig` también es fuga."""
     for campo in dataclasses.fields(ContextoConfig):
-        assert campo.type is not NikodymConfig, f"{campo.name} transporta el config raíz entero"
-        assert "NikodymConfig" not in str(campo.type), (
+        assert campo.type is not BayesRiskConfig, f"{campo.name} transporta el config raíz entero"
+        assert "BayesRiskConfig" not in str(campo.type), (
             f"{campo.name} anota {campo.type}: el contexto no puede llevar el config raíz"
         )
 
@@ -131,7 +131,7 @@ def test_declarar_run_steps_acota_las_secciones_activas() -> None:
     una opción del abanico que su dependencia está viva sería falso.
     """
     crudo = presets.get_preset(presets.STANDARD_PRESET_ID)["config"]
-    acotado = NikodymConfig.model_validate({**crudo, "run": {"steps": ["data", "binning"]}})
+    acotado = BayesRiskConfig.model_validate({**crudo, "run": {"steps": ["data", "binning"]}})
 
     assert acotado.stability is not None, "la sección sigue existiendo: es lo que hace útil el caso"
     assert _secciones_activas(acotado) == frozenset({"data", "binning"})
@@ -200,11 +200,11 @@ def test_el_aviso_llega_por_check_dataset_con_su_ruta_absoluta(
 ) -> None:
     """Integración: el dominio declara relativo (D-INV-5) y el recorrido antepone el prefijo.
 
-    Se inyecta el método sobre una config REAL en vez de fabricar un `NikodymConfig` de mentira:
+    Se inyecta el método sobre una config REAL en vez de fabricar un `BayesRiskConfig` de mentira:
     lo que hay que probar es que el recorrido de :func:`check_dataset` lo alcanza donde las
     secciones viven de verdad, anidamiento incluido.
     """
-    from nikodym.stability.config import StabilityConfig
+    from bayesrisk.stability.config import StabilityConfig
 
     def _exige_forward(self: StabilityConfig, contexto: ContextoConfig) -> tuple[Requisito, ...]:
         del self
@@ -227,7 +227,7 @@ def test_el_aviso_llega_por_check_dataset_con_su_ruta_absoluta(
 
 def test_el_requisito_de_contexto_avisa_y_no_revienta(monkeypatch: pytest.MonkeyPatch) -> None:
     """D-PRE-5 y D-INV-3 intactos: un contexto incumplido es un aviso, nunca una excepción."""
-    from nikodym.stability.config import StabilityConfig
+    from bayesrisk.stability.config import StabilityConfig
 
     def _siempre(self: StabilityConfig, contexto: ContextoConfig) -> tuple[Requisito, ...]:
         del self, contexto

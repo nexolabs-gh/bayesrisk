@@ -1,11 +1,11 @@
-"""Tests del contrato de inventario de ``nikodym.governance``."""
+"""Tests del contrato de inventario de ``bayesrisk.governance``."""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from nikodym.audit import EnvironmentSnapshot
-from nikodym.governance import (
+from bayesrisk.audit import EnvironmentSnapshot
+from bayesrisk.governance import (
     GovernanceConfig,
     InventoryEntry,
     InventoryRecord,

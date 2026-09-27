@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import pytest
 
-from nikodym.binning import transformer as transformer_module
-from nikodym.binning.config import BinningConfig, VariableBinningConfig
-from nikodym.binning.exceptions import BinningFitError
-from nikodym.binning.transformer import WoEBinner
-from nikodym.core.exceptions import ConfigError
+from bayesrisk.binning import transformer as transformer_module
+from bayesrisk.binning.config import BinningConfig, VariableBinningConfig
+from bayesrisk.binning.exceptions import BinningFitError
+from bayesrisk.binning.transformer import WoEBinner
+from bayesrisk.core.exceptions import ConfigError
 
 
 def _binner(**kwargs: object) -> WoEBinner:
@@ -83,10 +83,10 @@ def test_la_hoja_rechaza_cortes_mal_formados(campos: dict[str, object], mensaje:
 
 
 def test_la_hoja_es_aditiva_y_no_mueve_el_hash_de_un_config_sin_cortes() -> None:
-    from nikodym.core.config import NikodymConfig, config_hash
+    from bayesrisk.core.config import BayesRiskConfig, config_hash
 
-    sin = NikodymConfig(binning=BinningConfig(feature_columns=("score",)))
-    con_defaults = NikodymConfig(
+    sin = BayesRiskConfig(binning=BinningConfig(feature_columns=("score",)))
+    con_defaults = BayesRiskConfig(
         binning=BinningConfig(
             feature_columns=("score",),
             variable_overrides=(VariableBinningConfig(name="score"),),
@@ -95,7 +95,7 @@ def test_la_hoja_es_aditiva_y_no_mueve_el_hash_de_un_config_sin_cortes() -> None
     volcado = con_defaults.binning.variable_overrides[0].model_dump()
     assert volcado["user_splits"] is None and volcado["user_splits_fixed"] is None
     assert config_hash(sin) != config_hash(
-        NikodymConfig(
+        BayesRiskConfig(
             binning=BinningConfig(
                 feature_columns=("score",),
                 variable_overrides=(VariableBinningConfig(name="score", user_splits=(1.5,)),),

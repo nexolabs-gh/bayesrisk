@@ -15,9 +15,9 @@ import sys
 import numpy as np
 import pytest
 
-from nikodym.explain.exceptions import ExplainReasonCodeError
-from nikodym.explain.reason_codes import build_reason_codes
-from nikodym.explain.results import ReasonCode
+from bayesrisk.explain.exceptions import ExplainReasonCodeError
+from bayesrisk.explain.reason_codes import build_reason_codes
+from bayesrisk.explain.results import ReasonCode
 
 _FEATURES = ("ingreso__woe", "mora__woe", "edad__woe")
 
@@ -303,7 +303,7 @@ def test_contribuciones_no_finitas_son_error(bad: float) -> None:
 def test_import_reason_codes_liviano_no_arrastra_numpy_ni_shap() -> None:
     """Importar el módulo no debe cargar numpy/shap/pandas (import perezoso, SDD-14 §9)."""
     code = (
-        "import nikodym.explain.reason_codes, sys;"
+        "import bayesrisk.explain.reason_codes, sys;"
         "bloqueados=[m for m in ('numpy','shap','matplotlib','sklearn','pandas') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados"

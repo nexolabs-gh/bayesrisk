@@ -25,22 +25,22 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.config.effective_defaults import (
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.config.effective_defaults import (
     DESCRIPTOR_KEYS,
     DISCRIMINADOR,
     EFFECTIVE_DEFAULTS_VERSION,
     build_effective_defaults,
     modelos_de_anotacion,
 )
-from nikodym.core.config.schema import (
+from bayesrisk.core.config.schema import (
     build_full_json_schema,
     cargar_configs_de_dominio,
     cargar_configs_expandibles,
 )
-from nikodym.core.exceptions import NikodymError
-from nikodym.ml.config import MLConfig
-from nikodym.ui.routes import schema_payload
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.ml.config import MLConfig
+from bayesrisk.ui.routes import schema_payload
 
 #: Hojas visibles del formulario hoy. Medido con el mismo recorrido de
 #: ``test_copy_del_formulario.py``: el nodo de una lista cuenta (tiene título propio en pantalla) y
@@ -70,7 +70,7 @@ from nikodym.ui.routes import schema_payload
 #:
 #: 513 → 527 el 2026-09-07 con D-GOB-11: ``governance`` entra a ``CONFIG_SECTIONS`` (14 → 15) y por
 #: tanto a este barrido. Baseline por ``git archive HEAD`` de ``58ebc36`` a un directorio aparte,
-#: importando ``nikodym`` desde allí (verificado por ``__file__``): **0 desapariciones y 14
+#: importando ``bayesrisk`` desde allí (verificado por ``__file__``): **0 desapariciones y 14
 #: apariciones**, todas bajo ``governance.``: los 12 campos visibles —``model_name``, ``cartera``,
 #: ``motor``, ``fase``, ``estado_validacion``, ``author``, ``purpose``, ``assumptions``,
 #: ``limitations``, ``review_period_months``, ``publish_to_inventory``,
@@ -81,7 +81,7 @@ from nikodym.ui.routes import schema_payload
 #:
 #: 527 → 554 el 2026-09-10 con D-SC-6: ``validation`` entra a ``CONFIG_SECTIONS`` (15 → 16) y por
 #: tanto a este barrido. Baseline por ``git archive HEAD`` de ``73c3e29``-público a un directorio
-#: aparte, importando ``nikodym`` desde allí: **0 desapariciones y 27 apariciones**, todas bajo
+#: aparte, importando ``bayesrisk`` desde allí: **0 desapariciones y 27 apariciones**, todas bajo
 #: ``validation.``: los 24 campos visibles más las tres filas de lista (``families[]``,
 #: ``discrimination.partitions[]``, ``backtesting.parameters[]``). Los **seis** que faltan son
 #: exactamente los que D-SC-7 oculta por D-SUB —``calibration.hl_grouping``,
@@ -92,7 +92,7 @@ from nikodym.ui.routes import schema_payload
 #:
 #: 554 → 571 el 2026-09-11 con D-SC-1: ``eda`` entra a ``CONFIG_SECTIONS`` (16 → 17) y por tanto
 #: a este barrido. Baseline por ``git archive HEAD`` de ``e56eec8`` a un directorio aparte,
-#: importando ``nikodym`` desde allí (verificado por ``__file__``): **0 desapariciones y 17
+#: importando ``bayesrisk`` desde allí (verificado por ``__file__``): **0 desapariciones y 17
 #: apariciones**, todas bajo ``eda.``: los 16 campos visibles —``analysis_partition``, los cinco
 #: de ``default_rate``, los dos de ``stability``, los cuatro de ``univariate``, los dos de
 #: ``quality`` y los dos de ``sampling``— más ``univariate.columns[]``, la fila de su lista. El
@@ -502,9 +502,9 @@ def test_markov_y_stress_quedan_fuera_con_su_razon() -> None:
             f"{seccion} es una sección apagable, no un submodelo obligatorio"
         )
         proyectado = _proyeccion_canonica(_hijos_de(nodo))
-        # Las dos medidas son `NikodymError` (`MarkovConfigError` y `StressConfigError`); se deja
+        # Las dos medidas son `BayesRiskError` (`MarkovConfigError` y `StressConfigError`); se deja
         # `ValidationError` por si la causa cambia de capa sin dejar de ser un rechazo.
-        with pytest.raises((ValidationError, NikodymError)):
+        with pytest.raises((ValidationError, BayesRiskError)):
             disponibles[seccion].model_validate(proyectado)
 
 
@@ -598,7 +598,7 @@ def _pares_modelo_mapa(
                 alcanzables(modelo, acc)
 
     grupos: dict[str, list[type[BaseModel]]] = {"": []}
-    for campo in NikodymConfig.model_fields.values():
+    for campo in BayesRiskConfig.model_fields.values():
         grupos[""].extend(modelos_de_anotacion(campo.annotation))
     for seccion, cls in dominios.items():
         grupos[f"{seccion}__"] = [cls]
@@ -640,7 +640,7 @@ def _pares_modelo_mapa(
 
     for seccion, cls in dominios.items():
         bajar(cls, catalogo["sections"].get(seccion), f"sections.{seccion}", (cls.__name__,))
-    pares.append(("sections", NikodymConfig, catalogo["sections"]))
+    pares.append(("sections", BayesRiskConfig, catalogo["sections"]))
     return pares
 
 
@@ -768,7 +768,7 @@ def test_las_variantes_publican_sus_propios_defaults() -> None:
     # Partición aleatoria: variante del discriminador `data.partition.strategy`.
     aleatoria = catalogo["$defs"]["data__RandomSplitConfig"]
     assert aleatoria["holdout_fraction"]["has_default"] is True
-    from nikodym.data.config import RandomSplitConfig
+    from bayesrisk.data.config import RandomSplitConfig
 
     esperado = RandomSplitConfig().model_dump(mode="json", by_alias=True)
     for clave, valor in esperado.items():
@@ -794,7 +794,7 @@ def test_el_catalogo_no_depende_del_orden_de_imports() -> None:
 
     codigo = (
         "import json;"
-        "from nikodym.core.config.effective_defaults import build_effective_defaults;"
+        "from bayesrisk.core.config.effective_defaults import build_effective_defaults;"
         "print(json.dumps(build_effective_defaults(), sort_keys=True))"
     )
     salida = subprocess.run(
@@ -1105,7 +1105,7 @@ def test_un_extra_ausente_deja_su_dominio_sin_defaults_fabricados() -> None:
     disponibles = set(cargar_configs_expandibles())
     catalogo = build_effective_defaults()
     secciones_de_dominio = {
-        nombre for nombre in catalogo["sections"] if nombre in set(NikodymConfig.model_fields)
+        nombre for nombre in catalogo["sections"] if nombre in set(BayesRiskConfig.model_fields)
     }
     # Todo dominio disponible está expandido (mapa de hijos, no descriptor).
     for nombre in disponibles:

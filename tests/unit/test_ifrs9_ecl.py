@@ -19,11 +19,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.provisioning.ifrs9.ecl as ecl_module
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.provisioning.ifrs9 import EclEngine
-from nikodym.provisioning.ifrs9.config import IfrsEclConfig
-from nikodym.provisioning.ifrs9.exceptions import IfrsEclError
+import bayesrisk.provisioning.ifrs9.ecl as ecl_module
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.provisioning.ifrs9 import EclEngine
+from bayesrisk.provisioning.ifrs9.config import IfrsEclConfig
+from bayesrisk.provisioning.ifrs9.exceptions import IfrsEclError
 
 # Golden SDD-16 §11: 0.10·0.40·1000/1.1 + 0.08·0.40·900/1.1² = 60.165289256198344.
 _ECL_GOLDEN = 60.16528925619835

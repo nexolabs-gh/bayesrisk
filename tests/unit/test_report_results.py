@@ -12,10 +12,10 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.report as report_pkg
-import nikodym.report.results as report_results
-from nikodym.core.lineage import LineageBundle
-from nikodym.report.results import (
+import bayesrisk.report as report_pkg
+import bayesrisk.report.results as report_results
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.report.results import (
     AiNarrationBlock,
     ReportInputBundle,
     ReportManifest,
@@ -287,10 +287,10 @@ def test_report_result_golden_copias_frozen_y_extra() -> None:
 def test_report_results_lazy_exports_y_nucleo_liviano_por_subprocess() -> None:
     code = (
         "import sys;"
-        "import nikodym.core;"
+        "import bayesrisk.core;"
         "blocked=[m for m in ('matplotlib','plotly','anthropic','jinja2') if m in sys.modules];"
         "assert not blocked, blocked;"
-        "import nikodym.report as report;"
+        "import bayesrisk.report as report;"
         "blocked=[m for m in ('matplotlib','plotly','anthropic','jinja2','pandas') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"
@@ -330,7 +330,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "0.1.0"},
+        library_versions={"bayesrisk": "0.1.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 6, 24, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",

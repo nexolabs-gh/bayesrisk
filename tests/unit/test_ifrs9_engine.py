@@ -19,10 +19,10 @@ import pandas as pd
 import pytest
 from scipy.stats import norm
 
-import nikodym.provisioning.ifrs9.engine as engine_module
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.provisioning.ifrs9 import IfrsProvisioningConfig, IfrsProvisioningEngine
-from nikodym.provisioning.ifrs9.config import (
+import bayesrisk.provisioning.ifrs9.engine as engine_module
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.provisioning.ifrs9 import IfrsProvisioningConfig, IfrsProvisioningEngine
+from bayesrisk.provisioning.ifrs9.config import (
     IfrsEadConfig,
     IfrsEclConfig,
     IfrsLgdConfig,
@@ -30,13 +30,13 @@ from nikodym.provisioning.ifrs9.config import (
     IfrsScenarioConfig,
     IfrsStagingConfig,
 )
-from nikodym.provisioning.ifrs9.exceptions import (
+from bayesrisk.provisioning.ifrs9.exceptions import (
     IfrsConfigError,
     IfrsEclError,
     IfrsInputError,
     IfrsTermStructureError,
 )
-from nikodym.provisioning.ifrs9.results import IfrsProvisionResult
+from bayesrisk.provisioning.ifrs9.results import IfrsProvisionResult
 
 # Golden SDD-16 §11 (EAD constante 900): 36/1.1 y 36/1.1 + 28.8/1.21.
 _ECL_12M = 32.72727272727273

@@ -25,18 +25,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ArtifactNotFoundError, ConfigError
-from nikodym.core.steps import ContextoDeResolucion
-from nikodym.core.study import Study
-from nikodym.eda.config import EdaConfig
-from nikodym.eda.step import EdaStep
-from nikodym.report.builder import OPTIONAL_REPORT_INPUTS
-from nikodym.report.config import ReportConfig, SectionPolicyConfig
-from nikodym.report.exceptions import ReportInputError
-from nikodym.report.step import REPORT_REQUIRED_CARDS, ReportStep
-from nikodym.stability.config import StabilityConfig
-from nikodym.stability.step import StabilityStep
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ArtifactNotFoundError, ConfigError
+from bayesrisk.core.steps import ContextoDeResolucion
+from bayesrisk.core.study import Study
+from bayesrisk.eda.config import EdaConfig
+from bayesrisk.eda.step import EdaStep
+from bayesrisk.report.builder import OPTIONAL_REPORT_INPUTS
+from bayesrisk.report.config import ReportConfig, SectionPolicyConfig
+from bayesrisk.report.exceptions import ReportInputError
+from bayesrisk.report.step import REPORT_REQUIRED_CARDS, ReportStep
+from bayesrisk.stability.config import StabilityConfig
+from bayesrisk.stability.step import StabilityStep
 
 #: Los dos dominios de la matriz. `eda` es el caso vivo; `stability` es el control anti-parche.
 DOMINIOS = ("eda", "stability")
@@ -64,8 +64,8 @@ def _config(
     apagado: str,
     opaco: bool,
     activar: tuple[str, ...] = (),
-) -> NikodymConfig:
-    """``NikodymConfig`` con ``report`` (tipado u opaco) y las secciones que se quieran activas."""
+) -> BayesRiskConfig:
+    """``BayesRiskConfig`` con ``report`` (tipado u opaco) y las secciones activas pedidas."""
     report = ReportConfig(
         output_dir=str(tmp_path),
         sections=SectionPolicyConfig(missing_policy=politica, max_table_rows=10),
@@ -80,7 +80,7 @@ def _config(
     }
     for nombre in activar:
         secciones[nombre] = _CONFIG_POR_DOMINIO[nombre]()
-    return NikodymConfig(**secciones)
+    return BayesRiskConfig(**secciones)
 
 
 def _sembrar_cards(study: Study, *, salvo: str) -> None:
@@ -308,7 +308,7 @@ def test_dominio_ni_requerido_ni_activo_no_figura_como_faltante(
         sections=SectionPolicyConfig(required_sections=requeridas, max_table_rows=10),
     )
     seccion = report.model_dump(mode="json", by_alias=True) if opaco else report
-    study = Study(NikodymConfig(report=seccion), apply_global_seed=False)
+    study = Study(BayesRiskConfig(report=seccion), apply_global_seed=False)
     _sembrar_cards(study, salvo=fuera)
 
     assert study.check_pipeline() == ["report"]
@@ -352,7 +352,7 @@ def test_las_cards_adoptables_son_consumos_opcionales() -> None:
     """D-FX-3: lo que el builder adopta si existe se declara en ``optional_requires``.
 
     Sin esto, filtrar ``requires`` convertía en **inerte** —con su aviso— una card que el informe sí
-    lee, en cuanto se inyectara por ``nikodym.run(..., artifacts=...)``.
+    lee, en cuanto se inyectara por ``bayesrisk.run(..., artifacts=...)``.
     """
     paso = ReportStep.from_config_with_context(
         ReportConfig(), contexto=ContextoDeResolucion(frozenset({"report"}))
@@ -375,7 +375,7 @@ def test_run_step_conserva_la_comprobacion_ct1(tmp_path: Path) -> None:
     tratarlo como contexto dejaría la comprobación CT-1 de este método vacía.
     """
     study = Study(
-        NikodymConfig(report=ReportConfig(output_dir=str(tmp_path))),
+        BayesRiskConfig(report=ReportConfig(output_dir=str(tmp_path))),
         apply_global_seed=False,
     )
     _sembrar_cards(study, salvo="stability")
@@ -412,10 +412,10 @@ def test_el_resolver_no_conoce_report(
         def execute(self, study: Study, rng: np.random.Generator) -> None:  # pragma: no cover
             del study, rng
 
-    from nikodym.core import registry as registry_module
+    from bayesrisk.core import registry as registry_module
 
     study = Study(
-        NikodymConfig(eda=EdaConfig(), report=ReportConfig(output_dir=str(tmp_path))),
+        BayesRiskConfig(eda=EdaConfig(), report=ReportConfig(output_dir=str(tmp_path))),
         apply_global_seed=False,
     )
     original = registry_module.REGISTRY.resolve
@@ -454,10 +454,10 @@ def test_un_hook_con_firma_incompatible_habla_en_español(
         def execute(self, study: Study, rng: np.random.Generator) -> None:  # pragma: no cover
             del study, rng
 
-    from nikodym.core import registry as registry_module
+    from bayesrisk.core import registry as registry_module
 
     study = Study(
-        NikodymConfig(eda=EdaConfig(), report=ReportConfig(output_dir=str(tmp_path))),
+        BayesRiskConfig(eda=EdaConfig(), report=ReportConfig(output_dir=str(tmp_path))),
         apply_global_seed=False,
     )
     original = registry_module.REGISTRY.resolve
@@ -474,7 +474,7 @@ def test_un_hook_con_firma_incompatible_habla_en_español(
 def test_sin_hook_contextual_el_resolver_usa_from_config(tmp_path: Path) -> None:
     """Un componente que NO expone el hook se resuelve exactamente como antes."""
     study = Study(
-        NikodymConfig(stability=StabilityConfig(), report=ReportConfig(output_dir=str(tmp_path))),
+        BayesRiskConfig(stability=StabilityConfig(), report=ReportConfig(output_dir=str(tmp_path))),
         apply_global_seed=False,
     )
     assert not hasattr(StabilityStep, "from_config_with_context")
@@ -490,7 +490,7 @@ def test_el_gate_caza_el_defecto_que_cierra(tmp_path: Path) -> None:
     verifica el verde no demuestra que el rojo existiera.
     """
     study = Study(
-        NikodymConfig(report=ReportConfig(output_dir=str(tmp_path))),
+        BayesRiskConfig(report=ReportConfig(output_dir=str(tmp_path))),
         apply_global_seed=False,
     )
     viejo = ReportStep.from_config(study.config.report)  # sin contexto ⇒ las ocho cards

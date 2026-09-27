@@ -4,8 +4,8 @@
 sin backend, y que además **viaja dentro del bundle instalable** (``web/src/lib/schema.ts`` lo
 importa estáticamente). Lo regenera ``scripts/gen_schema_fixture.py``… cuando alguien se acuerda:
 hasta este gate, nada comprobaba que se hubiera corrido. Ya se pagó una vez —el fixture llegó a
-64 kB contra 259 kB reales, y publicó en demo.nikodym.cl un encuadre normativo que el código ya
-había corregido— y el docstring de ese script lo cuenta.
+64 kB contra 259 kB reales, y publicó en demo.bayesadvisory.cl un encuadre normativo que el código
+ya había corregido— y el docstring de ese script lo cuenta.
 
 Gemelo del patrón de ``test_public_copy.py``: la paridad entre una verdad Python y un artefacto
 commiteado del front se verifica **desde pytest**, que es el único lado con acceso a los dos.
@@ -25,9 +25,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.core.study import _DOMAIN_CONFIG_CLASSES, _INFRA_CONFIG_CLASSES
-from nikodym.ui.routes import schema_payload
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.core.study import _DOMAIN_CONFIG_CLASSES, _INFRA_CONFIG_CLASSES
+from bayesrisk.ui.routes import schema_payload
 
 #: El artefacto commiteado que consume el front (y que el bundle instalable embebe).
 _FIXTURE = Path(__file__).resolve().parents[2] / "web" / "src" / "fixtures" / "schema.json"
@@ -108,7 +108,7 @@ def test_el_fixture_esta_en_formato_canonico() -> None:
 
 
 def test_defaults_y_section_order_identicos() -> None:
-    """Ambos salen de ``NikodymConfig`` y no dependen de qué extras haya: se comparan siempre."""
+    """Ambos salen de ``BayesRiskConfig`` y no dependen de qué extras haya: se comparan siempre."""
     vivo = schema_payload()
     fixture = _fixture()
     assert vivo["section_order"] == fixture["section_order"]

@@ -102,7 +102,7 @@ jobs:
         run: uv sync --locked --python ${{ matrix.python-version }} --group test --extra scoring
 
       - name: Pytest
-        run: uv run --no-sync pytest -q --cov=nikodym --cov-report=term-missing
+        run: uv run --no-sync pytest -q --cov=bayesrisk --cov-report=term-missing
 
   test-all:
     name: Tests all extras
@@ -127,7 +127,7 @@ jobs:
         run: uv sync --locked --python 3.12 --extra all --group test
 
       - name: Pytest
-        run: uv run --no-sync pytest -q --cov=nikodym --cov-report=term-missing
+        run: uv run --no-sync pytest -q --cov=bayesrisk --cov-report=term-missing
 
   test-pdf:
     name: PDF extra (WeasyPrint tests reales)
@@ -181,7 +181,7 @@ jobs:
         run: |
           regulatory_include="$(
             uv run --no-sync python -c \
-              "from nikodym.testing.regulatory import regulatory_coverage_include_arg; print(regulatory_coverage_include_arg())"
+              "from bayesrisk.testing.regulatory import regulatory_coverage_include_arg; print(regulatory_coverage_include_arg())"
           )"
           uv run --no-sync coverage run -m pytest
           uv run --no-sync coverage report --include="$regulatory_include" --fail-under=100
@@ -219,11 +219,11 @@ jobs:
         working-directory: web
         shell: bash
         run: |
-          find ../src/nikodym/ui/static -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/static-before-demo
+          find ../src/bayesrisk/ui/static -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/static-before-demo
           demo_dir="$(mktemp -d)"
-          NIKODYM_DEMO_OUT_DIR="$demo_dir" pnpm build:demo
+          BAYESRISK_DEMO_OUT_DIR="$demo_dir" pnpm build:demo
           test -f "$demo_dir/index.html"
-          find ../src/nikodym/ui/static -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/static-after-demo
+          find ../src/bayesrisk/ui/static -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/static-after-demo
           diff -u /tmp/static-before-demo /tmp/static-after-demo
 
       - name: Regenerar bundle normal dos veces
@@ -231,10 +231,10 @@ jobs:
         shell: bash
         run: |
           pnpm build:package
-          find ../src/nikodym/ui/static -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/static-build-1
+          find ../src/bayesrisk/ui/static -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/static-build-1
           sha256sum dist/evidence/frontend-provenance.json > /tmp/provenance-build-1
           pnpm build:package
-          find ../src/nikodym/ui/static -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/static-build-2
+          find ../src/bayesrisk/ui/static -type f -print0 | sort -z | xargs -0 sha256sum > /tmp/static-build-2
           sha256sum dist/evidence/frontend-provenance.json > /tmp/provenance-build-2
           diff -u /tmp/static-build-1 /tmp/static-build-2
           diff -u /tmp/provenance-build-1 /tmp/provenance-build-2
@@ -253,8 +253,8 @@ jobs:
       - name: Build versionado sin drift
         shell: bash
         run: |
-          git diff --exit-code -- src/nikodym/ui/static
-          git status --porcelain --untracked-files=all -- src/nikodym/ui/static > /tmp/static-status
+          git diff --exit-code -- src/bayesrisk/ui/static
+          git status --porcelain --untracked-files=all -- src/bayesrisk/ui/static > /tmp/static-status
           test ! -s /tmp/static-status
 
       - name: Subir evidencia frontend autoritativa
@@ -301,7 +301,7 @@ jobs:
       - name: Build distributions
         run: uv build
 
-      # El checker importa `nikodym.ui._static_index`, la semántica canónica del index que comparte
+      # El checker importa `bayesrisk.ui._static_index`, la semántica canónica del index que comparte
       # con el preflight del launcher (enmienda B2.2, E-B2.2-6). Sin este sync los pasos siguientes
       # corren con `--no-sync` sobre un entorno sin el proyecto y mueren en el import, antes de
       # validar un solo byte. Se sincroniza el ÁRBOL FUENTE, nunca el candidate: auditar un wheel
@@ -340,15 +340,15 @@ jobs:
           wheels=(dist/*.whl)
           test "${#wheels[@]}" -eq 1
           uv run --isolated --no-project --with "${wheels[0]}" \
-            python -c "import nikodym; print(nikodym.__version__)"
+            python -c "import bayesrisk; print(bayesrisk.__version__)"
 
       # El gate que faltaba. El resto del CI corre con `uv sync --locked`: prueba el uv.lock, no lo
       # que recibe el usuario. Aquí se instala el wheel con **pip resolviendo libre**, igual que un
-      # `pip install nikodym[...]` desde PyPI, y se corre el preset estándar de punta a punta.
+      # `pip install bayesrisk[...]` desde PyPI, y se corre el preset estándar de punta a punta.
       #
       # No es teórico: hasta la 1.1.1, pip traía scikit-learn 1.9 (que eliminó el `force_all_finite`
       # que optbinning invoca) y pandas 3.0 (que rompe la serialización), y la primera corrida de
-      # cualquier usuario nuevo moría — con el CI entero en verde. `import nikodym` seguía
+      # cualquier usuario nuevo moría — con el CI entero en verde. `import bayesrisk` seguía
       # funcionando, que es justo lo que el smoke anterior verificaba.
       - name: Smoke de instalación real (pip, resolución libre)
         shell: bash
@@ -358,7 +358,7 @@ jobs:
           wheels=(dist/*.whl)
           test "${#wheels[@]}" -eq 1
           ./.venv-pip/bin/pip install --quiet "${wheels[0]}[scoring,ui,docx]" httpx2
-          ./.venv-pip/bin/pip list | grep -Ei "^(nikodym|pandas|scikit-learn|numpy|optbinning) "
+          ./.venv-pip/bin/pip list | grep -Ei "^(bayesrisk|pandas|scikit-learn|numpy|optbinning) "
           ./.venv-pip/bin/python scripts/smoke_instalacion_pip.py
           # Los CUATRO presets de fábrica, no sólo F1. `docs_site/getting-started.md` promete que
           # el extra `[ui]` los corre «hasta el informe con esa única instalación», y hasta la
@@ -374,21 +374,21 @@ jobs:
       # distribución parsea el texto de `entry_points.txt` y el smoke de arriba llama a la app
       # in-process: ninguno de los dos toca el ejecutable que recibe el usuario. Un `main()` que
       # reviente al invocarse desde el shim pasaría los 16 jobs (enmienda B2.2, §4).
-      - name: Smoke del console script instalado (nikodym-ui)
+      - name: Smoke del console script instalado (bayesrisk-ui)
         shell: bash
         run: |
-          ./.venv-pip/bin/nikodym-ui --help | grep -q -- --no-open
+          ./.venv-pip/bin/bayesrisk-ui --help | grep -q -- --no-open
           # `--host` no existe y no debe reaparecer por descuido: exponer a red es decisión R0.
           # Se mira la línea de USAGE, no el texto libre: la descripción del comando dice "no
           # existe --host", así que un grep suelto se encuentra a sí mismo y falla siempre.
-          if ./.venv-pip/bin/nikodym-ui --help | sed -n '/^usage:/,/^$/p' | grep -q -- --host; then
-            echo "nikodym-ui expone --host: el bind debe ser fijo a loopback (D-UI-R0)" >&2
+          if ./.venv-pip/bin/bayesrisk-ui --help | sed -n '/^usage:/,/^$/p' | grep -q -- --host; then
+            echo "bayesrisk-ui expone --host: el bind debe ser fijo a loopback (D-UI-R0)" >&2
             exit 1
           fi
 
           puerto=8765
           workdir="$(mktemp -d)"
-          ./.venv-pip/bin/nikodym-ui --no-open --port "$puerto" --workdir "$workdir" &
+          ./.venv-pip/bin/bayesrisk-ui --no-open --port "$puerto" --workdir "$workdir" &
           ui_pid=$!
           trap 'kill "$ui_pid" 2>/dev/null || true' EXIT
 
@@ -398,8 +398,8 @@ jobs:
           done
 
           # La SPA se sirve con el token YA sustituido...
-          grep -q 'name="nikodym-token"' index.html
-          if grep -q '__NIKODYM_TOKEN__' index.html; then
+          grep -q 'name="bayesrisk-token"' index.html
+          if grep -q '__BAYESRISK_TOKEN__' index.html; then
             echo "el index servido conserva el placeholder: el token no se inyectó" >&2
             exit 1
           fi
@@ -415,8 +415,8 @@ jobs:
             -d '{}' "http://127.0.0.1:$puerto/api/run")" = "403"
 
           # El archivo en disco conserva el placeholder: la inyección es en memoria.
-          static="$(./.venv-pip/bin/python -c 'import nikodym.ui, pathlib; print(pathlib.Path(nikodym.ui.__file__).parent / "static")')"
-          grep -q '__NIKODYM_TOKEN__' "$static/index.html"
+          static="$(./.venv-pip/bin/python -c 'import bayesrisk.ui, pathlib; print(pathlib.Path(bayesrisk.ui.__file__).parent / "static")')"
+          grep -q '__BAYESRISK_TOKEN__' "$static/index.html"
 
       - name: Verify wheel license metadata
         shell: bash
@@ -508,9 +508,120 @@ jobs:
           path: dist/candidate-unit/
           if-no-files-found: error
 
+      # Renombre (enmienda RENOMBRE-BAYESRISK, D-REN-7/11): `nikodym` 1.21, la capa de
+      # compatibilidad, es su propio candidato. Se construye e inspecciona aquí sobre sus BYTES —un
+      # solo módulo de alias, los mismos extras que bayesrisk, la dependencia `bayesrisk>=2.0,<3`—,
+      # y `release.yml` lo promueve después de bayesrisk sin reconstruirlo.
+      - name: Construir e inspeccionar el candidato de compatibilidad (nikodym)
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv build --out-dir dist-compat compat/nikodym
+          uvx twine check --strict dist-compat/*
+          uv run --isolated --no-project python scripts/check_compat_distribution.py dist-compat
+          mkdir -p dist/compat-unit
+          cp dist-compat/*.whl dist-compat/*.tar.gz dist/compat-unit/
+          (
+            cd dist/compat-unit
+            find . -type f ! -name SHA256SUMS -print0 \
+              | sort -z \
+              | xargs -0 sha256sum > SHA256SUMS
+          )
+
+      - name: Upload compat candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-compat-distributions
+          path: dist/compat-unit/
+          if-no-files-found: error
+
+  # Lo que el renombre promete a quien ya usaba nikodym (D-REN-6/7), probado con los BYTES
+  # candidatos y con artefactos REALES: nikodym 1.20.0 y 1.19.0 instalados desde PyPI generan un
+  # estudio guardado, estimadores en joblib y un bundle; los dos wheels nuevos, instalados juntos
+  # fuera del checkout con pip resolviendo libre, tienen que cargarlos y reproducir sus salidas.
+  compat:
+    name: Compatibilidad nikodym → bayesrisk
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Descargar los dos candidatos
+        uses: actions/download-artifact@v4
+        with:
+          pattern: candidate-*
+          path: candidatos
+
+      - name: Artefactos reales de nikodym 1.20.0 y 1.19.0 (desde PyPI)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for v in 1.20.0 1.19.0; do
+            python -m venv "${RUNNER_TEMP}/legado-${v}"
+            "${RUNNER_TEMP}/legado-${v}/bin/pip" install --quiet --upgrade pip
+            "${RUNNER_TEMP}/legado-${v}/bin/pip" install --quiet "nikodym[scoring,report]==${v}"
+            # cwd fuera del checkout: `import nikodym` tiene que ser el instalado.
+            (cd "${RUNNER_TEMP}" && "${RUNNER_TEMP}/legado-${v}/bin/python" -W ignore \
+              "${GITHUB_WORKSPACE}/scripts/compat_artefactos_legado.py" generar "art-${v}")
+          done
+
+      - name: Instalar bayesrisk y nikodym 1.21 candidatos, juntos, fuera del checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          principal=(candidatos/candidate-distributions-with-evidence/*.whl)
+          compat=(candidatos/candidate-compat-distributions/*.whl)
+          test "${#principal[@]}" -eq 1
+          test "${#compat[@]}" -eq 1
+          python -m venv "${RUNNER_TEMP}/nuevo"
+          "${RUNNER_TEMP}/nuevo/bin/pip" install --quiet --upgrade pip
+          "${RUNNER_TEMP}/nuevo/bin/pip" install --quiet \
+            "$(realpath "${principal[0]}")[scoring,report,ui]" "$(realpath "${compat[0]}")"
+          "${RUNNER_TEMP}/nuevo/bin/pip" list | grep -Ei "^(bayesrisk|nikodym) "
+
+      - name: Cargar y reproducir los artefactos de nikodym con los paquetes nuevos
+        shell: bash
+        run: |
+          set -euo pipefail
+          for v in 1.20.0 1.19.0; do
+            (cd "${RUNNER_TEMP}" && "${RUNNER_TEMP}/nuevo/bin/python" \
+              "${GITHUB_WORKSPACE}/scripts/compat_artefactos_legado.py" verificar "art-${v}")
+          done
+
+      - name: La capa de compatibilidad instalada, por su cuenta
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}"
+          "${RUNNER_TEMP}/nuevo/bin/python" - <<'PY'
+          import warnings
+          with warnings.catch_warnings(record=True) as vistos:
+              warnings.simplefilter("always")
+              import nikodym
+              import nikodym.binning
+              from nikodym.scorecard import FittedScorecardBundle  # noqa: F401
+          import bayesrisk
+          import bayesrisk.binning
+          avisos = [w for w in vistos if "nikodym ahora se llama bayesrisk" in str(w.message)]
+          assert len(avisos) == 1, avisos
+          assert nikodym.binning is bayesrisk.binning
+          try:
+              import nikodym.pd  # noqa: F401
+          except ModuleNotFoundError:
+              pass
+          else:
+              raise SystemExit("nikodym.pd no debe existir")
+          print("nikodym", nikodym.__version__, "→ bayesrisk", bayesrisk.__version__)
+          PY
+          "${RUNNER_TEMP}/nuevo/bin/nikodym-ui" --help | grep -q -- --no-open
+          "${RUNNER_TEMP}/nuevo/bin/bayesrisk-ui" --help | grep -q -- --no-open
+          "${RUNNER_TEMP}/nuevo/bin/python" -W ignore::DeprecationWarning -m nikodym.ui --help \
+            | grep -q -- --no-open
+
   # B2.4 — el gate que faltaba, y el único que EJECUTA el frontend distribuido.
   #
-  # Hasta la 1.11.0 el árbol de `nikodym/ui/static` se verificaba por SHA-256 contra su procedencia
+  # Hasta la 1.11.0 el árbol de `bayesrisk/ui/static` se verificaba por SHA-256 contra su procedencia
   # y no lo cargaba jamás un navegador: `frontend` corre vitest sin DOM, y el smoke de pip llama a
   # la app in-process con `TestClient`. Un bundle íntegro pero roto pasaba los dieciséis jobs.
   #
@@ -549,7 +660,7 @@ jobs:
           python -m venv "${RUNNER_TEMP}/venv-ui"
           "${RUNNER_TEMP}/venv-ui/bin/pip" install --quiet --upgrade pip
           "${RUNNER_TEMP}/venv-ui/bin/pip" install --quiet "$(realpath "${wheels[0]}")[ui]"
-          "${RUNNER_TEMP}/venv-ui/bin/python" -c "import nikodym; print(nikodym.__version__)"
+          "${RUNNER_TEMP}/venv-ui/bin/python" -c "import bayesrisk; print(bayesrisk.__version__)"
 
       - name: Instalar el arnés Playwright
         working-directory: web
@@ -564,9 +675,9 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/workdir-ui"
           # `cd` fuera del checkout: el servidor no debe encontrar `src/` ni los fixtures del repo.
           cd "${RUNNER_TEMP}/workdir-ui"
-          nohup "${RUNNER_TEMP}/venv-ui/bin/nikodym-ui" --no-open --port 8123 \
-            > "${RUNNER_TEMP}/nikodym-ui.log" 2>&1 &
-          echo $! > "${RUNNER_TEMP}/nikodym-ui.pid"
+          nohup "${RUNNER_TEMP}/venv-ui/bin/bayesrisk-ui" --no-open --port 8123 \
+            > "${RUNNER_TEMP}/bayesrisk-ui.log" 2>&1 &
+          echo $! > "${RUNNER_TEMP}/bayesrisk-ui.pid"
           # El bind es fijo a loopback (D-UI-R0) y el `Host` se compara exacto: sondear por
           # `localhost` devolvería 403 y parecería que el servidor no arrancó.
           for _ in $(seq 1 60); do
@@ -576,26 +687,26 @@ jobs:
             sleep 2
           done
           echo "la interfaz no respondió en 120 s" >&2
-          cat "${RUNNER_TEMP}/nikodym-ui.log" >&2
+          cat "${RUNNER_TEMP}/bayesrisk-ui.log" >&2
           exit 1
 
       - name: Recorrer la interfaz en un navegador real
         working-directory: web
         env:
-          NIKODYM_UI_URL: http://127.0.0.1:8123
+          BAYESRISK_UI_URL: http://127.0.0.1:8123
         run: pnpm test:e2e
 
       - name: Log del servidor
         if: always()
         shell: bash
-        run: cat "${RUNNER_TEMP}/nikodym-ui.log" || true
+        run: cat "${RUNNER_TEMP}/bayesrisk-ui.log" || true
 
       - name: Detener la interfaz
         if: always()
         shell: bash
         run: |
-          if [ -f "${RUNNER_TEMP}/nikodym-ui.pid" ]; then
-            kill "$(cat "${RUNNER_TEMP}/nikodym-ui.pid")" || true
+          if [ -f "${RUNNER_TEMP}/bayesrisk-ui.pid" ]; then
+            kill "$(cat "${RUNNER_TEMP}/bayesrisk-ui.pid")" || true
           fi
 
       - name: Subir la traza de Playwright si falló

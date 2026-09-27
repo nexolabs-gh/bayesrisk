@@ -1,6 +1,6 @@
 name: Deploy
 
-# Publica `docs.nikodym.cl` y `demo.nikodym.cl` cuando `main` pasa TODOS los gates.
+# Publica `docs.bayesadvisory.cl` y `demo.bayesadvisory.cl` cuando `main` pasa TODOS los gates.
 #
 # 🔴 Por qué existe. Hasta el 2026-08-07 los dos sitios se publicaban A MANO por Vercel, y el paso
 # se olvidó: `docs.nikodym.cl` sirvió `1.2.0` durante **nueve releases** —sin cuatro páginas que
@@ -29,6 +29,15 @@ name: Deploy
       forzar:
         description: >-
           Publicar a sabiendas aunque producción vaya adelante o su huella no se pueda verificar
+        type: boolean
+        default: false
+      # Renombre (enmienda RENOMBRE-BAYESRISK, D-REN-10): antes de integrar una rama a `main` hay que
+      # ver el sitio y la demo que publicaría. `preview` despliega la ref elegida como PREVIEW de
+      # Vercel —sin `--prod`: no toca ningún dominio de producción, ni viejo ni nuevo— y deja las
+      # URLs en el resumen del run. Por eso no aplica la regla de producción ni el chequeo en vivo.
+      preview:
+        description: >-
+          Desplegar la ref como preview de Vercel (sin tocar producción) para revisarla antes de integrar
         type: boolean
         default: false
 
@@ -79,6 +88,8 @@ jobs:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       # Override humano de la regla de abajo; en un `workflow_run` no hay inputs y vale `false`.
       FORZAR: ${{ inputs.forzar || 'false' }}
+      # Despliegue de revisión, sólo por despacho manual; en un `workflow_run` vale `false`.
+      PREVIEW: ${{ inputs.preview || 'false' }}
     steps:
       - name: Comprobar que las credenciales están configuradas
         # Falla PRIMERO y con un mensaje que dice qué hacer, en vez de dejar que el CLI de Vercel
@@ -126,6 +137,7 @@ jobs:
       # detiene si ninguno DE `main` terminó en `success`: el verde de un tag o de otra rama sobre
       # el mismo commit es un CI reducido (`test-all` sólo corre en `main`) y no cuenta.
       - name: No retroceder producción
+        if: env.PREVIEW != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/deploy_no_retroceder_produccion.py
@@ -193,13 +205,13 @@ jobs:
       # minutos de instalación y build (TOCTOU, pasada 5). Con `concurrency` nadie publica en
       # medio; esto lo acredita en vez de suponerlo.
       - name: Recomprobar producción antes de publicar
-        if: env.SALTAR != '1'
+        if: env.SALTAR != '1' && env.PREVIEW != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/deploy_no_retroceder_produccion.py
 
-      - name: Publicar docs.nikodym.cl
-        if: env.SALTAR != '1'
+      - name: Publicar docs.bayesadvisory.cl
+        if: env.SALTAR != '1' && env.PREVIEW != 'true'
         working-directory: site
         env:
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
@@ -207,8 +219,8 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel deploy --prod --yes --archive=tgz --token "$VERCEL_TOKEN"
 
-      - name: Publicar demo.nikodym.cl
-        if: env.SALTAR != '1'
+      - name: Publicar demo.bayesadvisory.cl
+        if: env.SALTAR != '1' && env.PREVIEW != 'true'
         working-directory: web/dist
         env:
           VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
@@ -216,8 +228,29 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel deploy --prod --yes --archive=tgz --token "$VERCEL_TOKEN"
 
+      - name: Desplegar docs y demo como preview (sin producción)
+        if: env.PREVIEW == 'true'
+        shell: bash
+        env:
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_DOCS_PROJECT_ID: ${{ vars.VERCEL_DOCS_PROJECT_ID }}
+          VERCEL_DEMO_PROJECT_ID: ${{ vars.VERCEL_DEMO_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          docs_url="$(cd site && VERCEL_PROJECT_ID="$VERCEL_DOCS_PROJECT_ID" \
+            vercel deploy --yes --archive=tgz --token "$VERCEL_TOKEN")"
+          demo_url="$(cd web/dist && VERCEL_PROJECT_ID="$VERCEL_DEMO_PROJECT_ID" \
+            vercel deploy --yes --archive=tgz --token "$VERCEL_TOKEN")"
+          {
+            echo "### Preview de ${DEPLOY_SHA:0:7} (no toca producción)"
+            echo "- docs: ${docs_url}"
+            echo "- demo: ${demo_url}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "docs=${docs_url} demo=${demo_url}"
+
       - name: Verificar EN VIVO lo publicado
-        if: env.SALTAR != '1'
+        if: env.SALTAR != '1' && env.PREVIEW != 'true'
         # 🔴 Un deploy que devuelve `READY` no prueba que el dominio sirva lo nuevo. Se comprueba
         # contra el dominio real y por CONTENIDO, no por código de estado: la versión que la portada
         # de la doc afirma tiene que ser la que el paquete declara, y el titular que se retiró del
@@ -225,7 +258,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          version="$(grep -oE '__version__ = "[^"]+"' src/nikodym/__init__.py | cut -d'"' -f2)"
+          version="$(grep -oE '__version__ = "[^"]+"' src/bayesrisk/__init__.py | cut -d'"' -f2)"
 
           # 🔴 Frescura antes que contenido (hallazgo de la revisión adversarial de la 1.14.0): el
           # alias de producción de Vercel tarda más que un `sleep` fijo, y un chequeo que lea el
@@ -236,10 +269,10 @@ jobs:
           test -n "$bundle_local" || { echo "::error::web/dist/index.html no referencia ningún bundle"; exit 1; }
           limite=$(( SECONDS + 10 * 60 ))
           while :; do
-            bundle_vivo="$(curl -fsSL -H 'Cache-Control: no-cache' https://demo.nikodym.cl/ | grep -oE '/assets/index-[^"]*\.js' | head -1 || true)"
-            docs="$(curl -fsSL -H 'Cache-Control: no-cache' https://docs.nikodym.cl/ || true)"
-            sha_vivo="$(curl -fsSL -H 'Cache-Control: no-cache' https://docs.nikodym.cl/build-sha.txt | tr -d '[:space:]' || true)"
-            sha_demo="$(curl -fsSL -H 'Cache-Control: no-cache' https://demo.nikodym.cl/build-sha.txt | tr -d '[:space:]' || true)"
+            bundle_vivo="$(curl -fsSL -H 'Cache-Control: no-cache' https://demo.bayesadvisory.cl/ | grep -oE '/assets/index-[^"]*\.js' | head -1 || true)"
+            docs="$(curl -fsSL -H 'Cache-Control: no-cache' https://docs.bayesadvisory.cl/ || true)"
+            sha_vivo="$(curl -fsSL -H 'Cache-Control: no-cache' https://docs.bayesadvisory.cl/build-sha.txt | tr -d '[:space:]' || true)"
+            sha_demo="$(curl -fsSL -H 'Cache-Control: no-cache' https://demo.bayesadvisory.cl/build-sha.txt | tr -d '[:space:]' || true)"
             if [ "$bundle_vivo" = "$bundle_local" ] && [ "$sha_vivo" = "$DEPLOY_SHA" ] && [ "$sha_demo" = "$DEPLOY_SHA" ] && grep -qF "Estado: ${version}" <<<"$docs"; then
               echo "producción sirve este build: ${bundle_local}, docs y demo ${sha_vivo:0:7} y la portada ${version}"
               break
@@ -251,20 +284,20 @@ jobs:
             sleep 15
           done
 
-          docs="$(curl -fsSL -H 'Cache-Control: no-cache' https://docs.nikodym.cl/)"
+          docs="$(curl -fsSL -H 'Cache-Control: no-cache' https://docs.bayesadvisory.cl/)"
           if ! grep -qF "Estado: ${version}" <<<"$docs"; then
-            echo "::error::docs.nikodym.cl no publica la versión ${version} en su portada"
+            echo "::error::docs.bayesadvisory.cl no publica la versión ${version} en su portada"
             exit 1
           fi
           for pagina in norma-local avisos-declarados guias/puerta-artefactos \
                         guias/provision-sin-norma-local guias/gobernanza; do
-            code="$(curl -s -o /dev/null -w '%{http_code}' "https://docs.nikodym.cl/${pagina}/")"
+            code="$(curl -s -o /dev/null -w '%{http_code}' "https://docs.bayesadvisory.cl/${pagina}/")"
             test "$code" = "200" || { echo "::error::${pagina} devuelve ${code}"; exit 1; }
           done
 
-          bundle="$(curl -fsSL https://demo.nikodym.cl/ | grep -oE '/assets/index-[^"]*\.js' | head -1)"
-          test -n "$bundle" || { echo "::error::demo.nikodym.cl no sirve ningún bundle"; exit 1; }
-          cuerpo="$(curl -fsSL "https://demo.nikodym.cl${bundle}")"
+          bundle="$(curl -fsSL https://demo.bayesadvisory.cl/ | grep -oE '/assets/index-[^"]*\.js' | head -1)"
+          test -n "$bundle" || { echo "::error::demo.bayesadvisory.cl no sirve ningún bundle"; exit 1; }
+          cuerpo="$(curl -fsSL "https://demo.bayesadvisory.cl${bundle}")"
           if grep -qF "provisiones CMF de Chile" <<<"$cuerpo"; then
             echo "::error::la demo publica el titular con jurisdicción que se retiró del repo"
             exit 1

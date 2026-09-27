@@ -6,11 +6,11 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from nikodym.core.config import NikodymConfig, ReproConfig
-from nikodym.core.exceptions import ConfigError
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.data import (
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.data import (
     DataCardSection,
     DataConfig,
     DataLoader,
@@ -24,7 +24,7 @@ from nikodym.data import (
     TargetDefinition,
     data_hash,
 )
-from nikodym.data.config import (
+from bayesrisk.data.config import (
     ColumnSpec,
     LoadingConfig,
     MissingConfig,
@@ -36,7 +36,7 @@ from nikodym.data.config import (
     SpecialValueSpec,
     TargetConfig,
 )
-from nikodym.data.step import INPUT_FRAME_KEY, _source_label
+from bayesrisk.data.step import INPUT_FRAME_KEY, _source_label
 
 ROOT_SEED = 20_240_624
 EXPECTED_DATA_HASH = "3cd64170edcc04ffb69a1379da2218af27037c79b698cd15ad03397881394c5d"
@@ -129,7 +129,7 @@ def _data_config(**updates: object) -> DataConfig:
 
 def _study(cfg: DataConfig | None = None) -> Study:
     """Construye un Study con semilla fija para golden values reproducibles."""
-    return Study(NikodymConfig(repro=ReproConfig(seed=ROOT_SEED), data=cfg or _data_config()))
+    return Study(BayesRiskConfig(repro=ReproConfig(seed=ROOT_SEED), data=cfg or _data_config()))
 
 
 def _inject_frame(study: Study, frame: pd.DataFrame) -> None:

@@ -29,8 +29,8 @@ from typing import Any
 
 import pytest
 
-from nikodym.core.markers import DECLARED_MARKERS
-from nikodym.ui.routes import schema_payload
+from bayesrisk.core.markers import DECLARED_MARKERS
+from bayesrisk.ui.routes import schema_payload
 
 #: Las secciones que el formulario expande hoy. Espejo de `CONFIG_SECTIONS`
 #: (`web/src/lib/schema.ts`); el gate de deriva de ese catálogo vive en `test_column_roles.py`.
@@ -228,7 +228,7 @@ def test_ningun_campo_visible_publica_una_marca_de_aviso_declarado() -> None:
     para los tres `FALTA-DATO-VAL`, retirados luego con el cotejo (D-VAL-13/14/15); hoy dice
     lo que el motor sabe —los cortes del semáforo son un parámetro con default— sin código.
 
-    ⚠️ El detector se deriva de :mod:`nikodym.core.markers`, que es la fuente de las dos marcas:
+    ⚠️ El detector se deriva de :mod:`bayesrisk.core.markers`, que es la fuente de las dos marcas:
     escribir la lista al lado la dejaría stale el día que nazca una tercera.
     """
     marcas = re.compile("|".join(re.escape(m) for m in DECLARED_MARKERS))

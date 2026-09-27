@@ -12,9 +12,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from nikodym.ui.runtime import TOKEN_HEADER, RuntimeContext, build_runtime
-from nikodym.ui.server import create_app
-from nikodym.ui.settings import UiConfig
+from bayesrisk.ui.runtime import TOKEN_HEADER, RuntimeContext, build_runtime
+from bayesrisk.ui.server import create_app
+from bayesrisk.ui.settings import UiConfig
 
 if TYPE_CHECKING:
     from starlette.testclient import TestClient

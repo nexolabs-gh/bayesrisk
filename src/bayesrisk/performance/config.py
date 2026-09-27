@@ -1,0 +1,399 @@
+"""Config declarativo de la capa ``performance`` (SDD-11 §5).
+
+:class:`PerformanceConfig` es la sección ``performance`` de
+:class:`~bayesrisk.core.config.BayesRiskConfig`: evaluación determinista de discriminación y tabla
+de deciles/gains sobre el score y la PD calibrada post-modelo. Toda clase hereda de
+:class:`~bayesrisk.core.config.BayesRiskBaseConfig` (``extra='forbid'`` y ``frozen=True``); cada
+campo declara ``title``/``description`` y metadatos ``ui_*`` para que la UI (SDD-23) sea un editor
+del mismo config. La sección es computacional, por lo que entra al ``config_hash`` global cuando
+está activa.
+
+**Estable (SemVer 2.x).**
+"""
+
+from __future__ import annotations
+
+import math
+from collections.abc import Mapping
+from typing import Any, Literal, Self
+
+from pydantic import ConfigDict, Field, field_validator, model_validator
+
+from bayesrisk.core.config import BayesRiskBaseConfig, declara_esenciales
+from bayesrisk.core.dataset_check import ContextoConfig, Requisito
+from bayesrisk.core.exceptions import ConfigError
+
+ScoreDirection = Literal["higher_is_lower_risk", "higher_is_higher_risk"]
+EvaluationSource = Literal["pd_calibrated", "score"]
+PerformancePartition = Literal["desarrollo", "holdout", "oot"]
+
+__all__ = [
+    "EvaluationSource",
+    "PerformanceConfig",
+    "PerformancePartition",
+    "ScoreDirection",
+]
+
+#: Prefijo de la ruta de este dominio en ``BayesRiskConfig``, para anclar sus errores (D-EXI-5).
+#: Vive en UN solo sitio y no repetido en cada ``raise``: la ruta que el error declara es
+#: **absoluta desde la raíz del config**, así que ata al dominio con el nombre de su campo en la
+#: raíz, y concentrarla aquí deja un único lugar donde ese acoplamiento puede quedarse stale.
+_LOC_SECCION: tuple[str, ...] = ("performance",)
+
+_COLUMN_FIELDS: tuple[str, ...] = (
+    "score_column",
+    "pd_column",
+    "target_column",
+    "partition_column",
+)
+_OPTIONAL_THRESHOLD_KEYS: frozenset[str] = frozenset(
+    {"auc_min", "gini_min", "ks_min", "psi_max", "csi_max"}
+)
+
+
+class PerformanceConfig(BayesRiskBaseConfig):
+    """Mide el desempeño del modelo ya ajustado: AUC, Gini, KS y tablas de gains por partición."""
+
+    model_config = ConfigDict(json_schema_extra=declara_esenciales)
+
+    schema_version: str = Field(
+        default="1.0.0",
+        title="Versión del sub-schema performance",
+        description="Versión local del schema de performance para migraciones futuras.",
+        json_schema_extra={
+            "ui_widget": "hidden",
+            "ui_group": "General",
+            "ui_order": 0,
+            "ui_help": (
+                "Versión interna del formato de esta sección, usada para migraciones "
+                "automáticas de configuraciones antiguas; no requiere edición manual."
+            ),
+        },
+    )
+    type: Literal["standard"] = Field(
+        default="standard",
+        title="Tipo de sección performance",
+        description="Variante de la sección de desempeño; hoy solo existe la estándar.",
+        json_schema_extra={
+            "ui_widget": "hidden",
+            "ui_group": "General",
+            "ui_order": 1,
+            "ui_help": "Identificador interno del tipo de sección; no requiere edición.",
+        },
+    )
+    score_column: str = Field(
+        default="score",
+        title="Columna score",
+        description="Columna con el score operacional publicado por scorecard.",
+        json_schema_extra={
+            "column_role": "derived",
+            "ui_widget": "text_input",
+            "ui_group": "Columnas",
+            "ui_order": 1,
+            "ui_help": (
+                "Nombre de la columna con el score operacional a evaluar. Ajústalo si en "
+                "tu tabla la columna se llama distinto a 'score'."
+            ),
+        },
+    )
+    pd_column: str = Field(
+        default="pd_calibrated",
+        title="Columna PD calibrada",
+        description="Columna con la probabilidad de default calibrada post-modelo.",
+        json_schema_extra={
+            "column_role": "derived",
+            "ui_widget": "text_input",
+            "ui_group": "Columnas",
+            "ui_order": 2,
+            "ui_help": (
+                "Nombre de la columna con la PD ya calibrada que se usa para métricas y "
+                "deciles. Ajústalo si en tu tabla la columna se llama distinto a "
+                "'pd_calibrated'."
+            ),
+        },
+    )
+    target_column: str = Field(
+        default="target",
+        title="Columna target",
+        description="Columna binaria 0/1 usada para métricas supervisadas de desempeño.",
+        json_schema_extra={
+            "column_role": "derived",
+            "ui_widget": "text_input",
+            "ui_group": "Columnas",
+            "ui_order": 3,
+            "ui_help": (
+                "Nombre de la columna target (1 = default, 0 = no default) contra la que "
+                "se miden KS, AUC/Gini y tasas de malos. Debe coincidir con tus datos."
+            ),
+        },
+    )
+    partition_column: str = Field(
+        default="partition",
+        title="Columna partición",
+        description="Columna que identifica Desarrollo, Holdout y OOT.",
+        json_schema_extra={
+            "column_role": "derived",
+            "ui_widget": "text_input",
+            "ui_group": "Columnas",
+            "ui_order": 4,
+            "ui_help": (
+                "Nombre de la columna que indica a qué población pertenece cada registro "
+                "(desarrollo, holdout u OOT), para reportar métricas separadas por cada una."
+            ),
+        },
+    )
+    score_direction: ScoreDirection = Field(
+        default="higher_is_lower_risk",
+        title="Dirección del score",
+        description="Define si un score mayor representa menor riesgo o mayor riesgo.",
+        json_schema_extra={
+            "ui_widget": "selectbox",
+            "ui_group": "Ranking",
+            "ui_order": 1,
+            "ui_help": (
+                "Indica si un score más alto significa menor riesgo (lo habitual en "
+                "scorecards) o mayor riesgo. Se usa para ordenar correctamente los "
+                "deciles y calcular KS/AUC/Gini hacia el default."
+            ),
+        },
+    )
+    evaluation_source: EvaluationSource = Field(
+        default="pd_calibrated",
+        title="Fuente principal de ranking",
+        description="Fuente primaria para ordenar riesgo al calcular KS, AUC, Gini y gains.",
+        json_schema_extra={
+            "ui_widget": "selectbox",
+            "ui_group": "Ranking",
+            "ui_order": 2,
+            "ui_help": (
+                "Define si el riesgo se ordena por la PD calibrada o por el score "
+                "operacional al calcular KS, AUC/Gini y la tabla de deciles. La PD "
+                "calibrada es la opción por defecto y recomendada."
+            ),
+        },
+    )
+    partitions: tuple[PerformancePartition, ...] = Field(
+        default=("desarrollo", "holdout", "oot"),
+        # 🔴 Sin la cota, desmarcar las tres casillas —alcanzable desde la pantalla— construye sin
+        # una queja y muere mucho después, dentro del DTO de la ficha y con un mensaje interno:
+        # «partitions debe contener al menos una partición». Declararla aquí lo impide en el
+        # formulario, que es donde el usuario puede corregirlo.
+        min_length=1,
+        title="Particiones a evaluar",
+        description="Particiones sobre las que se reportan métricas de desempeño.",
+        json_schema_extra={
+            "ui_widget": "multiselect",
+            "ui_group": "Población",
+            "ui_order": 1,
+            "ui_help": (
+                "Poblaciones (desarrollo, holdout, oot) sobre las que se calculan las "
+                "métricas de desempeño. Quita una si no quieres evaluarla, por ejemplo "
+                "si aún no tienes datos OOT."
+            ),
+        },
+    )
+    n_deciles: int = Field(
+        default=10,
+        ge=2,
+        le=50,
+        title="Número de grupos de gains",
+        description="Cantidad de grupos ordenados por riesgo para la tabla de deciles/gains.",
+        json_schema_extra={
+            "ui_essential": True,
+            "ui_widget": "number_input",
+            "ui_group": "Métricas",
+            "ui_order": 1,
+            "ui_help": (
+                "Cantidad de grupos (típicamente 10, es decir deciles) en que se ordena "
+                "la población por riesgo para la tabla de gains. Con pocos registros el "
+                "motor puede usar menos grupos de los pedidos."
+            ),
+        },
+    )
+    min_rows_per_partition: int = Field(
+        default=30,
+        ge=1,
+        title="Mínimo técnico de filas",
+        description="Mínimo de filas por partición para aceptar el cálculo de desempeño.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Población",
+            "ui_order": 2,
+            "ui_help": (
+                "Filas mínimas que debe tener una partición para calcular sus métricas. "
+                "Si no se alcanza, esa partición se reporta como no evaluable en vez de "
+                "entregar un número poco confiable."
+            ),
+        },
+    )
+    min_events_per_partition: int = Field(
+        default=1,
+        ge=1,
+        title="Mínimo técnico de malos",
+        description="Mínimo de eventos de default por partición para métricas supervisadas.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Población",
+            "ui_order": 3,
+            "ui_help": (
+                "Cantidad mínima de casos de default (malos) que debe tener una "
+                "partición para calcular KS/AUC/Gini. Evita reportar métricas de "
+                "discriminación calculadas con muy pocos eventos."
+            ),
+        },
+    )
+    optional_thresholds: dict[str, float] = Field(
+        default_factory=dict,
+        title="Umbrales institucionales opcionales",
+        description="Ej.: {'auc_min': 0.60, 'ks_min': 0.20}. Vacío por defecto.",
+        json_schema_extra={
+            "ui_widget": "key_value",
+            "ui_group": "Métricas",
+            "ui_order": 2,
+            "ui_help": (
+                "Pisos institucionales opcionales para AUC, Gini y KS (auc_min, "
+                "gini_min, ks_min). Si una partición queda bajo el umbral se marca con "
+                "una alerta (threshold_flag), pero igual se reporta. Las claves "
+                "psi_max/csi_max quedan reservadas para estabilidad, aún sin cálculo "
+                "automático."
+            ),
+        },
+    )
+
+    @field_validator("optional_thresholds", mode="before")
+    @classmethod
+    def _check_optional_thresholds_pre(cls, valor: Any) -> Any:
+        """Rechaza claves no documentadas y números no finitos antes de coaccionar."""
+        if valor is None:
+            return valor
+        if not isinstance(valor, Mapping):
+            return valor
+        for clave, umbral in valor.items():
+            if clave not in _OPTIONAL_THRESHOLD_KEYS:
+                raise ConfigError(
+                    "optional_thresholds solo admite claves documentadas: "
+                    f"{sorted(_OPTIONAL_THRESHOLD_KEYS)}.",
+                    # D-EXI-5: el error se ANCLA a su campo, para que el formulario pueda llevar
+                    # ahí al usuario en vez de dejarle un mensaje sin control. La ruta va absoluta
+                    # desde la raíz del config, y un gate exige que resuelva contra
+                    # `BayesRiskConfig`.
+                    loc=(*_LOC_SECCION, "optional_thresholds"),
+                )
+            if isinstance(umbral, bool):
+                raise ConfigError(
+                    "optional_thresholds debe contener valores numéricos finitos.",
+                    loc=(*_LOC_SECCION, "optional_thresholds"),
+                )
+            if isinstance(umbral, (int, float)) and not math.isfinite(float(umbral)):
+                raise ConfigError(
+                    "optional_thresholds debe contener valores numéricos finitos.",
+                    loc=(*_LOC_SECCION, "optional_thresholds"),
+                )
+        return valor
+
+    @model_validator(mode="after")
+    def _check_invariantes(self) -> Self:
+        """Valida columnas y thresholds definidos por SDD-11 §5."""
+        columns = _column_values(self)
+        vacias = [nombre for nombre, columna in columns.items() if not columna.strip()]
+        if vacias:
+            # D-EXI-5: SIN `loc` a propósito. El ofensor es cualquiera de los cuatro campos de
+            # `_COLUMN_FIELDS` y el mensaje los enumera **todos**, así que no hay un campo único al
+            # que llevar al usuario; anclar en uno elegido a dedo lo mandaría al que no era.
+            raise ConfigError(f"Las columnas de performance no pueden estar vacías: {vacias}.")
+
+        normalizadas: dict[str, str] = {}
+        duplicadas: list[tuple[str, str, str]] = []
+        for nombre, columna in columns.items():
+            clave = columna.strip()
+            previo = normalizadas.get(clave)
+            if previo is not None:
+                duplicadas.append((previo, nombre, clave))
+            normalizadas[clave] = nombre
+        if duplicadas:
+            # D-EXI-5: SIN `loc` a propósito. Es un invariante ENTRE campos —dos columnas con el
+            # mismo nombre— y no hay culpable único: cualquiera de las dos sirve para deshacer la
+            # colisión, así que la ruta vacía dice la verdad.
+            raise ConfigError(f"Las columnas de performance no pueden colisionar: {duplicadas}.")
+
+        for clave, umbral in self.optional_thresholds.items():
+            if clave not in _OPTIONAL_THRESHOLD_KEYS:
+                raise ConfigError(
+                    "optional_thresholds solo admite claves documentadas: "
+                    f"{sorted(_OPTIONAL_THRESHOLD_KEYS)}.",
+                    loc=(*_LOC_SECCION, "optional_thresholds"),
+                )
+            _require_finite(f"optional_thresholds.{clave}", umbral)
+
+        return self
+
+    def requisitos_incumplidos(self, columnas: frozenset[str] | None) -> tuple[Requisito, ...]:
+        """Invariantes que el evaluador exige y que sólo se descubrían corriendo (D-INV-1).
+
+        No dependen del dataset —``columnas`` va sin usar—, pero el protocolo la recibe igual
+        porque el comprobador no sabe de antemano qué necesita cada dominio.
+        """
+        del columnas
+        if len(set(self.partitions)) == len(self.partitions):
+            return ()
+        return (
+            Requisito(
+                path="partitions",
+                declared=", ".join(self.partitions),
+                message=(
+                    "Hay particiones repetidas en la lista a evaluar. Deja una sola vez cada "
+                    "partición: repetirla no calcula nada nuevo y detiene la corrida."
+                ),
+            ),
+        )
+
+    def requisitos_incumplidos_por_contexto(
+        self, contexto: ContextoConfig
+    ) -> tuple[Requisito, ...]:
+        """Avisa si esta sección mide el puntaje al revés de como se construyó (D-DIR-5).
+
+        🔴 **Es el defecto más caro que este repo ha medido, y no fallaba: publicaba.** Con la
+        tarjeta construida en un sentido y el desempeño midiendo en el otro, la corrida llega a
+        ``done`` y el informe publica Gini -0,424 —un modelo con la discriminación invertida— con el
+        validador, ``check_pipeline``, ``check_dataset`` y la corrida los cuatro en verde y cero
+        avisos.
+
+        Se avisa **aunque hoy el valor sea inerte**. Medido: la orientación sólo entra al cálculo
+        con ``evaluation_source='score'``; con la fuente por defecto no cambia ningún número. Callar
+        en ese caso dejaría la contradicción escrita, publicada en la ficha del informe y lista para
+        volverse mortal en cuanto alguien cambie la fuente con dos clicks — que es exactamente el
+        camino por el que se llegó al Gini invertido.
+        """
+        declarada = contexto.direccion_del_score
+        if declarada is None or declarada == self.score_direction:
+            return ()
+        return (
+            Requisito(
+                path="score_direction",
+                declared=self.score_direction,
+                message=(
+                    "Estás midiendo el desempeño con la convención contraria a la que usaste para "
+                    "construir la tarjeta de puntaje. Con las dos al revés, los indicadores de "
+                    "discriminación salen invertidos y el informe los publica sin avisar. Deja las "
+                    "dos con la misma respuesta a «un puntaje más alto, ¿es mejor o peor cliente?»."
+                ),
+            ),
+        )
+
+
+def _column_values(cfg: PerformanceConfig) -> dict[str, str]:
+    """Devuelve nombres de columnas configurados para validar colisiones."""
+    return {nombre: getattr(cfg, nombre) for nombre in _COLUMN_FIELDS}
+
+
+def _require_finite(nombre: str, valor: float) -> None:
+    """Valida finitud para campos float que participan del ``config_hash``.
+
+    D-EXI-5: su ``raise`` va **sin** ``loc``. Hoy su único llamador le pasa
+    ``optional_thresholds.<clave>``, pero el helper es genérico —recibe el nombre del campo como
+    dato— y hardcodear aquí el ancla de ese campo la volvería falsa en silencio en cuanto alguien
+    lo llame con otro. Y pasarla desde el llamador tampoco sirve: el gate que vigila estas rutas
+    las evalúa **estáticamente** y sólo admite una tupla literal en el propio ``raise``.
+    """
+    if not math.isfinite(valor):
+        raise ConfigError(f"{nombre} debe ser un número finito.")

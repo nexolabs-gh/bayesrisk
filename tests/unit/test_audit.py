@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from nikodym.core.audit import (
+from bayesrisk.core.audit import (
     AuditEvent,
     AuditSink,
     FanOutSink,

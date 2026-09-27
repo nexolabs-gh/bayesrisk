@@ -141,12 +141,12 @@ describe("sin card no hay bloque, ni vacío ni fabricado", () => {
 
   it("results-f1.json: la demo F1 corre con gobernanza declarada y su ficha se pinta", () => {
     // Desde la recaptura con propósito (D-GOB-9, 2026-09-12) el fixture real trae la ficha del
-    // modelo: es la que ve quien abre demo.nikodym.cl, y el título aparece una sola vez.
+    // modelo: es la que ve quien abre demo.bayesadvisory.cl, y el título aparece una sola vez.
     const demo = demoF1 as unknown as ResultsResponse
     expect(demo.model_card).not.toBeNull()
     const html = render(demo)
     expect(ocurrencias(html, TITULO)).toBe(1)
-    expect(html).toContain("Demostración pública de Nikodym RiskLib")
+    expect(html).toContain("Demostración pública de bayesrisk")
     expect(html).toContain("Artefactos de la corrida")
   })
 
@@ -191,7 +191,7 @@ describe("copy público de la ficha", () => {
       "metric_sections",
       "review_date",
       "next_review_date",
-      "nikodym.",
+      "bayesrisk.",
       "SR 11-7",
       "FALTA-DATO",
       "DATO-INSTITUCIONAL",

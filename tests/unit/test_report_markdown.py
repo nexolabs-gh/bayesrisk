@@ -18,19 +18,19 @@ import pandas as pd
 import pytest
 import yaml
 
-import nikodym.report.markdown as md_module
-from nikodym.core.lineage import LineageBundle
-from nikodym.report.config import (
+import bayesrisk.report.markdown as md_module
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.report.config import (
     AiNarrationConfig,
     DocumentStructureConfig,
     ReportConfig,
     SectionPolicyConfig,
 )
-from nikodym.report.document import CHAPTER_SPECS
-from nikodym.report.exceptions import ReportExportError
-from nikodym.report.markdown import FIGURES_SUFFIX, MarkdownReportRenderer
-from nikodym.report.renderer import HtmlReportRenderer
-from nikodym.report.results import (
+from bayesrisk.report.document import CHAPTER_SPECS
+from bayesrisk.report.exceptions import ReportExportError
+from bayesrisk.report.markdown import FIGURES_SUFFIX, MarkdownReportRenderer
+from bayesrisk.report.renderer import HtmlReportRenderer
+from bayesrisk.report.results import (
     AiNarrationBlock,
     PlaceholderBlock,
     ReportInputBundle,
@@ -47,7 +47,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "1.0.0"},
+        library_versions={"bayesrisk": "1.0.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 6, 24, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",
@@ -218,8 +218,8 @@ def test_qmd_es_determinista_y_su_front_matter_es_yaml_valido() -> None:
     assert front_matter["lang"] == "es"
     assert front_matter["toc"] is True
     # La identidad de la corrida viaja DENTRO de la fuente editable.
-    assert front_matter["nikodym"]["config_hash"] == "cfg123456789abcdef"
-    assert front_matter["nikodym"]["entidad"] == "Banco Ejemplo S.A."
+    assert front_matter["bayesrisk"]["config_hash"] == "cfg123456789abcdef"
+    assert front_matter["bayesrisk"]["entidad"] == "Banco Ejemplo S.A."
 
 
 def test_qmd_incluye_validacion_formal_tabla_y_veredicto_humano() -> None:
@@ -405,9 +405,9 @@ def test_las_declaraciones_de_gobernanza_no_son_codigo_en_el_qmd_ni_html_crudo()
     se interpretaría y un `<script>` llegaría crudo al HTML renderizado. El capítulo va como un
     line block literal de pandoc —línea a línea, toda la puntuación escapada—; el HTML del
     informe ya escapa por autoescape."""
-    from nikodym.report.builder import ReportBuilder
-    from nikodym.report.renderer import HtmlReportRenderer
-    from nikodym.report.results import GovernanceDeclaration
+    from bayesrisk.report.builder import ReportBuilder
+    from bayesrisk.report.renderer import HtmlReportRenderer
+    from bayesrisk.report.results import GovernanceDeclaration
 
     veneno = (
         "Originar créditos.\n```{python}\nimport os; os.system('echo pwned')\n```\n"

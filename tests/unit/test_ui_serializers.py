@@ -29,15 +29,15 @@ from _ui_f1 import (
 )
 from pydantic import BaseModel, ConfigDict
 
-import nikodym
-from nikodym.core.config import NikodymConfig
-from nikodym.core.lineage import LineageBundle, RunError
-from nikodym.core.markers import DECLARED_MARKERS
-from nikodym.core.study import Study
-from nikodym.governance import GovernanceConfig
-from nikodym.ui import serializers
-from nikodym.ui.exceptions import UiSerializationError
-from nikodym.ui.serializers import _FAILURE_MESSAGE, dump_dto, serialize_study, to_records
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.lineage import LineageBundle, RunError
+from bayesrisk.core.markers import DECLARED_MARKERS
+from bayesrisk.core.study import Study
+from bayesrisk.governance import GovernanceConfig
+from bayesrisk.ui import serializers
+from bayesrisk.ui.exceptions import UiSerializationError
+from bayesrisk.ui.serializers import _FAILURE_MESSAGE, dump_dto, serialize_study, to_records
 
 _GOVERNANCE = GovernanceConfig(purpose="serialización read-only F1", model_name="ui-serializer")
 # Claves de golden por card: shape esperado del §6 (subconjunto probatorio, no exhaustivo).
@@ -80,7 +80,7 @@ def f1_study(fake_binning_process: object, tmp_path: Path) -> Study:
     del fake_binning_process
     parquet = tmp_path / "cartera.parquet"
     write_behavior_parquet(parquet)
-    return nikodym.run(full_f1_config(str(parquet)))
+    return bayesrisk.run(full_f1_config(str(parquet)))
 
 
 # ─────────────────────────────── serialize_study ───────────────────────────────
@@ -91,7 +91,7 @@ def f1_con_eda(fake_binning_process: object, tmp_path: Path) -> Study:
     """``Study`` F1 con ``eda`` en sus defaults de eje: sin fecha y con partición por cohorte, el
     eje se infiere a la cohorte (D-SC-3) y la señal temporal queda sin evaluar (D-SC-2)."""
     del fake_binning_process
-    from nikodym.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
+    from bayesrisk.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
 
     parquet = tmp_path / "cartera.parquet"
     write_behavior_parquet(parquet)
@@ -103,7 +103,7 @@ def f1_con_eda(fake_binning_process: object, tmp_path: Path) -> Study:
             )
         }
     )
-    return nikodym.run(config)
+    return bayesrisk.run(config)
 
 
 def test_eda_se_serializa_con_la_card_sus_tres_tablas_y_el_nan_como_ausencia(
@@ -159,7 +159,7 @@ def test_sin_eda_la_clave_viaja_nula_y_nunca_ausente(f1_study: Study) -> None:
 
 
 def _eda_card(**cambios: Any) -> Any:
-    from nikodym.eda.card import EdaCardSection
+    from bayesrisk.eda.card import EdaCardSection
 
     base: dict[str, Any] = {
         "overall_default_rate": 0.1,
@@ -219,8 +219,8 @@ def test_una_cohorte_de_tipo_fecha_se_serializa_como_texto(
     columna `datetime` el motor conserva `pd.Timestamp` como período, y el guard lo rechazaba
     —la corrida terminaba bien y `/api/results` moría—. Viaja como su texto."""
     del fake_binning_process
-    from nikodym.data.config import ColumnSpec
-    from nikodym.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
+    from bayesrisk.data.config import ColumnSpec
+    from bayesrisk.eda.config import DefaultRateConfig, EdaConfig, UnivariateConfig
 
     parquet = tmp_path / "cartera.parquet"
     frame = pd.read_parquet(_parquet_de_comportamiento(parquet))
@@ -248,7 +248,7 @@ def test_una_cohorte_de_tipo_fecha_se_serializa_como_texto(
             ),
         }
     )
-    study = nikodym.run(config)
+    study = bayesrisk.run(config)
     assert study.run_context.status == "done", study.run_context.error
 
     payload = serialize_study(study, governance=None)
@@ -314,7 +314,7 @@ def estudio_con_cohorte_casi_unica(tmp_path: Path) -> Study:
     """``Study`` con ``eda`` agrupado por un identificador: una cohorte por operación (>1.000)."""
     parquet = tmp_path / "cartera.parquet"
     write_near_unique_cohort_parquet(parquet)
-    study = nikodym.run(eda_only_config(str(parquet)))
+    study = bayesrisk.run(eda_only_config(str(parquet)))
     assert study.run_context.status == "done", study.run_context.error
     return study
 
@@ -768,7 +768,7 @@ def test_serialize_study_fallida_reporta_error(
     del fake_binning_process
     parquet = tmp_path / "cartera.parquet"
     write_behavior_parquet(parquet)
-    study = nikodym.run(failing_config(str(parquet)))
+    study = bayesrisk.run(failing_config(str(parquet)))
 
     payload = serialize_study(study, governance=None)
 
@@ -787,7 +787,7 @@ def test_el_panel_publica_el_mensaje_del_motor_y_no_el_generico(
     del fake_binning_process
     parquet = tmp_path / "cartera.parquet"
     write_behavior_parquet(parquet)
-    study = nikodym.run(failing_config(str(parquet)))
+    study = bayesrisk.run(failing_config(str(parquet)))
     assert study.run_context.error is not None  # premisa: el motor dejó rastro
 
     mensaje = serialize_study(study, governance=None)["error"]
@@ -801,7 +801,7 @@ def test_el_panel_nombra_el_paso_que_fallo(fake_binning_process: object, tmp_pat
     del fake_binning_process
     parquet = tmp_path / "cartera.parquet"
     write_behavior_parquet(parquet)
-    study = nikodym.run(failing_config(str(parquet)))
+    study = bayesrisk.run(failing_config(str(parquet)))
     paso = study.run_context.error.step if study.run_context.error else None
     assert paso is not None  # premisa: el rastro nombra el paso
 
@@ -810,7 +810,7 @@ def test_el_panel_nombra_el_paso_que_fallo(fake_binning_process: object, tmp_pat
 
 def test_el_panel_no_publica_el_codigo_interno_del_mensaje() -> None:
     """Once `raise` del motor traen el código; el panel es copy público y no lo muestra."""
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.run_context.status = "failed"
     study.run_context.error = RunError(
         type="ConfigError",
@@ -828,7 +828,7 @@ def test_el_panel_no_publica_el_codigo_interno_del_mensaje() -> None:
 
 def test_una_excepcion_inesperada_conserva_el_mensaje_generico() -> None:
     """El texto de un fallo no-dominio es interno: puede traer rutas del servidor (D-ERR-5)."""
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.run_context.status = "failed"
     study.run_context.error = RunError(
         type="KeyError",
@@ -847,7 +847,7 @@ def test_una_excepcion_inesperada_conserva_el_mensaje_generico() -> None:
 
 def test_un_study_sin_rastro_cae_al_mensaje_generico() -> None:
     """Un bundle previo a la enmienda se recarga sin ``error``: no debe reventar el panel."""
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.run_context.status = "failed"
 
     assert serialize_study(study, governance=None)["error"] == _FAILURE_MESSAGE
@@ -903,8 +903,8 @@ _PRESET_E2E_SCRIPT = """\
 import sys
 from pathlib import Path
 
-from nikodym.ui.presets import standard_preset
-from nikodym.ui.routes import run_pipeline
+from bayesrisk.ui.presets import standard_preset
+from bayesrisk.ui.routes import run_pipeline
 
 workdir = Path(sys.argv[1])
 preset = standard_preset()
@@ -964,15 +964,15 @@ def test_serializa_las_cards_de_provisiones_del_preset_f3(tmp_path: Path) -> Non
     (OptBinning); el job mínimo lo salta.
     """
     pytest.importorskip("optbinning")
-    from nikodym.ui import datasets
-    from nikodym.ui.presets import PROVISIONES_DATASET_ID, provisiones_preset
+    from bayesrisk.ui import datasets
+    from bayesrisk.ui.presets import PROVISIONES_DATASET_ID, provisiones_preset
 
     source = datasets.materialize(PROVISIONES_DATASET_ID, workdir=tmp_path)
     config = provisiones_preset()["config"]
     config["data"]["load"]["source"] = str(source)
     config["report"]["output_dir"] = str(tmp_path / "reports")
     config["audit"]["trail_filename"] = str(tmp_path / "audit_trail.jsonl")
-    study = nikodym.run(NikodymConfig.model_validate(config))
+    study = bayesrisk.run(BayesRiskConfig.model_validate(config))
     assert study.run_context.status == "done"
 
     payload = serialize_study(study, governance=None)
@@ -1012,7 +1012,7 @@ def test_serializa_ifrs9_fuente_no_survival_sin_fabricar_evidencia(
     term_source: Literal["forward", "markov"],
 ) -> None:
     """Forward/Markov llegan a la UI sin exigir ni citar una card survival."""
-    from nikodym.provisioning.ifrs9.config import (
+    from bayesrisk.provisioning.ifrs9.config import (
         IfrsPdConfig,
         IfrsProvisioningConfig,
         IfrsScenarioConfig,
@@ -1025,7 +1025,7 @@ def test_serializa_ifrs9_fuente_no_survival_sin_fabricar_evidencia(
         scenario_weights: dict[str, float] = {"base": 1.0}
         falta_dato: tuple[str, ...] = ()
 
-    config = NikodymConfig(
+    config = BayesRiskConfig(
         provisioning_ifrs9=IfrsProvisioningConfig(
             pd=IfrsPdConfig(term_structure_source=term_source, pit_mode="ttc_only"),
             scenarios=IfrsScenarioConfig(source="single"),
@@ -1073,14 +1073,14 @@ def test_serializa_el_bloque_ifrs9_del_preset_f4(tmp_path: Path) -> None:
     requiere el extra ``scoring`` por statsmodels (discrete-time hazard); el mínimo lo salta.
     """
     pytest.importorskip("statsmodels")
-    from nikodym.ui import datasets
-    from nikodym.ui.presets import IFRS9_DATASET_ID, ifrs9_preset
+    from bayesrisk.ui import datasets
+    from bayesrisk.ui.presets import IFRS9_DATASET_ID, ifrs9_preset
 
     source = datasets.materialize(IFRS9_DATASET_ID, workdir=tmp_path)
     config = ifrs9_preset()["config"]
     config["data"]["load"]["source"] = str(source)
     config["audit"]["trail_filename"] = str(tmp_path / "audit_trail.jsonl")
-    study = nikodym.run(NikodymConfig.model_validate(config))
+    study = bayesrisk.run(BayesRiskConfig.model_validate(config))
     assert study.run_context.status == "done"
 
     payload = serialize_study(study, governance=None)
@@ -1222,7 +1222,7 @@ def test_serializa_el_bloque_ifrs9_del_preset_f4(tmp_path: Path) -> None:
 
 def test_mapa_de_cards_coincide_con_report_builder() -> None:
     """El mapa local dominio→clave de card no deriva del canónico ``_CARD_ARTIFACTS``."""
-    from nikodym.report.builder import _CARD_ARTIFACTS
+    from bayesrisk.report.builder import _CARD_ARTIFACTS
 
     canonico = dict(_CARD_ARTIFACTS)
     for domain, key in serializers._CARD_KEY_BY_DOMAIN.items():
@@ -1241,7 +1241,7 @@ def test_decimal_de_provisiones_se_serializa_como_numero() -> None:
 
     from pydantic import BaseModel
 
-    from nikodym.ui.serializers import _to_json_native, dump_dto
+    from bayesrisk.ui.serializers import _to_json_native, dump_dto
 
     class _CardConDecimal(BaseModel):
         total_reported_provision: Decimal
@@ -1272,9 +1272,9 @@ def _anexo_de_lineage(study: Study) -> dict[str, Any]:
     Se construye en vez de replicarse: si se copiara aquí el ``model_dump`` del bundle, el test
     volvería a ser autorreferencial y no mediría paridad con nada.
     """
-    from nikodym.report.builder import ReportBuilder
-    from nikodym.report.config import ReportConfig
-    from nikodym.report.document import APPENDIX_LINEAGE_ID
+    from bayesrisk.report.builder import ReportBuilder
+    from bayesrisk.report.config import ReportConfig
+    from bayesrisk.report.document import APPENDIX_LINEAGE_ID
 
     # `missing_policy="skip"`: el fixture F1 no corre `eda`, y el default del motor exige su
     # card. Es el mismo criterio de D-OBL-11 —el informe sólo exige lo que la corrida produce—
@@ -1346,7 +1346,7 @@ def test_la_procedencia_viaja_por_json_y_conserva_la_marca_de_tiempo(f1_study: S
 
 def test_una_corrida_sin_procedencia_no_la_fabrica() -> None:
     """Misma regla que ``model_card``: ausente es ausente, nunca un objeto inventado."""
-    study = Study(NikodymConfig(), apply_global_seed=False)
+    study = Study(BayesRiskConfig(), apply_global_seed=False)
     assert study.run_context.lineage is None
     assert serialize_study(study, governance=None)["lineage"] is None
 

@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from nikodym.provisioning.internal.results import (
+from bayesrisk.provisioning.internal.results import (
     DETAIL_COLUMNS,
     GROUP_COLUMNS,
     SUMMARY_COLUMNS,

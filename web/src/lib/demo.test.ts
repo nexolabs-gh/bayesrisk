@@ -227,7 +227,7 @@ describe("robustez", () => {
   })
 
   it("🔴 el id de la corrida RETIRADA cae al default, no rompe un enlace guardado", async () => {
-    // `demo.nikodym.cl/?preset=f3-provisiones-consumo` fue una URL válida hasta D-JUR-9.7, así que
+    // `demo.bayesadvisory.cl/?preset=f3-provisiones-consumo` fue una URL válida hasta D-JUR-9.7, así que
     // hay marcadores y enlaces compartidos que lo traen. Es la ruta REAL de ese enlace: carga
     // limpia, sin selección previa. Cae a F1 y el set entero es el de F1.
     const preset = await demoGetPresetById(F3_ID_RETIRADO)

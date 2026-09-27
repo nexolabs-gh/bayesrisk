@@ -19,21 +19,21 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from nikodym.ui import _static_index
-from nikodym.ui._static_index import UiStaticIndexError, resolve_local_resources
+from bayesrisk.ui import _static_index
+from bayesrisk.ui._static_index import UiStaticIndexError, resolve_local_resources
 
 _ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_POLICY = _ROOT / "scripts" / "distribution_contents_allowlist.json"
 
 # Rutas del módulo de semántica canónica dentro de cada artefacto (enmienda B2.2, E-B2.2-6).
 _SEMANTICS_MODULE = {
-    "wheel": "nikodym/ui/_static_index.py",
-    "sdist": "src/nikodym/ui/_static_index.py",
+    "wheel": "bayesrisk/ui/_static_index.py",
+    "sdist": "src/bayesrisk/ui/_static_index.py",
 }
 
 _BUILD_MANIFEST = {
-    "wheel": "nikodym/_build_manifest.json",
-    "sdist": "src/nikodym/_build_manifest.json",
+    "wheel": "bayesrisk/_build_manifest.json",
+    "sdist": "src/bayesrisk/_build_manifest.json",
 }
 
 
@@ -128,7 +128,7 @@ def _validate_project_metadata(data: bytes, label: str, version: str) -> email.m
     project = _metadata(data, label)
     expected = {
         "Metadata-Version": "2.4",
-        "Name": "nikodym",
+        "Name": "bayesrisk",
         "Version": version,
         "License-Expression": "Apache-2.0",
         "License-File": "LICENSE",
@@ -202,7 +202,7 @@ def _validate_wheel_identity(files: dict[str, bytes], filename: str) -> tuple[st
     if len(roots) != 1:
         raise DistributionContentError(f"Wheel debe tener un único .dist-info: {sorted(roots)}")
     dist_info = next(iter(roots))
-    match = re.fullmatch(r"nikodym-(?P<version>.+)\.dist-info", dist_info)
+    match = re.fullmatch(r"bayesrisk-(?P<version>.+)\.dist-info", dist_info)
     if match is None:
         raise DistributionContentError(f"Identidad .dist-info inválida: {dist_info}")
     version = match.group("version")
@@ -216,7 +216,7 @@ def _validate_wheel_identity(files: dict[str, bytes], filename: str) -> tuple[st
     if missing:
         raise DistributionContentError(f"Metadata wheel obligatoria ausente: {missing}")
     _validate_project_metadata(files[f"{dist_info}/METADATA"], "METADATA", version)
-    filename_match = re.fullmatch(r"nikodym-(?P<version>[^-]+)-py3-none-any\.whl", filename)
+    filename_match = re.fullmatch(r"bayesrisk-(?P<version>[^-]+)-py3-none-any\.whl", filename)
     if filename_match is None or filename_match.group("version") != version:
         raise DistributionContentError(
             f"Basename wheel incoherente con metadata: {filename!r}/{version!r}"
@@ -270,7 +270,7 @@ def read_archive(path: Path) -> ArchiveContent:
         if len(roots) != 1:
             raise DistributionContentError(f"El sdist debe tener una sola raíz: {sorted(roots)}")
         root = next(iter(roots))
-        match = re.fullmatch(r"nikodym-(?P<version>.+)", root)
+        match = re.fullmatch(r"bayesrisk-(?P<version>.+)", root)
         if match is None:
             raise DistributionContentError(f"Identidad de raíz sdist inválida: {root}")
         version = match.group("version")
@@ -397,8 +397,8 @@ def _load_policy(path: Path) -> DistributionPolicy:
     )
 
 
-#: Console script que debe declarar el wheel para que `nikodym-ui` exista tras `pip install`.
-_CONSOLE_SCRIPT = ("nikodym-ui", "nikodym.ui.__main__:main")
+#: Console script que debe declarar el wheel para que `bayesrisk-ui` exista tras `pip install`.
+_CONSOLE_SCRIPT = ("bayesrisk-ui", "bayesrisk.ui.__main__:main")
 
 
 def _validate_console_script(content: ArchiveContent) -> None:
@@ -454,12 +454,12 @@ def _validate_semantics_anchor(content: ArchiveContent) -> None:
         raise DistributionContentError(f"Semántica canónica ausente del candidate: {module_name}")
     source = _static_index.__file__
     if source is None:  # pragma: no cover - sólo bajo un loader sin archivo
-        raise DistributionContentError("No se pudo localizar nikodym.ui._static_index en disco")
+        raise DistributionContentError("No se pudo localizar bayesrisk.ui._static_index en disco")
     local = Path(source).read_bytes()
     if hashlib.sha256(candidate).hexdigest() != hashlib.sha256(local).hexdigest():
         raise DistributionContentError(
             f"Semántica canónica divergente: {module_name} del candidate no coincide con "
-            "nikodym.ui._static_index; el gate aplicaría reglas distintas de las distribuidas"
+            "bayesrisk.ui._static_index; el gate aplicaría reglas distintas de las distribuidas"
         )
 
 
@@ -469,7 +469,7 @@ def _validate_build_manifest(content: ArchiveContent) -> None:
     candidate = content.files.get(name)
     if candidate is None:
         raise DistributionContentError(f"Manifiesto de build ausente del candidate: {name}")
-    source_path = _ROOT / "src/nikodym/_build_manifest.json"
+    source_path = _ROOT / "src/bayesrisk/_build_manifest.json"
     source = source_path.read_bytes()
     if candidate != source:
         raise DistributionContentError(
@@ -508,7 +508,7 @@ def validate_content(content: ArchiveContent, policy: DistributionPolicy) -> Non
     _validate_semantics_anchor(content)
     _validate_build_manifest(content)
 
-    static_prefix = "nikodym/ui/static" if content.kind == "wheel" else "src/nikodym/ui/static"
+    static_prefix = "bayesrisk/ui/static" if content.kind == "wheel" else "src/bayesrisk/ui/static"
     index_name = f"{static_prefix}/index.html"
     try:
         index_html = content.files[index_name].decode("utf-8", errors="strict")
@@ -571,7 +571,9 @@ def _load_frontend_provenance(path: Path) -> dict[str, tuple[int, str]]:
 def _validate_frontend_candidate(
     content: ArchiveContent, provenance: dict[str, tuple[int, str]]
 ) -> None:
-    static_prefix = "nikodym/ui/static/" if content.kind == "wheel" else "src/nikodym/ui/static/"
+    static_prefix = (
+        "bayesrisk/ui/static/" if content.kind == "wheel" else "src/bayesrisk/ui/static/"
+    )
     static_files = {
         name.removeprefix(static_prefix): data
         for name, data in content.files.items()

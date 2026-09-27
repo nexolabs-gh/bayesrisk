@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from nikodym.core.exceptions import DuplicateRegistrationError, UnknownComponentError
-from nikodym.core.registry import REGISTRY, Registry, register, unregister
+from bayesrisk.core.exceptions import DuplicateRegistrationError, UnknownComponentError
+from bayesrisk.core.registry import REGISTRY, Registry, register, unregister
 
 
 def test_register_resolve_round_trip() -> None:
@@ -145,7 +145,7 @@ def test_unregister_azucar_delega_en_singleton() -> None:
 
 
 def test_unregister_reexportado_desde_core() -> None:
-    """``nikodym.core`` reexporta ``unregister`` igual que ``register``."""
-    import nikodym.core as core
+    """``bayesrisk.core`` reexporta ``unregister`` igual que ``register``."""
+    import bayesrisk.core as core
 
     assert core.unregister is unregister

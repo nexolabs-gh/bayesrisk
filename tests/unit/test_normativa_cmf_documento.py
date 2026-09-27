@@ -40,7 +40,7 @@ import pytest
 
 _RAIZ = Path(__file__).resolve().parents[2]
 _DOC = _RAIZ / "docs" / "normativa_cmf_parametros.md"
-_MANIFIESTO = _RAIZ / "src" / "nikodym" / "provisioning" / "cmf" / "data" / "manifest.json"
+_MANIFIESTO = _RAIZ / "src" / "bayesrisk" / "provisioning" / "cmf" / "data" / "manifest.json"
 
 # Un número de circular es ``N.NNN``; el lookaround evita capturar el tramo final de una ley o
 # resolución de más dígitos (``Ley N° 20.027`` no es la circular ``0.027``).

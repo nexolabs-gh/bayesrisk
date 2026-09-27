@@ -10,9 +10,9 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.binning
-from nikodym.binning.exceptions import BinningError
-from nikodym.binning.results import (
+import bayesrisk.binning
+from bayesrisk.binning.exceptions import BinningError
+from bayesrisk.binning.results import (
     BinningCardSection,
     BinningResult,
     BinningVariableSummary,
@@ -171,10 +171,10 @@ def test_binning_card_historica_carga_con_el_campo_aditivo() -> None:
 
 
 def test_binning_lazy_exports_publicos_cargan_results_bajo_demanda() -> None:
-    assert nikodym.binning.BinningResult is BinningResult
-    assert nikodym.binning.BinningVariableSummary is BinningVariableSummary
-    assert nikodym.binning.BinningCardSection is BinningCardSection
-    assert nikodym.binning.iv_band is iv_band
+    assert bayesrisk.binning.BinningResult is BinningResult
+    assert bayesrisk.binning.BinningVariableSummary is BinningVariableSummary
+    assert bayesrisk.binning.BinningCardSection is BinningCardSection
+    assert bayesrisk.binning.iv_band is iv_band
 
 
 def _variable_summaries() -> tuple[BinningVariableSummary, ...]:

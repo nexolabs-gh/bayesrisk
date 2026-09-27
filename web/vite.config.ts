@@ -9,7 +9,7 @@ import { frontendProvenancePlugin } from '../scripts/frontend_provenance_plugin.
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const demo = mode === 'demo'
-  const demoOutDir = process.env.NIKODYM_DEMO_OUT_DIR
+  const demoOutDir = process.env.BAYESRISK_DEMO_OUT_DIR
   return {
     plugins: [
       react(),
@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
       modulePreload: { polyfill: false },
       outDir: demo
         ? path.resolve(demoOutDir ?? path.resolve(__dirname, './dist'))
-        : path.resolve(__dirname, '../src/nikodym/ui/static'),
+        : path.resolve(__dirname, '../src/bayesrisk/ui/static'),
       emptyOutDir: true,
     },
     resolve: {

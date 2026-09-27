@@ -18,19 +18,19 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.core.study as study_module
-import nikodym.report as report_pkg
-import nikodym.report.renderer as renderer_module
-import nikodym.report.step as step_module
-from nikodym.binning.config import BinningConfig
-from nikodym.calibration.config import CalibrationConfig
-from nikodym.core.audit import AuditEvent, InMemoryAuditSink
-from nikodym.core.config import NikodymConfig, ReproConfig, config_hash
-from nikodym.core.exceptions import ArtifactNotFoundError
-from nikodym.core.lineage import LineageBundle
-from nikodym.core.registry import REGISTRY
-from nikodym.core.study import Study
-from nikodym.data.config import (
+import bayesrisk.core.study as study_module
+import bayesrisk.report as report_pkg
+import bayesrisk.report.renderer as renderer_module
+import bayesrisk.report.step as step_module
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.calibration.config import CalibrationConfig
+from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig, ReproConfig, config_hash
+from bayesrisk.core.exceptions import ArtifactNotFoundError
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.core.registry import REGISTRY
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     CohortSplitConfig,
     ColumnSpec,
     DataConfig,
@@ -40,39 +40,44 @@ from nikodym.data.config import (
     SchemaConfig,
     TargetConfig,
 )
-from nikodym.data.step import INPUT_FRAME_KEY
-from nikodym.eda.config import (
+from bayesrisk.data.step import INPUT_FRAME_KEY
+from bayesrisk.eda.config import (
     DefaultRateConfig,
     EdaConfig,
     TemporalStabilityConfig,
     UnivariateConfig,
 )
-from nikodym.model.config import IvContributionConfig, ModelConfig, SignPolicyConfig, StepwiseConfig
-from nikodym.performance.config import PerformanceConfig
-from nikodym.report.config import (
+from bayesrisk.model.config import (
+    IvContributionConfig,
+    ModelConfig,
+    SignPolicyConfig,
+    StepwiseConfig,
+)
+from bayesrisk.performance.config import PerformanceConfig
+from bayesrisk.report.config import (
     AiNarrationConfig,
     PdfRenderConfig,
     ReportConfig,
     SectionPolicyConfig,
     XlsxExportConfig,
 )
-from nikodym.report.exceptions import ReportDependencyError, ReportExportError
-from nikodym.report.renderer import HtmlReportRenderer
-from nikodym.report.results import AiNarrationBlock, ReportInputBundle, ReportResult
-from nikodym.report.step import REPORT_ARTIFACTS, REPORT_REQUIRED_CARDS, ReportStep
-from nikodym.scorecard.config import ScorecardConfig
-from nikodym.selection.config import (
+from bayesrisk.report.exceptions import ReportDependencyError, ReportExportError
+from bayesrisk.report.renderer import HtmlReportRenderer
+from bayesrisk.report.results import AiNarrationBlock, ReportInputBundle, ReportResult
+from bayesrisk.report.step import REPORT_ARTIFACTS, REPORT_REQUIRED_CARDS, ReportStep
+from bayesrisk.scorecard.config import ScorecardConfig
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
     VifSelectionConfig,
 )
-from nikodym.stability.config import StabilityConfig
+from bayesrisk.stability.config import StabilityConfig
 
 ROOT_SEED = 20_240_629
 # Golden del ``_digest_html`` (excluye ``<svg>``): con el extra ``report`` el bundle golden embebe
 # un único gráfico (forest de coeficientes) cuyo slot cuenta en el digest.
-# Recalculado con el re-skin Quarto (tema "nikodym": layout de 3 columnas + CSS nuevo inline en el
+# Recalculado con el re-skin Quarto (tema "bayesrisk": layout de 3 columnas + CSS nuevo inline en el
 # HTML). El markup del documento (orden canónico, tablas, literales de lineage) queda intacto.
 # Recalculado al reescribir en lenguaje de negocio la prosa que nombraba tipos internos
 # (DTO, ValidationResult, DataCardSection, «el step») y referencias a los SDD: sólo cambia
@@ -82,12 +87,12 @@ ROOT_SEED = 20_240_629
 # Recalculado al normalizar whitespace final del HTML y reemplazar el título fijo de deciles por
 # el título factual de tramos efectivos.
 # Recalculado el 2026-09-11 (capa 3 del scorecard completo, D-SC-5): la prosa de calidad de datos
-# lee las palabras de su fuente única en `nikodym.eda` y «cardinalidad excesiva» pasa a «alta
+# lee las palabras de su fuente única en `bayesrisk.eda` y «cardinalidad excesiva» pasa a «alta
 # cardinalidad», la misma que pinta el panel. Medido con `diff` del HTML entre el árbol anterior
 # (`e56eec8`, por `git archive`) y éste: cambia **exactamente una línea**, ese párrafo.
 # Recalculado el 2026-09-21 (capa C de FLUJO-GUIADO-SCORECARD, C1): el documento gana la página
 # ejecutiva «Resumen de la corrida» tras la portada (`kind="summary"`, que el step arma desde el
-# Study con los constructores de `nikodym.guided.summaries`). Medido con `diff` entre el render
+# Study con los constructores de `bayesrisk.guided.summaries`). Medido con `diff` entre el render
 # con y sin la página sobre este mismo Study: 20 líneas, SÓLO la sección nueva (aquí, con el
 # motivo de que el resumen no se arma sobre cards sintéticas) y sus tres entradas de índice
 # (sidebar, índice y «En esta página»); el render sin la página da exactamente el golden anterior
@@ -95,7 +100,7 @@ ROOT_SEED = 20_240_629
 # Recalculado el mismo día tras la pasada 2 de Codex sobre C1: la página gana un segundo párrafo
 # («Las rutas son las que el informe escribió al generarse…»). Remedido con el mismo `diff`: 21
 # líneas, sólo la sección y sus tres entradas de índice; sin la página, otra vez `947ddd7b…`.
-# Recalculado el mismo día (capa C2): el tema `nikodym` incrusta Roboto 400/700 en el CSS y la
+# Recalculado el mismo día (capa C2): el tema `bayesrisk` incrusta Roboto 400/700 en el CSS y la
 # pila `--sans` empieza por Roboto. Medido: con el CSS del commit anterior este mismo Study da
 # exactamente `4ead6d61…`, y fuera del bloque `<style>` los dos HTML son idénticos.
 # Recalculado el 2026-09-26 (D-INF-3): `overflow-wrap: anywhere` de las celdas pasa a `@media
@@ -103,7 +108,9 @@ ROOT_SEED = 20_240_629
 # Recalculado el 2026-09-26 (D-INF-1…4): el mismo renderer, con cifras es-CL, «sí»/«no» y la
 # clase `num`; el diff medido sobre el golden del renderer no toca nada más.
 # Recalculado el mismo día: `<wbr>` tras cada guion bajo de un identificador (D-INF-3).
-GOLDEN_STEP_HTML_SHA256 = "ca9bbcc7c10509ca3a0edc193666376dfe9991e1a752abc1e0bd30a28f0ddd75"
+# Recalculado el 2026-09-27 por el renombre (D-REN-9): el mismo cambio de marca que el golden
+# del renderer, medido allí con `diff` contra `315ccd4`.
+GOLDEN_STEP_HTML_SHA256 = "ed189a99e38e5aee97128bc202dbdab0d42a05424b904a2ca8e1dcc0c9dcfa5d"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
@@ -183,13 +190,13 @@ def test_core_study_cablea_report_en_orden_por_defecto(tmp_path: Path) -> None:
     assert order[-1] == "report"
     assert order.index("report") > order.index("provisioning")
     assert order.index("report") > order.index("validation")
-    assert study_module._DOMAIN_MODULES["report"] == "nikodym.report"
+    assert study_module._DOMAIN_MODULES["report"] == "bayesrisk.report"
     assert study_module._DOMAIN_CONFIG_CLASSES["report"] == (
-        "nikodym.report.config",
+        "bayesrisk.report.config",
         "ReportConfig",
     )
 
-    study = Study(NikodymConfig(report=ReportConfig(output_dir=str(tmp_path))))
+    study = Study(BayesRiskConfig(report=ReportConfig(output_dir=str(tmp_path))))
 
     assert study._default_step_names() == ["report"]
     assert isinstance(study._resolve_step("report"), ReportStep)
@@ -705,7 +712,7 @@ def test_execute_csv_en_formats_puebla_data_exports_con_las_tablas_completas(
 
 
 def _sin_extra_excel(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Deja el proceso como una instalación sin ``nikodym[excel]``, por la ruta real del import.
+    """Deja el proceso como una instalación sin ``bayesrisk[excel]``, por la ruta real del import.
 
     Gemelo del ``_block_weasyprint`` de más arriba, pero sobre ``sys.meta_path``: la degradación de
     la planilla se decide con ``find_spec``, que **no** pasa por ``builtins.__import__``. Levantar
@@ -771,7 +778,7 @@ def test_execute_xlsx_sin_el_extra_y_fail_if_unavailable_detiene(
     study = _study_with_report_artifacts(config=cfg)
     study.artifacts.set("scorecard", "score", _score_frame())
 
-    with pytest.raises(ReportDependencyError, match="nikodym\\[excel\\]"):
+    with pytest.raises(ReportDependencyError, match="bayesrisk\\[excel\\]"):
         ReportStep.from_config(cfg).execute(study, np.random.default_rng(ROOT_SEED))
 
 
@@ -806,17 +813,17 @@ def test_import_report_step_y_core_livianos_por_subprocess() -> None:
     code = textwrap.dedent(
         """
         import sys
-        import nikodym.core
+        import bayesrisk.core
 
         blocked_core = [
             name
-            for name in ("nikodym.report", "nikodym.data", "pandas", "pandera", "jinja2")
+            for name in ("bayesrisk.report", "bayesrisk.data", "pandas", "pandera", "jinja2")
             if name in sys.modules
         ]
         assert blocked_core == [], blocked_core
 
-        import nikodym.report
-        from nikodym.core.registry import REGISTRY
+        import bayesrisk.report
+        from bayesrisk.core.registry import REGISTRY
 
         assert REGISTRY.resolve("report", "standard").__name__ == "ReportStep"
         blocked_report = [
@@ -879,7 +886,7 @@ def _study_with_report_artifacts(
 ) -> Study:
     """Construye un ``Study`` con las ocho cards requeridas y tablas de reporte."""
     study = Study(
-        NikodymConfig.model_validate(
+        BayesRiskConfig.model_validate(
             {"report": config.model_dump(mode="json"), "governance": governance}
         )
     )
@@ -922,7 +929,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "0.1.0", "pandas": "2.2.0"},
+        library_versions={"bayesrisk": "0.1.0", "pandas": "2.2.0"},
         determinism_caveats=["fixture controlado"],
         created_at=datetime(2026, 6, 24, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",
@@ -1100,7 +1107,7 @@ def _pipeline_frame() -> pd.DataFrame:
 def _pipeline_study(tmp_path: Path) -> Study:
     """Study con el pipeline F1 completo activado hasta ``report``."""
     return Study(
-        NikodymConfig(
+        BayesRiskConfig(
             repro=ReproConfig(seed=ROOT_SEED),
             data=DataConfig(
                 schema_=SchemaConfig(
@@ -1222,7 +1229,7 @@ def test_con_gobernanza_declarada_y_sin_run_dir_el_informe_trae_la_ficha_en_los_
     assert "quedan en la ficha del modelo" in capitulo
     assert "model_card.json" not in capitulo and ".json" not in capitulo
     assert not re.search(r"\d{4}-\d{2}-\d{2}", capitulo)
-    assert "en_validacion" not in capitulo and "nikodym." not in capitulo
+    assert "en_validacion" not in capitulo and "bayesrisk." not in capitulo
 
     # Word sólo donde python-docx está instalado (el extra `docx`): los jobs de Tests de CI no lo
     # traen y el export se degrada con gracia; el capítulo en Word lo cubre `test-all-extras`.

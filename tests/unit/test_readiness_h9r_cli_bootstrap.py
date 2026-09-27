@@ -671,9 +671,9 @@ def test_loader_snapshot_externo_reconcilia_cinco_import_roots(
     manifest_bytes = _canonical_json_stdlib(payload) + b"\n"
     manifest_path.write_bytes(manifest_bytes)
     monkeypatch.setattr(h9r_driver, "ROOT", snapshot_root)
-    monkeypatch.setenv("NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST", str(manifest_path))
+    monkeypatch.setenv("BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST", str(manifest_path))
     monkeypatch.setenv(
-        "NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256",
+        "BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256",
         hashlib.sha256(manifest_bytes).hexdigest(),
     )
     observed = h9r_driver._load_external_harness_snapshot("_candidate")
@@ -691,8 +691,8 @@ def test_loader_snapshot_externo_reconcilia_cinco_import_roots(
 def test_loader_interno_rechaza_ausencia_de_snapshot_externo(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST", raising=False)
-    monkeypatch.delenv("NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256", raising=False)
+    monkeypatch.delenv("BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST", raising=False)
+    monkeypatch.delenv("BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256", raising=False)
     with pytest.raises(SystemExit, match="snapshot externo pre-START"):
         h9r_driver._load_external_harness_snapshot("_candidate")
 

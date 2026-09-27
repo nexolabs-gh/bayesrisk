@@ -19,10 +19,10 @@ from scripts.readiness_h9r.selftest import (
 from scripts.readiness_h9r.windows_job import current_process_affinity
 
 _PATH_ENVIRONMENT = (
-    "NIKODYM_H9R_BOUNDARY_JSONL",
-    "NIKODYM_H9R_FILESYSTEM_JSONL",
-    "NIKODYM_H9R_OUTPUT_ROOT",
-    "NIKODYM_H9R_NATIVE_POOLS_JSONL",
+    "BAYESRISK_H9R_BOUNDARY_JSONL",
+    "BAYESRISK_H9R_FILESYSTEM_JSONL",
+    "BAYESRISK_H9R_OUTPUT_ROOT",
+    "BAYESRISK_H9R_NATIVE_POOLS_JSONL",
 )
 
 

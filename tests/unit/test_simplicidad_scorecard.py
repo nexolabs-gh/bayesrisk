@@ -33,8 +33,8 @@ _BLOQUE = "primer-scorecard"
 LINEAS_DE_USUARIO: Final = 15
 TOPE_LINEAS_DE_USUARIO: Final = 25
 
-#: Cifra 5: identificadores de `nikodym` que el notebook obliga a conocer —lo que se importa de
-#: `nikodym` y los métodos que se llaman sobre sus objetos—. 5 el 2026-09-19: `Scorecard`,
+#: Cifra 5: identificadores de `bayesrisk` que el notebook obliga a conocer —lo que se importa de
+#: `bayesrisk` y los métodos que se llaman sobre sus objetos—. 5 el 2026-09-19: `Scorecard`,
 #: `materialize`, `run`, `exclude`, `resume`. Tope: 5 (SDD-31 §5).
 CONCEPTOS: Final[frozenset[str]] = frozenset(
     {"Scorecard", "materialize", "run", "exclude", "resume"}
@@ -82,9 +82,9 @@ def _lineas_de_usuario(codigo: str) -> list[str]:
 
 
 def _conceptos(codigo: str) -> set[str]:
-    """Lo importado de `nikodym` más los métodos llamados sobre los objetos que devuelve."""
+    """Lo importado de `bayesrisk` más los métodos llamados sobre los objetos que devuelve."""
     importados: set[str] = set()
-    for grupo in re.findall(r"^from nikodym[\w.]* import (.+)$", codigo, flags=re.M):
+    for grupo in re.findall(r"^from bayesrisk[\w.]* import (.+)$", codigo, flags=re.M):
         importados.update(nombre.strip() for nombre in grupo.split(","))
     metodos = set(re.findall(r"\bsc\.(\w+)\(", codigo))
     return importados | metodos
@@ -117,8 +117,8 @@ def test_cifra_3_las_perillas_de_las_doce_secciones_no_crecen() -> None:
 def test_cifra_4_el_primer_resumen_llega_antes_de_treinta_segundos(tmp_path: Path) -> None:
     """Sobre el dataset del paquete, con el motor real (exige el extra `scoring`)."""
     pytest.importorskip("optbinning")
-    from nikodym import Scorecard
-    from nikodym.ui.datasets import materialize
+    from bayesrisk import Scorecard
+    from bayesrisk.ui.datasets import materialize
 
     datos = materialize("consumo_comportamiento", workdir=tmp_path / "datasets")
     t0 = time.perf_counter()

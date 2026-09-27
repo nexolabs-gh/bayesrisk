@@ -9,14 +9,14 @@ from typing import Any
 
 import pytest
 
-from nikodym.audit import EnvironmentSnapshot
-from nikodym.core.config import NikodymConfig
-from nikodym.core.exceptions import ConfigError
-from nikodym.core.lineage import LineageBundle
-from nikodym.core.steps import ArtifactKey
-from nikodym.core.study import Study
-from nikodym.governance import GovernanceConfig, ModelCardBuilder, OverlayRecord, ScenarioLog
-from nikodym.testing import (
+from bayesrisk.audit import EnvironmentSnapshot
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.core.steps import ArtifactKey
+from bayesrisk.core.study import Study
+from bayesrisk.governance import GovernanceConfig, ModelCardBuilder, OverlayRecord, ScenarioLog
+from bayesrisk.testing import (
     REGULATORY_COVERAGE_INCLUDE,
     REGULATORY_COVERAGE_PATHS,
     minimal_study,
@@ -24,14 +24,14 @@ from nikodym.testing import (
     regulatory_coverage_include_arg,
     regulatory_coverage_paths,
 )
-from nikodym.tracking import TrackingConfig, TrackingRecorder
+from bayesrisk.tracking import TrackingConfig, TrackingRecorder
 
 _TS = datetime(2026, 6, 25, 12, 0, 0, tzinfo=UTC)
 _REVIEW_TS = datetime(2026, 6, 25, 14, 30, 0, tzinfo=UTC)
 _ENVIRONMENT = EnvironmentSnapshot(
     python_version="3.12.9",
     platform="macOS-15-arm64",
-    library_versions={"nikodym": "0.1.0", "pydantic": "2.13.0"},
+    library_versions={"bayesrisk": "0.1.0", "pydantic": "2.13.0"},
     uv_lock_hash="uvhash",
     captured_at=datetime(2026, 6, 25, 13, 0, 0, tzinfo=UTC),
 )
@@ -45,36 +45,36 @@ _EXPECTED_OVERLAY_PAYLOAD_JSON = (
     '"scenario_weights":{"adverso":0.35,"base":0.65}}'
 )
 _EXPECTED_REGULATORY_PATHS = (
-    "src/nikodym/core/exceptions.py",
-    "src/nikodym/core/seeding.py",
+    "src/bayesrisk/core/exceptions.py",
+    "src/bayesrisk/core/seeding.py",
     # D-HOR-0: la tabla de conversión de unidad temporal decide el exponente del descuento de la
     # ECL, así que es cifra contable y entra entera al gate.
-    "src/nikodym/core/time_units.py",
-    "src/nikodym/provisioning/cmf/__init__.py",
-    "src/nikodym/provisioning/ifrs9/__init__.py",
+    "src/bayesrisk/core/time_units.py",
+    "src/bayesrisk/provisioning/cmf/__init__.py",
+    "src/bayesrisk/provisioning/ifrs9/__init__.py",
     # D-LGD-14: el motor de LGD compartido produce la severidad de una cifra contable.
-    "src/nikodym/provisioning/lgd.py",
+    "src/bayesrisk/provisioning/lgd.py",
     # SDD-28: el método interno del B-1 entra COMPLETO al gate (no sólo su `__init__`).
-    "src/nikodym/provisioning/internal/__init__.py",
-    "src/nikodym/provisioning/internal/config.py",
-    "src/nikodym/provisioning/internal/engine.py",
-    "src/nikodym/provisioning/internal/exceptions.py",
-    "src/nikodym/provisioning/internal/results.py",
-    "src/nikodym/provisioning/internal/step.py",
+    "src/bayesrisk/provisioning/internal/__init__.py",
+    "src/bayesrisk/provisioning/internal/config.py",
+    "src/bayesrisk/provisioning/internal/engine.py",
+    "src/bayesrisk/provisioning/internal/exceptions.py",
+    "src/bayesrisk/provisioning/internal/results.py",
+    "src/bayesrisk/provisioning/internal/step.py",
 )
 _EXPECTED_REGULATORY_INCLUDE_ARG = (
-    "*/nikodym/core/exceptions.py,"
-    "*/nikodym/core/seeding.py,"
-    "*/nikodym/core/time_units.py,"
-    "*/nikodym/provisioning/cmf/__init__.py,"
-    "*/nikodym/provisioning/ifrs9/__init__.py,"
-    "*/nikodym/provisioning/lgd.py,"
-    "*/nikodym/provisioning/internal/__init__.py,"
-    "*/nikodym/provisioning/internal/config.py,"
-    "*/nikodym/provisioning/internal/engine.py,"
-    "*/nikodym/provisioning/internal/exceptions.py,"
-    "*/nikodym/provisioning/internal/results.py,"
-    "*/nikodym/provisioning/internal/step.py"
+    "*/bayesrisk/core/exceptions.py,"
+    "*/bayesrisk/core/seeding.py,"
+    "*/bayesrisk/core/time_units.py,"
+    "*/bayesrisk/provisioning/cmf/__init__.py,"
+    "*/bayesrisk/provisioning/ifrs9/__init__.py,"
+    "*/bayesrisk/provisioning/lgd.py,"
+    "*/bayesrisk/provisioning/internal/__init__.py,"
+    "*/bayesrisk/provisioning/internal/config.py,"
+    "*/bayesrisk/provisioning/internal/engine.py,"
+    "*/bayesrisk/provisioning/internal/exceptions.py,"
+    "*/bayesrisk/provisioning/internal/results.py,"
+    "*/bayesrisk/provisioning/internal/step.py"
 )
 
 
@@ -191,7 +191,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123",
         root_seed=42,
         uv_lock_hash="uvhash",
-        library_versions={"nikodym": "0.1.0"},
+        library_versions={"bayesrisk": "0.1.0"},
         determinism_caveats=[],
         created_at=_TS,
         schema_version="1.0.0",
@@ -200,7 +200,7 @@ def _lineage() -> LineageBundle:
 
 def _study_with_metric_sections(metric_sections: dict[str, Any]) -> Study:
     """Study finalizado con métricas escalares y secciones estructuradas."""
-    study = Study(NikodymConfig())
+    study = Study(BayesRiskConfig())
     study.run_context.status = "done"
     study.run_context.run_id = "hito0-run"
     study.run_context.lineage = _lineage()

@@ -1,4 +1,4 @@
-"""Tests de ``SurvivalConfig`` (SDD-18 §5) e integración con ``NikodymConfig``."""
+"""Tests de ``SurvivalConfig`` (SDD-18 §5) e integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -11,19 +11,19 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import nikodym.survival as survival_pkg  # importa la capa: puebla el hook
-from nikodym.core import study as study_module
-from nikodym.core.config import (
+import bayesrisk.survival as survival_pkg  # importa la capa: puebla el hook
+from bayesrisk.core import study as study_module
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import NikodymError
-from nikodym.survival.base import BaseSurvivalModel
-from nikodym.survival.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import BayesRiskError
+from bayesrisk.survival.base import BaseSurvivalModel
+from bayesrisk.survival.config import (
     CoxAftConfig,
     DiscreteHazardConfig,
     KaplanMeierConfig,
@@ -31,7 +31,7 @@ from nikodym.survival.config import (
     SurvivalInputConfig,
     SurvivalTimeGridConfig,
 )
-from nikodym.survival.exceptions import (
+from bayesrisk.survival.exceptions import (
     SurvivalConfigError,
     SurvivalError,
     SurvivalFitError,
@@ -39,7 +39,7 @@ from nikodym.survival.exceptions import (
     SurvivalLicenseError,
     SurvivalTransformError,
 )
-from nikodym.testing.strategies import _config_cls_for_domain
+from bayesrisk.testing.strategies import _config_cls_for_domain
 
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
 
@@ -141,17 +141,17 @@ def test_round_trip_yaml_survivalconfig() -> None:
     assert SurvivalConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_survival_instancia() -> None:
-    """Pasar una instancia ``SurvivalConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_survival_instancia() -> None:
+    """Pasar una instancia ``SurvivalConfig`` a ``BayesRiskConfig`` la conserva."""
     survival = SurvivalConfig(input=_input())
-    cfg = NikodymConfig(survival=survival)
+    cfg = BayesRiskConfig(survival=survival)
     assert isinstance(cfg.survival, SurvivalConfig)
     assert cfg.survival is survival
 
 
-def test_nikodymconfig_survival_dict_coacciona() -> None:
+def test_bayesriskconfig_survival_dict_coacciona() -> None:
     """Un dict en ``survival`` se coacciona a ``SurvivalConfig`` por el hook cargado."""
-    cfg = NikodymConfig(
+    cfg = BayesRiskConfig(
         survival={
             "input": {"duration_col": "months", "event_col": "default_flag"},
             "discrete_hazard": {"link": "cloglog"},
@@ -162,29 +162,29 @@ def test_nikodymconfig_survival_dict_coacciona() -> None:
     assert cfg.survival.discrete_hazard.link == "cloglog"
 
 
-def test_nikodymconfig_survival_none_explicito() -> None:
+def test_bayesriskconfig_survival_none_explicito() -> None:
     """``survival=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(survival=None).survival is None
+    assert BayesRiskConfig(survival=None).survival is None
 
 
-def test_nikodymconfig_survival_core_only_acepta_blob_json(
+def test_bayesriskconfig_survival_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``survival`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_SURVIVAL_CONFIG_CLS", None)
-    cfg = NikodymConfig(survival={"input": {"duration_col": "t", "event_col": "e"}})
+    cfg = BayesRiskConfig(survival={"input": {"duration_col": "t", "event_col": "e"}})
     assert cfg.survival == {"input": {"duration_col": "t", "event_col": "e"}}
 
 
 @pytest.mark.parametrize("blob", [{"columnas": {"a", "b"}}, {"valor": math.nan}])
-def test_nikodymconfig_survival_core_only_rechaza_json_no_canonico(
+def test_bayesriskconfig_survival_core_only_rechaza_json_no_canonico(
     monkeypatch: pytest.MonkeyPatch,
     blob: dict[str, object],
 ) -> None:
     """Sin hook cargado, ``survival`` rechaza sets y floats no finitos."""
     monkeypatch.setattr(_schema_mod, "_SURVIVAL_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(survival=blob)
+        BayesRiskConfig(survival=blob)
 
 
 @pytest.mark.parametrize(
@@ -211,8 +211,8 @@ def test_nikodymconfig_survival_core_only_rechaza_json_no_canonico(
 )
 def test_config_hash_cambia_al_variar_survival(survival: SurvivalConfig) -> None:
     """``survival`` no es INFRA: método, link, PD, columnas y horizonte cambian identidad."""
-    base = config_hash(NikodymConfig(survival=SurvivalConfig(input=_input())))
-    variado = config_hash(NikodymConfig(survival=survival))
+    base = config_hash(BayesRiskConfig(survival=SurvivalConfig(input=_input())))
+    variado = config_hash(BayesRiskConfig(survival=survival))
     assert "survival" not in INFRA_SECTIONS
     assert variado != base
 
@@ -320,7 +320,7 @@ def test_survival_public_api_minimo() -> None:
     assert "SurvivalConfig" in survival_pkg.__all__
 
 
-def test_survival_errors_descienden_de_nikodym_error() -> None:
+def test_survival_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``survival`` cuelgan de la raíz propia de la librería."""
     for error_cls in (
         SurvivalError,
@@ -330,7 +330,7 @@ def test_survival_errors_descienden_de_nikodym_error() -> None:
         SurvivalTransformError,
         SurvivalLicenseError,
     ):
-        assert issubclass(error_cls, NikodymError)
+        assert issubclass(error_cls, BayesRiskError)
         with pytest.raises(SurvivalError, match="fallo survival"):
             raise error_cls("fallo survival")
 
@@ -367,14 +367,14 @@ def test_base_survival_model_runtime_checkable() -> None:
 
 
 def test_import_survival_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.survival`` registra hook sin arrastrar lifelines ni statsmodels."""
+    """``import bayesrisk.survival`` registra hook sin arrastrar lifelines ni statsmodels."""
     code = (
-        "import nikodym.survival, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.survival.config import SurvivalConfig;"
+        "import bayesrisk.survival, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.survival.config import SurvivalConfig;"
         "bloqueados=[m for m in ('lifelines','statsmodels','sksurv') if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(survival={'input': {'duration_col': 't', 'event_col': 'e'}});"
+        "cfg=BayesRiskConfig(survival={'input': {'duration_col': 't', 'event_col': 'e'}});"
         "assert isinstance(cfg.survival, SurvivalConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -383,14 +383,14 @@ def test_import_survival_liviano_y_registra_hook_en_proceso_fresco() -> None:
 def test_core_valida_survival_como_blob_opaco_sin_importar_survival() -> None:
     """El core acepta ``survival`` JSON/dict sin importar la capa survival."""
     code = (
-        "from nikodym.core.config import NikodymConfig, dump_config;"
+        "from bayesrisk.core.config import BayesRiskConfig, dump_config;"
         "import sys;"
-        "assert 'nikodym.survival' not in sys.modules;"
-        "cfg=NikodymConfig(survival={'input': {'duration_col': 't', 'event_col': 'e'}});"
+        "assert 'bayesrisk.survival' not in sys.modules;"
+        "cfg=BayesRiskConfig(survival={'input': {'duration_col': 't', 'event_col': 'e'}});"
         "assert cfg.survival == {'input': {'duration_col': 't', 'event_col': 'e'}};"
         "texto=dump_config(cfg);"
         "assert 'survival:' in texto;"
-        "assert 'nikodym.survival' not in sys.modules"
+        "assert 'bayesrisk.survival' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
@@ -404,16 +404,16 @@ def test_core_study_cablea_survival_en_orden_por_defecto() -> None:
     """``Study`` conoce ``survival`` después de F1 y antes de provisiones CMF."""
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order.index("calibration") < order.index("survival") < order.index("provisioning_cmf")
-    assert study_module._DOMAIN_MODULES["survival"] == "nikodym.survival"
+    assert study_module._DOMAIN_MODULES["survival"] == "bayesrisk.survival"
     assert study_module._DOMAIN_CONFIG_CLASSES["survival"] == (
-        "nikodym.survival.config",
+        "bayesrisk.survival.config",
         "SurvivalConfig",
     )
 
 
-def test_dump_load_nikodymconfig_con_survival_idempotente() -> None:
+def test_dump_load_bayesriskconfig_con_survival_idempotente() -> None:
     """``dump_config``/``loads_config`` preservan la sección ``survival`` cableada."""
-    cfg = NikodymConfig(
+    cfg = BayesRiskConfig(
         survival=SurvivalConfig(
             input=SurvivalInputConfig(
                 duration_col="duration",
@@ -428,4 +428,4 @@ def test_dump_load_nikodymconfig_con_survival_idempotente() -> None:
 
 def test_config_hash_default_con_survival_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``survival`` con valor None."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH

@@ -1,8 +1,8 @@
 # Reanudar una corrida con artefactos ya calculados
 
-`nikodym.run(..., artifacts=...)` permite apagar un paso productor y continuar desde los
+`bayesrisk.run(..., artifacts=...)` permite apagar un paso productor y continuar desde los
 resultados que ese paso habría publicado. La superficie gemela
-`nikodym.check_pipeline(..., artifacts=...)` comprueba antes de correr si las mismas claves bastan.
+`bayesrisk.check_pipeline(..., artifacts=...)` comprueba antes de correr si las mismas claves bastan.
 
 La clave siempre es una pareja `(dominio, nombre)`. El contrato de cada paso vive en sus atributos
 `requires` y `provides`, visibles en la [referencia de la API](../api.md):
@@ -27,17 +27,17 @@ Este ejemplo ejecuta un pipeline vacío —todos los productores están apagados
 
 <!-- artifact-gate-example:start -->
 ```python
-import nikodym
-from nikodym.core.config import NikodymConfig
+import bayesrisk
+from bayesrisk.core.config import BayesRiskConfig
 
-config = NikodymConfig()
+config = BayesRiskConfig()
 external = {("data", "data_hash"): "a" * 64}
 
-check = nikodym.check_pipeline(config, artifacts=external)
+check = bayesrisk.check_pipeline(config, artifacts=external)
 assert check.executable
 assert check.inert_artifacts == ()  # el cierre del lineage consume data_hash
 
-study = nikodym.run(config, artifacts=external)
+study = bayesrisk.run(config, artifacts=external)
 assert study.run_context.status == "done"
 
 lineage = study.lineage_bundle()
@@ -59,15 +59,15 @@ data_artifacts = {
 }
 partial_config = first_study.config.model_copy(update={"data": None})
 
-check = nikodym.check_pipeline(partial_config, artifacts=data_artifacts)
+check = bayesrisk.check_pipeline(partial_config, artifacts=data_artifacts)
 assert check.executable and check.steps[0] == "binning"
 
-resumed = nikodym.run(partial_config, artifacts=data_artifacts)
+resumed = bayesrisk.run(partial_config, artifacts=data_artifacts)
 assert resumed.run_context.status == "done"
 ```
 
 El `config_hash` sigue identificando sólo el config computacional. El lineage enumera las claves
-externas y declara el caveat porque Nikodym no puede reconstruir su contenido desde
+externas y declara el caveat porque bayesrisk no puede reconstruir su contenido desde
 `config + datos`. Si omites `("data", "data_hash")` al apagar `data`, el lineage conserva
 `data_hash=None` y declara esa ausencia explícitamente. `Study.save()`/`Study.load(trust=True)`
 preservan tanto los artefactos como esta procedencia.

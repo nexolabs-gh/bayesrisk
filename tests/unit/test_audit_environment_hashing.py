@@ -1,4 +1,4 @@
-"""Tests de entorno y hashing de ``nikodym.audit``."""
+"""Tests de entorno y hashing de ``bayesrisk.audit``."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from nikodym.audit import (
+from bayesrisk.audit import (
     DEFAULT_TRACKED_PACKAGES,
     AuditError,
     EnvironmentSnapshot,
@@ -37,7 +37,7 @@ def test_hash_file_golden_y_errores(tmp_path: Path) -> None:
 
 
 def test_hash_dataframe_delega_a_data_hash_golden() -> None:
-    """``hash_dataframe`` reusa el hash lógico de ``nikodym.data`` sin reimplementarlo."""
+    """``hash_dataframe`` reusa el hash lógico de ``bayesrisk.data`` sin reimplementarlo."""
     index = pd.Index(["a", "b"], name="id")
     df = pd.DataFrame({"saldo": [1.0, 0.0], "mora": [0, 90]}, index=index).astype(
         {"saldo": "float64", "mora": "int64"}
@@ -52,10 +52,10 @@ def test_capture_environment_deterministico_con_inyeccion(tmp_path: Path) -> Non
     """Reloj, plataforma y versiones inyectadas generan un snapshot bit-idéntico."""
     lock = tmp_path / "uv.lock"
     lock.write_bytes(b"lock\n")
-    versions = {"nikodym": "0.1.0", "pydantic": "2.13.0"}
+    versions = {"bayesrisk": "0.1.0", "pydantic": "2.13.0"}
 
     snapshot = capture_environment(
-        packages=("nikodym", "pydantic", "nikodym"),
+        packages=("bayesrisk", "pydantic", "bayesrisk"),
         uv_lock_path=lock,
         now=lambda: datetime(2026, 6, 25, 9, 15, 0),
         version_provider=versions.__getitem__,
@@ -66,14 +66,14 @@ def test_capture_environment_deterministico_con_inyeccion(tmp_path: Path) -> Non
     assert snapshot == EnvironmentSnapshot(
         python_version="3.12.9",
         platform="macOS-15-arm64",
-        library_versions={"nikodym": "0.1.0", "pydantic": "2.13.0"},
+        library_versions={"bayesrisk": "0.1.0", "pydantic": "2.13.0"},
         uv_lock_hash=_GOLDEN_UV_LOCK_HASH,
         captured_at=datetime(2026, 6, 25, 9, 15, 0, tzinfo=UTC),
     )
     assert snapshot.model_dump(mode="json") == {
         "python_version": "3.12.9",
         "platform": "macOS-15-arm64",
-        "library_versions": {"nikodym": "0.1.0", "pydantic": "2.13.0"},
+        "library_versions": {"bayesrisk": "0.1.0", "pydantic": "2.13.0"},
         "uv_lock_hash": _GOLDEN_UV_LOCK_HASH,
         "captured_at": "2026-06-25T09:15:00Z",
     }

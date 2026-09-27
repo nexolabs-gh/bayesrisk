@@ -2,7 +2,7 @@ import { useCallback, useState } from "react"
 
 export type Theme = "light" | "dark"
 
-const STORAGE_KEY = "nikodym-theme"
+const STORAGE_KEY = "bayesrisk-theme"
 
 /** Tema actual leído del DOM (la clase `.dark` la fija el script inline de index.html). */
 function currentTheme(): Theme {

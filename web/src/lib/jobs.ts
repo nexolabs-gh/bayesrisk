@@ -1,7 +1,7 @@
 /**
  * Catálogo de TRABAJOS del lado del front (D-JOB-1/3/15).
  *
- * La FUENTE es el backend (`nikodym/ui/jobs.py`, servido por `GET /api/jobs`): declarar qué
+ * La FUENTE es el backend (`bayesrisk/ui/jobs.py`, servido por `GET /api/jobs`): declarar qué
  * secciones e insumos define un trabajo es dominio, y SDD-23 §1 lo prohíbe en el front. Aquí sólo
  * se transporta lo que devuelve, con un fixture bundleado como respaldo —mismo patrón que
  * `schema.ts`, y por la misma razón: sin catálogo no hay por dónde entrar, así que un backend caído
@@ -174,7 +174,7 @@ export interface Job {
    * **resuelve** con todo.
    *
    * Lo deriva el backend de `jurisdiction_code` y del opt-in del lanzador
-   * (`nikodym-ui --casos-de-referencia`); la demo estática no tiene lanzador, así que su
+   * (`bayesrisk-ui --casos-de-referencia`); la demo estática no tiene lanzador, así que su
    * `jobs.json` trae los de referencia en `false`.
    */
   offered: boolean
@@ -275,7 +275,7 @@ export async function loadJobs(): Promise<Job[]> {
   // Modo demo: no hay backend al que preguntar, así que se sirve el snapshot bundleado sin salir a
   // la red. Es la misma rama que tiene toda llamada de `api.ts` y `loadSchema`, y **no cambia el
   // valor devuelto**: sin ella la petición muere en 404 y el `catch` de abajo devuelve este mismo
-  // fixture. Lo que evita es un error de consola en `demo.nikodym.cl` por una ruta que no existe.
+  // fixture. Lo que evita es un error de consola en `demo.bayesadvisory.cl` por una ruta que no existe.
   if (DEMO_MODE) return FIXTURE_JOBS.jobs
   try {
     const live = await fetchJobs()

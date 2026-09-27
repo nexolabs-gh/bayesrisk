@@ -16,20 +16,20 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.provisioning.internal.engine as engine_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.provisioning.internal.config import (
+import bayesrisk.provisioning.internal.engine as engine_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.provisioning.internal.config import (
     InternalLgdGroupHistorical,
     InternalLgdProvided,
     InternalProvisioningConfig,
 )
-from nikodym.provisioning.internal.engine import InternalProvisioningEngine
-from nikodym.provisioning.internal.exceptions import (
+from bayesrisk.provisioning.internal.engine import InternalProvisioningEngine
+from bayesrisk.provisioning.internal.exceptions import (
     InternalCalculationError,
     InternalInputError,
 )
-from nikodym.provisioning.internal.results import InternalProvisionResult
+from bayesrisk.provisioning.internal.results import InternalProvisionResult
 
 AS_OF = "2026-01-31"
 
@@ -795,7 +795,7 @@ def test_el_motor_no_consume_azar() -> None:
     _calculate(_cfg())
 
     assert generador.bit_generator.state == antes
-    assert importlib.util.find_spec("nikodym.provisioning.internal.engine") is not None
+    assert importlib.util.find_spec("bayesrisk.provisioning.internal.engine") is not None
 
 
 def test_el_resultado_no_atribuye_el_metodo_a_una_norma_de_una_jurisdiccion() -> None:

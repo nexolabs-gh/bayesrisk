@@ -7,7 +7,7 @@ importancias nativas y la puerta de dependencia faltante. Los backends GBDT
 ``importlib.import_module`` para cubrir el 100% del cableado sin instalar las librerías pesadas, y
 —cuando el extra está instalado— con un smoke real marcado con ``requires_<lib>`` (se salta si la
 librería no está presente). Un subproceso verifica el import liviano (``import
-nikodym.ml.backends`` no arrastra sklearn/xgboost/lightgbm/catboost/pandas/numpy).
+bayesrisk.ml.backends`` no arrastra sklearn/xgboost/lightgbm/catboost/pandas/numpy).
 """
 
 from __future__ import annotations
@@ -23,9 +23,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import nikodym.ml.backends as backends
-from nikodym.core.exceptions import MissingDependencyError
-from nikodym.ml.backends import (
+import bayesrisk.ml.backends as backends
+from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.ml.backends import (
     Backend,
     CatBoostBackend,
     LightGBMBackend,
@@ -34,14 +34,14 @@ from nikodym.ml.backends import (
     XGBoostBackend,
     resolve_backend,
 )
-from nikodym.ml.config import (
+from bayesrisk.ml.config import (
     CatBoostParams,
     LightGBMParams,
     RandomForestParams,
     SvmParams,
     XGBoostParams,
 )
-from nikodym.ml.exceptions import MLBackendError
+from bayesrisk.ml.exceptions import MLBackendError
 
 _HAS_XGBOOST = importlib.util.find_spec("xgboost") is not None
 _HAS_LIGHTGBM = importlib.util.find_spec("lightgbm") is not None
@@ -118,7 +118,7 @@ def test_resolve_backend_no_importa_librerias_pesadas() -> None:
     """Resolver un backend GBDT no importa su librería (import perezoso hasta usar un método)."""
     code = (
         "import sys;"
-        "from nikodym.ml.backends import resolve_backend;"
+        "from bayesrisk.ml.backends import resolve_backend;"
         "backend = resolve_backend('xgboost');"
         "assert backend.name == 'xgboost';"
         "assert 'xgboost' not in sys.modules;"
@@ -251,7 +251,7 @@ def test_sklearn_extra_faltante_levanta(
 ) -> None:
     """Sin el extra ``[ml]`` (sklearn ausente), ``build`` levanta ``MissingDependencyError``."""
     _use_missing(monkeypatch, module_name)
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[ml\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[ml\]"):
         backend.build(SvmParams(), seed=0, n_threads=1, monotone_constraints=None)
 
 
@@ -477,7 +477,7 @@ def test_xgboost_importancias_gain_rellena_no_usadas(monkeypatch: pytest.MonkeyP
 def test_xgboost_extra_faltante_levanta(monkeypatch: pytest.MonkeyPatch) -> None:
     """Seleccionar ``xgboost`` sin el extra levanta ``MissingDependencyError`` (extra exacto)."""
     _use_missing(monkeypatch, "xgboost")
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[xgboost\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[xgboost\]"):
         XGBoostBackend().build(XGBoostParams(), seed=0, n_threads=1, monotone_constraints=None)
 
 
@@ -558,7 +558,7 @@ def test_lightgbm_predict_proba_version_e_importancias(monkeypatch: pytest.Monke
 def test_lightgbm_extra_faltante_levanta(monkeypatch: pytest.MonkeyPatch) -> None:
     """Seleccionar ``lightgbm`` sin el extra levanta ``MissingDependencyError``."""
     _use_missing(monkeypatch, "lightgbm")
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[lightgbm\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[lightgbm\]"):
         LightGBMBackend().build(LightGBMParams(), seed=0, n_threads=1, monotone_constraints=None)
 
 
@@ -641,7 +641,7 @@ def test_catboost_predict_proba_version_e_importancias(monkeypatch: pytest.Monke
 def test_catboost_extra_faltante_levanta(monkeypatch: pytest.MonkeyPatch) -> None:
     """Seleccionar ``catboost`` sin el extra levanta ``MissingDependencyError``."""
     _use_missing(monkeypatch, "catboost")
-    with pytest.raises(MissingDependencyError, match=r"instale nikodym\[catboost\]"):
+    with pytest.raises(MissingDependencyError, match=r"instale bayesrisk\[catboost\]"):
         CatBoostBackend().build(CatBoostParams(), seed=0, n_threads=1, monotone_constraints=None)
 
 
@@ -722,10 +722,10 @@ def test_gbdt_real_smoke_y_determinismo(backend: Backend, params: Any) -> None:
 
 
 def test_import_backends_es_liviano_en_proceso_fresco() -> None:
-    """``import nikodym.ml.backends`` no arrastra librerías ML ni tabulares (SDD-12 §9)."""
+    """``import bayesrisk.ml.backends`` no arrastra librerías ML ni tabulares (SDD-12 §9)."""
     code = (
         "import sys;"
-        "import nikodym.ml.backends;"
+        "import bayesrisk.ml.backends;"
         "bloqueados=[m for m in "
         "('numpy','pandas','pandera','pyarrow','scipy','sklearn','xgboost','lightgbm','catboost') "
         "if m in sys.modules];"

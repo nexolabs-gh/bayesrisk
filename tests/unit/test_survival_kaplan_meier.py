@@ -10,23 +10,23 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.survival.kaplan_meier as km_module
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.exceptions import NotFittedError
-from nikodym.survival import KaplanMeierSurvivalModel as ExportedKaplanMeierSurvivalModel
-from nikodym.survival.base import BaseSurvivalModel
-from nikodym.survival.config import (
+import bayesrisk.survival.kaplan_meier as km_module
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.exceptions import NotFittedError
+from bayesrisk.survival import KaplanMeierSurvivalModel as ExportedKaplanMeierSurvivalModel
+from bayesrisk.survival.base import BaseSurvivalModel
+from bayesrisk.survival.config import (
     KaplanMeierConfig,
     SurvivalConfig,
     SurvivalInputConfig,
     SurvivalTimeGridConfig,
 )
-from nikodym.survival.exceptions import (
+from bayesrisk.survival.exceptions import (
     SurvivalConfigError,
     SurvivalInputError,
     SurvivalTransformError,
 )
-from nikodym.survival.kaplan_meier import KaplanMeierSurvivalModel
+from bayesrisk.survival.kaplan_meier import KaplanMeierSurvivalModel
 
 _TERM_COLUMNS: tuple[str, ...] = (
     "row_id",
@@ -416,11 +416,11 @@ def test_errores_de_grilla_y_soporte() -> None:
 
 def test_import_survival_y_exports_no_cargan_dependencias_pesadas() -> None:
     code = (
-        "import nikodym.survival, sys;"
+        "import bayesrisk.survival, sys;"
         "blocked=[m for m in ('lifelines','statsmodels','sksurv','pandas') "
         "if m in sys.modules];"
         "assert not blocked, blocked;"
-        "assert 'KaplanMeierSurvivalModel' in nikodym.survival.__all__"
+        "assert 'KaplanMeierSurvivalModel' in bayesrisk.survival.__all__"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 

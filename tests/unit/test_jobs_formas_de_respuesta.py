@@ -29,12 +29,12 @@ from typing import Any, Literal, get_args, get_origin
 import pytest
 from pydantic import BaseModel
 
-from nikodym.core.config import NikodymConfig, config_hash
-from nikodym.core.config.effective_defaults import build_effective_defaults
-from nikodym.core.config.schema import cargar_configs_expandibles
-from nikodym.ui import jobs
-from nikodym.ui.jobs import decisiones_de, list_jobs
-from nikodym.ui.presets import standard_preset
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+from bayesrisk.core.config.effective_defaults import build_effective_defaults
+from bayesrisk.core.config.schema import cargar_configs_expandibles
+from bayesrisk.ui import jobs
+from bayesrisk.ui.jobs import decisiones_de, list_jobs
+from bayesrisk.ui.presets import standard_preset
 
 #: 🔴 **Oráculo INDEPENDIENTE**: por forma, los paths de la plantilla que son criterio de la
 #: institución y que por tanto tienen que llegar VACÍOS al usuario. Se escribe a mano y **no** se
@@ -541,8 +541,8 @@ def test_un_config_precargado_y_aceptado_tiene_la_misma_identidad_que_el_escrito
         "holdout": [],
         "oot": [],
     }
-    assert config_hash(NikodymConfig.model_validate(por_propuesta)) == config_hash(
-        NikodymConfig.model_validate(a_mano)
+    assert config_hash(BayesRiskConfig.model_validate(por_propuesta)) == config_hash(
+        BayesRiskConfig.model_validate(a_mano)
     )
 
 
@@ -570,12 +570,12 @@ def test_completar_por_una_forma_da_la_misma_identidad_que_escribirlo_a_mano() -
         "oot_cohorts": ["2024Q2"],
         "holdout_fraction": 0.2,
     }
-    assert config_hash(NikodymConfig.model_validate(por_formulario)) == config_hash(
-        NikodymConfig.model_validate(a_mano)
+    assert config_hash(BayesRiskConfig.model_validate(por_formulario)) == config_hash(
+        BayesRiskConfig.model_validate(a_mano)
     )
     # Y es el del preset intacto: la forma reconstruye su estrategia sin moverle la identidad.
-    assert config_hash(NikodymConfig.model_validate(por_formulario)) == config_hash(
-        NikodymConfig.model_validate(preset)
+    assert config_hash(BayesRiskConfig.model_validate(por_formulario)) == config_hash(
+        BayesRiskConfig.model_validate(preset)
     )
 
 

@@ -2,7 +2,7 @@
  * Motor de formulario — LÓGICA PURA (sin React, sin fetch; testeable con fixtures).
  *
  * Implementa el mapeo tipo→widget del SDD-23 §5: dado el schema de un campo del
- * JSON-Schema de `NikodymConfig` (Draft 2020-12), decide qué widget lo edita. La
+ * JSON-Schema de `BayesRiskConfig` (Draft 2020-12), decide qué widget lo edita. La
  * UI **no** reimplementa rangos/enums/finitud (SDD §3.3): a lo sumo usa las cotas
  * del schema como HINTS de UX del widget. La validación autoritativa es del backend.
  *

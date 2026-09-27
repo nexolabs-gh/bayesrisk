@@ -59,7 +59,7 @@ writeFileSync(
   OUTPUT,
   `${JSON.stringify({
     schema_version: 2,
-    sentinel: "NIKODYM_DEMO_FIXTURE_ONLY",
+    sentinel: "BAYESRISK_DEMO_FIXTURE_ONLY",
     files,
   }, null, 2)}\n`,
 )

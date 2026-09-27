@@ -13,10 +13,10 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.provisioning.ifrs9.results as ifrs9_results
-from nikodym.provisioning.ifrs9 import IfrsProvisioningConfig
-from nikodym.provisioning.ifrs9.base import BaseEclModel
-from nikodym.provisioning.ifrs9.results import (
+import bayesrisk.provisioning.ifrs9.results as ifrs9_results
+from bayesrisk.provisioning.ifrs9 import IfrsProvisioningConfig
+from bayesrisk.provisioning.ifrs9.base import BaseEclModel
+from bayesrisk.provisioning.ifrs9.results import (
     IfrsEclRecord,
     IfrsEclTermRecord,
     IfrsProvisionCard,
@@ -391,11 +391,11 @@ def test_base_ecl_model_runtime_checkable() -> None:
 def test_ifrs9_results_import_liviano_y_exports_publicos() -> None:
     code = (
         "import sys;"
-        "import nikodym.provisioning.ifrs9.results;"
-        "import nikodym.provisioning.ifrs9.base;"
+        "import bayesrisk.provisioning.ifrs9.results;"
+        "import bayesrisk.provisioning.ifrs9.base;"
         "bloqueados=[m for m in "
-        "('nikodym.data','pandera','pyarrow','pandas','numpy','scipy','statsmodels',"
-        "'nikodym.tracking','mlflow') if m in sys.modules];"
+        "('bayesrisk.data','pandera','pyarrow','pandas','numpy','scipy','statsmodels',"
+        "'bayesrisk.tracking','mlflow') if m in sys.modules];"
         "assert not bloqueados, bloqueados"
     )
     subprocess.run([sys.executable, "-c", code], check=True)

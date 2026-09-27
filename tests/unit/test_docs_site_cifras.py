@@ -199,9 +199,9 @@ def test_la_portada_publica_la_version_que_el_paquete_declara() -> None:
     ⚠️ La afirmación se ata a ``__version__`` y no al tag: el tag va después del CI, y para
     entonces la documentación ya está escrita.
     """
-    import nikodym
+    import bayesrisk
 
-    esperado = f"Estado: {nikodym.__version__} — release estable"
+    esperado = f"Estado: {bayesrisk.__version__} — release estable"
     assert esperado in _texto("index.md"), (
         f"la portada no dice «{esperado}»: el bump de versión no llegó a docs_site/index.md, "
         "así que la página de entrada anuncia una versión que no es la publicada"

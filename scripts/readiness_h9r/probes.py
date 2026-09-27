@@ -16,10 +16,10 @@ from .windows_job import current_process_affinity, try_expand_current_process_af
 
 
 def _paths_from_environment() -> tuple[Path, Path, Path, Path]:
-    boundary = os.environ.get("NIKODYM_H9R_BOUNDARY_JSONL")
-    filesystem = os.environ.get("NIKODYM_H9R_FILESYSTEM_JSONL")
-    outputs = os.environ.get("NIKODYM_H9R_OUTPUT_ROOT")
-    pools = os.environ.get("NIKODYM_H9R_NATIVE_POOLS_JSONL")
+    boundary = os.environ.get("BAYESRISK_H9R_BOUNDARY_JSONL")
+    filesystem = os.environ.get("BAYESRISK_H9R_FILESYSTEM_JSONL")
+    outputs = os.environ.get("BAYESRISK_H9R_OUTPUT_ROOT")
+    pools = os.environ.get("BAYESRISK_H9R_NATIVE_POOLS_JSONL")
     if not boundary or not filesystem or not outputs or not pools:
         raise RuntimeError("probe sin paths H9R inyectados")
     return Path(boundary), Path(filesystem), Path(outputs), Path(pools)
@@ -53,7 +53,7 @@ def _synthetic_first_open(boundary: ConsumerBoundary, input_path: Path) -> None:
 
 
 def run_probe(mode: str, *, input_path: Path | None, delay_seconds: float) -> int:
-    """Ejecuta un defecto controlado con bytes pequeños y sin importar Nikodym."""
+    """Ejecuta un defecto controlado con bytes pequeños y sin importar bayesrisk."""
     # Los probes de kernel no son consumidores y, por tanto, no deben fingir sidecars de
     # frontera ni exigir paths que sólo existen dentro del worker. Esto permite ejecutarlos en
     # ``harness-test`` sin materializar una unidad ni emitir un token START.
@@ -66,9 +66,9 @@ def run_probe(mode: str, *, input_path: Path | None, delay_seconds: float) -> in
         # Dentro del Job correcto el effective mask no puede incorporar la quinta CPU.
         return 0 if int(result["effective_logical_cpu_count"]) <= 4 else 91
     if mode == "memory":
-        raw_cap = os.environ.get("NIKODYM_H9R_CONTROL_JOB_CAP_BYTES")
+        raw_cap = os.environ.get("BAYESRISK_H9R_CONTROL_JOB_CAP_BYTES")
         if raw_cap is None or not raw_cap.isdigit() or int(raw_cap) < 1:
-            raise RuntimeError("probe memory exige NIKODYM_H9R_CONTROL_JOB_CAP_BYTES")
+            raise RuntimeError("probe memory exige BAYESRISK_H9R_CONTROL_JOB_CAP_BYTES")
         request_bytes = int(raw_cap) + 1
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel32.VirtualAlloc.argtypes = [

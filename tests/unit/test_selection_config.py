@@ -1,4 +1,4 @@
-"""Tests de ``SelectionConfig`` (SDD-07 §5) y su integración con ``NikodymConfig``."""
+"""Tests de ``SelectionConfig`` (SDD-07 §5) y su integración con ``BayesRiskConfig``."""
 
 from __future__ import annotations
 
@@ -11,29 +11,29 @@ import yaml
 from hypothesis import given, settings
 from pydantic import ValidationError
 
-import nikodym.selection  # importa la capa: puebla el hook _SELECTION_CONFIG_CLS
-from nikodym.core.config import (
+import bayesrisk.selection  # importa la capa: puebla el hook _SELECTION_CONFIG_CLS
+from bayesrisk.core.config import (
     INFRA_SECTIONS,
-    NikodymConfig,
+    BayesRiskConfig,
     config_hash,
     dump_config,
     loads_config,
 )
-from nikodym.core.config import schema as _schema_mod
-from nikodym.core.exceptions import ConfigError
-from nikodym.selection.config import (
+from bayesrisk.core.config import schema as _schema_mod
+from bayesrisk.core.exceptions import ConfigError
+from bayesrisk.selection.config import (
     CorrelationSelectionConfig,
     SelectionConfig,
     StabilitySelectionConfig,
     VifSelectionConfig,
 )
-from nikodym.selection.exceptions import (
+from bayesrisk.selection.exceptions import (
     SelectionError,
     SelectionFitError,
     SelectionForcedVifConflictError,
     SelectionTransformError,
 )
-from nikodym.testing.strategies import _config_cls_for_domain, nikodym_config_strategy
+from bayesrisk.testing.strategies import _config_cls_for_domain, bayesrisk_config_strategy
 
 # Golden nuevo tras añadir la sección computacional `stability=None` al payload del config_hash.
 GOLDEN_DEFAULT_CONFIG_HASH = "cbc42cfc02993f6646a744d66d2e0e348285e07761f59f434469afe2e8801610"
@@ -95,8 +95,8 @@ def test_gini_legacy_normaliza_deduplica_y_conserva_hash_canonico() -> None:
         legacy = SelectionConfig(priority_order=("iv", "gini", "auc", "name"))
     canonical = SelectionConfig(priority_order=("iv", "auc", "name"))
     assert legacy == canonical
-    assert config_hash(NikodymConfig(selection=legacy)) == config_hash(
-        NikodymConfig(selection=canonical)
+    assert config_hash(BayesRiskConfig(selection=legacy)) == config_hash(
+        BayesRiskConfig(selection=canonical)
     )
 
 
@@ -118,58 +118,58 @@ def test_round_trip_yaml_selectionconfig() -> None:
     assert SelectionConfig.model_validate(raw) == cfg
 
 
-def test_nikodymconfig_selection_instancia() -> None:
-    """Pasar una instancia ``SelectionConfig`` a ``NikodymConfig`` la conserva."""
+def test_bayesriskconfig_selection_instancia() -> None:
+    """Pasar una instancia ``SelectionConfig`` a ``BayesRiskConfig`` la conserva."""
     selection = SelectionConfig()
-    cfg = NikodymConfig(selection=selection)
+    cfg = BayesRiskConfig(selection=selection)
     assert isinstance(cfg.selection, SelectionConfig)
     assert cfg.selection is selection
 
 
-def test_nikodymconfig_selection_dict_coacciona() -> None:
+def test_bayesriskconfig_selection_dict_coacciona() -> None:
     """Un dict en ``selection`` se coacciona a ``SelectionConfig`` por el hook cargado."""
-    cfg = NikodymConfig(selection={"min_iv": 0.04, "correlation": {"threshold": 0.8}})
+    cfg = BayesRiskConfig(selection={"min_iv": 0.04, "correlation": {"threshold": 0.8}})
     assert isinstance(cfg.selection, SelectionConfig)
     assert cfg.selection.min_iv == 0.04
     assert cfg.selection.correlation.threshold == 0.8
 
 
-def test_nikodymconfig_selection_none_explicito() -> None:
+def test_bayesriskconfig_selection_none_explicito() -> None:
     """``selection=None`` explícito pasa por el validador y queda inactivo."""
-    assert NikodymConfig(selection=None).selection is None
+    assert BayesRiskConfig(selection=None).selection is None
 
 
-def test_nikodymconfig_selection_core_only_acepta_blob_json(
+def test_bayesriskconfig_selection_core_only_acepta_blob_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``selection`` acepta un blob JSON-canónico determinista."""
     monkeypatch.setattr(_schema_mod, "_SELECTION_CONFIG_CLS", None)
-    cfg = NikodymConfig(selection={"min_iv": 0.02, "correlation": {"threshold": 0.75}})
+    cfg = BayesRiskConfig(selection={"min_iv": 0.02, "correlation": {"threshold": 0.75}})
     assert cfg.selection == {"min_iv": 0.02, "correlation": {"threshold": 0.75}}
 
 
-def test_nikodymconfig_selection_core_only_rechaza_set(
+def test_bayesriskconfig_selection_core_only_rechaza_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Sin hook cargado, ``selection`` rechaza sets porque romperían el ``config_hash``."""
     monkeypatch.setattr(_schema_mod, "_SELECTION_CONFIG_CLS", None)
     with pytest.raises(ValidationError):
-        NikodymConfig(selection={"columnas": {"a", "b"}})
+        BayesRiskConfig(selection={"columnas": {"a", "b"}})
 
 
 def test_config_hash_cambia_al_variar_min_iv_selection() -> None:
     """``selection`` no es INFRA: cambiar ``min_iv`` cambia la identidad computacional."""
-    base = config_hash(NikodymConfig(selection=SelectionConfig()))
-    variado = config_hash(NikodymConfig(selection=SelectionConfig(min_iv=0.03)))
+    base = config_hash(BayesRiskConfig(selection=SelectionConfig()))
+    variado = config_hash(BayesRiskConfig(selection=SelectionConfig(min_iv=0.03)))
     assert "selection" not in INFRA_SECTIONS
     assert variado != base
 
 
 def test_config_hash_cambia_al_variar_correlation_threshold_selection() -> None:
     """Cambiar el umbral de correlación también cambia el ``config_hash``."""
-    base = config_hash(NikodymConfig(selection=SelectionConfig()))
+    base = config_hash(BayesRiskConfig(selection=SelectionConfig()))
     variado = config_hash(
-        NikodymConfig(
+        BayesRiskConfig(
             selection=SelectionConfig(correlation=CorrelationSelectionConfig(threshold=0.8))
         )
     )
@@ -178,17 +178,17 @@ def test_config_hash_cambia_al_variar_correlation_threshold_selection() -> None:
 
 def test_config_hash_cambia_al_variar_vif_threshold_selection() -> None:
     """Cambiar el umbral VIF también cambia el ``config_hash``."""
-    base = config_hash(NikodymConfig(selection=SelectionConfig()))
+    base = config_hash(BayesRiskConfig(selection=SelectionConfig()))
     variado = config_hash(
-        NikodymConfig(selection=SelectionConfig(vif=VifSelectionConfig(threshold=7.0)))
+        BayesRiskConfig(selection=SelectionConfig(vif=VifSelectionConfig(threshold=7.0)))
     )
     assert variado != base
 
 
 @settings(max_examples=12, deadline=None)
-@given(cfg=nikodym_config_strategy(sections=["selection"]))
-def test_nikodym_config_strategy_genera_configs_selection_validos(
-    cfg: NikodymConfig,
+@given(cfg=bayesrisk_config_strategy(sections=["selection"]))
+def test_bayesrisk_config_strategy_genera_configs_selection_validos(
+    cfg: BayesRiskConfig,
 ) -> None:
     """La estrategia pública genera configs raíz válidos con ``selection`` activa y serializable."""
     assert isinstance(cfg.selection, SelectionConfig)
@@ -246,7 +246,7 @@ def test_campos_selection_tienen_metadatos_ui() -> None:
             assert {"ui_widget", "ui_group", "ui_order"} <= set(extra)
 
 
-def test_selection_errors_descienden_de_nikodym_error() -> None:
+def test_selection_errors_descienden_de_bayesrisk_error() -> None:
     """Las excepciones de ``selection`` cuelgan de la raíz propia de la capa."""
     for error_cls in (
         SelectionError,
@@ -259,35 +259,35 @@ def test_selection_errors_descienden_de_nikodym_error() -> None:
 
 
 def test_import_selection_liviano_y_registra_hook_en_proceso_fresco() -> None:
-    """``import nikodym.selection`` registra el hook sin arrastrar scoring ni stack tabular."""
+    """``import bayesrisk.selection`` registra el hook sin arrastrar scoring ni stack tabular."""
     code = (
-        "import nikodym.selection, sys;"
-        "from nikodym.core.config import NikodymConfig;"
-        "from nikodym.selection.config import SelectionConfig;"
+        "import bayesrisk.selection, sys;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
+        "from bayesrisk.selection.config import SelectionConfig;"
         "bloqueados=[m for m in ('sklearn','statsmodels','scipy','pandas','optbinning') "
         "if m in sys.modules];"
         "assert not bloqueados, bloqueados;"
-        "cfg=NikodymConfig(selection={'min_iv': 0.03});"
+        "cfg=BayesRiskConfig(selection={'min_iv': 0.03});"
         "assert isinstance(cfg.selection, SelectionConfig)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_core_valida_selection_como_blob_opaco_sin_importar_selection() -> None:
-    """El core acepta ``selection`` JSON/dict sin importar ``nikodym.selection``."""
+    """El core acepta ``selection`` JSON/dict sin importar ``bayesrisk.selection``."""
     code = (
-        "from nikodym.core.config import NikodymConfig;"
+        "from bayesrisk.core.config import BayesRiskConfig;"
         "import sys;"
-        "cfg=NikodymConfig(selection={'min_iv': 0.02});"
+        "cfg=BayesRiskConfig(selection={'min_iv': 0.02});"
         "assert cfg.selection == {'min_iv': 0.02};"
-        "assert 'nikodym.selection' not in sys.modules"
+        "assert 'bayesrisk.selection' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_schema_coacciona_selection_y_roundtrip_sin_step() -> None:
     """B7.1 cablea sólo el config: schema coacciona y el YAML round-tripea sin ``SelectionStep``."""
-    cfg = NikodymConfig(selection={"min_iv": 0.04})
+    cfg = BayesRiskConfig(selection={"min_iv": 0.04})
     recargado = loads_config(dump_config(cfg))
 
     assert isinstance(cfg.selection, SelectionConfig)
@@ -299,22 +299,22 @@ def test_selection_getattr_desconocido_levanta_attributeerror() -> None:
     """La reexportación perezosa falla con ``AttributeError`` para nombres desconocidos."""
     atributo = "no_existe"
     with pytest.raises(AttributeError, match="no_existe"):
-        getattr(nikodym.selection, atributo)
+        getattr(bayesrisk.selection, atributo)
 
 
 def test_selection_getattr_carga_export_perezoso(monkeypatch: pytest.MonkeyPatch) -> None:
     """La ruta positiva de ``__getattr__`` carga y cachea un símbolo bajo demanda."""
     atributo = "SelectionConfigLazy"
     monkeypatch.setitem(
-        nikodym.selection._LAZY_EXPORTS,
+        bayesrisk.selection._LAZY_EXPORTS,
         atributo,
-        ("nikodym.selection.config", "SelectionConfig"),
+        ("bayesrisk.selection.config", "SelectionConfig"),
     )
     try:
-        assert getattr(nikodym.selection, atributo) is SelectionConfig
-        assert getattr(nikodym.selection, atributo) is SelectionConfig
+        assert getattr(bayesrisk.selection, atributo) is SelectionConfig
+        assert getattr(bayesrisk.selection, atributo) is SelectionConfig
     finally:
-        monkeypatch.delattr(nikodym.selection, atributo, raising=False)
+        monkeypatch.delattr(bayesrisk.selection, atributo, raising=False)
 
 
 def test_config_cls_for_domain_resuelve_selection() -> None:
@@ -324,4 +324,4 @@ def test_config_cls_for_domain_resuelve_selection() -> None:
 
 def test_config_hash_default_con_selection_none_golden() -> None:
     """El golden por defecto incluye la clave computacional ``selection`` con valor None."""
-    assert config_hash(NikodymConfig()) == GOLDEN_DEFAULT_CONFIG_HASH
+    assert config_hash(BayesRiskConfig()) == GOLDEN_DEFAULT_CONFIG_HASH

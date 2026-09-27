@@ -31,7 +31,7 @@ from typing import Final
 
 import pytest
 
-_RAIZ: Final = Path(__file__).resolve().parents[2] / "src" / "nikodym"
+_RAIZ: Final = Path(__file__).resolve().parents[2] / "src" / "bayesrisk"
 
 #: Prefijo de las funciones que **componen** una tupla de ``requires`` dentro de un dominio. Es una
 #: convención de nombre del repo (``tuning``, ``explain``, ``ifrs9``, ``internal``…), no una clase
@@ -294,11 +294,11 @@ def test_los_casos_de_m2_quedan_dentro_del_barrido(dominio: str) -> None:
 
 def _config_con_ml_no_default() -> object:
     """Config donde ``ml`` elige una fuente de variables distinta del default de fábrica."""
-    from nikodym.core.config import NikodymConfig, RunConfig
-    from nikodym.ml.config import MLConfig, MonotonicConfig
-    from nikodym.tuning.config import TuningConfig
+    from bayesrisk.core.config import BayesRiskConfig, RunConfig
+    from bayesrisk.ml.config import MLConfig, MonotonicConfig
+    from bayesrisk.tuning.config import TuningConfig
 
-    return NikodymConfig(
+    return BayesRiskConfig(
         ml=MLConfig(feature_source="selection_woe", monotonic=MonotonicConfig(mode="off")),
         tuning=TuningConfig(),
         run=RunConfig(steps=["tuning"]),
@@ -327,9 +327,9 @@ def test_check_pipeline_ya_no_rechaza_un_pipeline_que_corre() -> None:
     ``feature_source='selection_woe'`` el paso no abre nunca— sobre un pipeline perfectamente
     ejecutable.
     """
-    import nikodym
+    import bayesrisk
 
-    chequeo = nikodym.check_pipeline(_config_con_ml_no_default(), artifacts=_ARTEFACTOS_REALES)
+    chequeo = bayesrisk.check_pipeline(_config_con_ml_no_default(), artifacts=_ARTEFACTOS_REALES)
 
     assert chequeo.executable, f"sigue el falso rojo: {chequeo.message}"
 
@@ -341,9 +341,9 @@ def test_los_artefactos_que_el_paso_consume_dejan_de_declararse_inertes() -> Non
     Declaraba inertes los dos artefactos de ``selection`` que el paso iba a leer, así que el usuario
     recibía a la vez «te falta binning» (falso) y «lo de selection no lo usa nadie» (falso).
     """
-    import nikodym
+    import bayesrisk
 
-    chequeo = nikodym.check_pipeline(_config_con_ml_no_default(), artifacts=_ARTEFACTOS_REALES)
+    chequeo = bayesrisk.check_pipeline(_config_con_ml_no_default(), artifacts=_ARTEFACTOS_REALES)
 
     assert chequeo.inert_artifacts == (), f"siguen saliendo inertes: {chequeo.inert_artifacts}"
 
@@ -358,9 +358,11 @@ def test_check_pipeline_ya_no_acepta_un_pipeline_que_muere() -> None:
     Control positivo: los artefactos inyectados que el paso ya **no** lee salen como inertes, que es
     la afirmación simétrica y la que prueba que el veredicto cambió por la razón correcta.
     """
-    import nikodym
+    import bayesrisk
 
-    chequeo = nikodym.check_pipeline(_config_con_ml_no_default(), artifacts=_ARTEFACTOS_DEL_DEFAULT)
+    chequeo = bayesrisk.check_pipeline(
+        _config_con_ml_no_default(), artifacts=_ARTEFACTOS_DEL_DEFAULT
+    )
 
     assert not chequeo.executable, "sigue el falso verde"
     assert "selected_woe_frame" in (chequeo.message or "")
@@ -380,7 +382,7 @@ def test_una_fuente_diferida_no_entra_al_contrato_y_conserva_su_diagnostico() ->
     nombra la carencia y sus dos salidas. Un paso con ``data_raw`` no llega a correr nunca, así que
     omitirla del contrato no declara de menos: decide **cuál de los dos errores** se lee.
     """
-    from nikodym.ml.config import MLConfig
+    from bayesrisk.ml.config import MLConfig
 
     diferida = MLConfig(feature_source="data_raw").contrato_de_variables_declarado()
     normal = MLConfig(feature_source="selection_woe").contrato_de_variables_declarado()

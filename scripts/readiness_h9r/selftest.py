@@ -824,7 +824,7 @@ def _control_c_plus_one(root: Path, checkout_root: Path) -> dict[str, Any]:
             "request_bytes": cap_bytes + 1,
         },
     )
-    environment = {**os.environ, "NIKODYM_H9R_CONTROL_JOB_CAP_BYTES": str(cap_bytes)}
+    environment = {**os.environ, "BAYESRISK_H9R_CONTROL_JOB_CAP_BYTES": str(cap_bytes)}
     child = subprocess.Popen(
         [sys.executable, "-m", "scripts.readiness_h9r.probes", "memory"],
         cwd=checkout_root,
@@ -1788,7 +1788,7 @@ def run_harness_self_test(
     cap_controls = _kernel_cap_hypotheses()
 
     temporary_path: Path | None = None
-    with tempfile.TemporaryDirectory(prefix="nikodym-h9r-selftest-") as raw_temp:
+    with tempfile.TemporaryDirectory(prefix="bayesrisk-h9r-selftest-") as raw_temp:
         temporary_path = Path(raw_temp)
         controls = {
             "authority_preflight": _control_authority_preflight(temporary_path),

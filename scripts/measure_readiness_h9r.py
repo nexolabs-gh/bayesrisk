@@ -29,7 +29,8 @@ from typing import Any, cast
 
 ROOT = Path(os.path.abspath(__file__)).parents[1]
 
-_SAFE_HARNESS_LOCK_SHA256 = "32c611ad4b1e061c14e1262548bf30346610d7529a6e4fb7bc52c68ec3540d24"
+# uv.lock tras el renombre (2026-09-27, D-REN-6 b): el bloque del proyecto se llama bayesrisk.
+_SAFE_HARNESS_LOCK_SHA256 = "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322"
 _SAFE_HARNESS_DISTRIBUTIONS = {
     "cryptography": (
         "48.0.1",
@@ -1859,8 +1860,8 @@ def _verify_harness_source_snapshot(raw: Mapping[str, Any]) -> dict[str, Any]:
 
 def _load_external_harness_snapshot(command: str) -> dict[str, Any] | None:
     internal_commands = {"_worker", "_adapter", "_candidate", "_ui_client"}
-    manifest_raw = os.environ.get("NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST")
-    digest_raw = os.environ.get("NIKODYM_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256")
+    manifest_raw = os.environ.get("BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST")
+    digest_raw = os.environ.get("BAYESRISK_H9R_HARNESS_SNAPSHOT_MANIFEST_SHA256")
     if (manifest_raw is None) != (digest_raw is None):
         raise SystemExit("snapshot externo exige ruta y SHA-256 juntos")
     if manifest_raw is None:

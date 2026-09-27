@@ -16,24 +16,24 @@ import pytest
 from pandas.testing import assert_frame_equal
 from pydantic import ValidationError
 
-import nikodym.survival.results as survival_results
-from nikodym.survival.config import (
+import bayesrisk.survival.results as survival_results
+from bayesrisk.survival.config import (
     AftFamily as ConfigAftFamily,
 )
-from nikodym.survival.config import (
+from bayesrisk.survival.config import (
     DiscreteHazardLink as ConfigDiscreteHazardLink,
 )
-from nikodym.survival.config import (
+from bayesrisk.survival.config import (
     PdSource as ConfigPdSource,
 )
-from nikodym.survival.config import (
+from bayesrisk.survival.config import (
     SurvivalConfig,
 )
-from nikodym.survival.config import (
+from bayesrisk.survival.config import (
     SurvivalMethod as ConfigSurvivalMethod,
 )
-from nikodym.survival.exceptions import SurvivalTransformError
-from nikodym.survival.results import (
+from bayesrisk.survival.exceptions import SurvivalTransformError
+from bayesrisk.survival.results import (
     SurvivalCard,
     SurvivalDiagnostics,
     SurvivalResult,
@@ -454,7 +454,7 @@ def test_survival_result_valida_dataframes_y_consistencia() -> None:
 def test_survival_results_import_liviano_y_exports_publicos() -> None:
     code = (
         "import sys;"
-        "import nikodym.survival.results;"
+        "import bayesrisk.survival.results;"
         "blocked=[m for m in ('pandas','lifelines','statsmodels','sksurv') if m in sys.modules];"
         "assert not blocked, blocked"
     )

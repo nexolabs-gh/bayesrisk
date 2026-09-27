@@ -46,7 +46,7 @@ def _codigo_publicado() -> str:
     codigo = "\n".join(partes)
     # Ancla anti-vacuidad: unos delimitadores que envuelvan la nada se leen igual que un ejemplo
     # correcto, y este gate es lo único que ata la guía al motor.
-    assert "nikodym.run(" in codigo and '"currency"' in codigo, (
+    assert "bayesrisk.run(" in codigo and '"currency"' in codigo, (
         "el código extraído perdió la corrida o la declaración de moneda: el gate quedaría vacuo"
     )
     return codigo
@@ -80,7 +80,7 @@ def test_el_preset_de_la_guia_no_carga_ninguna_seccion_de_norma_local() -> None:
     una norma local cargado. El orquestador `provisioning` tampoco puede estar: exige **dos**
     fuentes distintas, así que su sola presencia obliga a un segundo motor.
     """
-    from nikodym.ui.presets import F5_INTERNA_PRESET_ID, get_preset
+    from bayesrisk.ui.presets import F5_INTERNA_PRESET_ID, get_preset
 
     config = get_preset(F5_INTERNA_PRESET_ID)["config"]
 
@@ -97,8 +97,8 @@ def test_ni_el_preset_ni_su_dataset_nombran_una_jurisdiccion() -> None:
     Cubre el caso exacto de D-JUR-8: el default `portfolio_col="cmf_portfolio"` era neutro en su
     título y su ayuda, y chileno en su **valor** — que es lo que se ejecuta.
     """
-    from nikodym.ui.datasets import list_datasets
-    from nikodym.ui.presets import F5_INTERNA_DATASET_ID, F5_INTERNA_PRESET_ID, get_preset
+    from bayesrisk.ui.datasets import list_datasets
+    from bayesrisk.ui.presets import F5_INTERNA_DATASET_ID, F5_INTERNA_PRESET_ID, get_preset
 
     preset = get_preset(F5_INTERNA_PRESET_ID)
     interna = preset["config"]["provisioning_internal"]
@@ -122,7 +122,7 @@ def test_todo_preset_del_catalogo_esta_curado_en_el_front() -> None:
     ``presetDisplay`` (``web/src/lib/presentation.ts``) decide la píldora de madurez así: si el
     preset no está en ``CURATED``, mira si su ``description`` contiene la palabra «experimental» y,
     si no, lo rotula **estable**. Un preset nuevo de provisiones —motor declarado experimental en
-    todo el paquete— nace por tanto prometiendo un contrato congelado bajo SemVer 1.x.
+    todo el paquete— nace por tanto prometiendo un contrato congelado bajo SemVer 2.x.
 
     No se arregla invirtiendo el default, que sólo cambiaría el sentido de la mentira: se arregla
     exigiendo que **todo** preset publicado esté curado, de modo que su madurez sea una decisión
@@ -130,7 +130,7 @@ def test_todo_preset_del_catalogo_esta_curado_en_el_front() -> None:
 
     Se vio abriendo la pantalla; ninguna suite compara esa píldora con la madurez del dominio.
     """
-    from nikodym.ui.presets import list_presets
+    from bayesrisk.ui.presets import list_presets
 
     fuente = (_RAIZ / "web/src/lib/presentation.ts").read_text(encoding="utf-8")
     # Ancla anti-vacuidad: si el bloque se renombra, este gate no puede pasar mirando a la nada.

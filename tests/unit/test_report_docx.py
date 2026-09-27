@@ -26,14 +26,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nikodym.core.config import NikodymConfig
-from nikodym.core.lineage import LineageBundle
-from nikodym.core.study import Study
-from nikodym.report.config import DocumentStructureConfig, DocxRenderConfig, ReportConfig
-from nikodym.report.docx import DocxReportRenderer
-from nikodym.report.exceptions import ReportDependencyError
-from nikodym.report.results import PlaceholderBlock, ReportInputBundle, ReportSection
-from nikodym.report.step import REPORT_REQUIRED_CARDS, ReportStep
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.lineage import LineageBundle
+from bayesrisk.core.study import Study
+from bayesrisk.report.config import DocumentStructureConfig, DocxRenderConfig, ReportConfig
+from bayesrisk.report.docx import DocxReportRenderer
+from bayesrisk.report.exceptions import ReportDependencyError
+from bayesrisk.report.results import PlaceholderBlock, ReportInputBundle, ReportSection
+from bayesrisk.report.step import REPORT_REQUIRED_CARDS, ReportStep
 
 _HAS_DOCX = importlib.util.find_spec("docx") is not None
 _SKIP_DOCX = pytest.mark.skipif(not _HAS_DOCX, reason="requiere el extra docx (python-docx)")
@@ -48,7 +48,7 @@ def _lineage() -> LineageBundle:
         config_hash="cfg123456789abcdef",
         root_seed=42,
         uv_lock_hash="uv123",
-        library_versions={"nikodym": "1.0.0"},
+        library_versions={"bayesrisk": "1.0.0"},
         determinism_caveats=[],
         created_at=datetime(2026, 6, 24, 9, 30, tzinfo=UTC),
         schema_version="1.0.0",
@@ -274,8 +274,8 @@ def test_docx_dice_las_filas_que_trae_de_verdad_si_su_cinturon_corta_bajo_la_vis
     La leyenda dice lo que el Word trae de verdad."""
     import docx
 
-    from nikodym.report.config import SectionPolicyConfig
-    from nikodym.report.docx import _MAX_DOCX_TABLE_ROWS
+    from bayesrisk.report.config import SectionPolicyConfig
+    from bayesrisk.report.docx import _MAX_DOCX_TABLE_ROWS
 
     n = 1_500
     bundle = _bundle().model_copy(
@@ -389,7 +389,7 @@ def test_render_docx_sin_python_docx_lanza_dependency_error(
     """La ausencia del extra se traduce a un error accionable, no a un ``ModuleNotFoundError``."""
     _bloquear_python_docx(monkeypatch)
 
-    with pytest.raises(ReportDependencyError, match=r"nikodym\[docx\]"):
+    with pytest.raises(ReportDependencyError, match=r"bayesrisk\[docx\]"):
         DocxReportRenderer.from_config(_config()).render(_bundle())
 
 
@@ -438,12 +438,12 @@ def test_step_sin_python_docx_emite_el_reporte_igual(
 
 
 def test_import_report_no_arrastra_python_docx_por_subprocess() -> None:
-    """``import nikodym.report`` NO importa python-docx (import perezoso, como WeasyPrint)."""
+    """``import bayesrisk.report`` NO importa python-docx (import perezoso, como WeasyPrint)."""
     code = (
         "import sys;"
         "sys.modules['docx'] = None;"
-        "import nikodym.report as report;"
-        "assert report.__name__ == 'nikodym.report';"
+        "import bayesrisk.report as report;"
+        "assert report.__name__ == 'bayesrisk.report';"
         "assert sys.modules.get('docx') is None"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
@@ -451,7 +451,7 @@ def test_import_report_no_arrastra_python_docx_por_subprocess() -> None:
 
 def _study_with_cards(config: ReportConfig) -> Study:
     """``Study`` con las ocho cards requeridas y una tabla, listo para ``ReportStep``."""
-    study = Study(NikodymConfig(report=config))
+    study = Study(BayesRiskConfig(report=config))
     study.run_context.lineage = _lineage()
     for domain, key in REPORT_REQUIRED_CARDS:
         study.artifacts.set(domain, key, {"summary": f"{domain}-card", "metric_sections": {}})

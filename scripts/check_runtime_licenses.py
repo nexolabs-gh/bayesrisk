@@ -51,7 +51,7 @@ _GENERIC_EVIDENCE = {
 # El wheel es `py3-none-any` y `pyproject.toml` declara `requires-python = ">=3.11"` con
 # clasificadores 3.11/3.12/3.13; el job `test` de `.github/workflows/ci.yml` corre
 # ubuntu, macos y windows por esas tres minor. Cualquiera de esos entornos es un
-# `pip install nikodym[all]` soportado, así que su cierre transitivo debe auditarse **corra donde
+# `pip install bayesrisk[all]` soportado, así que su cierre transitivo debe auditarse **corra donde
 # corra el gate**: evaluar los markers contra el intérprete del gate auditaba sólo un corte de la
 # matriz y descartaba en silencio todo pin de otra plataforma o versión.
 _SUPPORTED_PLATFORMS: tuple[tuple[str, str], ...] = (
@@ -953,7 +953,7 @@ def verify_declaration_sources(
 
 
 def _fetch_source(url: str) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": "nikodym-license-audit"})
+    request = urllib.request.Request(url, headers={"User-Agent": "bayesrisk-license-audit"})
     # La URL es https y su contenido queda anclado por sha256 antes de usarse.
     with urllib.request.urlopen(request, timeout=60) as response:
         return bytes(response.read())

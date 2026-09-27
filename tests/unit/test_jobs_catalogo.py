@@ -1,6 +1,6 @@
 """Gate del catálogo de trabajos (D-JOB-1/3/15, `_SDD-UI-POR-TRABAJOS.md` §6).
 
-El catálogo nombra secciones del formulario con **claves literales**, porque `nikodym.ui` es
+El catálogo nombra secciones del formulario con **claves literales**, porque `bayesrisk.ui` es
 *domain-agnostic* y no puede importar módulos de dominio para componerlas. Este gate es lo único que
 ata esos literales a la realidad, y por eso mide en las **dos direcciones**:
 
@@ -21,9 +21,9 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.ui import jobs
-from nikodym.ui.routes import jobs_payload
-from nikodym.ui.settings import UiConfig
+from bayesrisk.ui import jobs
+from bayesrisk.ui.routes import jobs_payload
+from bayesrisk.ui.settings import UiConfig
 
 # Espejo del lector de `test_column_roles.py` / `test_extra_ui_cubre_el_formulario.py`: el catálogo
 # de secciones navegables vive en TypeScript y aquí se lee del fuente, no se reescribe al lado.
@@ -194,7 +194,7 @@ def test_el_copy_del_catalogo_no_habla_en_jerga_interna() -> None:
     """
     prohibidos = re.compile(
         r"\b(None|True|False|null|config_hash|check_pipeline|provisioning_\w+|"
-        r"NikodymConfig|dataframe|DataFrame)\b"
+        r"BayesRiskConfig|dataframe|DataFrame)\b"
     )
     ofensores = [
         (job["id"], campo, valor)
@@ -289,7 +289,7 @@ def test_el_endpoint_sirve_el_catalogo_completo_con_la_oferta_marcada() -> None:
 
 
 def test_el_opt_in_del_lanzador_devuelve_la_oferta_completa() -> None:
-    """Los diez ofrecidos con `nikodym-ui --casos-de-referencia`, sin tocar el componente.
+    """Los diez ofrecidos con `bayesrisk-ui --casos-de-referencia`, sin tocar el componente.
 
     D-JUR-9.4: la partición del front se aplica sobre los ofrecidos, así que devolver los diez
     marcados hace reaparecer el bloque «Normativa local · casos de referencia» tal cual.

@@ -1,4 +1,4 @@
-"""Gates de la puerta guiada ``nikodym.Scorecard`` (enmienda FLUJO-GUIADO-SCORECARD, capa A).
+"""Gates de la puerta guiada ``bayesrisk.Scorecard`` (enmienda FLUJO-GUIADO-SCORECARD, capa A).
 
 Cubre D-FLU-1 (entrada mínima e inferencias declaradas), D-FLU-3 (``run(until=)`` como prefijo
 con hash propio y ``resume()`` como corrida nueva completa), D-FLU-4 (los dos estados y
@@ -24,11 +24,11 @@ import pytest
 from _proyeccion_canonica import diferencias, proyeccion_canonica
 from _ui_f1 import write_stacked_behavior_parquet
 
-import nikodym
-from nikodym.core.config import config_hash, loads_config
-from nikodym.guided import Scorecard, ScorecardInputError, ScorecardRunError
-from nikodym.guided.scorecard import GUIDED_STEP
-from nikodym.ui.presets import _STANDARD_CONFIG
+import bayesrisk
+from bayesrisk.core.config import config_hash, loads_config
+from bayesrisk.guided import Scorecard, ScorecardInputError, ScorecardRunError
+from bayesrisk.guided.scorecard import GUIDED_STEP
+from bayesrisk.ui.presets import _STANDARD_CONFIG
 
 
 @pytest.fixture(autouse=True)
@@ -146,7 +146,7 @@ def test_los_resultados_vacios_del_target_quedan_indeterminados_y_fuera_del_ajus
     """Pasada de cierre de Codex sobre la capa A: con `good_rule` vacía el motor toma por bueno
     todo lo que no es malo, también los resultados vacíos (operaciones sin desempeño maduro). La
     puerta arma las tres reglas y los vacíos quedan indeterminados: no se ajustan ni se puntúan."""
-    from nikodym.guided.summaries import _card
+    from bayesrisk.guided.summaries import _card
 
     frame = pd.read_parquet(fuente)
     frame["bad_flag"] = frame["bad_flag"].astype("Int64")
@@ -377,7 +377,7 @@ def test_los_defaults_de_la_firma_son_los_del_preset_f1() -> None:
         ),
         "validation": tuple(p["validation"]["families"]),
         "name": "scorecard",
-        "run_dir": "nikodym-runs",
+        "run_dir": "bayesrisk-runs",
         "review_every": 12,
     }
     for argumento, valor in esperado.items():
@@ -406,14 +406,14 @@ def test_purpose_enciende_la_gobernanza_y_track_el_tracking(fuente: Path, tmp_pa
 def test_las_secciones_infra_llegan_tipadas_sin_importar_sus_capas(
     fuente: Path, tmp_path: Path
 ) -> None:
-    """En un intérprete fresco nadie importó `nikodym.governance` ni `nikodym.tracking`; el
+    """En un intérprete fresco nadie importó `bayesrisk.governance` ni `bayesrisk.tracking`; el
     core deja esas secciones opacas (`dict`) y la puerta las coacciona igual: leer
     `sc.config.governance.purpose` no puede depender de qué se importó antes."""
     codigo = textwrap.dedent(
         f"""
-        import nikodym
+        import bayesrisk
 
-        sc = nikodym.Scorecard(
+        sc = bayesrisk.Scorecard(
             {str(fuente)!r}, target="bad_flag", id="loan_id", cohort="cohort",
             oot_cohorts=["oot"], name="prueba", run_dir={str(tmp_path / "corridas")!r},
             purpose="Decidir consumo.", owner="riesgo@banco",
@@ -441,9 +441,9 @@ def test_un_argumento_fuera_de_rango_se_rechaza_antes_de_correr(
         _puerta(fuente, tmp_path, max_bins=1)
 
 
-def test_nikodym_scorecard_es_un_export_perezoso() -> None:
-    assert nikodym.Scorecard is Scorecard
-    assert "Scorecard" in dir(nikodym)
+def test_bayesrisk_scorecard_es_un_export_perezoso() -> None:
+    assert bayesrisk.Scorecard is Scorecard
+    assert "Scorecard" in dir(bayesrisk)
 
 
 # ─────────────────────────── correr, parar y seguir (D-FLU-3, D-FLU-4) ──────────────────────────
@@ -554,7 +554,7 @@ def test_dos_corridas_a_la_vez_sobre_la_misma_carpeta_se_rechazan(
 ) -> None:
     """Pasada de cierre de Codex: dos procesos sobre el mismo `run_dir/name` mezclarían informe y
     evidencia. Un candado por carpeta rechaza la segunda corrida antes de mover nada."""
-    from nikodym.guided.scorecard import _bloquear_carpeta, _liberar_carpeta
+    from bayesrisk.guided.scorecard import _bloquear_carpeta, _liberar_carpeta
 
     sc = _puerta(fuente, tmp_path)
     sc.run()
@@ -609,7 +609,7 @@ def test_los_resultados_son_bit_a_bit_los_mismos_por_la_puerta_completa(
     sc = _puerta(fuente, tmp_path)
     sc.run()
     assert sc.study.run_context.status == "done", sc.study.run_context.error
-    completa = nikodym.run(loads_config(sc.to_yaml()), run_dir=tmp_path / "completa")
+    completa = bayesrisk.run(loads_config(sc.to_yaml()), run_dir=tmp_path / "completa")
     assert completa.run_context.status == "done", completa.run_context.error
     assert diferencias(proyeccion_canonica(sc.study), proyeccion_canonica(completa)) == []
     assert completa.run_context.run_id != sc.study.run_context.run_id

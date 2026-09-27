@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from nikodym.methodology import build_ifrs9_methodology_card, methodology_paragraphs
+from bayesrisk.methodology import build_ifrs9_methodology_card, methodology_paragraphs
 
 
 def test_ficha_ifrs9_deriva_activos_y_capacidades_de_config_y_cards() -> None:

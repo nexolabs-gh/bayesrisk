@@ -1,0 +1,1530 @@
+"""Renderizadores determinísticos de reportes HTML y PDF opcional (SDD-26 §4/§7).
+
+``HtmlReportRenderer`` transforma un :class:`~bayesrisk.report.results.ReportInputBundle` en HTML
+standalone usando Jinja2 con import perezoso. La salida básica es reproducible byte a byte:
+no usa reloj, UUIDs, rutas locales absolutas ni orden dependiente de ``hash()``.
+
+``PdfReportRenderer`` mantiene el PDF como ruta derivada y no crítica: renderiza y escribe el HTML
+básico como artefacto primario y, si está habilitado, genera un PDF con WeasyPrint (import perezoso)
+que escribe como efecto secundario en disco. Degrada con gracia a HTML si WeasyPrint no está
+disponible; el manifest devuelto describe siempre el artefacto HTML determinístico.
+
+:func:`build_document_view` es la **proyección canónica del documento** (portada, resumen, índice y
+secciones ya resueltas) y la fuente única que consumen los tres renderers: el HTML de aquí, el
+``.qmd`` de :mod:`bayesrisk.report.markdown` y el ``.docx`` de :mod:`bayesrisk.report.docx`. Un
+capítulo nuevo, un título distinto o una tabla que cambia de sitio se escriben **una vez**; los tres
+formatos lo heredan. Sin eso, tres renderers son tres documentos que divergen en la primera
+modificación.
+
+**Estable (SemVer 2.x).**
+"""
+
+from __future__ import annotations
+
+import base64
+import functools
+import hashlib
+import json
+import logging
+import math
+import numbers
+import os
+import re
+import warnings
+from collections.abc import Callable, Mapping, Sequence
+from decimal import Decimal
+from importlib import resources
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Final, Literal, TypeAlias, cast
+
+from pydantic import BaseModel
+
+from bayesrisk.report._manifest import (
+    DOCUMENT_TITLE,
+    IFRS9_DOCUMENT_TITLE,
+    PROVISIONING_DOCUMENT_TITLE,
+    REPORT_TEMPLATE_VERSION,
+    REPORT_TITLE,
+    html_report_id,
+)
+from bayesrisk.report.cifras import (
+    cifra,
+    conteo,
+    corte,
+    es_columna_de_conteo,
+    es_columna_de_pvalor,
+    pvalor,
+)
+from bayesrisk.report.config import (
+    AiNarrationConfig,
+    HtmlRenderConfig,
+    PdfRenderConfig,
+    ReportConfig,
+    SectionPolicyConfig,
+)
+from bayesrisk.report.document import (
+    APPENDIX_TABLES_ID,
+    KEY_TABLES,
+    PER_OBSERVATION_TABLES,
+    max_visible_rows,
+    ordered_sections,
+    table_title,
+)
+from bayesrisk.report.exceptions import (
+    ReportDependencyError,
+    ReportExportError,
+    ReportRenderError,
+)
+from bayesrisk.report.exports import data_export_refs
+from bayesrisk.report.results import (
+    AiNarrationBlock,
+    ReportInputBundle,
+    ReportManifest,
+    ReportSection,
+)
+from bayesrisk.stability.results import (
+    BAND_LABELS,
+    STABILITY_METRIC_LABELS,
+    TEMPORAL_AXIS_LABELS,
+)
+from bayesrisk.validation.results import (
+    BACKTEST_PARAMETER_LABELS,
+    BACKTEST_TEST_LABELS,
+    CALIBRATION_TEST_LABELS,
+    DISCRIMINATION_SOURCE_LABELS,
+    DISCRIMINATION_STATUS_LABELS,
+    PD_TEST_LABELS,
+    POOLED_SENTINEL,
+    STABILITY_SOURCE_LABELS,
+    TRAFFIC_LIGHT_LABELS,
+    VALIDATION_DECISION_LABELS,
+    VALIDATION_STATUS_LABELS,
+)
+
+if TYPE_CHECKING:
+    # Sólo el alias de tipo: importar ``charts`` en runtime crearía un borde de import hacia el
+    # módulo de matplotlib y rompería el import liviano del paquete que este renderer preserva.
+    from bayesrisk.report.charts import ChartFormat
+
+__all__ = ["HtmlReportRenderer", "PdfReportRenderer", "build_document_view"]
+
+_LOGGER: Final = logging.getLogger(__name__)
+
+JSONValue: TypeAlias = dict[str, Any] | list[Any] | str | int | float | bool | None
+TableCell: TypeAlias = str
+
+# Los bytes internos de un ``<svg>`` de matplotlib dependen de freetype y no son idénticos entre
+# sistemas operativos; el digest del manifest/golden los reemplaza por un placeholder para ser
+# reproducible cross-OS (el HTML en disco conserva los SVG). Non-greedy + DOTALL: cada gráfico se
+# recorta por separado (matplotlib no anida ``<svg>``).
+_SVG_STRIP_PATTERN: Final = re.compile(r"<svg\b[^>]*>.*?</svg>", re.DOTALL)
+_STRIPPED_SVG: Final = '<svg data-chart="stripped"></svg>'
+
+_HTML_TEMPLATE_ID: Final = "scorecard_basic_v1"
+_TEMPLATE_PACKAGE: Final = "bayesrisk.report.templates"
+_TEMPLATE_NAME: Final = "scorecard_report.html.j2"
+_CSS_FILES: Final[dict[str, str]] = {
+    "bayesrisk": "scorecard_report.css",
+    "plain": "scorecard_report_plain.css",
+}
+
+
+class HtmlReportRenderer:
+    """Render HTML standalone determinístico con Jinja2."""
+
+    def __init__(
+        self,
+        config: ReportConfig | HtmlRenderConfig | None = None,
+        *,
+        basename: str | None = None,
+        sections: SectionPolicyConfig | None = None,
+        ai: AiNarrationConfig | None = None,
+    ) -> None:
+        """Construye el renderer desde ``ReportConfig`` o ``HtmlRenderConfig``."""
+        self.config = _coerce_report_config(
+            config,
+            basename=basename,
+            sections=sections,
+            ai=ai,
+        )
+        self._last_bundle: ReportInputBundle | None = None
+        self._last_ai_blocks: tuple[AiNarrationBlock, ...] = ()
+
+    @classmethod
+    def from_config(cls, cfg: ReportConfig) -> HtmlReportRenderer:
+        """Construye ``HtmlReportRenderer`` desde ``BayesRiskConfig.report``."""
+        return cls(cfg)
+
+    def render(
+        self,
+        bundle: ReportInputBundle,
+        *,
+        ai_blocks: tuple[AiNarrationBlock, ...] = (),
+    ) -> str:
+        """Renderiza HTML standalone byte-determinístico desde el bundle lógico."""
+        try:
+            from jinja2 import Environment, PackageLoader, StrictUndefined
+        except ModuleNotFoundError as exc:
+            raise ReportDependencyError(
+                "No se pudo renderizar report.html: falta Jinja2. "
+                "Instale bayesrisk con dependencias base actualizadas y vuelva a ejecutar."
+            ) from exc
+
+        self._last_bundle = bundle
+        self._last_ai_blocks = ai_blocks
+        environment = Environment(
+            loader=PackageLoader("bayesrisk.report", "templates"),
+            autoescape=True,
+            undefined=StrictUndefined,
+            trim_blocks=True,
+            lstrip_blocks=True,
+            keep_trailing_newline=True,
+        )
+        environment.filters["cortes_de_identificador"] = _cortes_de_identificador
+        try:
+            document = build_document_view(bundle, config=self.config, ai_blocks=ai_blocks)
+            rendered = _load_template(environment).render(
+                css=_css_for_theme(self.config.html.theme),
+                theme=self.config.html.theme,
+                **document,
+            )
+        except ReportRenderError:
+            raise
+        except Exception as exc:
+            raise ReportRenderError(
+                "No se pudo renderizar report.html: dominio='report', plantilla="
+                f"'{self.config.html.template_id}', acción='revise el bundle y la plantilla'."
+            ) from exc
+        return _normalize_newlines(rendered)
+
+    def build_manifest(self, html: str) -> ReportManifest:
+        """Construye el manifiesto HTML canónico sin escribir archivos."""
+        bundle = self._last_bundle
+        if bundle is None:
+            raise ReportExportError(
+                "No se puede construir el manifest report.html porque no hay bundle "
+                "renderizado; acción='llame HtmlReportRenderer.render antes de build_manifest'."
+            )
+
+        digest = _digest_html(html)
+        ai_used = any(block.generated for block in self._last_ai_blocks)
+        return ReportManifest(
+            report_id=html_report_id(bundle, self.config),
+            title=REPORT_TITLE,
+            created_from_lineage_at=bundle.lineage.created_at.isoformat(),
+            template_id=self.config.html.template_id,
+            template_version=REPORT_TEMPLATE_VERSION,
+            output_format="html",
+            path="",
+            sha256=digest,
+            deterministic=self.config.html.deterministic_ids and not ai_used,
+            ai_enabled=self.config.ai.enabled or bool(self._last_ai_blocks),
+            ai_used=ai_used,
+            sections=ordered_sections(bundle.sections),
+        )
+
+    def write(self, html: str, *, output_dir: str) -> ReportManifest:
+        """Escribe el HTML en disco y devuelve un manifiesto reproducible."""
+        bundle = self._last_bundle
+        if bundle is None:
+            raise ReportExportError(
+                "No se puede exportar report.html porque no hay bundle renderizado; "
+                "acción='llame HtmlReportRenderer.render antes de write'."
+            )
+
+        directory = _prepare_output_dir(output_dir)
+        filename = f"{self.config.basename}.html"
+        output_path = directory / filename
+        normalized_html = _normalize_newlines(html)
+        payload = normalized_html.encode("utf-8")
+        temp_path = directory / f".{filename}.tmp"
+
+        try:
+            temp_path.write_bytes(payload)
+            temp_path.replace(output_path)
+        except OSError as exc:
+            temp_path.unlink(missing_ok=True)
+            raise ReportExportError(
+                "No se pudo escribir el reporte HTML: dominio='report', "
+                f"clave='{filename}', output_dir='{output_dir}', "
+                "acción='verifique permisos y espacio disponible'."
+            ) from exc
+
+        manifest = self.build_manifest(normalized_html)
+        return manifest.model_copy(update={"path": _manifest_path(directory, filename)})
+
+
+class PdfReportRenderer:
+    """Render opcional a PDF vía WeasyPrint sobre el HTML básico primario."""
+
+    def __init__(self, config: ReportConfig | PdfRenderConfig | None = None) -> None:
+        """Construye el renderer PDF desde ``ReportConfig`` o ``PdfRenderConfig``."""
+        if isinstance(config, PdfRenderConfig):
+            self.config = ReportConfig(pdf=config)
+        elif config is None:
+            self.config = ReportConfig()
+        else:
+            self.config = config
+
+    @classmethod
+    def from_config(cls, cfg: ReportConfig) -> PdfReportRenderer:
+        """Construye ``PdfReportRenderer`` desde ``BayesRiskConfig.report``."""
+        return cls(cfg)
+
+    def render(self, bundle: ReportInputBundle, *, output_dir: str) -> ReportManifest:
+        """Renderiza y escribe el HTML básico y, si procede, un PDF opcional en disco.
+
+        El HTML determinístico es el artefacto primario: se escribe siempre y su manifest es el
+        valor de retorno (igual que hoy con la ruta HTML). Con ``pdf.enabled`` se genera además un
+        PDF con WeasyPrint (import perezoso) que se escribe como efecto secundario en
+        ``{basename}.pdf`` y NO se refleja en el manifest. Si WeasyPrint no está disponible degrada
+        a HTML (``fail_if_unavailable=False``) o re-lanza la dependencia ausente (``True``).
+        """
+        html_renderer = HtmlReportRenderer.from_config(self.config)
+        html = html_renderer.render(bundle)
+        manifest = html_renderer.write(html, output_dir=output_dir)
+
+        # El uso directo del renderer sigue guiado por ``pdf.enabled``; el step, en cambio, decide
+        # por ``formats`` y llama a ``write_pdf_from_html`` sin pasar por ``render`` (SDD-26 §7).
+        if self.config.pdf.enabled:
+            self.write_pdf_from_html(html, output_dir=output_dir)
+        return manifest
+
+    def write_pdf_from_html(self, html: str, *, output_dir: str) -> Path | None:
+        """Escribe el PDF desde un HTML ya renderizado; devuelve su ``Path`` o ``None`` al degradar.
+
+        Recibe el HTML primario (que puede incluir la narrativa IA) y produce el PDF con WeasyPrint
+        (import perezoso), sin re-renderizar el HTML. Degrada con gracia según
+        ``pdf.fail_if_unavailable``: en ausencia de WeasyPrint re-lanza la dependencia (``True``) o
+        emite ``RuntimeWarning`` y devuelve ``None`` (``False``). En éxito escribe
+        ``{basename}.pdf`` y devuelve el ``Path`` real en disco.
+
+        El warning **propaga el diagnóstico de** :func:`~bayesrisk.report.pdf.render_pdf`, que
+        distingue "falta el paquete" de "el paquete está pero no encuentra sus nativas". Un texto
+        genérico ("WeasyPrint no está disponible") describía mal el segundo caso —el más común en
+        macOS y Windows, donde ``pip install bayesrisk[pdf]`` sí instaló WeasyPrint— y dejaba al
+        usuario reinstalando un paquete que ya tenía.
+        """
+        # Import perezoso: WeasyPrint (y sus nativas) nunca entra al import del paquete.
+        from bayesrisk.report.pdf import render_pdf
+
+        try:
+            pdf_bytes = render_pdf(html)
+        except ReportDependencyError as exc:
+            if self.config.pdf.fail_if_unavailable:
+                raise
+            warnings.warn(
+                f"{exc} — Se usó HTML básico determinístico sin PDF.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return None
+        return self._write_pdf(pdf_bytes, output_dir=output_dir)
+
+    def _write_pdf(self, pdf_bytes: bytes, *, output_dir: str) -> Path:
+        """Escribe el PDF con escritura atómica (tmp + ``replace``), idéntico al HTML."""
+        directory = _prepare_output_dir(output_dir)
+        filename = f"{self.config.basename}.pdf"
+        output_path = directory / filename
+        temp_path = directory / f".{filename}.tmp"
+        try:
+            temp_path.write_bytes(pdf_bytes)
+            temp_path.replace(output_path)
+        except OSError as exc:
+            temp_path.unlink(missing_ok=True)
+            raise ReportExportError(
+                "No se pudo escribir el reporte PDF: dominio='report', formato='pdf', "
+                f"clave='{filename}', output_dir='{output_dir}', "
+                "acción='verifique permisos y espacio disponible'."
+            ) from exc
+        return output_path
+
+
+def _coerce_report_config(
+    config: ReportConfig | HtmlRenderConfig | None,
+    *,
+    basename: str | None,
+    sections: SectionPolicyConfig | None,
+    ai: AiNarrationConfig | None,
+) -> ReportConfig:
+    if isinstance(config, HtmlRenderConfig):
+        return ReportConfig(
+            basename=basename or "scorecard_report",
+            html=config,
+            sections=sections or SectionPolicyConfig(),
+            ai=ai or AiNarrationConfig(),
+        )
+    if config is None:
+        if basename is None and sections is None and ai is None:
+            return ReportConfig()
+        return ReportConfig(
+            basename=basename or "scorecard_report",
+            sections=sections or SectionPolicyConfig(),
+            ai=ai or AiNarrationConfig(),
+        )
+    return config
+
+
+def build_document_view(
+    bundle: ReportInputBundle,
+    *,
+    config: ReportConfig,
+    ai_blocks: tuple[AiNarrationBlock, ...] = (),
+    chart_format: ChartFormat = "svg",
+) -> dict[str, Any]:
+    """Proyecta el documento completo a datos planos, sin decidir nada del formato de salida.
+
+    Es el contrato que comparten HTML, Markdown y Word: mismos capítulos, mismo índice, mismas
+    tablas y los mismos bloques POR COMPLETAR. Cada renderer sólo decide **cómo se ve** cada bloque,
+    nunca **qué bloques hay** ni en qué orden. ``chart_format`` es lo único que varía por destino:
+    el HTML y el ``.qmd`` embeben SVG; Word no los admite y pide PNG.
+    """
+    section_views = _section_views(bundle, ai_blocks, config, chart_format)
+    return {
+        "title": "Reporte IFRS 9 / ECL" if _is_ifrs9_run(bundle) else REPORT_TITLE,
+        "document_title": _document_title(bundle),
+        "cover_kicker": (
+            "Informe regulatorio — pérdida crediticia esperada"
+            if _is_ifrs9_run(bundle)
+            else "Informe de validación de modelos"
+        ),
+        "exec_scope_note": _exec_scope_note(bundle),
+        "template_id": config.html.template_id,
+        "template_version": REPORT_TEMPLATE_VERSION,
+        "created_from_lineage_at": bundle.lineage.created_at.isoformat(),
+        "emitted_date": _emitted_date(bundle),
+        "lineage": _lineage_view(bundle),
+        "cover": _cover_view(bundle, config),
+        "executive": _executive_view(bundle),
+        "toc": _toc_entries(section_views),
+        "sections": section_views,
+    }
+
+
+def _section_views(
+    bundle: ReportInputBundle,
+    ai_blocks: tuple[AiNarrationBlock, ...],
+    config: ReportConfig,
+    chart_format: ChartFormat = "svg",
+) -> list[dict[str, Any]]:
+    """Proyecta cada sección a la vista que consume su parcial, según su ``kind``.
+
+    El dump (payload crudo y tablas completas) sólo se emite donde corresponde —los anexos—; el
+    cuerpo lleva prosa, las tablas que importan y sus gráficos. Las tablas que el cuerpo ya mostró
+    **no se repiten** en el anexo: se acumulan en ``shown`` a medida que se proyectan las secciones
+    (que llegan en orden canónico, con los anexos al final) y el anexo publica el complemento.
+    """
+    narratives = {block.section_id: block for block in ai_blocks}
+    views: list[dict[str, Any]] = []
+    shown: set[str] = set()
+    for section in ordered_sections(bundle.sections):
+        is_appendix = section.kind == "appendix"
+        tables = _tables_for_section(bundle, section, config, shown=shown)
+        shown.update(table["key"] for table in tables)
+        views.append(
+            {
+                "id": section.id,
+                "html_id": _element_id("section", section.id),
+                "kind": section.kind,
+                "level": section.level,
+                "number": section.number,
+                "title": section.title,
+                "status": section.status,
+                "source": _section_source(section),
+                "body": list(section.body),
+                "placeholder": _placeholder_view(section),
+                "payload_items": _mapping_items(section.payload) if is_appendix else [],
+                "metric_items": _mapping_items(section.metric_sections) if is_appendix else [],
+                "tables": tables,
+                "charts": _charts_for_section(bundle, section, config, chart_format),
+                "data_exports": _data_exports_view(bundle, section, config),
+                "narration": _narration_view(narratives.get(section.id), config.ai.label_ai_text),
+                "summary": _summary_view(section),
+            }
+        )
+    return views
+
+
+def _summary_view(section: ReportSection) -> dict[str, Any] | None:
+    """La página ejecutiva (``kind="summary"``): el resumen final tal como el builder lo dejó.
+
+    ``final`` es ``FinalSummary.to_dict()`` —celdas ya escritas como las lee una persona— o
+    ``None`` con ``error`` poblado; ``labels`` son los rótulos de sus bloques, la misma fuente
+    que la consola y el notebook. Los tres renderers pintan este dict, ninguno lo recalcula.
+    """
+    if section.kind != "summary":
+        return None
+    payload = section.payload
+    return {
+        "final": payload.get("final"),
+        "labels": dict(payload.get("labels") or {}),
+        "sin_alertas": str(payload.get("sin_alertas") or ""),
+        "sin_decisiones": str(payload.get("sin_decisiones") or ""),
+        "error": payload.get("error"),
+    }
+
+
+def _placeholder_view(section: ReportSection) -> dict[str, Any] | None:
+    """Proyecta el bloque POR COMPLETAR; ``None`` cuando el config pide ocultarlo."""
+    if section.placeholder is None:
+        return None
+    return {
+        "title": section.placeholder.title,
+        "guidance": list(section.placeholder.guidance),
+    }
+
+
+def _toc_entries(views: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Genera el índice desde las secciones ya proyectadas: el documento se indexa a sí mismo.
+
+    La página ejecutiva (``kind="summary"``) va tras la portada y antes del resumen ejecutivo, y
+    el índice la enumera en ese orden: el índice dice lo que el documento hace.
+    """
+    entries: list[dict[str, Any]] = [
+        {
+            "href": f"#{view['html_id']}",
+            "number": "",
+            "title": str(view["title"]),
+            "level": int(view["level"]),
+        }
+        for view in views
+        if view["kind"] == "summary"
+    ]
+    entries.append(
+        {"href": "#exec-summary", "number": "", "title": "Resumen ejecutivo", "level": 1}
+    )
+    for view in views:
+        if view["kind"] in {"toc", "summary"}:
+            continue
+        entries.append(
+            {
+                "href": f"#{view['html_id']}",
+                "number": _display_number(view),
+                "title": str(view["title"]),
+                "level": int(view["level"]),
+            }
+        )
+    return entries
+
+
+def _display_number(view: Mapping[str, Any]) -> str:
+    """Numeración visible: '4.3' en los capítulos, 'Anexo B' en los anexos de primer nivel."""
+    number = str(view["number"])
+    if not number:
+        return ""
+    if view["kind"] == "appendix" and int(view["level"]) == 1:
+        return f"Anexo {number}"
+    return number
+
+
+def _cover_view(bundle: ReportInputBundle, config: ReportConfig) -> list[dict[str, Any]]:
+    """Campos de portada: lo declarado se imprime; lo no declarado queda en blanco, no inventado."""
+    document = config.document
+    campos = (
+        ("Modelo", document.model_name),
+        ("Entidad", document.entity),
+        ("Cartera", document.portfolio),
+        ("Responsable del desarrollo", document.author),
+        ("Versión del informe", document.version),
+    )
+    del bundle
+    return [
+        {"label": label, "value": value.strip(), "filled": bool(value.strip())}
+        for label, value in campos
+    ]
+
+
+def _emitted_date(bundle: ReportInputBundle) -> str:
+    """Fecha de emisión legible (``YYYY-MM-DD``) derivada del lineage, no del reloj de pared.
+
+    El timestamp completo con microsegundos sigue íntegro en el manifest y en el Anexo A; en la
+    portada de un informe firmable lo que corresponde es una fecha.
+    """
+    return bundle.lineage.created_at.date().isoformat()
+
+
+# Dominios cuya presencia convierte la corrida en «de provisiones» a efectos del título. El
+# orquestador (`provisioning`) cuenta: publica la regla del máximo, que es el titular del B-1.
+_PROVISIONING_CARDS: Final[frozenset[str]] = frozenset(
+    {"provisioning_cmf", "provisioning_internal", "provisioning", "provisioning_ifrs9"}
+)
+
+
+def _is_ifrs9_run(bundle: ReportInputBundle) -> bool:
+    """Una corrida ECL «pura»: calculó IFRS 9 y no corrió el scorecard (SDD-16)."""
+    return "provisioning_ifrs9" in bundle.cards and "scorecard" not in bundle.cards
+
+
+def _document_title(bundle: ReportInputBundle) -> str:
+    """Titula el documento según lo que la corrida ES, compartido por HTML, ``.qmd`` y Word.
+
+    Una corrida IFRS 9 sin scorecard no es una validación de scorecard; titularla así en la
+    portada sería describir otro documento. Simétricamente, una corrida que calculó provisiones
+    **además** del scorecard tampoco es sólo una validación de scorecard: el usuario la corrió por
+    la provisión, y el título debe nombrarla.
+    """
+    if _is_ifrs9_run(bundle):
+        return IFRS9_DOCUMENT_TITLE
+    if _PROVISIONING_CARDS & bundle.cards.keys():
+        return PROVISIONING_DOCUMENT_TITLE
+    return DOCUMENT_TITLE
+
+
+def _exec_scope_note(bundle: ReportInputBundle) -> str:
+    """Nota de alcance del resumen ejecutivo, coherente con lo que la corrida calculó.
+
+    El texto histórico decía «la integración con IFRS 9 corresponde a fases posteriores»: falso
+    —y en la primera página— cuando el capítulo central del informe ES la ECL IFRS 9.
+    """
+    validation = bundle.cards.get("validation") if "validation" in bundle.results else None
+    families = set(validation.get("families_run", ())) if isinstance(validation, Mapping) else set()
+    if _is_ifrs9_run(bundle) and validation is not None:
+        backtesting = (
+            " e incluyó backtesting de la ECL"
+            if "backtesting" in families
+            else "; no incluyó backtesting de la ECL"
+        )
+        return (
+            "Alcance: cálculo de la pérdida crediticia esperada IFRS 9 (función experimental) y "
+            f"validación formal{backtesting}. Todos los valores provienen de la corrida trazada "
+            "en la portada: no se completan con supuestos."
+        )
+    if _is_ifrs9_run(bundle):
+        return (
+            "Alcance: cálculo de la pérdida crediticia esperada IFRS 9 (función experimental). "
+            "Esta corrida no ejecutó la capa de validación formal ni el backtesting de la ECL; el "
+            "informe no infiere sus resultados. Todos los valores provienen de la corrida trazada "
+            "en la portada: no se completan con supuestos."
+        )
+    if validation is not None:
+        return (
+            "Alcance: scorecard y validación formal de las familias configuradas. El capítulo "
+            "«Validación formal» reproduce el resultado que publicó el motor; el veredicto "
+            "permanece bajo responsabilidad humana. Todos los valores provienen de la corrida "
+            "trazada en la portada: no se completan con supuestos."
+        )
+    return (
+        "Alcance: construcción y evaluación del scorecard. Esta corrida no ejecutó la capa de "
+        "validación formal; el informe no infiere sus resultados. Todos los valores provienen de "
+        "la corrida trazada en la portada: no se completan con supuestos."
+    )
+
+
+def _executive_view(bundle: ReportInputBundle) -> dict[str, Any]:
+    """Métricas clave del resumen ejecutivo (AUC/Gini/KS y PSI) con la banda del motor."""
+    from bayesrisk.report.prose import executive_view
+
+    view = executive_view(bundle)
+    return {
+        "metrics": [
+            {
+                "label": metric.label,
+                "scope": metric.scope,
+                "value": metric.value,
+                "band": metric.band,
+                "band_class": _band_class(metric.band),
+            }
+            for metric in view.metrics
+        ],
+        "notes": list(view.notes),
+    }
+
+
+def _band_class(band: str) -> str:
+    """Clase CSS del semáforo: sólo se colorea lo que el motor sí evaluó.
+
+    ⚠️ El mapa es por **rótulo publicado**, no por slug: la vista ejecutiva ya trae la banda
+    traducida. Una banda sin entrada se pinta neutra, así que el semáforo mentiría por omisión —y
+    ése fue el defecto real: al traducir las bandas del PSI (D-SC-11) este tercer consumidor no
+    estaba censado y una banda de revisión se habría publicado en gris.
+
+    🔴 Por eso las palabras **se leen de su fuente única** en vez de repetirse aquí: cambiar
+    «Revisar» en :mod:`bayesrisk.stability.results` o «Falla» en :mod:`bayesrisk.validation.results`
+    mueve el rótulo y su color a la vez, que es lo que la repetición no garantizaba. Sólo quedan
+    literales las tres de discriminación, que no tienen todavía una fuente propia. Lo gatea
+    ``test_prosa_factual``.
+    """
+    if band in {
+        "Bajo el umbral configurado",
+        BAND_LABELS["redevelop"],
+        VALIDATION_STATUS_LABELS["fail"],
+    }:
+        return "band-alert"
+    if band in {BAND_LABELS["review"], VALIDATION_STATUS_LABELS["warn"]}:
+        return "band-warn"
+    if band in {"Sin alertas", BAND_LABELS["stable"], VALIDATION_STATUS_LABELS["pass"]}:
+        return "band-ok"
+    return "band-none"
+
+
+def _lineage_view(bundle: ReportInputBundle) -> dict[str, str]:
+    lineage = bundle.lineage
+    return {
+        "git_sha": _display_scalar(lineage.git_sha, key_path=("git_sha",)),
+        "data_hash": _display_scalar(lineage.data_hash, key_path=("data_hash",)),
+        "config_hash": _display_scalar(lineage.config_hash, key_path=("config_hash",)),
+        "root_seed": _display_scalar(lineage.root_seed, key_path=("root_seed",)),
+    }
+
+
+def _section_source(section: ReportSection) -> str:
+    domain = section.source_domain or "sin_dominio"
+    key = section.source_key or "sin_clave"
+    return f"{domain}.{key}"
+
+
+def _mapping_items(value: Mapping[str, Any]) -> list[dict[str, str | bool]]:
+    items: list[dict[str, str | bool]] = []
+    for raw_key in sorted(value, key=str):
+        key = str(raw_key)
+        rendered = _display_value(value[raw_key], key_path=(key,))
+        items.append({"key": key, "value": rendered, "multiline": "\n" in rendered})
+    return items
+
+
+def _narration_view(block: AiNarrationBlock | None, label_ai_text: bool) -> dict[str, str] | None:
+    """Muestra el bloque narrativo sólo si aporta algo que la prosa del cuerpo no dice ya.
+
+    La narrativa determinista **es** el cuerpo de la sección (``body``): repetirla como bloque
+    aparte duplicaría el texto. Se emite, entonces, sólo cuando la escribió la IA (opt-in) o cuando
+    hay que declarar que la IA degradó a la ruta básica.
+    """
+    if block is None or (not block.generated and not block.warning):
+        return None
+    label = "Narrativa generada por IA" if label_ai_text and block.generated else ""
+    warning = block.warning or ""
+    return {"text": block.text, "label": label, "warning": warning}
+
+
+def _tables_for_section(
+    bundle: ReportInputBundle,
+    section: ReportSection,
+    config: ReportConfig,
+    *,
+    shown: set[str],
+) -> list[dict[str, Any]]:
+    """Resuelve qué tablas muestra una sección.
+
+    El cuerpo muestra las de :data:`~bayesrisk.report.document.KEY_TABLES` del dominio, que son las
+    que sostienen el juicio de validación. El anexo de tablas publica **el resto** de las tablas
+    agregadas —binning por variable, correlación, estabilidad—: lo que el cuerpo no mostró, no lo
+    que ya mostró. Repetir una tabla íntegra en dos sitios no añade trazabilidad, añade páginas.
+
+    Las tablas **por observación** no salen en ninguna de las dos: son el dataset, no el informe, y
+    se entregan completas como adjuntos (:func:`_data_exports_view`).
+    """
+    if section.id == APPENDIX_TABLES_ID:
+        keys: tuple[str, ...] = tuple(
+            key
+            for key in sorted(bundle.tables, key=str)
+            if key not in shown and key not in PER_OBSERVATION_TABLES
+        )
+    elif section.id.startswith("validation.") and section.status == "included":
+        keys = (section.id,) if section.id in bundle.tables else ()
+    elif section.kind == "data" and section.source_domain and section.status == "included":
+        keys = tuple(
+            key
+            for key in KEY_TABLES.get(section.source_domain, ())
+            if key in bundle.tables and key not in PER_OBSERVATION_TABLES
+        )
+    else:
+        keys = ()
+    internal_card = bundle.cards.get("provisioning_internal")
+    internal_grouping = (
+        str(internal_card.get("grouping") or "") if isinstance(internal_card, Mapping) else ""
+    )
+    max_rows = config.sections.max_table_rows
+    return [
+        _table_view(
+            key,
+            bundle.tables[key],
+            # La tasa por período o cohorte lleva además el tope contractual de 1.000 (cierre 1
+            # de D-SC): un máximo configurado alto no la devuelve a la tabla entera.
+            max_rows=max_visible_rows(key, max_rows),
+            internal_grouping=internal_grouping,
+            bin_labels=bundle.bin_labels,
+        )
+        for key in keys
+    ]
+
+
+def _data_exports_view(
+    bundle: ReportInputBundle,
+    section: ReportSection,
+    config: ReportConfig,
+) -> dict[str, Any]:
+    """Declara, en el anexo de tablas, dónde quedó el detalle por observación.
+
+    El documento no calla lo que sacó: nombra cada tabla por observación, su tamaño real (completo,
+    no el truncado que antes se mostraba) y el archivo adjunto que la entrega. Si no se pidió
+    ``csv`` ni ``xlsx``, dice exactamente eso —que el detalle no se emitió y cómo pedirlo— en vez de
+    referenciar un archivo que no existe.
+    """
+    if section.id != APPENDIX_TABLES_ID:
+        return {}
+    keys = tuple(key for key in sorted(bundle.tables, key=str) if key in PER_OBSERVATION_TABLES)
+    if not keys:
+        return {}
+    refs = data_export_refs(bundle.tables, config=config)
+    return {
+        "requested": bool(refs),
+        "attachments": [
+            {
+                "title": ref.title,
+                "key": ref.table_key,
+                "rows": _thousands(ref.rows),
+                "filename": ref.filename,
+                "sheet": ref.sheet,
+            }
+            for ref in refs
+        ],
+        "pending": [
+            {
+                "title": table_title(key),
+                "key": key,
+                "rows": _thousands(len(bundle.tables[key].index)),
+            }
+            for key in keys
+        ]
+        if not refs
+        else [],
+    }
+
+
+def _thousands(value: int) -> str:
+    """Formatea un conteo con el separador de miles del informe (español: ``1.234``)."""
+    return f"{value:,}".replace(",", ".")
+
+
+_AUDIT_ONLY_COLUMNS: Final[frozenset[str]] = frozenset({"warning_codes"})
+"""Columnas de audit-trail que NO se pintan en NINGUNA tabla del informe (alcance global).
+
+`warning_codes` es un contrato legítimo de los resultados (`provisioning/ifrs9/results.py`) y sigue
+viajando entero en el JSON serializado, en el audit y en el `ModelCard`: **no se pierde nada**. Lo
+que se retira es su render como columna de una tabla del documento, donde el mismo código
+—`FALTA-DATO-IFRS-4`— se repetía en las doce filas de «ECL por etapa», junto a cifras contables y
+en una tabla de portada. Ahí un código interno no informa: el hecho que declara ya está dicho dos
+veces en prosa completa, en la ficha metodológica y en la narración del capítulo, que es donde un
+lector lo entiende.
+
+Condición para retirar una columna aquí: **el hecho que publica debe estar declarado en prosa**. Sin
+esa condición, esto sería ocultar una limitación, que es exactamente lo contrario de lo que el
+informe promete.
+"""
+
+_AUDIT_ONLY_COLUMNS_BY_TABLE: Final[Mapping[str, frozenset[str]]] = {
+    "validation.calibration": frozenset({"green_alpha", "red_alpha", "not_evaluable_reason"}),
+}
+"""Columnas de auditoría que NO se pintan en UNA tabla concreta (alcance por clave de tabla).
+
+Misma condición que arriba —el hecho está en prosa— y una razón más para indexar por tabla y no
+por nombre: un nombre de columna es también un nombre de variable del usuario. Con el filtro
+global, una cartera con una variable llamada `green_alpha` la habría perdido de la matriz de
+correlaciones (hallazgo de la revisión adversarial de la enmienda VALIDACION-COTEJADA).
+
+`validation.calibration`: `green_alpha`/`red_alpha` son los cortes con que se decidió el color de
+cada fila de grado (D-VAL-15). Viajan en el JSON, en el CSV y en la card; en el documento van
+nulos en Hosmer-Lemeshow y Brier —dos encabezados crudos con celdas vacías para toda corrida sin
+contraste, incluida la demo— y el capítulo los nombra en prosa cuando corrió el contraste.
+`not_evaluable_reason` es la causa por la que un Hosmer-Lemeshow quedó sin veredicto (D-VAL-17):
+un identificador cerrado que la prosa de la familia traduce a palabras con sus números, y que en la
+tabla habría sido una columna de slugs vacía en toda corrida con potencia, incluida la demo.
+"""
+
+
+def _audit_only_columns(key: str) -> frozenset[str]:
+    """Las columnas que la tabla ``key`` no pinta: las globales más las suyas."""
+    return _AUDIT_ONLY_COLUMNS | _AUDIT_ONLY_COLUMNS_BY_TABLE.get(key, frozenset())
+
+
+def _public_labels_by_table() -> Mapping[str, Mapping[str, Mapping[str, str]]]:
+    """Qué celdas categóricas de qué tabla se pintan con su palabra pública, y con qué mapa.
+
+    Copy, no diseño (autorizado el 2026-09-15): la tabla «Validación formal · calibración» del
+    documento imprimía los identificadores crudos del DTO —``hosmer_lemeshow``, ``pass``,
+    ``not_evaluable``, ``performance_artifact``— mientras el panel y la guía ya los traducían con
+    los mapas de fuente única de ``bayesrisk.validation.results``. Aquí se aplican esos mismos mapas
+    —ninguna palabra nueva; los de estabilidad son los de ``bayesrisk.stability.results`` que la
+    prosa ya usa— **sólo** en las cuatro tablas ``validation.*`` y por clave de tabla, como el
+    filtro de columnas de auditoría: una tabla ajena con una columna llamada ``test`` o
+    ``decision`` se sigue pintando cruda, porque su vocabulario no es éste. Los encabezados no se
+    tocan (los gates de las capas A y B exigen las trece columnas literales) y el valor del JSON,
+    del CSV y de la card sigue siendo el identificador.
+
+    Es una función y no una constante de módulo porque ``_partition_label``/``_comparison_label``
+    viven en la prosa, que se importa perezosamente aquí.
+    """
+    from bayesrisk.report.prose import _COMPARISON_LABELS, _PARTITION_LABELS
+
+    # La decisión de una fila de estabilidad puede valer ``warn`` (banda de revisión), que el mapa
+    # de veredictos de fila no tiene: la palabra es la del estado técnico, «Revisar».
+    stability_decision = {**VALIDATION_DECISION_LABELS, "warn": VALIDATION_STATUS_LABELS["warn"]}
+    calibration_test = {**CALIBRATION_TEST_LABELS, **PD_TEST_LABELS}
+    # La fila de estabilidad temporal lleva en ``comparison`` el eje (``period``/``cohort``), no
+    # un par de particiones.
+    stability_comparison = {**_COMPARISON_LABELS, **TEMPORAL_AXIS_LABELS}
+    return {
+        # D-CPY-1: la tabla de particiones del informe pintaba las cuatro claves crudas. La clave
+        # es el nombre exacto de la columna, que es como la busca `_table_view`.
+        "data.partitions": {"Partición": _PARTITION_LABELS},
+        "validation.discrimination": {
+            "partition": _PARTITION_LABELS,
+            "source": DISCRIMINATION_SOURCE_LABELS,
+            "status": DISCRIMINATION_STATUS_LABELS,
+        },
+        "validation.calibration": {
+            "partition": _PARTITION_LABELS,
+            "test": calibration_test,
+            "decision": VALIDATION_DECISION_LABELS,
+            "traffic_light": TRAFFIC_LIGHT_LABELS,
+        },
+        "validation.stability": {
+            "metric": STABILITY_METRIC_LABELS,
+            "comparison": stability_comparison,
+            "band": BAND_LABELS,
+            "source": STABILITY_SOURCE_LABELS,
+            "status": DISCRIMINATION_STATUS_LABELS,
+            "decision": stability_decision,
+        },
+        "validation.backtesting": {
+            "parameter": BACKTEST_PARAMETER_LABELS,
+            "test": BACKTEST_TEST_LABELS,
+            "decision": VALIDATION_DECISION_LABELS,
+        },
+    }
+
+
+def _public_cell(value: Any, labels: Mapping[str, str] | None) -> Any:
+    """La palabra pública de una celda categórica, o el valor tal cual si no hay mapa o no casa."""
+    if labels is None or not isinstance(value, str):
+        return value
+    return labels.get(value, value)
+
+
+#: Las pruebas de calibración que agrupan la población: sus filas no tienen partición.
+_GRADE_TESTS: Final[frozenset[str]] = frozenset({"binomial", "jeffreys"})
+#: Las pruebas de calibración por partición: sus filas no tienen grado.
+_PARTITION_TESTS: Final[frozenset[str]] = frozenset({"hosmer_lemeshow", "brier"})
+
+
+def _public_record(key: str, record: Mapping[Any, Any]) -> Mapping[Any, Any]:
+    """Vacía las ausencias ESTRUCTURALES de una fila antes de pintarla, según el tipo de fila.
+
+    Sólo ``validation.calibration``: las filas de Hosmer-Lemeshow y Brier no son por grado y las de
+    grado agrupan la población, y el evaluador escribe en esas celdas el sentinel ``ALL``
+    (``POOLED_SENTINEL``), que no es un grado ni una partición. Se vacía **por tipo de fila** —lo
+    dice la columna ``test`` del propio DTO— y no por valor (pasada 4 de Codex sobre los rótulos):
+    un grado de rating real llamado «ALL» en una fila de grado sigue visible.
+    """
+    if key != "validation.calibration":
+        return record
+    test = record.get("test")
+    ajustado = dict(record)
+    if test in _PARTITION_TESTS and ajustado.get("grade") == POOLED_SENTINEL:
+        ajustado["grade"] = None
+    if test in _GRADE_TESTS and ajustado.get("partition") == POOLED_SENTINEL:
+        ajustado["partition"] = None
+    return ajustado
+
+
+#: El prefijo de las tablas de binning por variable (``binning.tables.<variable>``).
+_BINNING_TABLE_PREFIX: Final = "binning.tables."
+
+
+def _rotulos_de_tramo(
+    key: str, records: list[Mapping[Any, Any]], bin_labels: Mapping[str, list[str]]
+) -> list[Mapping[Any, Any]]:
+    """El tramo legible de las filas de ``binning.tables.*`` o ``scorecard.scorecard`` (D-CPY-3).
+
+    Por posición, no por la etiqueta del motor: dos cortes que se redondean igual darían la misma
+    etiqueta a dos tramos (revisión adversarial del código, pasada 1).
+    """
+    from bayesrisk.core.tramos import es_fila_de_totales, rotulo_de_tramo
+
+    if key.startswith(_BINNING_TABLE_PREFIX):
+        propios = bin_labels.get(key[len(_BINNING_TABLE_PREFIX) :], [])
+        salida: list[Mapping[Any, Any]] = []
+        posicion = 0
+        for record in records:
+            valor = record.get("Bin")
+            if "Bin" not in record or es_fila_de_totales("", valor):
+                salida.append(record)
+                continue
+            legible = propios[posicion] if posicion < len(propios) else rotulo_de_tramo(valor)
+            salida.append({**record, "Bin": legible})
+            posicion += 1
+        return salida
+    if key == "scorecard.scorecard":
+        salida = []
+        for record in records:
+            propios = bin_labels.get(str(record.get("feature")), [])
+            indice = record.get("bin_index")
+            if isinstance(indice, int) and 0 <= indice < len(propios):
+                salida.append({**record, "bin_label": propios[indice]})
+            else:
+                salida.append(record)
+        return salida
+    return records
+
+
+def _table_view(
+    key: str,
+    table: Any,
+    *,
+    max_rows: int,
+    internal_grouping: str = "",
+    bin_labels: Mapping[str, list[str]] | None = None,
+) -> dict[str, Any]:
+    if not _is_dataframe_like(table):
+        raise ReportRenderError(
+            f"Tabla no renderizable en report: clave='{key}', acción='publique un DataFrame'."
+        )
+    audit_only = _audit_only_columns(key)
+    columns = tuple(c for c in table.columns if str(c) not in audit_only)
+    total_rows = len(table.index)
+    labels_by_column = _public_labels_by_table().get(key, {})
+    # Se recorta ANTES de formatear: la tasa por una cohorte casi única trae una fila por
+    # operación, y formatear el millón de celdas para mostrar doscientas costaba 5,9 s medidos
+    # (cierre 1 de D-SC). El total y la marca de truncado siguen contando la tabla entera.
+    records = cast(list[Mapping[Any, Any]], table.head(max_rows).to_dict(orient="records"))
+    celdas = [
+        {
+            column: _public_cell(record.get(column), labels_by_column.get(str(column)))
+            for column in columns
+        }
+        for record in _rotulos_de_tramo(
+            key, [_public_record(key, fila) for fila in records], bin_labels or {}
+        )
+    ]
+    visible_rows = [
+        tuple(_display_scalar(celda[column], key_path=(key, str(column))) for column in columns)
+        for celda in celdas
+    ]
+    return {
+        "key": key,
+        "title": table_title(key, internal_grouping=internal_grouping),
+        "html_id": _element_id("table", key),
+        "columns": [str(column) for column in columns],
+        # Qué columnas se alinean a la derecha (D-INF-2): las que, ya con sus rótulos públicos,
+        # sólo traen números.
+        "numeric": _numeric_columns(celdas, columns),
+        "rows": visible_rows,
+        "total_rows": total_rows,
+        "shown_rows": len(visible_rows),
+        "truncated": total_rows > len(visible_rows),
+        # El aviso de truncado escribe sus conteos agrupados (D-INF-1); los enteros de arriba
+        # siguen para la lógica (el Word compara contra `total_rows`).
+        "shown_rows_label": conteo(len(visible_rows)),
+        "total_rows_label": conteo(total_rows),
+    }
+
+
+_CHART_TITLES: Final[dict[str, str]] = {
+    "eda_default_rate": "Tasa de incumplimiento observada en el tiempo",
+    "eda_profiles": "Tasa de incumplimiento por tramo de cada variable descrita",
+    "gains": "Curva de ganancia acumulada por partición",
+    "discrimination": "Discriminación (AUC/Gini/KS) por partición",
+    "coefficients": "Coeficientes del modelo (β, IC 95 %)",
+    "stability": "Estabilidad PSI/CSI por comparación",
+    "reliability": "Curva de calibración (confiabilidad) por partición",
+}
+
+
+#: Prefijo con que el builder aplana los perfiles por variable (`UnivariateResult.profiles`).
+_EDA_PROFILE_TABLE_PREFIX: Final = "eda.univariate.profiles."
+
+
+def _chart_eda_default_rate(
+    charts: Any, bundle: ReportInputBundle, fmt: ChartFormat
+) -> str | bytes | None:
+    """La tasa en el tiempo desde ``eda.default_rate.by_period`` y el eje EFECTIVO de la card.
+
+    Devuelve ``None`` —y no una excepción— cuando hay un solo período sobre el eje temporal: no es
+    una degradación sino la omisión que D-SC-5 (b) prescribe, así que no merece un aviso. Lo mismo
+    cuando la tabla **no está**: con D-SC-17 el builder la omite si la tasa no se pudo agrupar, y
+    un acceso por índice mataría el render entero por una figura que no existe.
+    """
+    table = bundle.tables.get("eda.default_rate.by_period")
+    if table is None:
+        return None
+    card = bundle.cards.get("eda")
+    axis = str(card.get("axis") or "period") if isinstance(card, Mapping) else "period"
+    if axis != "cohort" and len(table) < 2:
+        return None
+    return cast(
+        "str | bytes",
+        charts.render_eda_default_rate(
+            table, axis=axis, title=_CHART_TITLES["eda_default_rate"], fmt=fmt
+        ),
+    )
+
+
+def _chart_eda_profiles(charts: Any, bundle: ReportInputBundle, fmt: ChartFormat) -> str | bytes:
+    """Un panel por variable descrita, desde las tablas ``eda.univariate.profiles.<columna>``."""
+    profiles = {
+        key[len(_EDA_PROFILE_TABLE_PREFIX) :]: table
+        for key, table in bundle.tables.items()
+        if key.startswith(_EDA_PROFILE_TABLE_PREFIX)
+    }
+    return cast(
+        "str | bytes",
+        charts.render_eda_profiles(profiles, title=_CHART_TITLES["eda_profiles"], fmt=fmt),
+    )
+
+
+def _chart_gains(charts: Any, bundle: ReportInputBundle, fmt: ChartFormat) -> str | bytes:
+    """Curva de ganancia desde ``performance.performance_table``."""
+    return cast(
+        "str | bytes",
+        charts.render_gains_chart(
+            bundle.tables["performance.performance_table"],
+            title=_CHART_TITLES["gains"],
+            fmt=fmt,
+        ),
+    )
+
+
+def _chart_discrimination(charts: Any, bundle: ReportInputBundle, fmt: ChartFormat) -> str | bytes:
+    """Barras de discriminación desde ``performance.discriminant_metrics``."""
+    return cast(
+        "str | bytes",
+        charts.render_discrimination_bars(
+            bundle.tables["performance.discriminant_metrics"],
+            title=_CHART_TITLES["discrimination"],
+            fmt=fmt,
+        ),
+    )
+
+
+def _chart_coefficients(charts: Any, bundle: ReportInputBundle, fmt: ChartFormat) -> str | bytes:
+    """Forest de coeficientes desde ``model.coefficients``."""
+    return cast(
+        "str | bytes",
+        charts.render_coefficients_forest(
+            bundle.tables["model.coefficients"],
+            title=_CHART_TITLES["coefficients"],
+            fmt=fmt,
+        ),
+    )
+
+
+def _chart_stability(charts: Any, bundle: ReportInputBundle, fmt: ChartFormat) -> str | bytes:
+    """Barras horizontales PSI/CSI desde ``stability.stability_metrics``."""
+    return cast(
+        "str | bytes",
+        charts.render_stability_chart(
+            bundle.tables["stability.stability_metrics"],
+            title=_CHART_TITLES["stability"],
+            fmt=fmt,
+        ),
+    )
+
+
+def _chart_reliability(charts: Any, bundle: ReportInputBundle, fmt: ChartFormat) -> str | bytes:
+    """Curva de confiabilidad derivada en render-time desde ``calibration.calibrated_pd_frame``.
+
+    ``reliability_curve`` (capa ``ui``) proyecta el frame calibrado a la lista ``by_partition`` que
+    consume ``render_reliability_chart``; el import es perezoso para no arrastrar la capa ``ui`` al
+    import del paquete ``report``.
+    """
+    from bayesrisk.ui.reliability import reliability_curve
+
+    curve = reliability_curve(bundle.tables["calibration.calibrated_pd_frame"])
+    return cast(
+        "str | bytes",
+        charts.render_reliability_chart(
+            curve["by_partition"], title=_CHART_TITLES["reliability"], fmt=fmt
+        ),
+    )
+
+
+# Mapeo sección → gráficos (nombre estable + builder). El nombre alimenta el ``id`` HTML del slot.
+_CHART_BUILDERS: Final[
+    dict[
+        str,
+        tuple[tuple[str, Callable[[Any, ReportInputBundle, ChartFormat], str | bytes | None]], ...],
+    ]
+] = {
+    # Análisis exploratorio (D-SC-5): sus recetas de figura (`eda.figures`) se materializan aquí,
+    # en el cuerpo de «Población y calidad de datos», por el mismo pipeline que el resto. Hasta la
+    # capa 3 llegaban al informe sólo como un slot vacío del anexo con la clave interna por título.
+    "eda": (("eda_default_rate", _chart_eda_default_rate), ("eda_profiles", _chart_eda_profiles)),
+    "performance": (("gains", _chart_gains), ("discrimination", _chart_discrimination)),
+    "model": (("coefficients", _chart_coefficients),),
+    "stability": (("stability", _chart_stability),),
+    "calibration": (("reliability", _chart_reliability),),
+}
+
+
+def _charts_for_section(
+    bundle: ReportInputBundle,
+    section: ReportSection,
+    config: ReportConfig,
+    chart_format: ChartFormat = "svg",
+) -> list[dict[str, Any]]:
+    """Genera los gráficos deterministas de la sección desde ``bundle.tables`` (import perezoso).
+
+    Los gráficos acompañan al **cuerpo** (las subsecciones de datos de Resultados y Contexto),
+    donde sostienen la lectura; no se repiten en los anexos. Cada gráfico se produce aislado y con
+    degradación con gracia: si falta ``matplotlib``, faltan columnas o la tabla no está publicada,
+    se omite ese gráfico y el reporte se renderiza igual. El import de
+    :mod:`bayesrisk.report.charts` es perezoso para preservar el import liviano del paquete.
+
+    La vista trae el gráfico bajo la clave de su formato (``svg`` texto o ``png`` bytes), de modo
+    que cada renderer consuma el suyo sin reconvertir nada.
+    """
+    if not config.html.render_charts or section.kind != "data" or section.status != "included":
+        return []
+    domain = section.source_domain
+    builders = _CHART_BUILDERS.get(domain) if domain is not None else None
+    if builders is None:
+        return []
+    from bayesrisk.report import charts  # perezoso: matplotlib no entra al import del paquete.
+
+    results: list[dict[str, Any]] = []
+    for name, build in builders:
+        try:
+            image = build(charts, bundle, chart_format)
+        except Exception as exc:  # degradación con gracia: un gráfico nunca tumba el reporte.
+            _LOGGER.warning(
+                "report: gráfico '%s.%s' omitido por degradación con gracia: %s",
+                domain,
+                name,
+                exc,
+            )
+            continue
+        if image is None:  # omisión prescrita por el propio builder, no una degradación.
+            continue
+        results.append(
+            {
+                "html_id": _element_id("chart", f"{domain}-{name}"),
+                "title": _CHART_TITLES[name],
+                chart_format: image,
+            }
+        )
+    return results
+
+
+def _display_value(value: Any, *, key_path: tuple[str, ...]) -> str:
+    if isinstance(value, Mapping):
+        rendered = {
+            str(key): _display_json_value(value[key], key_path=(*key_path, str(key)))
+            for key in sorted(value, key=str)
+        }
+        return json.dumps(rendered, sort_keys=True, ensure_ascii=False, indent=2)
+    if isinstance(value, tuple | list):
+        return json.dumps(
+            [_display_json_value(item, key_path=key_path) for item in value],
+            ensure_ascii=False,
+            indent=2,
+        )
+    if isinstance(value, set | frozenset):
+        ordered = sorted(value, key=lambda item: _stable_json(_canonical_value(item)))
+        return json.dumps(
+            [_display_json_value(item, key_path=key_path) for item in ordered],
+            ensure_ascii=False,
+            indent=2,
+        )
+    if isinstance(value, BaseModel):
+        return _display_value(value.model_dump(mode="python"), key_path=key_path)
+    if _is_dataframe_like(value):
+        return "[tabla referenciada]"
+    return _display_scalar(value, key_path=key_path)
+
+
+def _display_json_value(value: Any, *, key_path: tuple[str, ...]) -> JSONValue:
+    if isinstance(value, Mapping):
+        return {
+            str(key): _display_json_value(value[key], key_path=(*key_path, str(key)))
+            for key in sorted(value, key=str)
+        }
+    if isinstance(value, tuple | list):
+        return [_display_json_value(item, key_path=key_path) for item in value]
+    if isinstance(value, set | frozenset):
+        ordered = sorted(value, key=lambda item: _stable_json(_canonical_value(item)))
+        return [_display_json_value(item, key_path=key_path) for item in ordered]
+    if isinstance(value, BaseModel):
+        return _display_json_value(value.model_dump(mode="python"), key_path=key_path)
+    if _is_dataframe_like(value):
+        return "[tabla referenciada]"
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, numbers.Integral):
+        return int(value)
+    if isinstance(value, Decimal | numbers.Real):
+        # Los motores de provisiones publican sus cifras contables en Decimal. Sin esta rama, el
+        # Anexo de parámetros imprimiría {"unsupported_type": "Decimal"} donde va la provisión.
+        return _format_number(value, key_path=key_path)
+    if isinstance(value, str):
+        return value
+    return {"unsupported_type": type(value).__name__}
+
+
+# Marcador único de celda sin valor en tablas/lineage del informe: em-dash (convención de estados
+# financieros para nil/ninguno/no-aplica). Unifica el `None` de Python, el `NaN`/`inf` de un float
+# y el sentinel de dominio `"none"` (p. ej. `iv_band`/`expected_sign`/`action` = "sin banda/signo/
+# acción"), que de otro modo se volcaban crudos ("nan"/"none"). No afirma "dato no disponible" —no
+# engaña— ni altera los enums de la API de results ni el `data_hash`: es sólo presentación.
+_EMPTY_CELL: Final[str] = "—"
+
+
+def _display_scalar(value: Any, *, key_path: tuple[str, ...]) -> str:
+    if value is None:
+        return _EMPTY_CELL
+    if _es_booleano(value):
+        # Copy público: «sí»/«no», como los resúmenes por etapa (D-INF-2). En los bloques JSON del
+        # anexo de parámetros sigue siendo `true`/`false`: ahí es sintaxis.
+        return "sí" if value else "no"
+    if isinstance(value, numbers.Integral):
+        columna = key_path[-1] if key_path else ""
+        return conteo(int(value)) if es_columna_de_conteo(columna) else str(int(value))
+    if isinstance(value, Decimal | numbers.Real):
+        # Los motores de provisiones publican sus cifras en `Decimal`; se formatea el Decimal mismo,
+        # no su float: `Decimal("0.24999999999999999999")` en float es 0.25 (D-INF-1). Sólo
+        # presentación: la cifra contable no se altera.
+        return _format_number(value, key_path=key_path)
+    if isinstance(value, BaseModel):
+        return _display_value(value.model_dump(mode="python"), key_path=key_path)
+    if isinstance(value, Mapping | Sequence) and not isinstance(value, str | bytes | bytearray):
+        if not value:
+            # Colección vacía = «ninguno» (p. ej. `warning_codes: []`). Sin esto la celda mostraba
+            # `[]`/`{}` crudos, que se leen como celda rota; va al mismo marcador que `None`/`NaN`.
+            return _EMPTY_CELL
+        return _display_value(value, key_path=key_path)
+    text = str(value)
+    return _EMPTY_CELL if text == "none" else text
+
+
+def _cortes_de_identificador(texto: Any) -> Any:
+    """El texto escapado, con un punto de corte opcional (``<wbr>``) tras cada guion bajo.
+
+    En pantalla una celda se parte sólo entre palabras (D-INF-3), y un identificador
+    —``antiguedad_de_la_empresa__woe``, ``cum_good_capture_rate``— no tiene espacios: sin puntos
+    de corte fijaba el ancho de su columna y a 1.440 px se desplazaban 10 tablas del informe del
+    SBA; con ellos, 3. El guion bajo separa las palabras de un identificador, y una cifra no
+    tiene ninguno. Sólo HTML: el Word y el ``.qmd`` reciben el texto tal cual.
+    """
+    from markupsafe import Markup, escape
+
+    return Markup("_<wbr>").join(escape(parte) for parte in str(texto).split("_"))
+
+
+def _es_booleano(value: Any) -> bool:
+    """Un booleano de Python o de numpy (``np.bool_`` no hereda de ``bool``), sin importar numpy."""
+    return isinstance(value, bool) or getattr(getattr(value, "dtype", None), "kind", "") == "b"
+
+
+#: Segmentos de ruta que contienen cortes del config: el config efectivo que el builder publica
+#: en el Anexo C y los cortes que las cards repiten (`thresholds` de model, selection y
+#: performance; `traffic_light_cuts` de validation).
+_SEGMENTOS_DE_CORTE: Final = frozenset({"effective_config", "thresholds", "traffic_light_cuts"})
+#: Nombres de un corte del config, por sí solos (sin distinguir mayúsculas).
+_NOMBRES_DE_CORTE: Final = frozenset({"threshold", "alpha", "entry_p_value", "exit_p_value"})
+
+
+def _es_corte_del_config(key_path: tuple[str, ...]) -> bool:
+    """Si el número es un corte del config —por su procedencia en la ruta—, no un resultado.
+
+    Un corte se escribe exacto: redondeado describiría otra política. Por procedencia y no por
+    subcadena: `ks_cutoff_score` contiene «cut» y es un resultado (pasada 3 de Codex sobre el
+    código, que encontró los `thresholds` de las cards redondeados junto al `effective_config`
+    exacto: el mismo corte con dos valores en el Anexo C).
+    """
+    for segmento in key_path:
+        clave = segmento.strip().lower()
+        if (
+            clave in _SEGMENTOS_DE_CORTE
+            or clave in _NOMBRES_DE_CORTE
+            or clave.endswith(("_threshold", "_alpha", "_cat_cutoff"))
+        ):
+            return True
+    return False
+
+
+def _format_number(value: Decimal | numbers.Real, *, key_path: tuple[str, ...]) -> str:
+    """Un número real del informe en es-CL, con la regla del cero final (D-INF-1, `cifras`).
+
+    Hasta 2026-09 las tablas conservaban el punto decimal y seis decimales fijos como «volcado
+    técnico» para copiar a una herramienta de análisis (CHANGELOG 1.4.0). Las cifras crudas tienen
+    hoy caminos mejores —`results.json`, `export_excel()`, las tablas de la puerta guiada—, y el
+    informe es copy público que se lee junto a una prosa que ya decía `23,80 %` y `30.316`.
+    """
+    columna = key_path[-1] if key_path else ""
+    numero = value if isinstance(value, Decimal) else float(value)
+    if _es_corte_del_config(key_path) and math.isfinite(numero):
+        # Un corte del config es la política que se ejecutó: se escribe exacto. Por la regla de
+        # las cifras observadas, un `entry_p_value` de 0.0005 salía «< 0,001» y uno de 0.1254
+        # salía «0,125» (pasada 2 de Codex sobre el código).
+        return corte(numero)  # mínimo dos decimales, como `prose._cut`: «0,10»
+    if es_columna_de_pvalor(columna):
+        return pvalor(numero)
+    return cifra(numero)
+
+
+def _numeric_columns(records: Sequence[Mapping[Any, Any]], columns: Sequence[Any]) -> list[bool]:
+    """Qué columnas son numéricas: todos sus valores presentes son números (no booleanos).
+
+    Se alinean a la derecha con cifras tabulares (D-INF-2). Una columna sin ningún valor presente
+    no es numérica: no hay nada que alinear.
+    """
+    salida: list[bool] = []
+    for column in columns:
+        valores = [record.get(column) for record in records]
+        presentes = [
+            valor
+            for valor in valores
+            if valor is not None and not (isinstance(valor, float) and math.isnan(valor))
+        ]
+        salida.append(
+            bool(presentes)
+            and all(
+                isinstance(valor, Decimal | numbers.Number) and not _es_booleano(valor)
+                for valor in presentes
+            )
+        )
+    return salida
+
+
+def _canonical_value(value: Any) -> JSONValue:
+    if isinstance(value, Mapping):
+        return {str(key): _canonical_value(value[key]) for key in sorted(value, key=str)}
+    if isinstance(value, tuple | list):
+        return [_canonical_value(item) for item in value]
+    if isinstance(value, set | frozenset):
+        return [_canonical_value(item) for item in sorted(value, key=str)]
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, Decimal):  # cifras contables de provisiones: al hash van como float
+        return _canonical_value(float(value))
+    if isinstance(value, float):
+        if value == 0.0:
+            return 0.0
+        if math.isfinite(value):
+            return value
+        if math.isnan(value):
+            return {"non_finite_float": "nan"}
+        return {"non_finite_float": "inf" if value > 0 else "-inf"}
+    if isinstance(value, str):
+        return value
+    return {"unsupported_type": type(value).__name__}
+
+
+def _stable_json(value: Any) -> str:
+    return json.dumps(
+        _canonical_value(value),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
+
+
+def _element_id(kind: str, raw_id: str) -> str:
+    """Deriva IDs HTML siempre determinísticos desde el tipo y la clave lógica."""
+    slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", raw_id.strip().lower()).strip("-")
+    return f"{kind}-{slug or 'sin-id'}"
+
+
+def _load_template(environment: Any) -> Any:
+    """Carga la plantilla editorial del paquete; aislada para poder simular fallos en tests."""
+    return environment.get_template(_TEMPLATE_NAME)
+
+
+def _css_for_theme(theme: Literal["bayesrisk", "plain"]) -> str:
+    """Lee el CSS del tema desde los archivos empaquetados bajo ``report/templates``.
+
+    El tema ``bayesrisk`` antepone las ``@font-face`` de la fuente del sitio (capa C2):
+    incrustadas, no enlazadas, para que el HTML siga siendo autocontenido y determinista y el
+    PDF se dibuje igual en cualquier máquina. El tema ``plain`` sigue con las del sistema.
+    """
+    filename = _CSS_FILES.get(theme, _CSS_FILES["bayesrisk"])
+    css = resources.files(_TEMPLATE_PACKAGE).joinpath(filename).read_text("utf-8").strip()
+    if theme == "plain":
+        return css
+    return f"{_font_faces()}\n{css}"
+
+
+#: La fuente del sitio (docs.bayesadvisory.cl sirve Roboto): los dos pesos que el informe usa, como
+#: subconjunto latino empaquetado bajo ``templates/fonts`` (origen y licencia en ``ORIGEN.txt`` y
+#: ``LICENSE-Roboto.txt``). Los glifos que el subconjunto no trae caen a la pila del sistema.
+_FONT_FILES: Final[tuple[tuple[int, str], ...]] = (
+    (400, "roboto-regular-latin.woff2"),
+    (700, "roboto-bold-latin.woff2"),
+)
+
+
+@functools.cache
+def _font_faces() -> str:
+    """Las reglas ``@font-face`` con los WOFF2 empaquetados en base64 (``data:`` URI).
+
+    Se leen una vez por proceso: son bytes fijos del paquete, y el digest del HTML los incluye
+    como incluye el resto del CSS.
+    """
+    reglas: list[str] = []
+    # `joinpath` encadenado, un segmento por llamada: el `Traversable` de Python 3.11 acepta UN
+    # solo argumento (varios segmentos son 3.12+), y el paquete soporta 3.11 — con la forma de dos
+    # argumentos el render moría con `ReportRenderError` sólo en esa versión (CI, los tres SO).
+    carpeta = resources.files(_TEMPLATE_PACKAGE).joinpath("fonts")
+    for peso, nombre in _FONT_FILES:
+        payload = carpeta.joinpath(nombre).read_bytes()
+        codificado = base64.b64encode(payload).decode("ascii")
+        reglas.append(
+            "@font-face {\n"
+            '  font-family: "Roboto";\n'
+            "  font-style: normal;\n"
+            f"  font-weight: {peso};\n"
+            "  font-display: swap;\n"
+            f'  src: url("data:font/woff2;base64,{codificado}") format("woff2");\n'
+            "}"
+        )
+    return "\n".join(reglas)
+
+
+def _normalize_newlines(text: str) -> str:
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    normalized = "\n".join(line.rstrip() for line in normalized.split("\n"))
+    if not normalized.endswith("\n"):
+        return f"{normalized}\n"
+    return normalized
+
+
+def _digest_html(html: str) -> str:
+    """SHA-256 del HTML con cada ``<svg>…</svg>`` reemplazado por un placeholder estable.
+
+    El manifest y los goldens usan este digest en vez del ``sha256`` de los bytes crudos: los SVG de
+    los gráficos dependen de freetype y no son byte-idénticos entre sistemas operativos, así que se
+    excluyen para que el digest sea reproducible cross-OS. Cubre datos y estructura del reporte; el
+    determinismo byte a byte de cada SVG se verifica aparte en ``test_report_charts``. El HTML en
+    disco conserva los SVG intactos.
+    """
+    stripped = _SVG_STRIP_PATTERN.sub(_STRIPPED_SVG, _normalize_newlines(html))
+    return hashlib.sha256(stripped.encode("utf-8")).hexdigest()
+
+
+def _prepare_output_dir(output_dir: str) -> Path:
+    directory = Path(output_dir)
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ReportExportError(
+            "No se pudo crear el directorio de salida del reporte: dominio='report', "
+            f"output_dir='{output_dir}', acción='verifique permisos de la ruta padre'."
+        ) from exc
+    if not directory.is_dir() or not os.access(directory, os.W_OK):
+        raise ReportExportError(
+            "El directorio de salida del reporte no es escribible: dominio='report', "
+            f"output_dir='{output_dir}', acción='ajuste permisos o use otra ruta'."
+        )
+    return directory
+
+
+def _manifest_path(directory: Path, filename: str) -> str:
+    if directory.is_absolute():
+        return filename
+    return (directory / filename).as_posix()
+
+
+def _is_dataframe_like(value: object) -> bool:
+    return all(hasattr(value, attribute) for attribute in ("columns", "copy", "select_dtypes"))

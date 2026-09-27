@@ -13,10 +13,10 @@ from pathlib import Path
 
 import pytest
 
-from nikodym.core.config import NikodymConfig, config_hash
-from nikodym.core.config.hashing import INFRA_SECTIONS
-from nikodym.governance.config import GovernanceConfig
-from nikodym.ui.presets import get_preset, list_presets
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+from bayesrisk.core.config.hashing import INFRA_SECTIONS
+from bayesrisk.governance.config import GovernanceConfig
+from bayesrisk.ui.presets import get_preset, list_presets
 
 _RAIZ = Path(__file__).resolve().parents[2]
 _FIXTURES_DEMO = _RAIZ / "web" / "src" / "fixtures" / "demo"
@@ -74,16 +74,16 @@ def test_encender_audit_no_mueve_el_config_hash_de_ningun_preset() -> None:
 
     La enmienda anunció que encender ``audit`` movería el ``config_hash`` de los cuatro presets y
     que por eso haría falta recapturar la demo. Medido sobre el árbol, es falso: ``audit`` está en
-    :data:`~nikodym.core.config.hashing.INFRA_SECTIONS`, así que la identidad lógica de la corrida
+    :data:`~bayesrisk.core.config.hashing.INFRA_SECTIONS`, así que la identidad lógica de la corrida
     —datos + método + semilla— no se mueve. Este gate lo fija para que la corrección no se pierda.
     """
     assert "audit" in INFRA_SECTIONS
 
     for pid, cfg in _configs_de_preset().items():
-        con_audit = NikodymConfig.model_validate(cfg)
+        con_audit = BayesRiskConfig.model_validate(cfg)
         apagado = copy.deepcopy(cfg)
         apagado["audit"] = None
-        sin_audit = NikodymConfig.model_validate(apagado)
+        sin_audit = BayesRiskConfig.model_validate(apagado)
         assert config_hash(con_audit) == config_hash(sin_audit), (
             f"{pid}: encender audit movió el config_hash; audit dejó de ser INFRA"
         )
@@ -116,7 +116,7 @@ def test_los_fixtures_de_la_demo_conservan_su_config_hash(fixture: str, preset_i
     assert hash_publicado, f"{fixture} no trae config_hash en su lineage"
 
     del publicado
-    esperado = config_hash(NikodymConfig.model_validate(_configs_de_preset()[preset_id]))
+    esperado = config_hash(BayesRiskConfig.model_validate(_configs_de_preset()[preset_id]))
     assert hash_publicado == esperado, (
         f"{fixture} firma {hash_publicado[:16]}… y el preset produce {esperado[:16]}…: la demo "
         "quedó desalineada y su recaptura pasa a ser obligatoria por identidad (D-GOB-9)."
@@ -138,8 +138,8 @@ def test_una_corrida_de_preset_por_la_interfaz_archiva_su_trail(
     siempre vacía, con su warning silenciado.
     """
     pytest.importorskip("optbinning")
-    from nikodym.ui import routes, runs
-    from nikodym.ui.presets import STANDARD_DATASET_ID, standard_preset
+    from bayesrisk.ui import routes, runs
+    from bayesrisk.ui.presets import STANDARD_DATASET_ID, standard_preset
 
     cwd = tmp_path / "cwd-del-servidor"
     cwd.mkdir()
@@ -184,16 +184,16 @@ def test_un_objeto_auditable_no_arrastra_su_sink_al_copiarse(tmp_path: Path) -> 
     archivo abierto. ``SurvivalResult.estimator`` es uno de ellos, así que el
     ``result.model_copy(deep=True)`` de ``survival/step.py`` moría con
     ``TypeError: cannot pickle 'TextIOWrapper' instances`` **antes** de publicar sus artefactos —y
-    como es un ``TypeError`` y no un ``NikodymError``, ``nikodym.run`` no lo capturaba: la corrida
-    entera reventaba en vez de devolver un ``Study`` inspeccionable.
+    como es un ``TypeError`` y no un ``BayesRiskError``, ``bayesrisk.run`` no lo capturaba: la
+    corrida entera reventaba en vez de devolver un ``Study`` inspeccionable.
 
     No se veía porque hasta D-GOB-8 ningún preset traía ``audit`` encendido.
     """
     from copy import deepcopy
 
-    from nikodym.audit import AuditConfig, JsonlAuditSink
-    from nikodym.core.audit import NullAuditSink
-    from nikodym.core.mixins import AuditableMixin
+    from bayesrisk.audit import AuditConfig, JsonlAuditSink
+    from bayesrisk.core.audit import NullAuditSink
+    from bayesrisk.core.mixins import AuditableMixin
 
     class _Estimador(AuditableMixin):
         def __init__(self) -> None:

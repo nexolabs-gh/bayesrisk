@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Gestor de datasets efímeros para Nikodym.
+# Gestor de datasets efímeros para bayesrisk.
 #
 # Filosofía: el disco es escaso, los datasets son reproducibles. Se baja lo que se va a
 # usar ahora, se prueba, se borra. Si hace falta otra vez, se vuelve a bajar con una línea.

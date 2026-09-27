@@ -81,10 +81,10 @@ _ROTULOS: list[tuple[str, Path]] = [
         _WEB / "components" / "ConfigTab.tsx",
     ),
     ("Este valor se escribe en formato JSON.", _WEB / "components" / "FieldRenderer.tsx"),
-    ("Propósito del modelo", _RAIZ / "src" / "nikodym" / "governance" / "config.py"),
-    ("Supuestos declarados", _RAIZ / "src" / "nikodym" / "governance" / "config.py"),
-    ("Limitaciones declaradas", _RAIZ / "src" / "nikodym" / "governance" / "config.py"),
-    ("Periodicidad de revisión (meses)", _RAIZ / "src" / "nikodym" / "governance" / "config.py"),
+    ("Propósito del modelo", _RAIZ / "src" / "bayesrisk" / "governance" / "config.py"),
+    ("Supuestos declarados", _RAIZ / "src" / "bayesrisk" / "governance" / "config.py"),
+    ("Limitaciones declaradas", _RAIZ / "src" / "bayesrisk" / "governance" / "config.py"),
+    ("Periodicidad de revisión (meses)", _RAIZ / "src" / "bayesrisk" / "governance" / "config.py"),
     ("Artefactos de la corrida", _WEB / "components" / "ResultsTab.tsx"),
     ("Ficha del modelo", _WEB / "components" / "ResultsTab.tsx"),
     ("Emitida", _WEB / "components" / "ResultsTab.tsx"),
@@ -146,12 +146,12 @@ def test_lo_que_la_documentacion_afirma_lo_hace_el_codigo() -> None:
     Si un día `governance` se enciende por defecto o `purpose` gana un default, las frases ancladas
     arriba pasan a ser falsas: este test es el que las liga al motor y no sólo al texto.
     """
-    from nikodym.core.config import NikodymConfig
-    from nikodym.governance.config import GovernanceConfig
-    from nikodym.ui.presets import get_preset, list_presets
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.governance.config import GovernanceConfig
+    from bayesrisk.ui.presets import get_preset, list_presets
 
-    assert NikodymConfig.model_fields["governance"].default is None
-    assert NikodymConfig.model_fields["audit"].default is None
+    assert BayesRiskConfig.model_fields["governance"].default is None
+    assert BayesRiskConfig.model_fields["audit"].default is None
     assert GovernanceConfig.model_fields["purpose"].is_required()
     with pytest.raises(ValueError, match="en blanco"):
         GovernanceConfig(purpose="   ")
@@ -164,7 +164,7 @@ def test_lo_que_la_documentacion_afirma_lo_hace_el_codigo() -> None:
         assert config["governance"] is None, f"{preset_id} enciende governance de fábrica"
         assert config["audit"] == {"enabled": True}, f"{preset_id} no trae la auditoría encendida"
 
-    from nikodym.core.build import build_uv_lock_hash
+    from bayesrisk.core.build import build_uv_lock_hash
 
     assert re.fullmatch(r"[0-9a-f]{64}", build_uv_lock_hash())
 
@@ -242,7 +242,7 @@ def test_el_catalogo_de_trabajos_publicado_es_el_de_la_interfaz() -> None:
     La tabla se ata en dos sentidos al catálogo: ni un trabajo sin fila, ni una fila sin trabajo; y
     el que hoy no corre desde la interfaz se dice como tal, con la razón que publica el catálogo.
     """
-    from nikodym.ui.jobs import list_jobs
+    from bayesrisk.ui.jobs import list_jobs
 
     texto = _texto("getting-started.md")
     inicio, fin = "<!-- catalogo-trabajos:start -->", "<!-- catalogo-trabajos:end -->"
@@ -283,10 +283,14 @@ def test_empezar_no_fija_una_version_a_mano() -> None:
 
 
 def test_la_consultora_tiene_un_solo_nombre_en_el_copy_publico() -> None:
-    """README, portada, footer y guías nombran a Nexo Labs; el sitio se firma igual."""
+    """README, portada, footer y guías nombran a Bayes Advisory; el sitio se firma igual."""
     for relativo in ("README.md", "index.md", "guias/provision-sin-norma-local.md"):
-        assert "Nexo Labs" in _texto(relativo), relativo
+        assert "Bayes Advisory" in _texto(relativo), relativo
     mkdocs = (_RAIZ / "mkdocs.yml").read_text(encoding="utf-8")
-    assert "site_author: Nexo Labs" in mkdocs
+    assert "site_author: Bayes Advisory" in mkdocs
     for pagina in _paginas():
-        assert "Nikodym Advisory" not in pagina.read_text(encoding="utf-8"), pagina.name
+        texto = pagina.read_text(encoding="utf-8")
+        assert "Nikodym Advisory" not in texto, pagina.name
+        # Renombre (D-REN-9): la consultora dejó de firmarse Nexo Labs en el copy público; la
+        # persona jurídica sigue siendo Nexo Labs SpA y sólo figura en la LICENSE.
+        assert "Nexo Labs" not in texto, pagina.name

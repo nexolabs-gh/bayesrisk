@@ -1,10 +1,11 @@
 """Tests del preset estándar F1 (SDD-23 §3.2, §5): validez, coherencia con el dataset y endpoint.
 
-El preset es un config F1 COMPLETO y *domain-agnostic* (dict literal en :mod:`nikodym.ui.presets`);
-aquí se verifica que (a) valida y su ``config_hash`` es estable, (b) toda columna que referencia
-existe en el registro de datasets con el rol correcto —lo que da confianza de que la corrida real
-correrá— y (c) el endpoint ``GET /api/config/preset`` lo sirve. El *smoke* end-to-end real (correr
-el motor OR-Tools/mip y ver el scorecard) NO vive aquí: es lento y se hace fuera de la suite.
+El preset es un config F1 COMPLETO y *domain-agnostic* (dict literal en
+:mod:`bayesrisk.ui.presets`); aquí se verifica que (a) valida y su ``config_hash`` es estable, (b)
+toda columna que referencia existe en el registro de datasets con el rol correcto —lo que da
+confianza de que la corrida real correrá— y (c) el endpoint ``GET /api/config/preset`` lo sirve. El
+*smoke* end-to-end real (correr el motor OR-Tools/mip y ver el scorecard) NO vive aquí: es lento y
+se hace fuera de la suite.
 """
 
 from __future__ import annotations
@@ -16,13 +17,13 @@ from typing import Any
 
 import pandas as pd
 
-import nikodym.binning.step as binning_step_module
-from nikodym.binning.config import BinningConfig
-from nikodym.core.config import NikodymConfig, config_hash
-from nikodym.data.config import PartitionStrategy
-from nikodym.ui import datasets as datasets_module
-from nikodym.ui import routes
-from nikodym.ui.presets import (
+import bayesrisk.binning.step as binning_step_module
+from bayesrisk.binning.config import BinningConfig
+from bayesrisk.core.config import BayesRiskConfig, config_hash
+from bayesrisk.data.config import PartitionStrategy
+from bayesrisk.ui import datasets as datasets_module
+from bayesrisk.ui import routes
+from bayesrisk.ui.presets import (
     F4_IFRS9_PRESET_ID,
     F5_INTERNA_PRESET_ID,
     PROVISIONES_DATASET_ID,
@@ -68,12 +69,12 @@ def test_standard_preset_shape() -> None:
 
 
 def test_standard_preset_config_valida_y_hash_estable() -> None:
-    """El config del preset reconstruye ``NikodymConfig`` y su ``config_hash`` es determinista."""
+    """El config del preset reconstruye ``BayesRiskConfig`` y su ``config_hash`` es determinista."""
     config = standard_preset()["config"]
-    model = NikodymConfig.model_validate(config)  # no debe levantar
+    model = BayesRiskConfig.model_validate(config)  # no debe levantar
     assert config_hash(model) == _EXPECTED_CONFIG_HASH
     # Determinismo: revalidar una copia independiente da exactamente el mismo hash.
-    assert config_hash(NikodymConfig.model_validate(standard_preset()["config"])) == config_hash(
+    assert config_hash(BayesRiskConfig.model_validate(standard_preset()["config"])) == config_hash(
         model
     )
 
@@ -113,7 +114,7 @@ def test_preset_pide_los_cuatro_entregables_sin_alterar_hash() -> None:
     # Desde la capa 5 el preset EXIGE `eda` en el informe: la enciende y la pide (D-OBL-11).
     assert "eda" in report["sections"]["required_sections"]
     # report es INFRA → excluido del config_hash: la identidad del preset NO cambia por activarlo.
-    assert config_hash(NikodymConfig.model_validate(config)) == _EXPECTED_CONFIG_HASH
+    assert config_hash(BayesRiskConfig.model_validate(config)) == _EXPECTED_CONFIG_HASH
 
 
 def test_standard_preset_estima_el_ancla_de_calibracion_de_los_datos() -> None:
@@ -217,7 +218,7 @@ def test_preset_payload_shape_y_hash() -> None:
     assert set(payload) == {"id", "config", "config_hash", "dataset_id", "name", "description"}
     assert payload["id"] == STANDARD_PRESET_ID
     assert payload["dataset_id"] == STANDARD_DATASET_ID
-    model = NikodymConfig.model_validate(payload["config"])
+    model = BayesRiskConfig.model_validate(payload["config"])
     assert payload["config_hash"] == config_hash(model) == _EXPECTED_CONFIG_HASH
 
 
@@ -238,7 +239,7 @@ def test_endpoint_config_preset() -> None:
     assert respuesta.status_code == 200
     cuerpo: dict[str, Any] = respuesta.json()
     assert cuerpo["config_hash"] == _EXPECTED_CONFIG_HASH
-    assert config_hash(NikodymConfig.model_validate(cuerpo["config"])) == _EXPECTED_CONFIG_HASH
+    assert config_hash(BayesRiskConfig.model_validate(cuerpo["config"])) == _EXPECTED_CONFIG_HASH
 
 
 # ═══════════════════════════════ Preset F3 — provisiones ═══════════════════════════════
@@ -262,13 +263,13 @@ def test_provisiones_preset_shape() -> None:
 
 
 def test_provisiones_preset_config_valida_y_hash_estable() -> None:
-    """El config del F3 reconstruye ``NikodymConfig`` y su ``config_hash`` es determinista."""
+    """El config del F3 reconstruye ``BayesRiskConfig`` y su ``config_hash`` es determinista."""
     config = provisiones_preset()["config"]
-    model = NikodymConfig.model_validate(config)  # no debe levantar
+    model = BayesRiskConfig.model_validate(config)  # no debe levantar
     assert config_hash(model) == _EXPECTED_F3_CONFIG_HASH
-    assert config_hash(NikodymConfig.model_validate(provisiones_preset()["config"])) == config_hash(
-        model
-    )
+    assert config_hash(
+        BayesRiskConfig.model_validate(provisiones_preset()["config"])
+    ) == config_hash(model)
 
 
 def test_provisiones_preset_no_hereda_la_calibracion_del_f1() -> None:
@@ -306,21 +307,22 @@ def test_provisiones_preset_activa_las_tres_secciones_y_la_regla_real() -> None:
 # Las secciones salen de ``model_dump`` de los objetos Pydantic (todos los campos explícitos),
 # así que el hash es estable con/sin la capa de dominio importada (verificado en ambas
 # condiciones al pinnearlo). Protege la identidad del preset justo cuando los fixtures de
-# demo.nikodym.cl se recapturan contra él.
+# demo.bayesadvisory.cl se recapturan contra él.
 # Actualizado en 1.4.0 al EXCLUIR ``data.load.source`` del config_hash (ver nota en el hash F1).
 # Actualizado en 1.6.0 por D-CRP6-8: el preset declara `confidence_level`/`confidence_transform`
 # de Kaplan-Meier. Este golden hizo su trabajo —falló al cambiar el preset— y por eso la recaptura
-# de los fixtures de demo.nikodym.cl entró al mismo lote en vez de quedar pendiente en silencio.
+# de los fixtures de demo.bayesadvisory.cl entró al mismo lote en vez de quedar pendiente en
+# silencio.
 _EXPECTED_F4_CONFIG_HASH = "013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6"
 
 
 def test_ifrs9_preset_config_valida_y_hash_estable() -> None:
-    """El config del F4 reconstruye ``NikodymConfig`` y su ``config_hash`` es determinista."""
+    """El config del F4 reconstruye ``BayesRiskConfig`` y su ``config_hash`` es determinista."""
     config = get_preset(F4_IFRS9_PRESET_ID)["config"]
-    model = NikodymConfig.model_validate(config)  # no debe levantar
+    model = BayesRiskConfig.model_validate(config)  # no debe levantar
     assert config_hash(model) == _EXPECTED_F4_CONFIG_HASH
     assert config_hash(
-        NikodymConfig.model_validate(get_preset(F4_IFRS9_PRESET_ID)["config"])
+        BayesRiskConfig.model_validate(get_preset(F4_IFRS9_PRESET_ID)["config"])
     ) == config_hash(model)
 
 
@@ -351,9 +353,14 @@ def test_correccion_anti_fuga_no_mueve_bytes_hashes_ni_candidatas_de_presets() -
         # se mueven los DOS lados —los bytes del preset y su `config_hash`—, porque `eda` es cálculo
         # y no infraestructura: es el caso simétrico de los dos anteriores, y la asimetría de arriba
         # sigue siendo la que este test exhibe para `report` y `audit`. F3 y F4 no cambian.
-        STANDARD_PRESET_ID: "36134773adf591faceb15ed05432505c724ba727613910b019b915c81f78db63",
-        PROVISIONES_PRESET_ID: "90e0c78f8abb20cfaf25fc5f7c20d62dd645ebf57312e9262c6313b87527a831",
-        F4_IFRS9_PRESET_ID: "202483e594fc029827fe04c17db2b1b5e469263553ef0ba943974fb69e21b6f3",
+        # Actualizados el 2026-09-27 por el renombre (D-REN-5.4): `report.html.theme` pasa de
+        # "nikodym" a "bayesrisk" en los tres. Medido: con ese único campo devuelto a "nikodym",
+        # los tres vuelven a dar exactamente los digests anteriores; `report` es INFRA y los
+        # `expected_hashes` no se mueven. El F4 cambia además su `description`, que dice «fuera de
+        # la garantía SemVer 2.x» (antes 1.x): es presentación, fuera del `config_hash`.
+        STANDARD_PRESET_ID: "48bf8e1023b1134cc881794782dd56c50b53f60f7e03f09de63a2c02163423a2",
+        PROVISIONES_PRESET_ID: "e6d7ac7c4355f2841d70ae1c8270b0198b50f51a2c4936db771ebacff3965403",
+        F4_IFRS9_PRESET_ID: "e3fa91f4c5bc440cc40d8d64615dfe74991ef83fc01a37f20c8c4bf13bd4b81b",
     }
     for preset_id, expected_hash in expected_hashes.items():
         preset = get_preset(preset_id)
@@ -365,7 +372,7 @@ def test_correccion_anti_fuga_no_mueve_bytes_hashes_ni_candidatas_de_presets() -
             separators=(",", ":"),
         ).encode("utf-8")
         assert hashlib.sha256(payload_bytes).hexdigest() == expected_payload_digests[preset_id]
-        assert config_hash(NikodymConfig.model_validate(config)) == expected_hash
+        assert config_hash(BayesRiskConfig.model_validate(config)) == expected_hash
 
         binning = config.get("binning")
         if binning is None:
@@ -444,7 +451,7 @@ def test_ifrs9_preset_activa_el_report_con_secciones_reducidas() -> None:
     assert ifrs9["ecl"]["discount_convention"] == "annual_eir_year_fraction"
     assert config["forward"] is None
     assert config["markov"] is None
-    NikodymConfig.model_validate(config)
+    BayesRiskConfig.model_validate(config)
 
 
 def test_provisiones_preset_devuelve_copia_defensiva() -> None:
@@ -522,8 +529,8 @@ def test_los_presets_de_referencia_son_los_que_encienden_una_seccion_de_referenc
     muestran trabajos con jurisdicción — vaciar la lista pone rojo (F3 enciende
     ``provisioning_cmf``) y añadir F5 también (no enciende ninguna).
     """
-    from nikodym.ui.jobs import secciones_de_referencia
-    from nikodym.ui.presets import es_preset_de_referencia
+    from bayesrisk.ui.jobs import secciones_de_referencia
+    from bayesrisk.ui.presets import es_preset_de_referencia
 
     de_referencia = secciones_de_referencia()
     assert de_referencia, "sin secciones de referencia este gate no comprobaría nada"
@@ -583,13 +590,13 @@ def test_endpoint_presets_index_y_preset_por_id() -> None:
     cuerpo: dict[str, Any] = detalle.json()
     assert cuerpo["id"] == PROVISIONES_PRESET_ID
     assert cuerpo["config_hash"] == _EXPECTED_F3_CONFIG_HASH
-    assert config_hash(NikodymConfig.model_validate(cuerpo["config"])) == _EXPECTED_F3_CONFIG_HASH
+    assert config_hash(BayesRiskConfig.model_validate(cuerpo["config"])) == _EXPECTED_F3_CONFIG_HASH
 
     assert client.get("/api/config/preset/preset-inexistente").status_code == 404
 
 
 def test_el_opt_in_del_lanzador_vuelve_a_listar_el_preset_de_referencia() -> None:
-    """Con ``nikodym-ui --casos-de-referencia``, ``/api/config/presets`` lista los cuatro.
+    """Con ``bayesrisk-ui --casos-de-referencia``, ``/api/config/presets`` lista los cuatro.
 
     D-JUR-9.4: el opt-in es del lanzador y viaja en ``UiConfig``, así que la ruta lo lee de
     ``app.state.settings`` y no de un parámetro de la petición.
@@ -601,7 +608,7 @@ def test_el_opt_in_del_lanzador_vuelve_a_listar_el_preset_de_referencia() -> Non
 
     from _ui_client import ui_client
 
-    from nikodym.ui.settings import UiConfig
+    from bayesrisk.ui.settings import UiConfig
 
     client = ui_client(UiConfig.model_validate({"casos_de_referencia": True}))
     indice = client.get("/api/config/presets")
@@ -626,7 +633,7 @@ def test_config_hash_ignora_la_ruta_del_dataset() -> None:
     def _hash_con_source(source: str | None) -> str:
         config = copy.deepcopy(provisiones_preset()["config"])
         config["data"]["load"]["source"] = source
-        return config_hash(NikodymConfig.model_validate(config))
+        return config_hash(BayesRiskConfig.model_validate(config))
 
     ruta_a = _hash_con_source("/datos/cartera_a.parquet")
     ruta_b = _hash_con_source("/otro/disco/cartera_b.parquet")
@@ -659,6 +666,6 @@ def test_la_rama_columna_no_mueve_la_identidad_de_ningun_preset() -> None:
     }
     for preset_id, esperado in esperados.items():
         config = get_preset(preset_id)["config"]
-        assert config_hash(NikodymConfig.model_validate(config)) == esperado
+        assert config_hash(BayesRiskConfig.model_validate(config)) == esperado
         # Y ninguno de los tres usa la rama nueva: la neutralidad es sobre configs ajenos a ella.
         assert config["data"]["partition"]["strategy"]["type"] != "columna"

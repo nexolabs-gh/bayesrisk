@@ -1,7 +1,7 @@
 """Gate de D-FLU-8 en la interfaz: Resultados consume la misma fuente que ``summary()``.
 
 ``results.json`` gana ``summaries`` —los resúmenes por etapa y el final de
-:mod:`nikodym.guided.summaries`, serializados por :mod:`nikodym.ui.summaries`— para toda corrida
+:mod:`bayesrisk.guided.summaries`, serializados por :mod:`bayesrisk.ui.summaries`— para toda corrida
 de la interfaz, con el ``dataset_id`` como nombre de los datos y la partición del config en
 palabras. Una corrida fallida conserva los resúmenes de lo que corrió; un resumen que no se pueda
 armar publica su motivo y no pierde la corrida.
@@ -17,8 +17,8 @@ from _ui_f1 import failing_config, full_f1_config, write_behavior_parquet
 
 pytest.importorskip("fastapi", reason="la persistencia de corridas vive en la capa ui")
 
-from nikodym.guided.summaries import STAGE_LABELS
-from nikodym.ui import runs
+from bayesrisk.guided.summaries import STAGE_LABELS
+from bayesrisk.ui import runs
 
 
 @pytest.fixture(autouse=True)
@@ -27,14 +27,14 @@ def _usar_fake_binning_process(fake_binning_process: object) -> None:
 
 
 def _corrida(tmp_path: Path, *, fallida: bool = False) -> tuple[dict[str, Any], Path]:
-    import nikodym
+    import bayesrisk
 
     fuente = tmp_path / "cartera.parquet"
     write_behavior_parquet(fuente)
     config = failing_config(str(fuente)) if fallida else full_f1_config(str(fuente))
     workdir = tmp_path / "workdir"
     trail = runs.reservar_trail(runs.asegurar_workdir(workdir))
-    study = nikodym.run(config, artifacts=None)
+    study = bayesrisk.run(config, artifacts=None)
     run_id = runs.save(
         study, workdir=workdir, governance=None, trail=trail, source_label="mi_cartera"
     )
@@ -84,7 +84,7 @@ def test_un_resumen_que_no_se_puede_armar_no_pierde_la_corrida(
 
     # `ui.summaries` importa los constructores al llamar (la capa ui no carga dominios al
     # importarse), así que el doble se instala en su fuente.
-    import nikodym.guided.summaries as fuente
+    import bayesrisk.guided.summaries as fuente
 
     monkeypatch.setattr(fuente, "build_stage_summary", revienta)
     payload, run_dir = _corrida(tmp_path)

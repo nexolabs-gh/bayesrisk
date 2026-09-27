@@ -10,15 +10,15 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-import nikodym.binning.step as step_module
-from nikodym.binning.config import BinningConfig, VariableBinningConfig
-from nikodym.binning.exceptions import BinningFitError
-from nikodym.binning.results import BinningCardSection, BinningResult
-from nikodym.binning.step import BINNING_ARTIFACTS, BinningStep
-from nikodym.core.audit import InMemoryAuditSink
-from nikodym.core.config import NikodymConfig
-from nikodym.core.study import Study
-from nikodym.data.config import (
+import bayesrisk.binning.step as step_module
+from bayesrisk.binning.config import BinningConfig, VariableBinningConfig
+from bayesrisk.binning.exceptions import BinningFitError
+from bayesrisk.binning.results import BinningCardSection, BinningResult
+from bayesrisk.binning.step import BINNING_ARTIFACTS, BinningStep
+from bayesrisk.core.audit import InMemoryAuditSink
+from bayesrisk.core.config import BayesRiskConfig
+from bayesrisk.core.study import Study
+from bayesrisk.data.config import (
     CohortSplitConfig,
     DataConfig,
     ExclusionRule,
@@ -29,11 +29,11 @@ from nikodym.data.config import (
     SchemaConfig,
     TargetConfig,
 )
-from nikodym.data.partition import PARTITION_COL, TTD_COL, PartitionResult
-from nikodym.data.special import MaskedFrame
-from nikodym.data.target import LabeledFrame, TargetSummary
-from nikodym.stability.config import StabilityConfig
-from nikodym.stability.step import StabilityStep
+from bayesrisk.data.partition import PARTITION_COL, TTD_COL, PartitionResult
+from bayesrisk.data.special import MaskedFrame
+from bayesrisk.data.target import LabeledFrame, TargetSummary
+from bayesrisk.stability.config import StabilityConfig
+from bayesrisk.stability.step import StabilityStep
 
 
 @pytest.fixture(autouse=True)
@@ -119,7 +119,7 @@ def _study_with_data(
         time_limit=5,
         monotonic_trend=None,
     )
-    root_config = NikodymConfig(data=_data_config(), binning=cfg)
+    root_config = BayesRiskConfig(data=_data_config(), binning=cfg)
     if data_config is not None:
         root_config = root_config.model_copy(update={"data": data_config})
     study = Study(root_config)
@@ -953,7 +953,7 @@ def test_woe_bins_consume_bins_congelados_del_binning_sin_refit(
         include_pd_stability=False,
         csi_source="woe_bins",
     )
-    study = Study(NikodymConfig(stability=stability_config))
+    study = Study(BayesRiskConfig(stability=stability_config))
     study.artifacts.set("scorecard", "score", score)
     study.artifacts.set("calibration", "calibrated_pd_frame", calibrated)
     study.artifacts.set("binning", "bin_frame", bin_frame)

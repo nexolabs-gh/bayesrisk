@@ -6,7 +6,7 @@ decenas de commits: llegó a pesar 64 kB contra los 259 kB del schema real, con 
 de otra generación. La demo mostraba un config viejo y nadie se enteraba.
 
 Peor: cuando se corrigió el encuadre normativo del módulo ``provisioning`` (la regla del máximo es
-estándar-vs-interno, no CMF-vs-IFRS 9), el texto viejo **siguió publicado en demo.nikodym.cl**
+estándar-vs-interno, no CMF-vs-IFRS 9), el texto viejo **siguió publicado en demo.bayesadvisory.cl**
 embebido en este fixture, aunque el código ya estaba corregido.
 
 Uso::
@@ -23,9 +23,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from nikodym.core.config.schema import rama_objeto
-from nikodym.core.study import _DOMAIN_CONFIG_CLASSES, _INFRA_CONFIG_CLASSES
-from nikodym.ui.routes import schema_payload
+from bayesrisk.core.config.schema import rama_objeto
+from bayesrisk.core.study import _DOMAIN_CONFIG_CLASSES, _INFRA_CONFIG_CLASSES
+from bayesrisk.ui.routes import schema_payload
 
 _FIXTURE = Path(__file__).resolve().parent.parent / "web" / "src" / "fixtures" / "schema.json"
 
