@@ -167,12 +167,20 @@ a. **Pickle/joblib** (`Study.save`, artefactos, estimadores guardados con `jobli
    sigue verificando el `config_hash`: si el config de un estudio viejo diera otro hash con la
    librería nueva, la carga falla — es la prueba de que la identidad no se movió.
 b. **Bundle público del scorecard.** La regla vigente (un bundle sólo se aplica con la misma fuente
-   de dependencias) se conserva, y se le reconoce una sola equivalencia: el `uv.lock` de bayesrisk
-   **con el nombre del proyecto repuesto a «nikodym»** es la fuente con la que se construyó nikodym
-   1.20.0. `scripts/check_build_manifest.py --write` calcula ese hash sobre el lock real y lo
-   embebe como `uv_lock_sha256_nikodym`; `FittedScorecardBundle.load` acepta un `fit_lineage` cuyo
-   `uv_lock_hash` sea el actual **o** ese. Un bundle de una versión con otras dependencias (p. ej.
-   si 1.19.0 difiere) se rechaza igual que hoy lo rechaza 1.20.0 — sin regresión y sin ampliar.
+   de dependencias) se conserva, y se le reconoce una sola equivalencia: la fuente de bayesrisk
+   **con el proyecto vuelto a llamar «nikodym»** es la fuente con la que se construyó nikodym
+   1.20.0. Reponer sólo el nombre no basta (pasada 2 de Codex): `uv.lock` ordena sus bloques
+   `[[package]]` por nombre, y el del proyecto pasa de la zona «n» a la «b». La reconstrucción
+   —una función de `bayesrisk.core.build`, la misma para el script y para el tiempo de ejecución—
+   renombra el proyecto en su bloque y en sus autorreferencias, **reordena los bloques como uv** y
+   vuelve a unir el texto; su SHA-256 tiene que dar **exactamente** `32c611ad…`, el hash del
+   `uv.lock` de `v1.20.0` (y de 1.19.0: medido el mismo), y un test lo fija con su control negativo.
+   `scripts/check_build_manifest.py --write` embebe ese hash como `uv_lock_sha256_nikodym`;
+   `FittedScorecardBundle.load` acepta un `fit_lineage` cuyo `uv_lock_hash` sea el actual **o**
+   ese. Si una release futura cambia una dependencia, la reconstrucción deja de dar el hash viejo
+   y los bundles de nikodym se rechazan, igual que hoy los rechaza cualquier cambio de dependencias
+   — sin regresión y sin ampliar. La evidencia exige cargar y aplicar un bundle **real** de 1.20.0
+   y de 1.19.0 y reproducir su salida guardada.
 c. **YAML de configuración**: el config no contiene el nombre del paquete salvo `report.theme`
    (D-REN-5.4); todo YAML que valida con nikodym 1.20.0 valida con bayesrisk 2.0.0 y da el mismo
    `config_hash`.
@@ -239,12 +247,18 @@ el marcador `__NIKODYM_TOKEN__` pasa a `__BAYESRISK_TOKEN__` en la plantilla y e
   wheel y un sdist con el nombre y la versión esperados (`__version__` para bayesrisk, el
   `pyproject` de `compat/` para nikodym); `publish` sube bayesrisk, y `publish-compat`, que
   **depende** de él, sube nikodym después —así `pip install nikodym` nunca ve un 1.21.0 sin su
-  bayesrisk—. En releases posteriores de bayesrisk el candidato de compatibilidad sigue
-  construyéndose e inspeccionándose, pero `publish-compat` sólo sube si esa versión de nikodym no
-  existe en PyPI (una consulta explícita al JSON de PyPI; nunca re-subir bytes distintos con el
-  mismo número). En pypi.org, `bayesrisk` necesita el publicador `release.yml`/`pypi` (A7);
-  `nikodym` ya lo tiene. `testpypi.yml` (tag `testpypi-v*`, entorno `testpypi`) construye desde el
-  commit etiquetado y ensaya los dos en TestPyPI —es un ensayo, no la promoción—.
+  bayesrisk—. **Por archivo, no por versión** (pasada 2 de Codex: una subida que falla a medias
+  deja la versión «existente» con un archivo de menos): antes de subir, cada job consulta el JSON
+  de PyPI de su versión y compara nombre y SHA-256 de cada archivo —si ya está con los mismos bytes
+  se omite, si está con otros bytes se **detiene en rojo**, si falta se sube (`skip-existing`
+  sube sólo los que faltan)—, y después exige que PyPI sirva los **dos** archivos de cada
+  distribución con los SHA-256 promovidos. En releases posteriores de bayesrisk el candidato de
+  compatibilidad sigue construyéndose e inspeccionándose y esa misma regla lo omite. En pypi.org,
+  `bayesrisk` necesita el publicador `release.yml`/`pypi` (A7); `nikodym` ya lo tiene.
+  `testpypi.yml` (tag `testpypi-v*`) construye desde el commit etiquetado y ensaya los dos en
+  TestPyPI —es un ensayo, no la promoción—, con un entorno por paquete (`testpypi` y
+  `testpypi-nikodym`): TestPyPI no admite dos publicadores pendientes con la misma configuración
+  para proyectos distintos (medido al registrarlos).
   `reservar-bayesrisk.yml` publicó la 0.0.1 de reserva y queda obsoleto tras la 2.0.0.
 - **CI** construye e inspecciona las dos distribuciones y corre un job de compatibilidad en un venv
   limpio con los dos wheels.
@@ -273,7 +287,11 @@ tests se renombran de paquete y siguen intactos.
 1. **Proyección canónica bit a bit** (`tests/unit/_proyeccion_canonica.py`, ya usada por S21/S22)
    del preset F1 y del YAML SBA de Cami, antes (nikodym 1.20.0) y después (bayesrisk 2.0.0):
    `config_hash` idéntico (`1063d6cf…`, `08cf3076…`), las mismas cinco cifras, y **cero
-   diferencias** salvo las de D-REN-5, listadas una por una en la evidencia.
+   diferencias** salvo las de D-REN-5, listadas una por una en la evidencia. La proyección
+   serializa un estimador opaco por su tipo (`módulo.clase`, pasada 2 de Codex): el `WoEBinner`
+   pasa de `nikodym.binning.transformer` a `bayesrisk.binning.transformer`. La comparación separa
+   esas rutas —una diferencia cuyo único cambio es el prefijo del módulo o el nombre de clase de
+   D-REN-3— y exige **cero** diferencias de otra clase: tablas, hashes de datos y números idénticos.
 2. **Carga real**: artefactos generados con nikodym **1.20.0 y 1.19.0 instalados desde PyPI**
    (Study guardado, estimadores en joblib, bundle) cargan con los dos wheels nuevos en un venv
    limpio y reproducen sus salidas guardadas (WoE, PD, aplicación del bundle).
@@ -323,6 +341,12 @@ programar; lo que encuentre se absorbe aquí o se eleva. Sobre el código, tope 
   registro en MLflow (identidades de MLflow congeladas); la clave `nikodym:` del `.qmd` no estaba
   clasificada (D-REN-5.8); y la promoción de dos distribuciones no casaba con el CI (D-REN-11, un
   solo tag y dos candidatos).
+- **Pasada 2 (2026-09-27, `needs-attention`, tope alcanzado)**: tres hallazgos, verificados y
+  absorbidos — reponer el nombre no reconstruye el lock viejo porque uv ordena los bloques
+  (D-REN-6 b: reconstrucción con reordenamiento, fijada contra `32c611ad…`); consultar por versión
+  ocultaba una subida parcial (D-REN-11: por archivo y SHA-256, con verificación final de los
+  cuatro); la proyección nombra el tipo de un estimador opaco (§5: esas rutas se separan, el resto
+  exige cero diferencias). El diseño queda cerrado; el código lleva su propio tope de tres pasadas.
 
 ## 13. Simplicidad (SDD-31)
 
