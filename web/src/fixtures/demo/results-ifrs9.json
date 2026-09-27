@@ -1,25 +1,25 @@
 {
  "status": "done",
- "run_id": "1d3dd11d7ee344e999598393439a1b3c",
+ "run_id": "b6577427e8e34febac8f6f38f4e07953",
  "error": null,
  "model_card": null,
  "lineage": {
-  "git_sha": "57e1246ee83b7f20a60ceee287bd73a2f62d64d6",
+  "git_sha": "03c8b842d6f7ed740ab381384e0e4f4b8008b2a8",
   "git_dirty": false,
   "data_hash": "d713808d0604110d6c450358453cea172934d93eb56ccdcb0e7aea7279a94e3e",
   "config_hash": "013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6",
   "root_seed": 20240706,
-  "uv_lock_hash": "32c611ad4b1e061c14e1262548bf30346610d7529a6e4fb7bc52c68ec3540d24",
-  "runtime_environment_hash": "c5925338574f045c38ec9a17f69d59ec787f77e79907e3a271ff39669b24d8bb",
+  "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
+  "runtime_environment_hash": "53bc20eb0284c31924233eaefc5e26ad05d274791b6bad8f127d40ccbd37eedb",
   "library_versions": {
-   "nikodym": "1.20.0",
+   "bayesrisk": "2.0.0",
    "numpy": "2.4.6",
    "pandas": "2.3.3",
    "pydantic": "2.13.4",
    "PyYAML": "6.0.3"
   },
   "determinism_caveats": [],
-  "created_at": "2026-09-27T02:26:04.112353Z",
+  "created_at": "2026-09-27T17:39:17.821534Z",
   "schema_version": "1.0.0",
   "injected_artifacts": []
  },
@@ -1009,7 +1009,7 @@
      "Archivo: ifrs9_retail_latam",
      "6.000 filas · 578 malos (9,63 %) · 17 columnas",
      "Muestras: Desarrollo 4.024 (9,64 %) · Holdout 1.030 (10,00 %) · Fuera de tiempo (OOT) 946 (9,20 %) — cohortes fuera de tiempo: 2024Q2 (columna «cohorte»); holdout 20 % del resto",
-     "Evidencia de la corrida: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/runs/1d3dd11d7ee344e999598393439a1b3c"
+     "Evidencia de la corrida: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/runs/b6577427e8e34febac8f6f38f4e07953"
     ],
     "alerts": [],
     "table": {
@@ -1045,11 +1045,11 @@
     "stage": "report",
     "label": "Informe y ficha",
     "lines": [
-     "Informe HTML: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/reports/ifrs9_ecl_report.html",
-     "Informe Word: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/reports/ifrs9_ecl_report.docx",
-     "Informe PDF: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/reports/ifrs9_ecl_report.pdf",
-     "Fuente editable (Quarto): /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/reports/ifrs9_ecl_report.qmd",
-     "Registro de auditoría: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/runs/1d3dd11d7ee344e999598393439a1b3c/audit_trail.jsonl"
+     "Informe HTML: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.html",
+     "Informe Word: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.docx",
+     "Informe PDF: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.pdf",
+     "Fuente editable (Quarto): /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.qmd",
+     "Registro de auditoría: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/runs/b6577427e8e34febac8f6f38f4e07953/audit_trail.jsonl"
     ],
     "alerts": [],
     "table": null
@@ -1064,31 +1064,31 @@
    "files": [
     [
      "Carpeta del proyecto",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/runs/1d3dd11d7ee344e999598393439a1b3c"
+     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/runs/b6577427e8e34febac8f6f38f4e07953"
     ],
     [
      "Evidencia de la corrida",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/runs/1d3dd11d7ee344e999598393439a1b3c"
+     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/runs/b6577427e8e34febac8f6f38f4e07953"
     ],
     [
      "Registro de auditoría",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/runs/1d3dd11d7ee344e999598393439a1b3c/audit_trail.jsonl"
+     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/runs/b6577427e8e34febac8f6f38f4e07953/audit_trail.jsonl"
     ],
     [
      "Informe HTML",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/reports/ifrs9_ecl_report.html"
+     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.html"
     ],
     [
      "Informe Word",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/reports/ifrs9_ecl_report.docx"
+     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.docx"
     ],
     [
      "Informe PDF",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/reports/ifrs9_ecl_report.pdf"
+     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.pdf"
     ],
     [
      "Fuente editable (Quarto)",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f4/reports/ifrs9_ecl_report.qmd"
+     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.qmd"
     ]
    ]
   },

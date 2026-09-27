@@ -435,7 +435,7 @@
    ],
    "html": {
     "template_id": "scorecard_basic_v1",
-    "theme": "nikodym",
+    "theme": "bayesrisk",
     "embed_assets": true,
     "include_interactive_charts": false,
     "deterministic_ids": true
@@ -478,7 +478,7 @@
   },
   "governance": {
    "model_name": "scorecard-consumo-demo",
-   "purpose": "Demostración pública de Nikodym RiskLib: scorecard de comportamiento sobre una cartera de consumo sintética. Ilustra el flujo completo de construcción y validación; no decide sobre ninguna operación real.",
+   "purpose": "Demostración pública de bayesrisk: scorecard de comportamiento sobre una cartera de consumo sintética. Ilustra el flujo completo de construcción y validación; no decide sobre ninguna operación real.",
    "assumptions": [
     "Los datos son sintéticos y reproducibles: no representan a ninguna institución.",
     "La definición de incumplimiento es la del dataset de ejemplo (bad_flag)."
@@ -491,7 +491,7 @@
    "motor": "scoring",
    "fase": "F1",
    "estado_validacion": "desarrollo",
-   "author": "Nexo Labs"
+   "author": "Bayes Advisory"
   },
   "tracking": null
  },
