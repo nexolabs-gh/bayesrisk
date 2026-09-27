@@ -324,3 +324,19 @@ def test_el_aviso_de_truncado_agrupa_sus_conteos() -> None:
     assert vista["truncated"] is True
     assert (vista["shown_rows_label"], vista["total_rows_label"]) == ("1.000", "30.316")
     assert vista["total_rows"] == 30316  # el entero sigue para la lógica
+
+
+def test_el_config_del_anexo_c_se_escribe_exacto_y_no_como_p_valor_observado() -> None:
+    """Pasada 2 de Codex sobre el código: el config efectivo del Anexo C pasaba por la regla de
+    los p-valores observados, y un `entry_p_value` de 0.0005 se leía «< 0,001»."""
+    config = {"stepwise": {"entry_p_value": 0.0005, "exit_p_value": 0.1254}, "tol": 1e-08}
+    assert renderer_module._display_json_value(config, key_path=("effective_config",)) == {
+        "stepwise": {"entry_p_value": "0,0005", "exit_p_value": "0,1254"},
+        "tol": "0,00000001",
+    }
+    # Un p-valor observado de una card sí sigue la regla de D-CPY-4.
+    assert renderer_module._display_json_value({"p_value": 0.0005}, key_path=("card",)) == {
+        "p_value": "< 0,001"
+    }
+    for corte_del_config in ("entry_p_value", "exit_p_value", "max_pvalue", "p_value_threshold"):
+        assert not es_columna_de_pvalor(corte_del_config), corte_del_config

@@ -49,6 +49,7 @@ from nikodym.report._manifest import (
 from nikodym.report.cifras import (
     cifra,
     conteo,
+    corte,
     es_columna_de_conteo,
     es_columna_de_pvalor,
     pvalor,
@@ -1297,6 +1298,10 @@ def _es_booleano(value: Any) -> bool:
     return isinstance(value, bool) or getattr(getattr(value, "dtype", None), "kind", "") == "b"
 
 
+#: Clave con que el builder publica el config efectivo de cada dominio en el Anexo C.
+_CONFIG_EFECTIVO: Final = "effective_config"
+
+
 def _format_number(value: Decimal | numbers.Real, *, key_path: tuple[str, ...]) -> str:
     """Un número real del informe en es-CL, con la regla del cero final (D-INF-1, `cifras`).
 
@@ -1307,6 +1312,11 @@ def _format_number(value: Decimal | numbers.Real, *, key_path: tuple[str, ...]) 
     """
     columna = key_path[-1] if key_path else ""
     numero = value if isinstance(value, Decimal) else float(value)
+    if _CONFIG_EFECTIVO in key_path and math.isfinite(numero):
+        # El config efectivo del Anexo C es la política que se ejecutó: se escribe exacto, como
+        # un corte. Por la regla de las cifras observadas, un `entry_p_value` de 0.0005 salía
+        # «< 0,001» y uno de 0.1254 salía «0,125» (pasada 2 de Codex sobre el código).
+        return corte(numero, minimo=1)
     if es_columna_de_pvalor(columna):
         return pvalor(numero)
     return cifra(numero)

@@ -205,6 +205,15 @@ def es_columna_de_conteo(nombre: str) -> bool:
 
 
 def es_columna_de_pvalor(nombre: str) -> bool:
-    """Si la columna es un p-valor (D-CPY-4: ``< 0,001`` o tres decimales)."""
+    """Si la columna es un p-valor **observado** (D-CPY-4: ``< 0,001`` o tres decimales).
+
+    Un corte de p-valor del config (``entry_p_value``, ``exit_p_value``, ``max_pvalue``,
+    ``p_value_threshold``) no es un resultado: se escribe exacto, no como ``< 0,001``.
+    """
     clave = nombre.strip().lower()
-    return "p_value" in clave or "pvalue" in clave
+    if not ("p_value" in clave or "pvalue" in clave):
+        return False
+    return not (
+        clave.startswith(("entry_", "exit_", "max_", "min_"))
+        or any(marca in clave for marca in ("threshold", "alpha", "cut", "corte"))
+    )
