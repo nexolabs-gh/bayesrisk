@@ -57,7 +57,7 @@ all = ["bayesrisk[all]>=2.0,<3"]
 "bayesrisk en PyPI" = "https://pypi.org/project/bayesrisk/"
 Documentation = "https://docs.bayesadvisory.cl"
 "Migrar desde nikodym" = "https://docs.bayesadvisory.cl/migrar-desde-nikodym/"
-Source = "https://github.com/nexolabs-gh/bayesrisk"
+Source = "https://github.com/nexolabs-gh/nikodym"
 
 # `nikodym-ui` sigue existiendo para quien lo tenga en un script: apunta directo a la interfaz de
 # bayesrisk (sin pasar por el alias ni por el aviso).

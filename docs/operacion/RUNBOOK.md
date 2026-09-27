@@ -1107,7 +1107,11 @@ if ($LASTEXITCODE -ne 0) { throw 'status final privado falló' }
 > anterior). Cada job coteja con PyPI archivo por archivo antes y después de subir
 > (`scripts/pypi_cotejar_publicacion.py`): un archivo ya publicado con los mismos bytes se
 > omite, con otros bytes detiene la release, y al final PyPI tiene que servir los cuatro. En las
-> releases siguientes nikodym no cambia de versión y el cotejo no sube nada. El paso 4 verifica
+> releases siguientes nikodym no cambia de versión y el cotejo no sube nada, **siempre que
+> `compat/` no cambie**: tocar ahí una URL, el README o la LICENSE (que replica la de la raíz)
+> cambia los bytes de un número ya publicado y la release entera se detiene antes de subir
+> bayesrisk. Si hay que tocarlo, se sube la versión de nikodym en la misma release; el gate
+> `test_la_fuente_publicada_de_nikodym_no_cambia_sin_subir_su_version` lo exige. El paso 4 verifica
 > también `https://pypi.org/pypi/nikodym/json`, y el smoke instala además `nikodym` en otro
 > venv limpio para comprobar que trae bayesrisk y que `import nikodym` avisa y funciona.
 

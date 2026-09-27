@@ -11,6 +11,7 @@ paquetes.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -181,6 +182,42 @@ def test_compat_replica_los_extras_y_la_licencia() -> None:
         p.relative_to(COMPAT / "src").as_posix() for p in (COMPAT / "src").rglob("*.py")
     )
     assert modulos == ["nikodym/__init__.py"]
+
+
+#: Digest de la fuente de ``compat/nikodym`` de cada versión ya publicada en PyPI (rutas POSIX y
+#: bytes con LF, en orden). 1.21.0 salió del tag ``v2.0.0`` (``e44c8d5``).
+_FUENTE_PUBLICADA = {
+    "1.21.0": "0dc82c21ff206668d8619eb039a0c0f7bac30d5ae5679233ab234faadf499b18",
+}
+
+
+def _digest_fuente_compat() -> str:
+    digest = hashlib.sha256()
+    archivos = sorted(
+        (p.relative_to(COMPAT).as_posix(), p)
+        for p in COMPAT.rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts
+    )
+    for relativa, ruta in archivos:
+        digest.update(relativa.encode() + b"\0" + ruta.read_bytes().replace(b"\r\n", b"\n") + b"\0")
+    return digest.hexdigest()
+
+
+def test_la_fuente_publicada_de_nikodym_no_cambia_sin_subir_su_version() -> None:
+    """Cada release reconstruye nikodym y coteja sus archivos contra PyPI (D-REN-11).
+
+    Otros bytes bajo un número ya publicado detienen la release ENTERA antes de subir bayesrisk:
+    el cotejo previo de los dos proyectos va antes de la primera subida. Tocar ``compat/`` —una
+    URL, el README, la LICENSE que replica la raíz— exige subir su versión, y registrar aquí el
+    digest de la nueva cuando se publique.
+    """
+    version = tomllib.loads((COMPAT / "pyproject.toml").read_text(encoding="utf-8"))["project"][
+        "version"
+    ]
+    if version in _FUENTE_PUBLICADA:
+        assert _digest_fuente_compat() == _FUENTE_PUBLICADA[version], (
+            f"compat/nikodym cambió pero sigue declarando {version}, ya publicada en PyPI"
+        )
 
 
 def test_el_tema_del_informe_anterior_sigue_validando() -> None:

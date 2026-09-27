@@ -300,13 +300,14 @@ def test_el_repo_se_nombra_por_su_nombre_vigente() -> None:
     """El repo pasó a ``nexolabs-gh/bayesrisk`` el 2026-09-27, después de publicar la 2.0.0.
 
     GitHub redirige el nombre anterior sólo mientras nadie cree otro repo con ese nombre: una URL
-    vieja en el copy o en la metadata del paquete es un enlace prestado.
+    vieja en el copy o en la metadata del paquete es un enlace prestado. Exento: ``compat/nikodym``,
+    congelado con los bytes que PyPI ya sirve como 1.21.0 (su URL cambia con su próxima versión;
+    ``test_compat_nikodym`` lo vigila).
     """
     superficies = [
         *_paginas(),
         _RAIZ / "mkdocs.yml",
         _RAIZ / "pyproject.toml",
-        _RAIZ / "compat" / "nikodym" / "pyproject.toml",
         _RAIZ / "SECURITY.md",
         _RAIZ / "SUPPORT.md",
     ]
