@@ -7,7 +7,7 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
-## [No publicado]
+## [2.0.0] — 2026-09-27
 
 **nikodym ahora se llama bayesrisk.** Esta versión es **equivalente funcional a nikodym 1.20.0**:
 con la misma configuración da los mismos resultados, bit a bit, y el mismo `config_hash`. Medido
