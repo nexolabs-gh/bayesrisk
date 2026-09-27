@@ -161,6 +161,12 @@ a ojo**: `web/src/lib/cifras.ts` es su **espejo**, atado a Python por un **golde
   conteo: «Malos», «Filas» siguen con miles); sólo cambia la inferencia para una columna entera
   **no declarada**, que deja de agruparse salvo que `cifras.es_columna_de_conteo` la reconozca. Los
   dos `_num` que quedan en `report/prose.py` pasan a `_cifra`.
+- **Los cortes de los resúmenes, por procedencia, con `corte`.** Cada uso de `_num` se clasifica:
+  una **observación** va con `cifra`; un **corte del config o efectivo** va con `corte`, exacto. Los
+  medidos hoy: el umbral del stepwise (`summaries.py:1229`, hoy dos decimales: un umbral efectivo
+  `0.24994` se leería `0,25`), el umbral de deterioro de la tasa en el EDA (`786-793`) y el WoE
+  declarado para categorías no vistas (`665`). La implementación clasifica los 39 usos, uno por uno,
+  y la clasificación queda en el test que los recorre.
 - **Qué texto cambia, censado.** Ningún número cambia; el texto cambia por cuatro causas y sólo por
   ellas: (1) la regla del cero final agrega decimales; (2) un valor bajo 0,001 pasa a dos cifras
   significativas o a `< 0,001` si es un p-valor; (3) un valor desde 1.000 pasa a dos decimales con
@@ -193,18 +199,26 @@ reconoce lo devuelve igual**, sin inventar. La usan:
   `cifra`/`detalle_legible` para el valor, campo a campo si es anidado). El front muestra el
   campo legible y, si falta (un fixture anterior), el crudo.
 
-**Los rótulos de tramo del EDA**, igual: el serializer sabe la procedencia —un tramo numérico es un
-`pd.Interval`; un nivel categórico llega como `str`, aunque tenga forma de intervalo— y sólo al
-primero le añade `tramo_legible`, con los comparadores **del EDA**, cerrado a la derecha:
-`(0.5, 1.25]` → «> 0,5 y ≤ 1,25» (`core/tramos.rotulo_de_rango` es el de OptBinning, cerrado a la
-izquierda, y no se reutiliza); un tramo constante `[a, a]` → «= a». El rótulo crudo sigue siendo la
-clave de la fila en `results.json`.
+**Los rótulos de tramo del EDA**, igual y también en el informe. La procedencia la da el tipo —un
+tramo numérico es un `pd.Interval`; un nivel categórico es un `str`, aunque tenga forma de
+intervalo— y sólo al primero se le escribe un rótulo, con los comparadores **del EDA**, cerrado a la
+derecha: `(0.5, 1.25]` → «> 0,5 y ≤ 1,25»; un tramo constante `[a, a]` → «= a». Una sola función,
+`core/tramos.rotulo_de_intervalo` (`core/tramos.rotulo_de_rango` es el de OptBinning, cerrado a la
+izquierda, y no se reutiliza), que usan **el serializer** (campo aditivo `tramo_legible`; el rótulo
+crudo sigue siendo la clave de la fila en `results.json`), **las tablas del informe** que publican
+los perfiles (hoy el renderer escribe el `pd.Interval` con `str`, `report/renderer.py:1294`) y **el
+eje del gráfico de perfiles** (`report/charts.py:893`, hoy `str(record["tramo"])`).
 
-**Gate de catálogo, en los dos sentidos, todo en Python.** Un test extrae de `selector.py` y
-`estimator.py` cada plantilla f-string asignada a `detail`/`.detail` o a un valor del rastro y la
-compara con el catálogo de patrones de `detalle_legible`: una plantilla sin patrón → rojo; un patrón
-sin plantilla → rojo. Y cada patrón, aplicado a un ejemplo que renderiza la propia plantilla, da un
-texto sin punto decimal ni operador ASCII sin su palabra.
+**Gate de catálogo, en los dos sentidos, todo en Python.** Los **productores** del texto de
+auditoría se declaran en el test, por función: los cuatro sitios del selector que asignan
+`detail`/`.detail` (`selector.py:890, 898, 902, 1021, 1207`), `_criterion_detail`
+(`estimator.py:1615-1622`, que arma `wald_p=…` y `lr_p=…` con `parts.append` y los une con coma) y el
+productor de `iv_contribution=…`. El test extrae **toda** f-string de esas funciones —asignada o
+agregada a una lista— y la compara con el catálogo de patrones de `detalle_legible` (incluidas las
+combinaciones que `_criterion_detail` puede unir): una plantilla sin patrón → rojo; un patrón sin
+plantilla → rojo; y un censo de `selector.py` y `estimator.py` exige que ninguna otra función escriba
+`detail` sin estar declarada. Cada patrón, aplicado a un ejemplo que renderiza la propia plantilla,
+da un texto sin punto decimal ni operador ASCII sin su palabra.
 
 ### D-PAN-5 — El copy fijo dice lo que la pantalla hace
 
@@ -254,8 +268,11 @@ idioma del informe, hoy sólo español) ni el número de decimales.
 3. **Casos adversariales con prueba propia**: un umbral `0.24994` en la ficha escrito `0,24994`
    (no `0,2499`); un `Decimal` de corte que pasa por el serializer y se escribe igual que en el
    informe; `-0.0` sin signo en las cinco funciones; `2^53 − 1` y `2^53` en `conteo`; una
-   categoría literal `(0.5, 1.25]` que **no** se traduce y un tramo numérico que sí; «Malos» con
-   miles en un resumen; el AIC `1234.56` escrito `1.234,56`.
+   categoría literal `(0.5, 1.25]` que **no** se traduce y un tramo numérico que sí, en la pantalla
+   **y en la tabla y el eje del informe**; «Malos» con miles en un resumen; el AIC `1234.56`
+   escrito `1.234,56`; un umbral efectivo `0.24994` del stepwise y del deterioro del EDA escrito
+   `0,24994` en el resumen, junto a una observación cercana; y un control negativo por productor
+   del texto de auditoría (cambiar la plantilla de cada uno pone rojo el gate de catálogo).
 4. **Conteo en la demo viva**, con las mismas expresiones que la línea base de §0 sobre el texto
    visible y el SVG de Resultados con todas las secciones abiertas —punto decimal
    `(?<![\d.,])\d+\.\d+(?![\d.])`, coma de miles `(?<![\d.,])\d{1,3}(,\d{3})+(?![\d,])`,
@@ -305,6 +322,13 @@ un `pd.Interval`, con comparadores propios. (5) El golden no codificaba `-0`, no
 grandes: entradas tipadas y dominio declarado (y `corte(-0.0)` = `-0,00` se corrige). (6) La
 migración de los resúmenes tenía cambios no censados («Malos» perdía los miles; el AIC ganaba
 decimales): se conserva la semántica declarada y se censa cada frase con su causa.
+
+**Pasada 2 (sobre `752e334`): `needs-attention`, tres hallazgos, los tres verificados y corregidos.**
+(1) Los resúmenes escribían cortes efectivos con `cifra`/`_num` (el umbral del stepwise a dos
+decimales): se clasifican por procedencia y van con `corte`. (2) Los tramos del EDA seguían crudos
+en la tabla y en el eje del informe: una sola función por tipo, usada por serializer, tablas y
+gráfico. (3) El gate de catálogo no veía las plantillas de `_criterion_detail` (`parts.append`): los
+productores se declaran por función y se censa que no haya otros.
 
 ## 13. Simplicidad (SDD-31)
 
