@@ -347,6 +347,34 @@ adelantar ninguna otra decisión de esta enmienda:
   en el informe original. No son las tablas: son las rutas de archivo del resumen de la corrida,
   el defecto de D-INF-4, que espera su aprobación.
 
+## 12. Implementación del resto (D-INF-1…4) — lo que el código precisó
+
+Aprobado el resto, se implementó en `4a976ef` y `0880276`:
+
+- **Una sola regla**, en `nikodym.report.cifras` (`cifra`, `pvalor`, `corte`, `conteo`,
+  `es_columna_de_conteo`, `es_columna_de_pvalor`), que usan el renderer, la prosa, los gráficos y el
+  Word. Opera en decimal: el exacto de un `float` es `Decimal(repr(x))` y el de un `Decimal` es él
+  mismo. **Con precisión local**: el contexto por defecto de 28 dígitos redondeaba en `quantize`,
+  `normalize`, `abs` y `format`, y `Decimal("1E+24")` levantaba `InvalidOperation` (pasada 1 de
+  Codex sobre el código); se usan `localcontext`, la tupla del Decimal y `copy_abs`.
+- **La prosa, más de lo que decía §1.4.** La pasada 1 mostró que el cuerpo de estabilidad y las
+  conclusiones también escribían el PSI con `_num` junto a su banda. Regla final: **toda métrica que
+  la prosa del informe escribe junto a una banda o un corte** (PSI, AUC/KS/Gini, IV, correlación,
+  VIF, pseudo-R², los parámetros de calibración y del escalado) pasa por `_cifra` con sus decimales
+  de siempre como base, y todo corte del config por `_cut` (exacto). Siguen con `_num` sólo el
+  rango teórico de puntaje (enteros). `cifra` admite `decimales` para esa base.
+- **Conteos.** Los adjuntos ya se agrupaban (`_thousands`); el aviso «mostrando X de Y filas» no, y
+  ahora usa `shown_rows_label`/`total_rows_label` en HTML, Word y `.qmd` (los enteros siguen para la
+  lógica del Word).
+- **Columnas numéricas**: `_table_view` publica `numeric`, calculado sobre las celdas ya con sus
+  rótulos públicos; la plantilla emite `class="num"` en `th` y `td`, y el Word alinea a la derecha.
+- **Controles negativos**: diez, todos rojos con el defecto y verdes tras restaurar byte a byte
+  (`privado/evidencia/s22/cn_dinf.txt`): (a) seis decimales con punto, (b) sin dos cifras
+  significativas, (c) todos los enteros agrupados, (e) sin cero final, (f) Decimal por float,
+  (g) redondeo absoluto de las marcas, (h) `overflow-wrap: anywhere` en pantalla, (i) el PSI del
+  cuerpo con `_num`, (j) el contexto de 28 dígitos, (k) el truncado sin agrupar. El (d), el
+  celular, se mide en el navegador.
+
 ## 13. Simplicidad (SDD-31) — obligatoria
 
 - **Entrada mínima:** no cambia.
