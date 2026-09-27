@@ -27,6 +27,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, Final
 
+from nikodym.report.cifras import conteo
 from nikodym.report.config import ReportConfig
 from nikodym.report.exceptions import ReportDependencyError, ReportExportError
 from nikodym.report.renderer import build_document_view
@@ -408,7 +409,7 @@ def _section(
         if escritas < table["total_rows"]:
             _caption(
                 word,
-                f"… (mostrando {escritas} de {table['total_rows']} filas)",
+                f"… (mostrando {conteo(escritas)} de {table['total_rows_label']} filas)",
                 points=points,
             )
     if section["data_exports"]:

@@ -440,7 +440,12 @@ def _table(table: Mapping[str, Any]) -> str:
     lines = [f"**{table['title']}**", ""]
     lines.append(_pipe_table(tuple(table["columns"]), [tuple(row) for row in table["rows"]]))
     if table["truncated"]:
-        lines.extend(["", f"_… (mostrando {table['shown_rows']} de {table['total_rows']} filas)_"])
+        lines.extend(
+            [
+                "",
+                f"_… (mostrando {table['shown_rows_label']} de {table['total_rows_label']} filas)_",
+            ]
+        )
     return "\n".join(lines)
 
 

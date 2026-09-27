@@ -27,7 +27,7 @@ Sólo presentación: los números de ``results``, de los exports y del ``data_ha
 from __future__ import annotations
 
 import math
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 from typing import Final
 
 __all__ = [
@@ -60,13 +60,23 @@ def _exacto(valor: float | Decimal) -> Decimal:
 
 
 def _redondeado(exacto: Decimal, decimales: int) -> Decimal:
-    return exacto.quantize(Decimal(1).scaleb(-decimales), rounding=ROUND_HALF_EVEN)
+    """``exacto`` redondeado al par más cercano con ``decimales``, sin tope de dígitos.
+
+    El contexto por defecto de ``decimal`` tiene 28 dígitos: con él ``Decimal("1E+24")`` a cuatro
+    decimales levantaba ``InvalidOperation`` y tumbaba el informe (pasada 1 de Codex sobre el
+    código). La precisión local alcanza para el resultado entero.
+    """
+    with localcontext() as contexto:
+        contexto.prec = max(28, exacto.adjusted() + decimales + 2)
+        return exacto.quantize(Decimal(1).scaleb(-decimales), rounding=ROUND_HALF_EVEN)
 
 
 def _posicional(numero: Decimal, decimales: int, *, miles: bool) -> str:
     """``numero`` ya redondeado a ``decimales``, escrito en es-CL."""
     signo = "-" if numero < 0 else ""
-    texto = format(abs(numero), f".{decimales}f")
+    # Sin precisión en el formato: `numero` ya viene con `decimales` exactos, y `format` con
+    # precisión redondea con el contexto de 28 dígitos (0,24999…9 de 29 cifras salía 0,25000…).
+    texto = format(numero.copy_abs(), "f")  # `abs()` redondea al contexto; `copy_abs` no
     entero, _, fraccion = texto.partition(".")
     if miles:
         entero = f"{int(entero):,}".replace(",", ".")
@@ -74,9 +84,17 @@ def _posicional(numero: Decimal, decimales: int, *, miles: bool) -> str:
 
 
 def _decimales_del_exacto(exacto: Decimal) -> int:
-    """Cuántos decimales tiene el exacto sin sus ceros a la derecha (0 si es entero)."""
-    exponente = exacto.normalize().as_tuple().exponent
-    return max(0, -exponente) if isinstance(exponente, int) else 0
+    """Cuántos decimales tiene el exacto sin sus ceros a la derecha (0 si es entero).
+
+    Se cuentan sobre la tupla del Decimal, sin ``normalize()``: con el contexto de 28 dígitos,
+    ``normalize`` redondeaba ``0.24999999999999999999999999999`` a ``0.25`` y la regla del cero
+    final se detenía en ``0,2500`` (pasada 1 de Codex sobre el código).
+    """
+    _, digitos, exponente = exacto.as_tuple()
+    if not isinstance(exponente, int):
+        return 0
+    ceros = len(digitos) - len("".join(map(str, digitos)).rstrip("0"))
+    return max(0, -(exponente + ceros))
 
 
 def _con_cero_final(exacto: Decimal, decimales: int, *, miles: bool) -> str:
@@ -100,12 +118,20 @@ def _cientifica(exacto: Decimal) -> str:
     """
     exponente = exacto.adjusted()
     signo_exp = "-" if exponente < 0 else "+"
-    mantisa = _con_cero_final(exacto.scaleb(-exponente), 1, miles=False)
+    with localcontext() as contexto:  # `scaleb` redondea al contexto: que quepan todas sus cifras
+        contexto.prec = max(28, len(exacto.as_tuple().digits) + 2)
+        mantisa_exacta = exacto.scaleb(-exponente)
+    mantisa = _con_cero_final(mantisa_exacta, 1, miles=False)
     return f"{mantisa}e{signo_exp}{abs(exponente):02d}"
 
 
-def cifra(valor: float | Decimal | None) -> str:
-    """Un número real como lo lee una persona en el informe (reglas del docstring del módulo)."""
+def cifra(valor: float | Decimal | None, *, decimales: int = 4) -> str:
+    """Un número real como lo lee una persona en el informe (reglas del docstring del módulo).
+
+    ``decimales`` es la base entre ``0,001`` y ``1.000`` (cuatro en tablas y anexos); la prosa que
+    ya escribía una métrica con dos o tres decimales los conserva, con la misma regla del cero
+    final encima.
+    """
     if valor is None:
         return VACIO
     if isinstance(valor, float) and not math.isfinite(valor):
@@ -118,12 +144,12 @@ def cifra(valor: float | Decimal | None) -> str:
         return "inf" if valor > 0 else "-inf"
     exacto = _exacto(valor)
     if exacto == 0:
-        return "0,0000"
-    magnitud = abs(exacto)
-    if abs(_redondeado(exacto, 4)) >= _GRANDE:
+        return _posicional(_redondeado(Decimal(0), decimales), decimales, miles=False)
+    magnitud = exacto.copy_abs()
+    if _redondeado(exacto, decimales).copy_abs() >= _GRANDE:
         return _con_cero_final(exacto, 2, miles=True)
     if magnitud >= _PEQUENO:
-        return _con_cero_final(exacto, 4, miles=False)
+        return _con_cero_final(exacto, decimales, miles=False)
     if magnitud >= _DIMINUTO:
         # Dos cifras significativas: la primera está en la posición ``-adjusted()``.
         return _con_cero_final(exacto, 1 - exacto.adjusted(), miles=False)

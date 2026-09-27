@@ -291,3 +291,36 @@ def test_las_marcas_del_eje_se_limpian_relativo_al_paso() -> None:
         "0,20",
     ]
     assert charts._marcas_del_eje([2e-13, 2.5e-13, 3e-13], 2) == ["2,0e-13", "2,5e-13", "3,0e-13"]
+
+
+# ───────────────── pasada 1 de Codex sobre el código ─────────────────
+
+
+@pytest.mark.parametrize(("psi", "texto"), [(0.24996, "0,24996"), (0.25004, "0,25004")])
+def test_el_cuerpo_y_las_conclusiones_no_hacen_pasar_un_psi_por_su_corte(
+    psi: float, texto: str
+) -> None:
+    """La página ejecutiva ya usaba la regla; el cuerpo de estabilidad y las conclusiones
+    escribían el PSI con cuatro decimales fijos junto a su banda («0,2500»)."""
+    bundle = _con_estabilidad(0.10, 0.25, psi)
+    cuerpo = " ".join(prose._results_stability(bundle))
+    conclusiones = " ".join(prose.conclusions_body(bundle))
+    en_el_corte = re.compile(r"0,2500(?!\d)")  # «0,2500» y no el prefijo de «0,25004»
+    assert texto in cuerpo and not en_el_corte.search(cuerpo)
+    assert texto in conclusiones and not en_el_corte.search(conclusiones)
+
+
+def test_un_decimal_de_mas_de_28_cifras_no_se_redondea_al_corte() -> None:
+    """Con el contexto de 28 dígitos, ``normalize`` redondeaba este Decimal a 0.25 y la regla del
+    cero final se detenía en «0,2500»; y ``Decimal("1E+24")`` levantaba ``InvalidOperation``."""
+    assert cifra(Decimal("0.24999999999999999999999999999")) == "0,24999999999999999999999999999"
+    assert cifra(Decimal("-0.24999999999999999999999999999")).startswith("-0,2499")
+    assert cifra(Decimal("1E+24")) == "1.000.000.000.000.000.000.000.000,00"
+
+
+def test_el_aviso_de_truncado_agrupa_sus_conteos() -> None:
+    tabla = pd.DataFrame({"n_total": range(30316)})
+    vista = renderer_module._table_view("x.frame", tabla, max_rows=1000)
+    assert vista["truncated"] is True
+    assert (vista["shown_rows_label"], vista["total_rows_label"]) == ("1.000", "30.316")
+    assert vista["total_rows"] == 30316  # el entero sigue para la lógica

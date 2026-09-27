@@ -886,8 +886,8 @@ def _methodology_scorecard(bundle: ReportInputBundle) -> tuple[str, ...]:
     if pdo is not None and target_score is not None and target_odds is not None:
         paragraphs.append(
             f"El modelo se escaló a puntaje con la convención PDO: un puntaje de "
-            f"{_num(target_score, decimals=0)} corresponde a odds de "
-            f"{_num(target_odds, decimals=0)}:1, y cada {_num(pdo, decimals=0)} puntos "
+            f"{_cut(target_score, minimo=0)} corresponde a odds de "
+            f"{_cut(target_odds, minimo=0)}:1, y cada {_cut(pdo, minimo=0)} puntos "
             "adicionales duplican esas odds."
         )
 
@@ -896,7 +896,7 @@ def _methodology_scorecard(bundle: ReportInputBundle) -> tuple[str, ...]:
     if factor is not None and offset is not None:
         paragraphs.append(
             f"De esa convención se derivan los parámetros efectivos de la escala: factor "
-            f"{_num(factor)} y offset {_num(offset)}."
+            f"{_cifra(factor)} y offset {_cifra(offset)}."
         )
 
     direction = _text(card.get("score_direction"))
@@ -956,12 +956,13 @@ def _methodology_calibration(bundle: ReportInputBundle) -> tuple[str, ...]:
     intercept = _float(card.get("intercept"))
     if offset is not None:
         paragraphs.append(
-            f"El desplazamiento aplicado al intercepto es {_num(offset)}, lo que preserva el "
+            f"El desplazamiento aplicado al intercepto es {_cifra(offset)}, lo que preserva el "
             "ordenamiento del score: la calibración corrige el nivel de la PD, no su ranking."
         )
     elif slope is not None and intercept is not None:
         paragraphs.append(
-            f"Los parámetros ajustados son pendiente {_num(slope)} e intercepto {_num(intercept)}."
+            f"Los parámetros ajustados son pendiente {_cifra(slope)} e intercepto "
+            f"{_cifra(intercept)}."
         )
 
     n_fit = _int(card.get("n_fit"))
@@ -1523,14 +1524,14 @@ def _eda_context(eda: Mapping[str, Any]) -> tuple[str, ...]:
     elif _bool(eda.get("stability_flagged")) and threshold is not None:
         paragraphs.append(
             f"La estabilidad temporal de la tasa de incumplimiento quedó marcada: el indicador "
-            f"({indicador}) alcanza {_num(value)} frente al umbral configurado de "
-            f"{_num(threshold)}. Es un aviso de exploración, no una regla: la corrida siguió, y "
+            f"({indicador}) alcanza {_cifra(value)} frente al umbral configurado de "
+            f"{_cut(threshold)}. Es un aviso de exploración, no una regla: la corrida siguió, y "
             "este punto debe explicarse en el bloque de contexto."
         )
     elif threshold is not None:
         paragraphs.append(
             f"La estabilidad temporal de la tasa de incumplimiento no dejó aviso: el indicador "
-            f"({indicador}) vale {_num(value)} frente al umbral configurado de {_num(threshold)}."
+            f"({indicador}) vale {_cifra(value)} frente al umbral configurado de {_cut(threshold)}."
         )
     return tuple(paragraphs)
 
@@ -1689,7 +1690,9 @@ def _results_binning(bundle: ReportInputBundle) -> tuple[str, ...]:
     )
     disponibles = tuple(sorted(medidos, key=lambda item: (-item[1], item[0])))
     if disponibles:
-        mejores = tuple(f"«{name}» ({_num(value, decimals=3)})" for name, value in disponibles[:3])
+        mejores = tuple(
+            f"«{name}» ({_cifra(value, decimales=3)})" for name, value in disponibles[:3]
+        )
         paragraphs.append(
             f"El poder predictivo univariado (IV) de las {len(disponibles)} variables binificadas "
             f"lo encabezan {_enumerar(mejores)}. El IV de cada variable consta en la tabla "
@@ -1747,10 +1750,10 @@ def _results_selection(bundle: ReportInputBundle) -> tuple[str, ...]:
     frases: list[str] = []
     if max_corr is not None:
         frases.append(
-            f"la correlación absoluta máxima entre las variables finales es {_num(max_corr)}"
+            f"la correlación absoluta máxima entre las variables finales es {_cifra(max_corr)}"
         )
     if max_vif is not None:
-        frases.append(f"el VIF máximo es {_num(max_vif, decimals=2)}")
+        frases.append(f"el VIF máximo es {_cifra(max_vif, decimales=2)}")
     if frases:
         paragraphs.append(f"Tras la selección, {_enumerar(frases)}.")
 
@@ -1800,7 +1803,7 @@ def _results_model(bundle: ReportInputBundle) -> tuple[str, ...]:
                 f"{_plural(n_events, 'es un incumplimiento', 'son incumplimientos')}"
             )
         if pseudo_r2 is not None:
-            frases.append(f"el pseudo-R² de McFadden es {_num(pseudo_r2)}")
+            frases.append(f"el pseudo-R² de McFadden es {_cifra(pseudo_r2)}")
         if frases:
             paragraphs.append(f"En el ajuste in-sample, {_enumerar(frases)}.")
         if converged is False:
@@ -1914,7 +1917,7 @@ def _results_performance(bundle: ReportInputBundle) -> tuple[str, ...]:
             )
             continue
         cifras = tuple(
-            f"{label} {_num(values.get(key), decimals=4)}"
+            f"{label} {_cifra(values.get(key))}"
             for key, label in _DISCRIMINANT_METRIC_LABELS
             if _float(values.get(key)) is not None
         )
@@ -1994,7 +1997,7 @@ def _results_stability(bundle: ReportInputBundle) -> tuple[str, ...]:
         identity = f"; corresponde {referent}" if referent is not None else ""
         paragraphs.append(
             f"El peor PSI entre score y PD en {_comparison_label(comparison_id)} es "
-            f"{_num(value)} (banda «{BAND_LABELS.get(band, band)}»){identity}. {lectura}"
+            f"{_cifra(value)} (banda «{BAND_LABELS.get(band, band)}»){identity}. {lectura}"
         )
 
     worst_feature = _text(card.get("worst_csi_feature"))
@@ -2002,7 +2005,7 @@ def _results_stability(bundle: ReportInputBundle) -> tuple[str, ...]:
     if worst_feature is not None and worst_value is not None:
         paragraphs.append(
             f"A nivel de variable, el mayor CSI corresponde a «{worst_feature}» con "
-            f"{_num(worst_value)}."
+            f"{_cifra(worst_value)}."
         )
     if psi_bins is not None:
         paragraphs.append(
@@ -2698,7 +2701,7 @@ def conclusions_body(bundle: ReportInputBundle) -> tuple[str, ...]:
             if str(band) == "threshold_flag"
         )
         auc_por_particion = tuple(
-            f"{_partition_label(str(partition))} {_num(_mapping(values).get('auc'), decimals=4)}"
+            f"{_partition_label(str(partition))} {_cifra(_mapping(values).get('auc'))}"
             for partition, values in sorted(max_metrics.items(), key=lambda item: str(item[0]))
             if _float(_mapping(values).get("auc")) is not None
         )
@@ -2719,7 +2722,7 @@ def conclusions_body(bundle: ReportInputBundle) -> tuple[str, ...]:
             metric_label = PSI_METRIC_LABELS.get(str(psi_metrics.get(comparison)))
             identity = f"; {metric_label}" if metric_label is not None else ""
             detalles_list.append(
-                f"{_comparison_label(str(comparison))} {_num(max_psi.get(comparison))} "
+                f"{_comparison_label(str(comparison))} {_cifra(max_psi.get(comparison))} "
                 f"(«{BAND_LABELS.get(str(band), str(band))}»{identity})"
             )
         detalles = tuple(detalles_list)
@@ -3064,7 +3067,7 @@ def _cut(value: Any, *, minimo: int = 2) -> str:
     return corte(numeric, minimo=minimo)
 
 
-def _cifra(value: Any) -> str:
+def _cifra(value: Any, *, decimales: int = 4) -> str:
     """Una métrica junto a su banda, con la regla única del informe (D-INF-1).
 
     Un redondeo nunca se hace pasar por un corte: ``0.24996`` no se escribe ``0,2500`` junto a un
@@ -3073,7 +3076,7 @@ def _cifra(value: Any) -> str:
     numeric = _float(value)
     if numeric is None:
         return _NOT_AVAILABLE
-    return cifra(value if isinstance(value, Decimal) else numeric)
+    return cifra(value if isinstance(value, Decimal) else numeric, decimales=decimales)
 
 
 def _pct(value: Any, *, decimals: int = 2) -> str:

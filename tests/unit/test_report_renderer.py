@@ -1064,7 +1064,7 @@ def test_el_informe_con_una_cohorte_casi_unica_dice_cuantas_filas_muestra_de_cua
         ReportConfig(sections=SectionPolicyConfig(max_table_rows=200))
     ).render(bundle)
 
-    assert "(mostrando 200 de 1500 filas)" in html
+    assert "(mostrando 200 de 1.500 filas)" in html
     assert "(primeras 60 de 1500 cohortes)" in html
     assert "ID-00199" in html
     assert "ID-00200" not in html
@@ -1095,7 +1095,7 @@ def test_la_tasa_por_cohorte_tiene_un_tope_duro_aunque_max_table_rows_sea_mayor(
     ).render(bundle)
 
     assert MAX_PUBLISHED_PERIODS == 1_000
-    assert "(mostrando 1000 de 1500 filas)" in html
+    assert "(mostrando 1.000 de 1.500 filas)" in html
     assert "ID-00999" in html
     assert "ID-01000" not in html and "ID-01499" not in html
     # La calidad por columna no tiene ese tope: con 1.200 filas y un máximo de un millón, entera.

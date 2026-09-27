@@ -13,6 +13,6 @@
       {% endfor %}
     </tbody>
   </table>
-  {% if table.truncated %}<p class="truncated">… (mostrando {{ table.shown_rows }} de {{ table.total_rows }} filas)</p>{% endif %}
+  {% if table.truncated %}<p class="truncated">… (mostrando {{ table.shown_rows_label }} de {{ table.total_rows_label }} filas)</p>{% endif %}
 </figure>
 {% endfor %}

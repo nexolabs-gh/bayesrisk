@@ -314,7 +314,7 @@ def test_docx_dice_las_filas_que_trae_de_verdad_si_su_cinturon_corta_bajo_la_vis
     tabla = next(t for t in word.tables if t.rows[0].cells[0].text == "period")
     assert len(tabla.rows) == _MAX_DOCX_TABLE_ROWS + 1  # cabecera + el cinturón de Word
     texto = "\n".join(p.text for p in word.paragraphs)
-    assert f"(mostrando {_MAX_DOCX_TABLE_ROWS} de {n} filas)" in texto
+    assert f"(mostrando {_MAX_DOCX_TABLE_ROWS} de {n:,} filas)".replace(",", ".") in texto
     assert "mostrando 1000 de" not in texto
 
 

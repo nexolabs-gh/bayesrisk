@@ -1009,6 +1009,10 @@ def _table_view(
         "total_rows": total_rows,
         "shown_rows": len(visible_rows),
         "truncated": total_rows > len(visible_rows),
+        # El aviso de truncado escribe sus conteos agrupados (D-INF-1); los enteros de arriba
+        # siguen para la lógica (el Word compara contra `total_rows`).
+        "shown_rows_label": conteo(len(visible_rows)),
+        "total_rows_label": conteo(total_rows),
     }
 
 
