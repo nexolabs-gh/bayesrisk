@@ -142,16 +142,16 @@ $bayesriskPublicRemote = (git remote get-url origin).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'URL remota pública no se pudo leer' }
 $bayesriskPrivateRemote = (git -C privado remote get-url origin).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'URL remota privada no se pudo leer' }
-if ($bayesriskPublicRemote -ne 'https://github.com/nexolabs-gh/nikodym.git') {
+if ($bayesriskPublicRemote -ne 'https://github.com/nexolabs-gh/bayesrisk.git') {
     throw "remoto público inesperado: $bayesriskPublicRemote"
 }
-if ($bayesriskPrivateRemote -ne 'https://github.com/nexolabs-gh/nikodym-privado.git') {
+if ($bayesriskPrivateRemote -ne 'https://github.com/nexolabs-gh/bayesrisk-privado.git') {
     throw "remoto privado inesperado: $bayesriskPrivateRemote"
 }
 ```
 
-Nunca imprimir ni copiar el token. Los remotos esperados son `nexolabs-gh/nikodym` y
-`nexolabs-gh/nikodym-privado`, ambos por HTTPS.
+Nunca imprimir ni copiar el token. Los remotos esperados son `nexolabs-gh/bayesrisk` y
+`nexolabs-gh/bayesrisk-privado`, ambos por HTTPS.
 
 ### 2.4 UTF-8, symlinks y reparse points
 
@@ -704,7 +704,7 @@ del run debe ser exactamente el `HEAD` que se va a verificar.
 $bayesriskCandidateSha = (git rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'no se pudo leer el SHA candidato' }
 $bayesriskCiRowsRaw = @(
-    & $bayesriskGh run list -R nexolabs-gh/nikodym -w ci.yml -b main `
+    & $bayesriskGh run list -R nexolabs-gh/bayesrisk -w ci.yml -b main `
         -c $bayesriskCandidateSha --limit 10 `
         --json databaseId,headSha,status,conclusion,url
 )
@@ -715,10 +715,10 @@ $bayesriskCiRows = @(
 )
 if ($bayesriskCiRows.Count -lt 1) { throw 'no existe run CI con headSha exacto' }
 $bayesriskCi = $bayesriskCiRows | Sort-Object databaseId -Descending | Select-Object -First 1
-& $bayesriskGh run watch $bayesriskCi.databaseId -R nexolabs-gh/nikodym --exit-status
+& $bayesriskGh run watch $bayesriskCi.databaseId -R nexolabs-gh/bayesrisk --exit-status
 if ($LASTEXITCODE -ne 0) { throw 'el run CI candidato terminó rojo' }
 $bayesriskCiViewRaw = @(
-    & $bayesriskGh run view $bayesriskCi.databaseId -R nexolabs-gh/nikodym `
+    & $bayesriskGh run view $bayesriskCi.databaseId -R nexolabs-gh/bayesrisk `
         --json headSha,status,conclusion,jobs,url
 )
 if ($LASTEXITCODE -ne 0) { throw 'no se pudo leer el run CI candidato' }
@@ -740,7 +740,7 @@ $bayesriskCandidateDir = Join-Path $bayesriskTempRoot (
     [guid]::NewGuid().ToString('N')
 )
 New-Item -ItemType Directory -Path $bayesriskCandidateDir | Out-Null
-& $bayesriskGh run download $bayesriskCi.databaseId -R nexolabs-gh/nikodym `
+& $bayesriskGh run download $bayesriskCi.databaseId -R nexolabs-gh/bayesrisk `
     -n candidate-distributions-with-evidence -D $bayesriskCandidateDir
 if ($LASTEXITCODE -ne 0) { throw 'descarga del candidato falló' }
 

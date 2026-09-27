@@ -171,7 +171,7 @@ se cotejó **celda por celda** contra el texto del compendio el **2026-07-14** �
 sus 6 de PDI y el PI de incumplimiento coinciden exactamente—, y la verificación visual del
 2026-06-23 sobre las tablas más críticas **detectó y corrigió** un error en la columna de escala
 internacional de avales. El registro completo, tabla por tabla y con su estado, está en
-[`docs/normativa_cmf_parametros.md`](https://github.com/nexolabs-gh/nikodym/blob/main/docs/normativa_cmf_parametros.md).
+[`docs/normativa_cmf_parametros.md`](https://github.com/nexolabs-gh/bayesrisk/blob/main/docs/normativa_cmf_parametros.md).
 
 Y una vez más, porque es el punto de la página: **una jurisdicción implementada es evidencia de que
 el método funciona, no una promesa de mantenerla al día.** Si tu norma es otra, las cinco piezas de

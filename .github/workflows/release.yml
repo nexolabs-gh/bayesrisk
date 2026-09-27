@@ -1,7 +1,8 @@
 name: Release
 
 # Publica en PyPI vía Trusted Publishing (OIDC, sin tokens). Se dispara al pushear un tag `vX.Y.Z`.
-# El publisher está registrado en PyPI: repo nexolabs-gh/nikodym · workflow release.yml · environment pypi,
+# El publisher está registrado en PyPI: repo nexolabs-gh/bayesrisk (antes nexolabs-gh/nikodym) ·
+# workflow release.yml · environment pypi,
 # en el proyecto `nikodym` (capa de compatibilidad, job `publish-compat`) y —desde el OK de A7 del
 # renombre— en `bayesrisk` (la librería, job `publish`). Un solo tag `vX.Y.Z` publica los dos.
 #

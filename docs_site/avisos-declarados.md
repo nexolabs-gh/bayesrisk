@@ -64,7 +64,7 @@ corrida anterior que los traiga en su anexo los lleva por esa razón, no por una
 Fuera de esta tabla quedan dos brechas normativas del motor CMF que no viajan como código de fila
 sino como parámetro marcado: los aforos y *haircuts* de garantías financieras, y las tablas del
 RAN 21-10. Están registradas en el
-[cotejo de parámetros normativos](https://github.com/nexolabs-gh/nikodym/blob/main/docs/normativa_cmf_parametros.md).
+[cotejo de parámetros normativos](https://github.com/nexolabs-gh/bayesrisk/blob/main/docs/normativa_cmf_parametros.md).
 
 ### `DATO-INSTITUCIONAL` — inputs que aporta la institución
 

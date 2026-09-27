@@ -15,8 +15,8 @@ qué, para que sepas a qué atenerte antes de apoyarte en la librería.
 
 | Necesitas | Dónde | Qué esperar |
 | --- | --- | --- |
-| Reportar un bug | [Issues](https://github.com/nexolabs-gh/nikodym/issues) | Mejor esfuerzo. Incluye versión, config mínimo y traza completa. |
-| Proponer una capacidad | [Issues](https://github.com/nexolabs-gh/nikodym/issues) | Se evalúa contra el roadmap; toda capacidad nueva pasa por un documento de diseño. |
+| Reportar un bug | [Issues](https://github.com/nexolabs-gh/bayesrisk/issues) | Mejor esfuerzo. Incluye versión, config mínimo y traza completa. |
+| Proponer una capacidad | [Issues](https://github.com/nexolabs-gh/bayesrisk/issues) | Se evalúa contra el roadmap; toda capacidad nueva pasa por un documento de diseño. |
 | Reportar una vulnerabilidad | Ver [SECURITY.md](SECURITY.md) | **No uses issues públicos.** |
 | Implantación, adaptación regulatoria o validación | [Bayes Advisory](https://www.bayesadvisory.cl/#contact) | Servicio comercial, con acuerdo y plazos por contrato. |
 

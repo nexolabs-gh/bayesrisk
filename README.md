@@ -2,8 +2,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/bayesrisk.svg)](https://pypi.org/project/bayesrisk/)
 [![Python](https://img.shields.io/pypi/pyversions/bayesrisk.svg)](https://pypi.org/project/bayesrisk/)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/nexolabs-gh/nikodym/blob/main/LICENSE)
-[![CI](https://github.com/nexolabs-gh/nikodym/actions/workflows/ci.yml/badge.svg)](https://github.com/nexolabs-gh/nikodym/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/nexolabs-gh/bayesrisk/blob/main/LICENSE)
+[![CI](https://github.com/nexolabs-gh/bayesrisk/actions/workflows/ci.yml/badge.svg)](https://github.com/nexolabs-gh/bayesrisk/actions/workflows/ci.yml)
 
 Librería Python **open-source (Apache-2.0)** de riesgo de crédito **integral**: **PD** (scorecards,
 backends ML, survival), **LGD y EAD**, **validación de modelos**, provisiones **IFRS 9/ECL**,
@@ -303,5 +303,5 @@ hábiles.
 
 ## Licencia
 
-[Apache-2.0](https://github.com/nexolabs-gh/nikodym/blob/main/LICENSE). Sin dependencias copyleft
+[Apache-2.0](https://github.com/nexolabs-gh/bayesrisk/blob/main/LICENSE). Sin dependencias copyleft
 (GPL/LGPL/AGPL) en el wheel.

@@ -7,6 +7,9 @@ name: TestPyPI
 #   nikodym   → nexolabs-gh/nikodym · testpypi.yml · environment testpypi-nikodym
 # (TestPyPI no admite dos publicadores pendientes con la misma configuración para proyectos
 # distintos: por eso cada paquete publica desde su propio entorno.)
+# El repo se renombró a nexolabs-gh/bayesrisk el mismo día, después del ensayo: el claim OIDC lleva
+# el nombre nuevo, así que un ensayo nuevo exige registrar esos dos publicadores con repo
+# `bayesrisk` (TestPyPI pide confirmar la contraseña de la cuenta para hacerlo).
 #
 # Es un ENSAYO, no la promoción de release.yml: construye desde el commit etiquetado. Se dispara
 # con un tag `testpypi-v*` (workflow_dispatch exige el archivo en la rama por defecto, y el

@@ -54,11 +54,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nexolabs-gh/nikodym"
-Source = "https://github.com/nexolabs-gh/nikodym"
+Homepage = "https://github.com/nexolabs-gh/bayesrisk"
+Source = "https://github.com/nexolabs-gh/bayesrisk"
 Documentation = "https://docs.bayesadvisory.cl"
 Demo = "https://demo.bayesadvisory.cl"
-Changelog = "https://github.com/nexolabs-gh/nikodym/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/nexolabs-gh/bayesrisk/blob/main/CHANGELOG.md"
 # PyPI usa la clave literal como texto del enlace en su barra lateral.
 "Consultoría (Bayes Advisory)" = "https://www.bayesadvisory.cl/?ref=pypi#contact"
 

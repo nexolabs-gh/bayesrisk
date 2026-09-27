@@ -191,7 +191,8 @@ Esa autorización no amplía el objetivo de la sesión ni permite tomar decision
 
 ## Git, privacidad y cierre
 
-- Repo público: `nexolabs-gh/nikodym` (el nombre del repositorio no cambió con el paquete), rama
+- Repo público: `nexolabs-gh/bayesrisk` (hasta el 2026-09-27, `nexolabs-gh/nikodym`; GitHub
+  redirige el nombre anterior), rama
   `main`. Todo commit es visible.
 - `privado/` es otro repo Git, privado, con remoto propio. Nunca añadirlo al índice público. El
   `HANDOFF.md` de la raíz apunta a `privado/HANDOFF.md` y está ignorado en el público.

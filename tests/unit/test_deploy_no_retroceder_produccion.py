@@ -349,11 +349,11 @@ def test_consultar_ci_clasifica_los_runs_del_commit(
     modulo = _cargar()
     consultas = _api_de_actions(monkeypatch, modulo, runs)
     veredicto, motivo = modulo.consultar_ci(
-        "a" * 40, repo="nexolabs-gh/nikodym", token="t", intentos=1, espera=0.0
+        "a" * 40, repo="nexolabs-gh/bayesrisk", token="t", intentos=1, espera=0.0
     )
     assert veredicto == esperado and fragmento in motivo
     assert len(consultas) == 1
-    assert "/repos/nexolabs-gh/nikodym/actions/workflows/ci.yml/runs?" in consultas[0]
+    assert "/repos/nexolabs-gh/bayesrisk/actions/workflows/ci.yml/runs?" in consultas[0]
     assert "head_sha=" + "a" * 40 in consultas[0]
 
 
@@ -384,7 +384,7 @@ def test_main_en_un_despacho_manual_exige_el_ci_verde_del_commit(
     docs.write_text(base + "\n", encoding="utf-8")  # producción va atrás: la regla publicaría
     demo.write_text(base + "\n", encoding="utf-8")
     monkeypatch.setenv("GITHUB_EVENT_NAME", "workflow_dispatch")
-    monkeypatch.setenv("GITHUB_REPOSITORY", "nexolabs-gh/nikodym")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "nexolabs-gh/bayesrisk")
     monkeypatch.setenv("GITHUB_TOKEN", "t")
     monkeypatch.setattr(modulo.time, "sleep", lambda _s: None)
 

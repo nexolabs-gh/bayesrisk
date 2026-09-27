@@ -4,8 +4,8 @@ site_description: >-
   de modelos, provisiones IFRS 9/ECL, forward-looking y stress testing, con informe
   reproducible y su lineage.
 site_author: Bayes Advisory
-repo_url: https://github.com/nexolabs-gh/nikodym
-repo_name: nexolabs-gh/nikodym
+repo_url: https://github.com/nexolabs-gh/bayesrisk
+repo_name: nexolabs-gh/bayesrisk
 site_url: https://docs.bayesadvisory.cl/
 
 # El sitio de documentación vive en `docs_site/` para NO colisionar con `docs/`, que aloja el

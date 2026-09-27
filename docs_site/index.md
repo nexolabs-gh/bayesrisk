@@ -150,5 +150,5 @@ aceptarse; si no hay caso, también te lo decimos, en menos de 48 horas hábiles
 
 ## Licencia
 
-[Apache-2.0](https://github.com/nexolabs-gh/nikodym/blob/main/LICENSE). Sin dependencias copyleft
+[Apache-2.0](https://github.com/nexolabs-gh/bayesrisk/blob/main/LICENSE). Sin dependencias copyleft
 (GPL/LGPL/AGPL) en el wheel.

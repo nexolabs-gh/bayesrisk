@@ -294,3 +294,23 @@ def test_la_consultora_tiene_un_solo_nombre_en_el_copy_publico() -> None:
         # Renombre (D-REN-9): la consultora dejó de firmarse Nexo Labs en el copy público; la
         # persona jurídica sigue siendo Nexo Labs SpA y sólo figura en la LICENSE.
         assert "Nexo Labs" not in texto, pagina.name
+
+
+def test_el_repo_se_nombra_por_su_nombre_vigente() -> None:
+    """El repo pasó a ``nexolabs-gh/bayesrisk`` el 2026-09-27, después de publicar la 2.0.0.
+
+    GitHub redirige el nombre anterior sólo mientras nadie cree otro repo con ese nombre: una URL
+    vieja en el copy o en la metadata del paquete es un enlace prestado.
+    """
+    superficies = [
+        *_paginas(),
+        _RAIZ / "mkdocs.yml",
+        _RAIZ / "pyproject.toml",
+        _RAIZ / "compat" / "nikodym" / "pyproject.toml",
+        _RAIZ / "SECURITY.md",
+        _RAIZ / "SUPPORT.md",
+    ]
+    for ruta in superficies:
+        assert "nexolabs-gh/nikodym" not in ruta.read_text(encoding="utf-8"), ruta.name
+    mkdocs = (_RAIZ / "mkdocs.yml").read_text(encoding="utf-8")
+    assert "repo_url: https://github.com/nexolabs-gh/bayesrisk\n" in mkdocs

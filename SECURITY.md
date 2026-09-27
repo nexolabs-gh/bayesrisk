@@ -14,7 +14,7 @@ el asunto `[seguridad] bayesrisk`, incluyendo:
 - por qué crees que tiene impacto de seguridad.
 
 Si prefieres el canal de GitHub, este repositorio acepta
-[reportes privados de vulnerabilidad](https://github.com/nexolabs-gh/nikodym/security/advisories/new).
+[reportes privados de vulnerabilidad](https://github.com/nexolabs-gh/bayesrisk/security/advisories/new).
 
 ## Qué puedes esperar
 
