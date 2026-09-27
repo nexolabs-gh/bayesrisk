@@ -112,6 +112,25 @@ dice, y un test las fija byte a byte con su control negativo:
 | `b"nikodym.forward.step.logical_frame.v1"` | `forward/step.py` | el hash del frame lógico de forward |
 | `b"nikodym.installed-distribution.v1\0"` | `core/build.py` | separador de dominio de `installed_distribution_hash` |
 | `"svg.hashsalt": "nikodym"` | `report/charts.py` | los `id` de cada SVG del informe |
+| `"format": "nikodym.scorecard.bundle"` (escrito y exigido al cargar) | `scorecard/bundle.py` | todo bundle guardado dejaría de cargar antes de llegar al lock |
+| `"format": "nikodym.scorecard.batch"` | `scorecard/bundle.py` | el manifiesto de cada aplicación batch |
+| `b"nikodym.batch.input.v1\0"`, `b"nikodym.batch.output.v1\0"` | `scorecard/bundle.py` (y su espejo en `measure_readiness_w1.py`) | `input_hash`/`output_hash` del manifiesto batch |
+| `b"nikodym.scorecard.input-row.v1\0"`, `b"nikodym.scorecard.treatment-trace.v1\0"` | `scorecard/bundle.py` | los hashes por fila y de la traza de `apply` |
+| `"nikodym.report.ai.prompt.v1"` | `report/ai.py` | el `prompt_hash` guardado de la narración |
+| `"nikodym.stress.forward_hash.v2"` | `stress/engine.py` | el hash de forward del stress |
+| `nikodym.readiness.*`, `nikodym.h9r.*`, `nikodym.wheel-tree.v1`, `nikodym.wheel-metadata.v1` | arnés H9R y `measure_readiness_*` | la versión de esquema de la evidencia ya guardada |
+
+**Y las identidades en registros externos (MLflow)**, por la misma razón: el prefijo de tags
+`nikodym.*` (`nikodym.config_hash`, `nikodym.model_card_uri`, `nikodym.estado_validacion`…) y los
+nombres por defecto `name="nikodym-study"` y `governance.model_name="nikodym-model"`. La
+idempotencia del registro busca por `(model_name, config_hash)` restringida al nombre recibido
+(`tracking/inventory.py`): cambiar el nombre por defecto o el prefijo crearía un segundo modelo
+registrado para la misma corrida y separaría sus alias. Quien no declara un nombre sigue viendo
+`nikodym-model` en su MLflow; renombrar esa identidad exige una migración explícita, que no es de
+esta enmienda.
+
+El censo que sostiene esta tabla es exhaustivo por construcción: todo literal `b"nikodym…"` y todo
+`nikodym…vN` de `src/` y `scripts/` (búsqueda del 2026-09-27, tras la pasada 1 de Codex).
 
 ### D-REN-5 — Claves y valores persistidos que SÍ cambian (declarados uno por uno)
 
@@ -122,21 +141,23 @@ Son los únicos cambios de bytes admitidos fuera de la marca y el copy:
    cargar un `Study` lee `"nikodym"` como la versión anterior de la misma librería.
 2. `nikodym_version` → `bayesrisk_version` en el lineage de `apply` y en el payload de
    `SerializationMixin.save`.
-3. Tags de MLflow `nikodym.*` → `bayesrisk.*` al **escribir**; al **leer** (idempotencia por
-   `config_hash`, inventario) se acepta también el prefijo `nikodym.*`, para que un registro
-   existente no se duplique.
+3. (Retirado tras la pasada 1 de Codex: los tags de MLflow y los nombres por defecto que los
+   registros usan como identidad **no** cambian; ver D-REN-4.)
 4. `report.theme`: el valor `"nikodym"` pasa a `"bayesrisk"`; el config sigue **aceptando**
    `"nikodym"` y lo lee como `"bayesrisk"` (un YAML viejo valida igual). `report` es sección de
    infraestructura: no entra al `config_hash`.
-5. Defaults de infraestructura: `name="bayesrisk-study"`, `governance.model_name="bayesrisk-model"`,
-   `run_dir="bayesrisk-runs"` en la puerta guiada y `workdir=".bayesrisk_ui"` en la pantalla. Ninguno
-   entra al `config_hash`. Quien quiera seguir con su carpeta o su modelo registrado lo declara
-   (`run_dir="nikodym-runs"`, `--workdir .nikodym_ui`, `model_name: nikodym-model`); el CHANGELOG lo
-   dice. **No** se añade una búsqueda automática de la carpeta vieja: sería una regla oculta.
+5. Carpetas por defecto: `run_dir="bayesrisk-runs"` en la puerta guiada y `workdir=".bayesrisk_ui"`
+   en la pantalla. Ninguna entra al `config_hash`. Quien quiera seguir con su carpeta la declara
+   (`run_dir="nikodym-runs"`, `--workdir .nikodym_ui`); el CHANGELOG lo dice. **No** se añade una
+   búsqueda automática de la carpeta vieja: sería una regla oculta.
 6. Rutas de módulo que ya viajan como dato: el `source` de los eventos del trail, el título del
    schema JSON (`BayesRiskConfig`), la clase CSS `nikodym-summary` → `bayesrisk-summary`.
 7. Metadatos del paquete: el `_build_manifest.json` gana el campo aditivo
    `uv_lock_sha256_nikodym` (D-REN-6 b).
+8. La clave del *front matter* del informe editable (`.qmd`) que agrupa modelo, entidad y los
+   cuatro hashes de la corrida pasa de `nikodym:` a `bayesrisk:`. Es un entregable que cada corrida
+   reescribe y que ninguna parte de la librería vuelve a leer (medido: sólo lo lee un test); los
+   `.qmd` ya entregados no cambian.
 
 ### D-REN-6 — Lo que ya existe sigue cargando
 
@@ -209,12 +230,22 @@ el marcador `__NIKODYM_TOKEN__` pasa a `__BAYESRISK_TOKEN__` en la plantilla y e
 
 ### D-REN-11 — CI, publicación y documentos
 
-- **Publicación**: `release.yml` publica `bayesrisk` con el tag `vX.Y.Z` (promoción del artefacto
-  de CI, D-PKG-9 intacta) y `nikodym` 1.21.0 con el tag `nikodym-v1.21.0`, promoviendo el artefacto
-  de compatibilidad que el mismo CI construyó e inspeccionó. En pypi.org, `bayesrisk` necesita el
-  publicador `release.yml`/`pypi` (A7); `nikodym` ya lo tiene. `testpypi.yml` (tag
-  `testpypi-v*`, entorno `testpypi`) ensaya los dos en TestPyPI. `reservar-bayesrisk.yml` publicó la
-  0.0.1 de reserva y queda obsoleto tras la 2.0.0.
+- **Publicación, un solo tag** (pasada 1 de Codex: `ci.yml` y `release.yml` sólo reaccionan a
+  `v*`, y la promoción exige exactamente un wheel y un sdist). El job `build` de `ci.yml` construye
+  e inspecciona **dos candidatos separados** —`candidate-distributions-with-evidence` (bayesrisk,
+  como hoy) y `candidate-compat-distributions` (nikodym 1.21.0, con `twine check` y su propia
+  lista de contenidos)—, cada uno con sus sha256. El tag `v2.0.0` dispara `release.yml`: `promote`
+  descarga los dos artefactos del CI verde de ese SHA y exige, por distribución, exactamente un
+  wheel y un sdist con el nombre y la versión esperados (`__version__` para bayesrisk, el
+  `pyproject` de `compat/` para nikodym); `publish` sube bayesrisk, y `publish-compat`, que
+  **depende** de él, sube nikodym después —así `pip install nikodym` nunca ve un 1.21.0 sin su
+  bayesrisk—. En releases posteriores de bayesrisk el candidato de compatibilidad sigue
+  construyéndose e inspeccionándose, pero `publish-compat` sólo sube si esa versión de nikodym no
+  existe en PyPI (una consulta explícita al JSON de PyPI; nunca re-subir bytes distintos con el
+  mismo número). En pypi.org, `bayesrisk` necesita el publicador `release.yml`/`pypi` (A7);
+  `nikodym` ya lo tiene. `testpypi.yml` (tag `testpypi-v*`, entorno `testpypi`) construye desde el
+  commit etiquetado y ensaya los dos en TestPyPI —es un ensayo, no la promoción—.
+  `reservar-bayesrisk.yml` publicó la 0.0.1 de reserva y queda obsoleto tras la 2.0.0.
 - **CI** construye e inspecciona las dos distribuciones y corre un job de compatibilidad en un venv
   limpio con los dos wheels.
 - **Arnés H9R**: `distribution` pasa a `"bayesrisk"` en contrato, supervisor, sondas y tests; sus
@@ -283,6 +314,15 @@ resuelta por Cami. Nunca se borra ni se hace *yank* de una versión de nikodym n
 
 Tope: **dos pasadas** de Codex sobre este documento (orden de Cami), sin esperar su veredicto para
 programar; lo que encuentre se absorbe aquí o se eleva. Sobre el código, tope de **tres pasadas**.
+
+- **Pasada 1 (2026-09-27, `needs-attention`)**: cinco hallazgos, los cinco verificados en el árbol
+  y absorbidos — el marcador `format` del bundle se valida antes que el lock (D-REN-4); el censo de
+  identidades omitía los hashes de fila, traza y lote del bundle y la versión del prompt de IA
+  (D-REN-4, con el censo exhaustivo que ahora lo sostiene y, por extensión, las versiones de esquema
+  del arnés y el hash de forward del stress); cambiar el nombre por defecto del modelo duplicaba el
+  registro en MLflow (identidades de MLflow congeladas); la clave `nikodym:` del `.qmd` no estaba
+  clasificada (D-REN-5.8); y la promoción de dos distribuciones no casaba con el CI (D-REN-11, un
+  solo tag y dos candidatos).
 
 ## 13. Simplicidad (SDD-31)
 
