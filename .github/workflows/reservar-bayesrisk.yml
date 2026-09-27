@@ -1,0 +1,125 @@
+name: Reservar bayesrisk
+
+# Reserva el nombre «bayesrisk» en PyPI con una 0.0.1 mínima, sin código funcional: paso A1 del
+# renombre nikodym → bayesrisk (docs/design/_ENMIENDA-RENOMBRE-BAYESRISK.md), autorizado de
+# antemano por Cami el 2026-09-27. Publica por Trusted Publishing (OIDC, sin tokens); el publicador
+# pendiente registrado en pypi.org es: repo nexolabs-gh/nikodym · workflow reservar-bayesrisk.yml ·
+# environment pypi.
+#
+# Se dispara con el tag `reservar-bayesrisk-v0.0.1`. `workflow_dispatch` exige que el archivo esté
+# en la rama por defecto, y el renombre vive en la rama `rename-bayesrisk` hasta el OK de Cami: por
+# eso el disparador real es el tag, que no casa con los `v*` de ci.yml ni de release.yml.
+#
+# Este workflow no construye nada del repositorio: arma aquí un paquete de tres archivos (pyproject,
+# README y un `__init__` con la versión) más la LICENSE del repo. Queda obsoleto cuando release.yml
+# publique bayesrisk 2.0.0; su publicador en pypi.org se puede retirar entonces.
+
+"on":
+  push:
+    tags:
+      - "reservar-bayesrisk-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Armar bayesrisk 0.0.1
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Escribir el paquete mínimo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reserva/src/bayesrisk
+          cp LICENSE reserva/LICENSE
+          cat > reserva/pyproject.toml <<'EOF'
+          [build-system]
+          requires = ["hatchling==1.27.0"]
+          build-backend = "hatchling.build"
+
+          [project]
+          name = "bayesrisk"
+          version = "0.0.1"
+          description = "Sucesor de nikodym (librería open-source de riesgo de crédito), en migración. Esta versión sólo reserva el nombre: usa nikodym."
+          readme = "README.md"
+          requires-python = ">=3.11"
+          license = "Apache-2.0"
+          license-files = ["LICENSE"]
+          authors = [{ name = "Bayes Advisory", email = "admin@nxlabs.cl" }]
+          classifiers = [
+            "Development Status :: 1 - Planning",
+            "License :: OSI Approved :: Apache Software License",
+            "Programming Language :: Python :: 3",
+          ]
+
+          [project.urls]
+          Source = "https://github.com/nexolabs-gh/nikodym"
+          "nikodym (versión vigente)" = "https://pypi.org/project/nikodym/"
+
+          [tool.hatch.build.targets.wheel]
+          packages = ["src/bayesrisk"]
+          EOF
+          cat > reserva/README.md <<'EOF'
+          # bayesrisk
+
+          Sucesor de [nikodym](https://pypi.org/project/nikodym/), la librería open-source de riesgo
+          de crédito de Bayes Advisory, **en migración**.
+
+          Esta versión 0.0.1 sólo reserva el nombre y no contiene código funcional. Mientras la
+          migración termina, instala nikodym:
+
+              pip install nikodym
+          EOF
+          cat > reserva/src/bayesrisk/__init__.py <<'EOF'
+          """bayesrisk 0.0.1: reserva del nombre. Sucesor de nikodym, en migración; sin código funcional."""
+
+          __version__ = "0.0.1"
+          EOF
+
+      - name: Construir y comprobar
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv build --out-dir dist reserva
+          uvx twine check --strict dist/*
+          shopt -s nullglob
+          publicables=(dist/*)
+          esperados=(dist/bayesrisk-0.0.1-py3-none-any.whl dist/bayesrisk-0.0.1.tar.gz)
+          if [ "${publicables[*]}" != "${esperados[*]}" ]; then
+            echo "::error::dist/ debe traer exactamente el wheel y el sdist de bayesrisk 0.0.1"
+            printf '%s\n' "${publicables[@]}"
+            exit 1
+          fi
+          sha256sum dist/*
+
+      - name: Subir dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: reserva-bayesrisk
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publicar en PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # requerido por OIDC / Trusted Publishing
+    steps:
+      - name: Bajar dist
+        uses: actions/download-artifact@v4
+        with:
+          name: reserva-bayesrisk
+          path: dist/
+
+      - name: Publicar
+        uses: pypa/gh-action-pypi-publish@release/v1
