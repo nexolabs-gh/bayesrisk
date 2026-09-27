@@ -232,6 +232,10 @@ existen: `option_effect_oracles.txt`, el abanico, `option_surface_ledger`,
 `HOJAS_DEL_FORMULARIO`). Es la enmienda SIMPLICIDAD-DEL-CONFIG que el HANDOFF anotó; entra después
 de las dos primeras aplicaciones (§10).
 
+> **Nota (2026-09-27, renombre a `bayesrisk`, D-REN-1).** La 2.0.0 fue el renombre, equivalente
+> funcional de nikodym 1.20.0: no retiró perillas. La poda con censo de uso pasa a la **próxima
+> versión mayor** (3.0), y «en 1.x» se lee «en 2.x».
+
 ## 5. Cómo se mide la simplicidad
 
 Las cinco cifras de D-SIM-11 se anclan **por módulo** en un golden con el mismo estilo que

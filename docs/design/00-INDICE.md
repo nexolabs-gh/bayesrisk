@@ -1115,6 +1115,15 @@ por módulo bajo SDD-31, la primera
 > `nikodym.<x>` que citen se lee `bayesrisk.<x>`, y `NikodymConfig` es `BayesRiskConfig`; los
 > documentos no se reescriben. Dos pasadas de Codex sobre el documento, tope alcanzado.
 
+> **Enmienda de las cifras en pantalla (2026-09-27; **propuesta**, primera de la FASE B de S23).**
+> [`_ENMIENDA-CIFRAS-EN-PANTALLA.md`](_ENMIENDA-CIFRAS-EN-PANTALLA.md), D-PAN-1…6, enmienda a
+> [`_ENMIENDA-INFORME-LEGIBLE.md`](_ENMIENDA-INFORME-LEGIBLE.md) y a la pantalla de
+> [`23-ui.md`](23-ui.md): la regla numérica del informe (`bayesrisk.report.cifras`) pasa a la
+> pantalla con un espejo TypeScript atado por golden bidireccional, a los resúmenes por etapa y a
+> los rótulos del backend; el texto de auditoría del motor (`detail`) se traduce en el front sin
+> tocarlo. Medido en la demo publicada: 565 cifras con punto decimal y 172 con coma de miles en el
+> scorecard, 144 y 97 en IFRS 9.
+
 ## Tandas de producción
 
 | Tanda | SDDs | Foco | Pre-requisito |
