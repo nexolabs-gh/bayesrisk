@@ -87,6 +87,14 @@ if ($bayesriskUvVersion -ne 'uv 0.12.2 (46ead6098 2026-08-05 x86_64-pc-windows-m
 if ($LASTEXITCODE -ne 0) { throw 'uv lock --check falló' }
 ```
 
+**Entorno canónico del `.venv`** (medido en S23 contra la suite y el cuaderno publicado):
+`uv sync --locked --extra all`, con los grupos de desarrollo por defecto. `--all-extras` suma el
+extra `pdf` (WeasyPrint) y cambia las salidas del cuaderno; `uv sync` sin extras retira los de
+`[all]`. Tras cambiar el nombre o la versión del proyecto, `--reinstall-package bayesrisk`
+refresca la metadata del editable. En OneDrive, uv puede no poder borrar un paquete sobrante
+(`Access is denied` sobre un directorio con atributo ReadOnly): quitar el atributo a los
+directorios de `.venv` y repetir.
+
 ### 2.2 Node y pnpm
 
 El runtime contractual es Node 22.22.2 con pnpm 11.15.0. Anteponer su directorio al `PATH` **del
@@ -1092,6 +1100,16 @@ if ($LASTEXITCODE -ne 0) { throw 'status final privado falló' }
 ```
 
 ### 10.1 Receta de release (tag → `release.yml` → PyPI → smoke)
+
+> **Desde el renombre (bayesrisk 2.0.0, enmienda RENOMBRE-BAYESRISK):** un solo tag `vX.Y.Z`
+> publica DOS distribuciones: `bayesrisk` (job `publish`) y, después, la capa de compatibilidad
+> `nikodym` que declara `compat/nikodym/pyproject.toml` (job `publish-compat`, que depende del
+> anterior). Cada job coteja con PyPI archivo por archivo antes y después de subir
+> (`scripts/pypi_cotejar_publicacion.py`): un archivo ya publicado con los mismos bytes se
+> omite, con otros bytes detiene la release, y al final PyPI tiene que servir los cuatro. En las
+> releases siguientes nikodym no cambia de versión y el cotejo no sube nada. El paso 4 verifica
+> también `https://pypi.org/pypi/nikodym/json`, y el smoke instala además `nikodym` en otro
+> venv limpio para comprobar que trae bayesrisk y que `import nikodym` avisa y funciona.
 
 Sólo con el OK explícito de Cami para ESA release (AGENTS.md: un OK anterior no se hereda). Así se
 cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en una de las dos.
