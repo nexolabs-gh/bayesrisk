@@ -232,7 +232,9 @@ def test_publish_solo_recibe_los_bytes_que_promote_verifico(release: dict[str, A
     assert compat["needs"] == ["promote", "publish"]
     assert compat.get("environment") == "pypi"
     assert compat["permissions"]["id-token"] == "write"
-    for job, esperadas in ((publish, propias), (compat, de_compat)):
+    # `publish` coteja también nikodym ANTES de subir nada (pasada 1 de Codex sobre el código), así
+    # que lee además `compat_version`; no toca los bytes de nikodym.
+    for job, esperadas in ((publish, propias | {"compat_version"}), (compat, de_compat)):
         cuerpo = _scripts(job)
         assert "sha256sum -c" in cuerpo, "publish no recomprueba los SHA-256 de lo que recibió"
         for clave in ("WHEEL_SHA256", "SDIST_SHA256"):
@@ -248,6 +250,8 @@ def test_publish_solo_recibe_los_bytes_que_promote_verifico(release: dict[str, A
         assert referenciadas == esperadas, (
             f"un job de publicación consume {sorted(referenciadas)}; esperado {sorted(esperadas)}"
         )
+    # Los dos cotejos previos van en el job que publica primero.
+    assert "--antes nikodym" in _scripts(publish)
 
 
 def test_ambos_workflows_siguen_disparando_en_los_mismos_tags(

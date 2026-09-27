@@ -489,10 +489,23 @@ jobs:
       # Por ARCHIVO, no por versión (enmienda RENOMBRE-BAYESRISK, D-REN-11; pasada 2 de Codex): un
       # reintento tras una subida a medias sube sólo lo que falta, y un nombre que PyPI ya sirve con
       # OTROS bytes detiene la release en rojo antes de subir nada.
-      - name: Cotejar con PyPI antes de subir
+      #
+      # Y los DOS cotejos van antes de la primera subida (pasada 1 de Codex sobre el código): si
+      # nikodym tuviera un archivo divergente en PyPI y se descubriera recién en `publish-compat`,
+      # bayesrisk ya estaría publicado y la release quedaría a medias. Aquí se descubre antes.
+      - name: Download dist-compat artifact (sólo para el cotejo previo)
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-compat
+          path: dist-compat/
+
+      - name: Cotejar con PyPI antes de subir (bayesrisk y nikodym)
         env:
           VERSION: ${{ needs.promote.outputs.version }}
-        run: python3 scripts/pypi_cotejar_publicacion.py --antes bayesrisk "$VERSION" dist
+          COMPAT_VERSION: ${{ needs.promote.outputs.compat_version }}
+        run: |
+          python3 scripts/pypi_cotejar_publicacion.py --antes bayesrisk "$VERSION" dist
+          python3 scripts/pypi_cotejar_publicacion.py --antes nikodym "$COMPAT_VERSION" dist-compat
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
