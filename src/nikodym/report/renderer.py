@@ -179,6 +179,7 @@ class HtmlReportRenderer:
             lstrip_blocks=True,
             keep_trailing_newline=True,
         )
+        environment.filters["cortes_de_identificador"] = _cortes_de_identificador
         try:
             document = build_document_view(bundle, config=self.config, ai_blocks=ai_blocks)
             rendered = _load_template(environment).render(
@@ -1291,6 +1292,20 @@ def _display_scalar(value: Any, *, key_path: tuple[str, ...]) -> str:
         return _display_value(value, key_path=key_path)
     text = str(value)
     return _EMPTY_CELL if text == "none" else text
+
+
+def _cortes_de_identificador(texto: Any) -> Any:
+    """El texto escapado, con un punto de corte opcional (``<wbr>``) tras cada guion bajo.
+
+    En pantalla una celda se parte sólo entre palabras (D-INF-3), y un identificador
+    —``antiguedad_de_la_empresa__woe``, ``cum_good_capture_rate``— no tiene espacios: sin puntos
+    de corte fijaba el ancho de su columna y a 1.440 px se desplazaban 10 tablas del informe del
+    SBA; con ellos, 3. El guion bajo separa las palabras de un identificador, y una cifra no
+    tiene ninguno. Sólo HTML: el Word y el ``.qmd`` reciben el texto tal cual.
+    """
+    from markupsafe import Markup, escape
+
+    return Markup("_<wbr>").join(escape(parte) for parte in str(texto).split("_"))
 
 
 def _es_booleano(value: Any) -> bool:

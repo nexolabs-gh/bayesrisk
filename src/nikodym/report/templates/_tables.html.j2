@@ -6,10 +6,10 @@
 <figure class="table-block{% if table.columns | length >= 10 %} table-block--wide{% endif %}">
   <figcaption class="table-title">{{ table.title }}</figcaption>
   <table id="{{ table.html_id }}" data-table-key="{{ table.key }}">
-    <thead><tr>{% for column in table.columns %}<th{% if table.numeric[loop.index0] %} class="num"{% endif %}>{{ column }}</th>{% endfor %}</tr></thead>
+    <thead><tr>{% for column in table.columns %}<th{% if table.numeric[loop.index0] %} class="num"{% endif %}>{{ column | cortes_de_identificador }}</th>{% endfor %}</tr></thead>
     <tbody>
       {% for row in table.rows %}
-      <tr>{% for cell in row %}<td{% if table.numeric[loop.index0] %} class="num"{% endif %}>{{ cell }}</td>{% endfor %}</tr>
+      <tr>{% for cell in row %}{% if table.numeric[loop.index0] %}<td class="num">{{ cell }}</td>{% else %}<td>{{ cell | cortes_de_identificador }}</td>{% endif %}{% endfor %}</tr>
       {% endfor %}
     </tbody>
   </table>

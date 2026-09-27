@@ -363,3 +363,15 @@ def test_un_corte_repetido_en_una_card_se_lee_igual_que_en_el_config() -> None:
     # En una tabla, los umbrales se leen como en la prosa.
     assert renderer_module._display_scalar(0.1, key_path=("t", "stable_threshold")) == "0,10"
     assert renderer_module._display_scalar(0.05, key_path=("t", "alpha")) == "0,05"
+
+
+def test_un_identificador_se_corta_en_sus_guiones_bajos_y_una_cifra_no() -> None:
+    """D-INF-3: sin puntos de corte, `antiguedad_de_la_empresa__woe` fijaba el ancho de su columna
+    y a 1.440 px se desplazaban 10 tablas del informe del SBA; con ellos, 3."""
+    assert str(renderer_module._cortes_de_identificador("a_<b>")) == "a_<wbr>&lt;b&gt;"
+    tabla = pd.DataFrame({"feature": ["antiguedad_de_la_empresa"], "n_total": [30316]})
+    bundle = _bundle(tables={"model.coefficients": tabla})
+    html = _renderer().render(bundle)
+    assert "antiguedad_<wbr>de_<wbr>la_<wbr>empresa" in html
+    assert "n_<wbr>total" in html  # el encabezado también
+    assert '<td class="num">30.316</td>' in html  # la cifra, entera y sin cortes

@@ -78,7 +78,10 @@ from nikodym.validation.results import VALIDATION_STATUS_LABELS
 # «sí»/«no», la clase `num` en las columnas numéricas y el CSS del ancho y del celular. Medido con
 # `diff` fuera de `<style>` y de los SVG contra el render de `HEAD`: cambian sólo las cifras
 # (`0.743210` → `0,7432`, `0.040000` → `0,040` en un p-valor), `false` → `no` y los `class="num"`.
-GOLDEN_HTML_SHA256 = "48137c8fa86c464000551ad301002c53ddb3f9152060d057b5e71055799a4287"
+# Recalculado el mismo día: `<wbr>` tras cada guion bajo de un identificador en las tablas HTML
+# (D-INF-3). Medido: quitando los `<wbr>` del render nuevo, el HTML (fuera de `<style>` y los SVG)
+# es idéntico al de `HEAD`.
+GOLDEN_HTML_SHA256 = "a0cf103dfdfaa247fb7777cd7946d065547a47b8b14fba4ce3b63c3f3f2fc57f"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
@@ -169,7 +172,7 @@ def test_html_golden_deterministico_y_orden_canonico() -> None:
         for marca in (
             "<th>feature</th>",
             '<th class="num">beta</th>',
-            '<th class="num">p_value</th>',
+            '<th class="num">p_<wbr>value</th>',  # el guion bajo es un punto de corte (D-INF-3)
         )
     ]
     assert column_positions == sorted(column_positions)

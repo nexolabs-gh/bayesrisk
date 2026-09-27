@@ -152,7 +152,10 @@ def _encabezados_html(html: str) -> list[str]:
         r'<table[^>]*data-table-key="validation\.calibration"[^>]*>(.*?)</table>', html, re.S
     )
     assert tabla is not None, "el documento no trae la tabla validation.calibration"
-    return re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla.group(1))
+    # Sin los `<wbr>` que el HTML pone tras cada guion bajo de un identificador (D-INF-3).
+    return [
+        c.replace("<wbr>", "") for c in re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla.group(1))
+    ]
 
 
 def _seccion_calibracion(html: str) -> str:
