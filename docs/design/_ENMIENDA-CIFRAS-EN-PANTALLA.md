@@ -8,7 +8,7 @@
 | **Fase** | F1 (primera de la FASE B de S23) |
 | **Estado** | **PROPUESTA (S23, 2026-09-27)**, sin programar. Exige revisión adversarial (Codex, tope tres pasadas) y aprobación de Cami **antes de programar** |
 | **Depende de** | D-INF-1…4 (la regla numérica del informe, `bayesrisk.report.cifras`), D-MON-4/5 (la convención cuelga del idioma; el símbolo de moneda no se inventa), D-CPY-4 (p-valores «< 0,001») |
-| **Release** | Ningún número, `config_hash`, `data_hash` ni artefacto de cálculo cambia. Cambia el texto de los resúmenes por etapa (`summaries`), un rótulo del backend y los textos de auditoría del informe; la API de la pantalla gana campos aditivos (`*_legible`) ⇒ «Corregido» en la próxima release, con su OK propio |
+| **Release** | Ningún número, `config_hash`, `data_hash` ni artefacto de cálculo cambia. Cambia el texto de los resúmenes por etapa (`summaries`), un rótulo del backend y los textos de auditoría del informe; la API de la pantalla gana campos aditivos (`*_legible`) y el resultado del EDA, `numeric_profiles` ⇒ «Corregido» en la próxima release, con su OK propio |
 | **Autor / Fecha** | Claude Code (writer) / 2026-09-27 |
 
 ---
@@ -184,41 +184,53 @@ a ojo**: `web/src/lib/cifras.ts` es su **espejo**, atado a Python por un **golde
 
 El `detail` de la selección y los valores del rastro del modelo **no cambian** en el motor: son
 texto de auditoría, viajan tal cual en `results.json` y en los exports, y `model/step.py` los vuelve
-a leer. Se **traducen al presentarlos**, con **una sola implementación, en Python**:
-`bayesrisk.report.cifras.detalle_legible(texto)` reconoce un conjunto **cerrado** de patrones
-—`iv=… < min_iv=…` → «IV 0,0000295 < mínimo 0,02», `iv=… >= max_iv=…`, `|rho|=… > threshold=…`
-→ «|ρ| 0,93 > máximo 0,9», `vif=… > threshold=…` → «VIF 5,1234 > máximo 5», `iv_contribution=…`,
-`wald_p=…, lr_p=…`— con la cifra observada en `cifra` y el corte en `corte`. **Un texto que no
-reconoce lo devuelve igual**, sin inventar. La usan:
+a leer. **El texto legible no se obtiene parseando el `detail`**: el `detail` ya redondeó a seis
+cifras significativas (`:.6g`), y con `iv=0.2499402` y `min_iv=0.2499404` diría
+`iv=0.24994 < min_iv=0.24994` —una comparación imposible, y un corte que no es el ejecutado—. Se
+**compone desde los valores originales**, con **una sola implementación, en Python**
+(`bayesrisk.report.cifras.motivo_legible`): el motivo de la fila (`reason`, conjunto cerrado), la
+observación de la propia fila (`iv`, `max_abs_corr`, `vif`, a precisión completa) en `cifra`, y el
+umbral efectivo de `selection.thresholds` en `corte` —«IV 0,0000295 < mínimo 0,02», «|ρ| 0,93 >
+máximo 0,9», «VIF 5,1234 > máximo 5»—; en el rastro del modelo, desde el `valor` estructurado
+(`p_value`, `lr_stat`) y el `umbral` de la decisión. **Una razón sin su valor estructurado se
+muestra con el `detail` crudo**, sin inventar, y la implementación mide primero que cada razón lo
+tenga (si el `vif` de la fila no fuera el de la iteración que excluyó, se eleva). La contribución de
+IV del stepwise es una **observación**, no un corte: su seis cifras significativas bastan para
+`cifra`. La usan:
 
 - **el informe** (HTML, PDF y Word): la columna `detail` de «Criterios de selección por variable» y
   la de la traza del stepwise se escriben con ella; la tabla sigue siendo la misma;
 - **el serializer de la pantalla**, que añade campos **aditivos** a la respuesta de la API
   (`detail_legible` en las decisiones de selección; `umbral_legible` y `valor_legible` en las
   decisiones de la ficha, con `corte` para el umbral —la procedencia manda, como en D-INF— y
-  `cifra`/`detalle_legible` para el valor, campo a campo si es anidado). El front muestra el
+  `cifra`/`motivo_legible` para el valor, campo a campo si es anidado). El front muestra el
   campo legible y, si falta (un fixture anterior), el crudo.
 
-**Los rótulos de tramo del EDA**, igual y también en el informe. La procedencia la da el tipo —un
-tramo numérico es un `pd.Interval`; un nivel categórico es un `str`, aunque tenga forma de
-intervalo— y sólo al primero se le escribe un rótulo, con los comparadores **del EDA**, cerrado a la
-derecha: `(0.5, 1.25]` → «> 0,5 y ≤ 1,25»; un tramo constante `[a, a]` → «= a». Una sola función,
+**Los rótulos de tramo del EDA**, igual y también en el informe. **La procedencia no se deduce
+del rótulo ni de su tipo**: el perfilador guarda el tramo numérico ya como texto
+(`eda/univariate._interval_label` → `str`), indistinguible de una categoría literal
+`(0.5, 1.25]`. La decide quien la sabe: `_profile_feature` elige el perfil numérico por el dtype de
+la columna (`univariate.py:146`), y `UnivariateResult` gana el campo **aditivo**
+`numeric_profiles` (las columnas perfiladas como numéricas) —ningún número cambia; `results.json`
+gana ese campo—. Sólo los tramos de esas columnas, que produjo `_interval_label` o
+`_constant_numeric_label` con forma conocida, se reescriben, con los comparadores **del EDA**,
+cerrado a la derecha: `(0.5, 1.25]` → «> 0,5 y ≤ 1,25»; un tramo constante `[a, a]` → «= a». Una sola función,
 `core/tramos.rotulo_de_intervalo` (`core/tramos.rotulo_de_rango` es el de OptBinning, cerrado a la
 izquierda, y no se reutiliza), que usan **el serializer** (campo aditivo `tramo_legible`; el rótulo
 crudo sigue siendo la clave de la fila en `results.json`), **las tablas del informe** que publican
-los perfiles (hoy el renderer escribe el `pd.Interval` con `str`, `report/renderer.py:1294`) y **el
+los perfiles (hoy el renderer escribe el rótulo tal cual, `report/renderer.py:1294`) y **el
 eje del gráfico de perfiles** (`report/charts.py:893`, hoy `str(record["tramo"])`).
 
-**Gate de catálogo, en los dos sentidos, todo en Python.** Los **productores** del texto de
-auditoría se declaran en el test, por función: los cuatro sitios del selector que asignan
-`detail`/`.detail` (`selector.py:890, 898, 902, 1021, 1207`), `_criterion_detail`
-(`estimator.py:1615-1622`, que arma `wald_p=…` y `lr_p=…` con `parts.append` y los une con coma) y el
-productor de `iv_contribution=…`. El test extrae **toda** f-string de esas funciones —asignada o
-agregada a una lista— y la compara con el catálogo de patrones de `detalle_legible` (incluidas las
-combinaciones que `_criterion_detail` puede unir): una plantilla sin patrón → rojo; un patrón sin
-plantilla → rojo; y un censo de `selector.py` y `estimator.py` exige que ninguna otra función escriba
-`detail` sin estar declarada. Cada patrón, aplicado a un ejemplo que renderiza la propia plantilla,
-da un texto sin punto decimal ni operador ASCII sin su palabra.
+**Gate de catálogo, en los dos sentidos, todo en Python.** Cada `reason` de exclusión tiene su
+composición legible y cada composición, su `reason`: un motivo nuevo sin composición → rojo; una
+composición sin motivo → rojo. Los **productores** del texto de auditoría se declaran en el test,
+por función —los sitios del selector que asignan `detail`/`.detail` (`selector.py:890, 898, 902,
+1021, 1207`), `_criterion_detail` (`estimator.py:1615-1622`, que arma `wald_p=…` y `lr_p=…` con
+`parts.append` y los une) y el productor de `iv_contribution=…`—, y un censo de `selector.py` y
+`estimator.py` exige que ninguna otra función escriba un `detail`: un productor nuevo obliga a
+decidir su composición legible. Cada composición, aplicada a una fila real de la demo, da un texto
+sin punto decimal ni operador ASCII sin su palabra, y con el umbral idéntico al de
+`selection.thresholds`.
 
 ### D-PAN-5 — El copy fijo dice lo que la pantalla hace
 
@@ -268,8 +280,9 @@ idioma del informe, hoy sólo español) ni el número de decimales.
 3. **Casos adversariales con prueba propia**: un umbral `0.24994` en la ficha escrito `0,24994`
    (no `0,2499`); un `Decimal` de corte que pasa por el serializer y se escribe igual que en el
    informe; `-0.0` sin signo en las cinco funciones; `2^53 − 1` y `2^53` en `conteo`; una
-   categoría literal `(0.5, 1.25]` que **no** se traduce y un tramo numérico que sí, en la pantalla
-   **y en la tabla y el eje del informe**; «Malos» con miles en un resumen; el AIC `1234.56`
+   categoría literal `(0.5, 1.25]` que **no** se traduce y un tramo numérico **con el mismo rótulo
+   literal** que sí, en la pantalla **y en la tabla y el eje del informe**; una exclusión con
+   `iv=0.2499402` y `min_iv=0.2499404` escrita con los dos valores distintos; «Malos» con miles en un resumen; el AIC `1234.56`
    escrito `1.234,56`; un umbral efectivo `0.24994` del stepwise y del deterioro del EDA escrito
    `0,24994` en el resumen, junto a una observación cercana; y un control negativo por productor
    del texto de auditoría (cambiar la plantilla de cada uno pone rojo el gate de catálogo).
@@ -329,6 +342,14 @@ decimales): se clasifican por procedencia y van con `corte`. (2) Los tramos del 
 en la tabla y en el eje del informe: una sola función por tipo, usada por serializer, tablas y
 gráfico. (3) El gate de catálogo no veía las plantillas de `_criterion_detail` (`parts.append`): los
 productores se declaran por función y se censa que no haya otros.
+
+**Pasada 3 (sobre `a7823e5`, tope de tres alcanzado): `needs-attention`, dos hallazgos, los dos
+verificados y corregidos en el documento, sin cuarta pasada.** (1) La procedencia de los tramos del
+EDA no la da el tipo: el perfilador ya los guarda como texto; pasa a declararse en
+`numeric_profiles`, que escribe quien elige el perfil. (2) El `detail` ya redondeó a seis cifras:
+el texto legible se compone desde la observación y el umbral efectivo originales, no parseando.
+Estas dos correcciones no tuvieron revisión adversarial propia del documento; la tendrán en la
+revisión del código, que es obligatoria al implementar.
 
 ## 13. Simplicidad (SDD-31)
 
