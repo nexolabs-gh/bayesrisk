@@ -90,7 +90,8 @@ nuevos: los de `bayesrisk` son los de nikodym 1.20.0, con el mismo nombre.
 `BaseNikodymEstimator` → `BaseBayesRiskEstimator`, `NikodymClassifier` → `BayesRiskClassifier`,
 `NikodymTransformer` → `BayesRiskTransformer`. En el mismo módulo que define cada clase queda el
 **nombre anterior como alias** (`NikodymConfig = BayesRiskConfig`: el mismo objeto), exportado donde
-se exportaba, **sin aviso**. Razones: con el alias, `import bayesrisk` es el único cambio que
+se exportaba —también en el `__all__` de los cinco módulos que lo listaban en 1.20, para que un
+`from nikodym.core import *` siga definiéndolo (pasada 2 de Codex sobre el código)—, **sin aviso**. Razones: con el alias, `import bayesrisk` es el único cambio que
 necesita el código de un usuario (la «guía de una línea»), y un pickle que nombra
 `nikodym.core.config.schema.NikodymConfig` resuelve a la clase nueva. Sin aviso porque el aviso
 lo da ya `import nikodym`, y porque cargar un pickle viejo dispararía avisos que el usuario no
@@ -347,6 +348,12 @@ programar; lo que encuentre se absorbe aquí o se eleva. Sobre el código, tope 
   ocultaba una subida parcial (D-REN-11: por archivo y SHA-256, con verificación final de los
   cuatro); la proyección nombra el tipo de un estimador opaco (§5: esas rutas se separan, el resto
   exige cero diferencias). El diseño queda cerrado; el código lleva su propio tope de tres pasadas.
+- **Código, pasada 1 (`needs-attention`)**: un hallazgo falso —leyó del disco el defecto de un
+  control negativo que corría en ese momento— y uno cierto: cotejar nikodym en PyPI **antes** de
+  publicar bayesrisk, para no quedar con una release a medias (`bf8c07f`).
+- **Código, pasada 2 (`needs-attention`)**: dos ciertos — `import *` de nikodym perdía los nombres
+  de clase viejos y `__version__` (D-REN-3: los alias vuelven al `__all__` de 1.20), y el ensayo en
+  TestPyPI podía quedar verde sin subir los bytes del commit (mismo cotejo por archivo que PyPI).
 
 ## 13. Simplicidad (SDD-31)
 

@@ -158,9 +158,10 @@ def test_los_nombres_de_clase_anteriores_son_alias_del_mismo_objeto() -> None:
     }
     for viejo, nuevo in pares.items():
         assert viejo is nuevo
-    # Fuera de ``__all__``: la documentación y el autocompletado muestran sólo los nombres nuevos.
-    assert "NikodymConfig" not in core.__all__
-    assert "NikodymConfig" not in config_pkg.__all__
+    # En ``__all__`` como en 1.20 (pasada 2 de Codex): un ``from nikodym.core import *`` de código
+    # viejo tiene que seguir definiéndolos. La referencia de la API documenta miembros explícitos.
+    assert "NikodymConfig" in core.__all__
+    assert "NikodymConfig" in config_pkg.__all__
 
 
 def test_compat_replica_los_extras_y_la_licencia() -> None:
@@ -205,3 +206,44 @@ def test_un_lineage_viejo_compara_su_version_contra_bayesrisk() -> None:
         study._advertir_drift_versiones({"nikodym": "1.19.0"})
     assert len(vistos) == 1
     assert "'bayesrisk': ('1.19.0'" in str(vistos[0].message)
+
+
+#: Los nombres con la marca que cada ``__all__`` de nikodym 1.20.0 exportaba (censo sobre
+#: ``315ccd4`` con ``ast``, 2026-09-27): un ``import *`` de código viejo los necesita todos.
+EXPORTS_1_20 = {
+    "nikodym.core": (
+        "BaseNikodymEstimator",
+        "NikodymBaseConfig",
+        "NikodymClassifier",
+        "NikodymConfig",
+        "NikodymError",
+        "NikodymTransformer",
+    ),
+    "nikodym.core.base": ("BaseNikodymEstimator", "NikodymClassifier", "NikodymTransformer"),
+    "nikodym.core.config": ("NikodymBaseConfig", "NikodymConfig"),
+    "nikodym.core.config.schema": ("NikodymBaseConfig", "NikodymConfig"),
+    "nikodym.core.exceptions": ("NikodymError",),
+}
+
+
+def test_import_estrella_define_lo_que_definia_nikodym_1_20() -> None:
+    """``import *`` de nikodym define lo que definía 1.20, incluida la versión."""
+    resultado = _correr(
+        f"""
+        import warnings
+        warnings.simplefilter("ignore", DeprecationWarning)
+        esperados = {EXPORTS_1_20!r}
+        for modulo, nombres in esperados.items():
+            espacio = {{}}
+            exec(f"from {{modulo}} import *", espacio)
+            faltan = [n for n in nombres if n not in espacio]
+            assert not faltan, (modulo, faltan)
+        espacio = {{}}
+        exec("from nikodym import *", espacio)
+        assert espacio["__version__"] == "1.21.0", espacio.get("__version__")
+        assert "run" in espacio and "Scorecard" in espacio
+        print("ok")
+        """
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    assert resultado.stdout.strip() == "ok"

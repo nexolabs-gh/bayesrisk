@@ -20,6 +20,7 @@ __all__ = [
     "DuplicateRegistrationError",
     "MigrationNotFoundError",
     "MissingDependencyError",
+    "NikodymError",
     "NotFittedError",
     "RegistryError",
     "RegulatoryError",
@@ -128,5 +129,5 @@ class MissingDependencyError(BayesRiskError):
 
 #: Nombres anteriores al renombre (nikodym ≤ 1.20): alias del MISMO objeto, sin aviso, para que
 #: el código y los pickles escritos para nikodym sigan resolviendo (enmienda
-#: RENOMBRE-BAYESRISK, D-REN-3). Fuera de ``__all__``; se retiran en 3.0.
+#: RENOMBRE-BAYESRISK, D-REN-3). En ``__all__`` como en 1.20 (``import *``); se retiran en 3.0.
 NikodymError = BayesRiskError

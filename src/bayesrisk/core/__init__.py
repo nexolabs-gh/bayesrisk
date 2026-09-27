@@ -30,7 +30,7 @@ from bayesrisk.core.base import (
     BayesRiskTransformer,
 )
 
-# Nombres anteriores al renombre (D-REN-3): alias del mismo objeto, fuera de `__all__`.
+# Nombres anteriores al renombre (D-REN-3): alias del mismo objeto, en `__all__` como en 1.20.
 from bayesrisk.core.base import BaseNikodymEstimator as BaseNikodymEstimator
 from bayesrisk.core.base import NikodymClassifier as NikodymClassifier
 from bayesrisk.core.base import NikodymTransformer as NikodymTransformer
@@ -104,6 +104,7 @@ __all__ = [
     "BaseBayesRiskEstimator",
     "BaseECLModel",
     "BaseForecaster",
+    "BaseNikodymEstimator",
     "BaseProvisionModel",
     "BaseSurvivalEstimator",
     "BayesRiskBaseConfig",
@@ -121,6 +122,11 @@ __all__ = [
     "LineageBundle",
     "MigrationNotFoundError",
     "MissingDependencyError",
+    "NikodymBaseConfig",
+    "NikodymClassifier",
+    "NikodymConfig",
+    "NikodymError",
+    "NikodymTransformer",
     "NotFittedError",
     "NullAuditSink",
     "ProvisionResultLike",

@@ -23,7 +23,7 @@ from typing import Any
 import bayesrisk as _bayesrisk
 
 __version__ = "1.21.0"
-__all__ = [nombre for nombre in _bayesrisk.__all__ if nombre != "__version__"]
+__all__ = list(_bayesrisk.__all__)  # incluye `__version__`: el propio, 1.21.0
 
 _VIEJO = "nikodym."
 _NUEVO = "bayesrisk."

@@ -25,6 +25,9 @@ jobs:
   build:
     name: Construir las dos distribuciones
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.construir.outputs.version }}
+      compat_version: ${{ steps.construir.outputs.compat_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +36,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Construir y comprobar
+        id: construir
         shell: bash
         run: |
           set -euo pipefail
@@ -51,6 +55,8 @@ jobs:
             exit 1
           fi
           sha256sum dist/*/*
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "compat_version=${compat}" >> "$GITHUB_OUTPUT"
 
       - name: Subir bayesrisk
         uses: actions/upload-artifact@v4
@@ -72,31 +78,49 @@ jobs:
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
+      contents: read
       id-token: write # requerido por OIDC / Trusted Publishing
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: testpypi-bayesrisk
           path: dist/
+      # Mismo cotejo por archivo y SHA-256 que la release (pasada 2 de Codex sobre el código):
+      # sin él, `skip-existing` dejaría verde un ensayo que no publicó los bytes de este commit.
+      # Un archivo ya servido con OTROS bytes detiene el ensayo: se repite con versiones nuevas.
+      - name: Cotejar con TestPyPI antes de subir
+        run: python3 scripts/pypi_cotejar_publicacion.py --antes bayesrisk "${{ needs.build.outputs.version }}" dist --indice https://test.pypi.org
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true
+      - name: Exigir que TestPyPI sirva los dos archivos
+        run: python3 scripts/pypi_cotejar_publicacion.py --despues bayesrisk "${{ needs.build.outputs.version }}" dist --indice https://test.pypi.org
 
   # Depende de bayesrisk: `pip install nikodym` nunca debe ver un nikodym sin su bayesrisk.
   publish-nikodym:
     name: Publicar nikodym en TestPyPI
-    needs: publish-bayesrisk
+    needs: [build, publish-bayesrisk]
     runs-on: ubuntu-latest
     environment: testpypi-nikodym
     permissions:
+      contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: testpypi-nikodym
           path: dist/
+      # Mismo cotejo por archivo y SHA-256 que la release (pasada 2 de Codex sobre el código):
+      # sin él, `skip-existing` dejaría verde un ensayo que no publicó los bytes de este commit.
+      # Un archivo ya servido con OTROS bytes detiene el ensayo: se repite con versiones nuevas.
+      - name: Cotejar con TestPyPI antes de subir
+        run: python3 scripts/pypi_cotejar_publicacion.py --antes nikodym "${{ needs.build.outputs.compat_version }}" dist --indice https://test.pypi.org
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true
+      - name: Exigir que TestPyPI sirva los dos archivos
+        run: python3 scripts/pypi_cotejar_publicacion.py --despues nikodym "${{ needs.build.outputs.compat_version }}" dist --indice https://test.pypi.org

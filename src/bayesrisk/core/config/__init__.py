@@ -23,6 +23,8 @@ __all__ = [
     "SCHEMA_VERSION",
     "BayesRiskBaseConfig",
     "BayesRiskConfig",
+    "NikodymBaseConfig",
+    "NikodymConfig",
     "ReproConfig",
     "RunConfig",
     "config_hash",

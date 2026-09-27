@@ -32,10 +32,13 @@ __all__ = [
     "BaseBayesRiskEstimator",
     "BaseECLModel",
     "BaseForecaster",
+    "BaseNikodymEstimator",
     "BaseProvisionModel",
     "BaseSurvivalEstimator",
     "BayesRiskClassifier",
     "BayesRiskTransformer",
+    "NikodymClassifier",
+    "NikodymTransformer",
 ]
 
 
@@ -193,7 +196,7 @@ class BaseECLModel(BaseProvisionModel):
 
 #: Nombres anteriores al renombre (nikodym ≤ 1.20): alias del MISMO objeto, sin aviso, para que
 #: el código y los pickles escritos para nikodym sigan resolviendo (enmienda
-#: RENOMBRE-BAYESRISK, D-REN-3). Fuera de ``__all__``; se retiran en 3.0.
+#: RENOMBRE-BAYESRISK, D-REN-3). En ``__all__`` como en 1.20 (``import *``); se retiran en 3.0.
 BaseNikodymEstimator = BaseBayesRiskEstimator
 NikodymTransformer = BayesRiskTransformer
 NikodymClassifier = BayesRiskClassifier

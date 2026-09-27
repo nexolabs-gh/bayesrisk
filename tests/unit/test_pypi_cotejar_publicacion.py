@@ -71,3 +71,17 @@ def test_despues_falla_si_pypi_sirve_otros_bytes() -> None:
             lambda: {**PROPIOS, "bayesrisk-2.0.0.tar.gz": "d" * 64},
             plazo_segundos=60,
         )
+
+
+def test_el_ensayo_en_testpypi_coteja_cada_paquete_antes_y_despues() -> None:
+    """Sin el cotejo, `skip-existing` dejaría verde un ensayo que no subió los bytes del commit."""
+    import yaml
+
+    raiz = Path(__file__).resolve().parents[2]
+    flujo = yaml.safe_load((raiz / ".github/workflows/testpypi.yml").read_text(encoding="utf-8"))
+    for job, proyecto in (("publish-bayesrisk", "bayesrisk"), ("publish-nikodym", "nikodym")):
+        pasos = " ".join(str(paso.get("run", "")) for paso in flujo["jobs"][job]["steps"])
+        for modo in ("--antes", "--despues"):
+            assert f"pypi_cotejar_publicacion.py {modo} {proyecto}" in pasos, (job, modo)
+        assert "--indice https://test.pypi.org" in pasos, job
+    assert "build" in flujo["jobs"]["publish-nikodym"]["needs"]
