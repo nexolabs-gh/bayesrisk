@@ -8,7 +8,7 @@
 | **Fase** | F1 (primera de la FASE B de S23) |
 | **Estado** | **PROPUESTA (S23, 2026-09-27)**, sin programar. Exige revisión adversarial (Codex, tope tres pasadas) y aprobación de Cami **antes de programar** |
 | **Depende de** | D-INF-1…4 (la regla numérica del informe, `bayesrisk.report.cifras`), D-MON-4/5 (la convención cuelga del idioma; el símbolo de moneda no se inventa), D-CPY-4 (p-valores «< 0,001») |
-| **Release** | Ningún número, `config_hash`, `data_hash` ni artefacto de cálculo cambia. Cambia el texto de los resúmenes por etapa (`summaries` en `results.json`) y dos rótulos del backend ⇒ «Corregido» en la próxima release, con su OK propio |
+| **Release** | Ningún número, `config_hash`, `data_hash` ni artefacto de cálculo cambia. Cambia el texto de los resúmenes por etapa (`summaries`), un rótulo del backend y los textos de auditoría del informe; la API de la pantalla gana campos aditivos (`*_legible`) ⇒ «Corregido» en la próxima release, con su OK propio |
 | **Autor / Fecha** | Claude Code (writer) / 2026-09-27 |
 
 ---
@@ -33,8 +33,10 @@ abiertas; texto visible más el texto de los gráficos SVG; expresiones regulare
 
 La misma pantalla de IFRS 9 escribe `6.000` (el backend, miles en es-CL) y `6,000` (el front, miles
 en convención anglo): **el mismo número de dos formas que en español se leen distinto**. En el
-scorecard, `3,961` es un conteo y `0,013` una tasa. El informe de la misma corrida escribe todo en
-es-CL desde la 1.20.0.
+scorecard, `3,961` es un conteo y `0,013` una tasa. El informe de la misma corrida escribe en es-CL
+sus tablas y cifras desde la 1.20.0, **salvo el texto de auditoría del motor** (§1.4): su tabla
+«Criterios de selección por variable» publica `iv=0.00292241 < min_iv=0.02` (`report-f1.html` de la
+demo).
 
 ## 1. Qué está mal
 
@@ -71,15 +73,22 @@ es-CL desde la 1.20.0.
 4. **El texto de auditoría del motor llega crudo.** El `detail` de la selección
    (`selection/selector.py`: `iv=2.94993e-05 < min_iv=0.02`, `|rho|=0.93 > threshold=0.9`,
    `vif=5.1234 > threshold=5`) y los valores del rastro del modelo (`model/estimator.py`:
-   `iv_contribution=…`, `wald_p=…, lr_p=…`, con `:.6g`) se pintan tal cual. **El informe no los
-   muestra** (sólo la pantalla), y **el formato no se puede tocar en el motor**: `model/step.py`
-   vuelve a leer `iv_contribution=` con `float()` para la auditoría del stepwise.
-5. **Rótulos del backend con otra convención.** `methodology._scenario_label` escribe
+   `iv_contribution=…`, `wald_p=…, lr_p=…`, con `:.6g`) se pintan tal cual **en la pantalla y en
+   el informe**: la tabla «Criterios de selección por variable» (`selection.selection_table`, cuerpo)
+   y la traza del stepwise (`model.stepwise_trace`, anexo) llevan el `detail`
+   (`report/builder.py:129,134`, `report/document.py:227,298`), y el renderer escribe los textos
+   tal cual. **El formato no se puede tocar en el motor**: `model/step.py` vuelve a leer
+   `iv_contribution=` con `float()` para la auditoría del stepwise.
+5. **La ficha escribe sus umbrales como métricas.** `model-card.modelCardDecisionRows` pasa `umbral`
+   por `describeValue` → `formatNumber`, que redondea a cuatro decimales; el motor registra ahí
+   umbrales efectivos (`selection/step.py:198`, `model/step.py:300`). Un umbral `0.24994` pasado a
+   `cifra` se leería `0,2499`: otra política.
+6. **Rótulos del backend con otra convención.** `methodology._scenario_label` escribe
    «Base 33.33 %»; los perfiles del EDA rotulan sus tramos con `str(pd.Interval)` →
    `(0.5, 1.25]`; el preflight de insumos externos (`ui/routes.py`) escribe conteos sin miles y una
    lista con `repr` de Python; el mensaje que rechaza fracciones de partición que no suman 1
    (`data/config.py`) escribe `suma observada = 0.9870`.
-6. **Copy fijo que miente o desentona.** ResultsTab afirma «Los p-valores de la tabla se muestran
+7. **Copy fijo que miente o desentona.** ResultsTab afirma «Los p-valores de la tabla se muestran
    con cuatro decimales» (con `< 0,001` deja de ser cierto); «Wilson 95%» (4 veces), «azar (1.0×)»,
    el `{v}%` de la landing y el texto del slider del formulario (`{min}`, `{num}`, `{max}` crudos).
 
@@ -102,11 +111,23 @@ a ojo**: `web/src/lib/cifras.ts` es su **espejo**, atado a Python por un **golde
   redondeo es **al par más cercano sobre esos dígitos**, en aritmética de cadenas —sin `toFixed`,
   que redondea el binario, ni `Intl`, que depende de ICU—.
 - **El golden.** Python genera `web/src/lib/__golden__/cifras.json`: para cada función, pares
-  valor → texto sobre los casos de borde (ceros finales, `0.001`, `1e-6`, `999.99995`, `1000`,
-  negativos, `-0.0`, `NaN`, `±inf`, enteros grandes, cortes con muchos decimales) **y 2.000 `float`
-  sembrados** en todas las magnitudes. Un test de Python exige que el archivo sea exactamente lo que
-  genera el código (un cambio en Python sin regenerar → rojo); vitest exige que el espejo dé cada
-  texto (un cambio en el espejo → rojo). Mismo patrón que ya ata las bandas del PSI.
+  entrada → texto sobre los casos de borde (ceros finales, `0.001`, `1e-6`, `999.99995`, `1000`,
+  negativos, cortes con muchos decimales) **y 2.000 `float` sembrados** en todas las magnitudes. Un
+  test de Python exige que el archivo sea exactamente lo que genera el código (un cambio en Python
+  sin regenerar → rojo); vitest exige que el espejo dé cada texto (un cambio en el espejo → rojo).
+  Mismo patrón que ya ata las bandas del PSI. **Las entradas van tipadas**, porque JSON no las
+  representa todas: `{"float": "<repr>"}` (el espejo la lee con `Number(…)`; `-0` se reconoce con
+  `Object.is`), `{"especial": "nan" | "inf" | "-inf"}` y `{"entero": "<dígitos>"}`.
+- **El dominio del espejo, declarado.** (a) **Un cero se escribe sin signo en todas las funciones**:
+  hoy `corte(-0.0)` da `-0,00` en Python; se corrige ahí y el golden lo fija. (b) `conteo` recibe
+  enteros seguros de JavaScript (`|n| ≤ 2^53 − 1`); fuera de ese rango el espejo devuelve el entero
+  sin agrupar, y el golden prueba el borde (una cartera no cuenta 9 × 10^15 operaciones). (c) **La
+  pantalla recibe `float`, no `Decimal`**: el serializer convierte (`ui/serializers.py:534-542,
+  827-850`). Para un `Decimal` con hasta 15 cifras significativas —todo corte escrito a mano—,
+  `repr(float(d))` es el mismo decimal y el texto es idéntico al del informe; un test lo exige sobre
+  todos los `Decimal` de los presets y de los defaults. Más allá de 15 cifras la pantalla escribe el
+  `float` que recibe: la paridad con el informe se declara acotada a ese dominio, sin cambiar el
+  contrato de `results.json`.
 - **Los formateadores del front conservan sus nombres** (las 178 llamadas no cambian de forma) y
   pasan a ser envoltorios del espejo: `formatMetric` → `cifra`, `formatPValue` → `pvalor`,
   `formatPercent` → `porcentaje`, `formatPercentValue(x)` → `porcentaje(x / 100)`, `formatCount`
@@ -129,17 +150,25 @@ a ojo**: `web/src/lib/cifras.ts` es su **espejo**, atado a Python por un **golde
   31 enteros interpolados que hoy no pasan por un formateador se clasifican uno por uno en la
   implementación con ese criterio.
 - **Los cuatro `toLocaleString("es-CL")`** pasan a `conteo` (determinista, sin ICU).
-- **La ficha del modelo** (`model-card.formatNumber`) usa `cifra`/`conteo`; los valores anidados que
-  hoy salen por `JSON.stringify` se escriben con el espejo campo a campo.
+- **La ficha del modelo**: sus `umbral` y `valor` los escribe el backend (D-PAN-4); el front sólo
+  cae a `model-card.formatNumber` —ya sobre el espejo— con un fixture anterior a la recaptura.
 
 ### D-PAN-3 — Los resúmenes y los rótulos del backend, con la misma regla
 
 - `guided/summaries.py` usa `cifras.cifra` (con los decimales que cada frase ya pedía),
   `cifras.pvalor`, `cifras.porcentaje` y `cifras.conteo` en vez de `_num`, su `_pvalor`, `_pct` y
-  `_miles`; su `_formatear` agrupa sólo las columnas que `cifras.es_columna_de_conteo` reconoce.
-  Los dos `_num` que quedan en `report/prose.py` pasan a `_cifra`. **El texto cambia sólo** cuando
-  la regla del cero final agrega decimales, cuando el valor está bajo 0,001 o cuando una columna
-  entera que no cuenta dejaba de agruparse; ningún número cambia.
+  `_miles`. Su `_formatear` **conserva la semántica declarada** en cada `formats` (`"int"` es un
+  conteo: «Malos», «Filas» siguen con miles); sólo cambia la inferencia para una columna entera
+  **no declarada**, que deja de agruparse salvo que `cifras.es_columna_de_conteo` la reconozca. Los
+  dos `_num` que quedan en `report/prose.py` pasan a `_cifra`.
+- **Qué texto cambia, censado.** Ningún número cambia; el texto cambia por cuatro causas y sólo por
+  ellas: (1) la regla del cero final agrega decimales; (2) un valor bajo 0,001 pasa a dos cifras
+  significativas o a `< 0,001` si es un p-valor; (3) un valor desde 1.000 pasa a dos decimales con
+  miles —la regla de `cifra`, aunque la frase pidiera uno o ninguno: el AIC `1234,6` se lee
+  `1.234,56`, como en las tablas del informe—; (4) una columna entera no declarada deja de
+  agruparse. La implementación entrega la tabla antes/después de **cada frase** de los resúmenes
+  sobre las corridas F1 e IFRS 9 de la demo y la del YAML SBA, con la causa de cada cambio; un
+  cambio sin causa de esa lista es un defecto.
 - `methodology._scenario_label` usa `cifras.porcentaje` («Base 33,33 %»).
 - El preflight de insumos externos (`ui/routes.py`) escribe los conteos con `conteo` y los nombres
   como lista en prosa, no como `repr`; el mensaje de las fracciones de partición
@@ -149,22 +178,33 @@ a ojo**: `web/src/lib/cifras.ts` es su **espejo**, atado a Python por un **golde
 
 El `detail` de la selección y los valores del rastro del modelo **no cambian** en el motor: son
 texto de auditoría, viajan tal cual en `results.json` y en los exports, y `model/step.py` los vuelve
-a leer. La pantalla los **traduce** con un conjunto **cerrado** de patrones en el front
-(`detalleLegible` en `web/src/lib/cifras.ts`): `iv=… < min_iv=…` → «IV 0,0000295 < mínimo 0,02»,
-`|rho|=… > threshold=…` → «|ρ| 0,93 > máximo 0,9», `vif=… > threshold=…` → «VIF 5,1234 >
-máximo 5», `iv=… >= max_iv=…`, `iv_contribution=…`, `wald_p=…, lr_p=…`; la cifra observada con
-`cifra`, el corte con `corte`. **Un texto que no reconoce se muestra igual**, sin inventar.
+a leer. Se **traducen al presentarlos**, con **una sola implementación, en Python**:
+`bayesrisk.report.cifras.detalle_legible(texto)` reconoce un conjunto **cerrado** de patrones
+—`iv=… < min_iv=…` → «IV 0,0000295 < mínimo 0,02», `iv=… >= max_iv=…`, `|rho|=… > threshold=…`
+→ «|ρ| 0,93 > máximo 0,9», `vif=… > threshold=…` → «VIF 5,1234 > máximo 5», `iv_contribution=…`,
+`wald_p=…, lr_p=…`— con la cifra observada en `cifra` y el corte en `corte`. **Un texto que no
+reconoce lo devuelve igual**, sin inventar. La usan:
 
-Lo mismo para los rótulos de tramo del EDA (`(0.5, 1.25]` → «> 0,5 y ≤ 1,25», con los bordes
-exactos como `core/tramos.rotulo_de_rango`): el rótulo es también la clave de la fila en
-`results.json`, así que se traduce en el front y no se toca en el backend.
+- **el informe** (HTML, PDF y Word): la columna `detail` de «Criterios de selección por variable» y
+  la de la traza del stepwise se escriben con ella; la tabla sigue siendo la misma;
+- **el serializer de la pantalla**, que añade campos **aditivos** a la respuesta de la API
+  (`detail_legible` en las decisiones de selección; `umbral_legible` y `valor_legible` en las
+  decisiones de la ficha, con `corte` para el umbral —la procedencia manda, como en D-INF— y
+  `cifra`/`detalle_legible` para el valor, campo a campo si es anidado). El front muestra el
+  campo legible y, si falta (un fixture anterior), el crudo.
 
-**Gate de catálogo, en los dos sentidos.** Un test de Python extrae de `selector.py` y
-`estimator.py` cada plantilla f-string asignada a `detail`/`.detail` o a un valor del rastro, y la
-compara con un catálogo versionado (`web/src/lib/__golden__/detalles-motor.json`: plantilla y un
-ejemplo renderizado por Python). Una plantilla nueva sin entrada → rojo en Python; vitest exige que
-cada ejemplo del catálogo tenga traducción y que ésta no traiga punto decimal ni `>=`/`<` ASCII
-sin su palabra.
+**Los rótulos de tramo del EDA**, igual: el serializer sabe la procedencia —un tramo numérico es un
+`pd.Interval`; un nivel categórico llega como `str`, aunque tenga forma de intervalo— y sólo al
+primero le añade `tramo_legible`, con los comparadores **del EDA**, cerrado a la derecha:
+`(0.5, 1.25]` → «> 0,5 y ≤ 1,25» (`core/tramos.rotulo_de_rango` es el de OptBinning, cerrado a la
+izquierda, y no se reutiliza); un tramo constante `[a, a]` → «= a». El rótulo crudo sigue siendo la
+clave de la fila en `results.json`.
+
+**Gate de catálogo, en los dos sentidos, todo en Python.** Un test extrae de `selector.py` y
+`estimator.py` cada plantilla f-string asignada a `detail`/`.detail` o a un valor del rastro y la
+compara con el catálogo de patrones de `detalle_legible`: una plantilla sin patrón → rojo; un patrón
+sin plantilla → rojo. Y cada patrón, aplicado a un ejemplo que renderiza la propia plantilla, da un
+texto sin punto decimal ni operador ASCII sin su palabra.
 
 ### D-PAN-5 — El copy fijo dice lo que la pantalla hace
 
@@ -180,10 +220,12 @@ censo no puede ver —un entero interpolado en una plantilla— lo cubre el cont
 
 ### D-PAN-6 — Qué exige de la demo
 
-El formato se aplica en el front sobre los números que ya traen los fixtures, así que **D-PAN-1, 2,
-4 y 5 se ven en la demo con el deploy, sin recaptura**. D-PAN-3 cambia texto que viaja **dentro** de
-`results.json` (`summaries`, el rótulo del escenario): la demo publicada lo muestra sólo tras una
-**recaptura**, que exige su OK propio (§8).
+El formato de los números se aplica en el front sobre lo que ya traen los fixtures, así que
+**D-PAN-1, 2 y 5 se ven en la demo con el deploy, sin recaptura**. **D-PAN-3 y D-PAN-4** cambian o
+añaden texto que viaja **dentro** de la respuesta capturada (`summaries`, el rótulo del escenario,
+los campos `*_legible`) y el informe de la demo es un archivo capturado: la demo publicada los
+muestra sólo tras una **recaptura**, que exige su OK propio (§8). Hasta entonces el front cae al
+texto crudo, como hoy.
 
 ## 3. Lo que NO cambia
 
@@ -209,17 +251,24 @@ idioma del informe, hoy sólo español) ni el número de decimales.
    rojo; restaurados byte a byte → verdes).
 2. **Gate de censo del front** y **gate de catálogo** de D-PAN-4, cada uno con su control negativo
    (un `toFixed` inyectado en un gráfico; una plantilla `detail=f"…"` nueva en el selector).
-3. **Conteo en la demo viva**, con las mismas expresiones que la línea base de §0 sobre el texto
+3. **Casos adversariales con prueba propia**: un umbral `0.24994` en la ficha escrito `0,24994`
+   (no `0,2499`); un `Decimal` de corte que pasa por el serializer y se escribe igual que en el
+   informe; `-0.0` sin signo en las cinco funciones; `2^53 − 1` y `2^53` en `conteo`; una
+   categoría literal `(0.5, 1.25]` que **no** se traduce y un tramo numérico que sí; «Malos» con
+   miles en un resumen; el AIC `1234.56` escrito `1.234,56`.
+4. **Conteo en la demo viva**, con las mismas expresiones que la línea base de §0 sobre el texto
    visible y el SVG de Resultados con todas las secciones abiertas —punto decimal
    `(?<![\d.,])\d+\.\d+(?![\d.])`, coma de miles `(?<![\d.,])\d{1,3}(,\d{3})+(?![\d,])`,
    porcentaje sin espacio `\d%`—: tras el deploy, **cero** fuera de campos de entrada e
    identificadores (con la lista de los que queden y por qué); tras la recaptura, cero también en
-   los resúmenes.
-4. El caso `0.24996` junto a su corte `0,25` escrito `0,24996` en el resumen, en la pantalla y en el
+   los resúmenes y en los textos de auditoría. Además, **ningún tick ni rótulo de eje con más de
+   seis decimales** (el riesgo de §5, que las otras expresiones no ven en es-CL), y el mismo conteo
+   sobre el HTML del informe de la demo recapturado.
+5. El caso `0.24996` junto a su corte `0,25` escrito `0,24996` en el resumen, en la pantalla y en el
    informe; un año de cohorte sin agrupar en un resumen.
-5. Los goldens del informe que muevan los resúmenes se re-anclan **probando «sin X» = golden
+6. Los goldens del informe que muevan los resúmenes se re-anclan **probando «sin X» = golden
    anterior** (la trampa de S19): el cambio de hash sale sólo de las frases afectadas.
-6. vitest, la suite completa (después de los fixtures, si hay recaptura) y la revisión de Codex
+7. vitest, la suite completa (después de los fixtures, si hay recaptura) y la revisión de Codex
    sobre el código.
 
 ## 5. Riesgos declarados
@@ -230,8 +279,10 @@ idioma del informe, hoy sólo español) ni el número de decimales.
 - **`corte` en los ejes** escribe el tick exacto: si una versión de Recharts generara ticks como
   `0.30000000000000004`, el eje lo escribiría entero. Hoy sus ticks «redondos» salen de
   `decimal.js-light` (Recharts 3.9.2); el conteo en la demo lo vigila.
-- **Traducir el `detail` en el front** duplica el conocimiento de sus plantillas; el gate de
-  catálogo es lo que impide que se desincronicen.
+- **Traducir el `detail` al presentarlo** duplica el conocimiento de sus plantillas, aunque sea en
+  Python y en un solo módulo; el gate de catálogo es lo que impide que se desincronicen.
+- **La paridad pantalla ↔ informe es la del `float`** (D-PAN-1 c): un `Decimal` con más de 15
+  cifras significativas puede escribirse distinto en los dos. Ningún corte del producto las usa.
 
 ## 8. Decisiones para Cami
 
@@ -241,6 +292,20 @@ idioma del informe, hoy sólo español) ni el número de decimales.
    como en la 1.20.0); **(b)** aparte, apenas se integre; **(c)** no recapturar por ahora (la demo
    muestra el front corregido y los resúmenes con la regla anterior).
 
+## 11. Revisión adversarial
+
+**Pasada 1 de Codex (2026-09-27, sobre `3cfc9b2`): `needs-attention`, seis hallazgos, los seis
+verificados contra el código y corregidos en el documento.** (1) El informe **sí** publica el
+`detail` crudo (el censo previo lo había dado por sólo-pantalla): D-PAN-4 pasa a una sola
+implementación en Python que usan el informe y el serializer. (2) La pantalla recibe `float`, no
+`Decimal`: paridad declarada y probada hasta 15 cifras significativas (D-PAN-1 c). (3) Los umbrales
+de la ficha se habrían escrito como métricas: los escribe el backend con `corte`. (4) Una categoría
+con forma de intervalo se habría traducido, y el EDA cierra a la derecha: `tramo_legible` sólo para
+un `pd.Interval`, con comparadores propios. (5) El golden no codificaba `-0`, no finitos ni enteros
+grandes: entradas tipadas y dominio declarado (y `corte(-0.0)` = `-0,00` se corrige). (6) La
+migración de los resúmenes tenía cambios no censados («Malos» perdía los miles; el AIC ganaba
+decimales): se conserva la semántica declarada y se censa cada frase con su causa.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima**: ninguna nueva.
@@ -249,5 +314,5 @@ idioma del informe, hoy sólo español) ni el número de decimales.
 - **Perillas**: cero; se retira una constante (`MONEY.thousands`).
 - **Resúmenes**: los mismos textos, con la regla del informe en sus cifras.
 - **Cinco cifras**: sin cambios numéricos; su texto sigue la regla.
-- **Tres puertas**: la guiada (resúmenes, D-PAN-3), la completa (el informe ya cumple) y la de
-  pantalla (D-PAN-1, 2, 4, 5) quedan con una sola convención.
+- **Tres puertas**: la guiada (resúmenes, D-PAN-3), la completa (el informe, que gana los textos
+  de auditoría, D-PAN-4) y la de pantalla (D-PAN-1, 2, 4, 5) quedan con una sola convención.
