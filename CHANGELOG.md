@@ -33,6 +33,27 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
   y que no filtra rutas de la máquina en la que se generó (las salidas muestran rutas relativas a
   la carpeta del cuaderno).
 
+### Cambiado
+
+- **El informe escribe sus cifras en español (es-CL), y un redondeo ya no se hace pasar por un
+  corte.** Las tablas, los anexos, los gráficos y la página ejecutiva del HTML, el PDF, el Word y
+  la fuente `.qmd` usaban punto decimal y seis decimales fijos (`0.042677`), `true`/`false` y
+  conteos sin agrupar. Ahora usan coma decimal y cuatro decimales (`0,0427`), miles con punto en
+  los conteos (`30.316`), `sí`/`no`, dos cifras significativas bajo 0,001 (nunca `0,0000` para algo
+  que no es cero) y p-valores `< 0,001`. Una cifra redondeada que termina en cero y no es exacta
+  lleva los decimales que hagan falta: un PSI de 0,24996 ya no se escribe `0,2500` junto a su
+  corte de 0,25. Los cortes del config se escriben exactos (`0,125`, no `0,12`). Las columnas
+  numéricas van alineadas a la derecha. Sólo presentación: `results`, los exports CSV/XLSX, los
+  libros de Excel y el `config_hash` no cambian. **Revierte** la excepción de 1.4.0 que dejaba las
+  tablas en punto decimal: las cifras crudas están en `results.json`, en `export_excel()` y en las
+  tablas de la puerta guiada.
+- **El informe usa el ancho de una pantalla grande y se lee en un teléfono.** La caja crece a
+  1.920 px (antes 1.360), el índice de la derecha aparece desde 1.600 px, una tabla toma el ancho
+  de su contenido y un identificador se corta en sus guiones bajos. En el informe de una corrida
+  real, las tablas que se desplazan dentro de su caja pasan de 10 a 3 a 1.440 px y de 10 a 1 a
+  2.560 px; en un teléfono de 375 px la página ya no se desplaza hacia el lado (medía 825 px). El
+  PDF conserva su maquetación.
+
 ### Corregido
 
 - **En el informe HTML, una cifra ya no se parte carácter por carácter.** Las celdas podían

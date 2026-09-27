@@ -375,6 +375,39 @@ Aprobado el resto, se implementó en `4a976ef` y `0880276`:
   cuerpo con `_num`, (j) el contexto de 28 dígitos, (k) el truncado sin agrupar. El (d), el
   celular, se mide en el navegador.
 
+- **Los identificadores se cortan en sus guiones bajos.** Medido sobre el informe real del SBA
+  (el YAML de Cami con el código nuevo: `08cf3076…`, las mismas cifras): sin partir en cualquier
+  punto, `antiguedad_de_la_empresa__woe` o `cum_good_capture_rate` fijaban el ancho de su columna,
+  y a 1.440 px se desplazaban 10 tablas, no las 4 de la simulación. La plantilla pone un `<wbr>`
+  tras cada guion bajo de un encabezado o de una celda de texto: el guion bajo separa las palabras
+  de un identificador y una cifra no tiene ninguno. Es la misma regla de D-INF-3 —una palabra se
+  parte sólo entre palabras—; sólo en el HTML.
+- **El artefacto, medido** (HTML y Word del SBA):
+
+  | | Hoy (`f7c149c`) | Con D-INF |
+  |---|---|---|
+  | Celdas con punto decimal | 2.189 | **0** (los 489 «30.316» son miles) |
+  | Celdas `true`/`false` | 214 | **0** (228 `sí`/`no`) |
+  | Cifras partidas en más de un renglón | 874 (938 px) · 765 (2.560 px) | **0** en 375, 768, 938, 1.440, 1.920 y 2.560 px |
+  | Ancho de la página en un teléfono de 375 px | 825 px | **375 px** |
+  | Tablas que se desplazan dentro de su caja, 1.440 px | 10 | **3** |
+  | Ídem, 1.920 y 2.560 px | 10 | **1** (la de 20 columnas) |
+  | Word: celdas alineadas a la derecha | 0 | **3.382** |
+
+### 12.1 Codex sobre el código: tres pasadas (tope)
+
+| Pasada | Hallazgo | Qué cambió |
+|---|---|---|
+| 1 | (a) **alto**: el cuerpo de estabilidad y las conclusiones escribían el PSI con `_num` junto a su banda. (b) **alto**: con el contexto de 28 dígitos, un `Decimal` de 29 cifras se redondeaba a `0,2500` y `Decimal("1E+24")` levantaba `InvalidOperation`. (c) **medio**: conteos sin agrupar —los adjuntos ya lo estaban; el aviso de truncado no— | (a) toda métrica de la prosa junto a una banda o un corte por `_cifra`; (b) `localcontext`, la tupla del Decimal y `copy_abs`; (c) `shown_rows_label`/`total_rows_label` en HTML, Word y `.qmd` |
+| 2 | **medio**: el config efectivo del Anexo C pasaba por la regla de p-valores observados: un `entry_p_value` de 0.0005 se leía «< 0,001» | todo número del config se escribe exacto con `corte`, y `es_columna_de_pvalor` excluye los cortes por nombre (`entry_`, `exit_`, `max_`, `min_`, `threshold`, `alpha`, `cut`) |
+| 3 | **alto**: las cards repiten cortes del config bajo `thresholds` y se redondeaban junto al config exacto: el mismo corte con dos valores | el corte se reconoce por **procedencia**: la ruta pasa por `effective_config`, `thresholds` o `traffic_light_cuts`, o el nombre es `threshold`, `alpha`, `entry_p_value`, `exit_p_value`, `*_threshold`, `*_alpha` o `*_cat_cutoff`. `ks_cutoff_score` —que contiene «cut»— es un resultado y sigue la regla de las cifras |
+
+**Tope alcanzado.** La corrección de la pasada 3 no la revisó Codex. Queda declarado el límite: un
+corte del config que una card repita bajo un nombre fuera de esa lista se escribe con la regla de
+las cifras —cuatro decimales y el cero final—, que coincide con el exacto salvo que el corte tenga
+más de cuatro decimales. Doce controles negativos, (a)–(c) y (e)–(m), en
+`privado/evidencia/s22/cn_dinf.txt`.
+
 ## 13. Simplicidad (SDD-31) — obligatoria
 
 - **Entrada mínima:** no cambia.
