@@ -346,13 +346,18 @@ def test_un_corte_repetido_en_una_card_se_lee_igual_que_en_el_config() -> None:
     """Pasada 3 de Codex sobre el código: los `thresholds` de las cards se redondeaban junto al
     `effective_config` exacto, y el Anexo C mostraba dos valores para el mismo corte."""
     card = renderer_module._display_json_value(
-        {"thresholds": {"entry_p_value": 0.12541}, "ks_cutoff_score": 0.210709123},
+        {
+            "thresholds": {"entry_p_value": 0.12541, "min_iv": 0.12541},
+            "ks_cutoff_score": 0.210709123,
+        },
         key_path=("model",),
     )
     config = renderer_module._display_json_value(
         {"stepwise": {"entry_p_value": 0.12541}}, key_path=("effective_config",)
     )
     assert card["thresholds"]["entry_p_value"] == config["stepwise"]["entry_p_value"] == "0,12541"
+    # `min_iv` sólo es un corte por su procedencia (`thresholds`), no por su nombre.
+    assert card["thresholds"]["min_iv"] == "0,12541"
     # `ks_cutoff_score` contiene «cut» pero es un resultado: sigue la regla de las cifras.
     assert card["ks_cutoff_score"] == "0,2107"
     # En una tabla, los umbrales se leen como en la prosa.
