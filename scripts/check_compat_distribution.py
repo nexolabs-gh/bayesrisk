@@ -9,7 +9,8 @@ alias ``nikodym.<ruta>`` → ``bayesrisk.<ruta>``. Este gate lo verifica sobre l
 - la METADATA depende de ``bayesrisk>=2.0,<3``, declara ``Development Status :: 7 - Inactive``,
   la licencia ``Apache-2.0`` y cada extra de bayesrisk con el mismo nombre;
 - el script ``nikodym-ui`` apunta a ``bayesrisk.ui.__main__:main``;
-- el sdist sólo trae el módulo, el README, la LICENSE y el ``pyproject.toml``.
+- el sdist sólo trae el módulo, el README, la LICENSE, el ``pyproject.toml`` y lo que hatchling
+  añade siempre (``PKG-INFO``, ``.gitignore``).
 
 Uso:  python scripts/check_compat_distribution.py <directorio-con-wheel-y-sdist>
 """
@@ -17,6 +18,7 @@ Uso:  python scripts/check_compat_distribution.py <directorio-con-wheel-y-sdist>
 from __future__ import annotations
 
 import email.parser
+import re
 import sys
 import tarfile
 import tomllib
@@ -83,9 +85,15 @@ def verificar(directorio: Path) -> str:
             f"extras distintos de bayesrisk: faltan={sorted(extras_principal - extras)}, "
             f"sobran={sorted(extras - extras_principal)}"
         )
+    # El backend escribe el marcador con comillas simples o dobles según la versión: se compara la
+    # forma, no el estilo de comillas.
+    por_extra = {
+        m.group(2): m.group(1)
+        for r in requisitos
+        if (m := re.fullmatch(r"bayesrisk\[(\w+)\]<3,>=2\.0; extra == ['\"](\w+)['\"]", r))
+    }
     for extra in sorted(extras):
-        esperado = f'bayesrisk[{extra}]<3,>=2.0; extra == "{extra}"'
-        if esperado not in requisitos:
+        if por_extra.get(extra) != extra:
             raise CompatDistributionError(f"el extra {extra!r} no instala bayesrisk[{extra}]")
     if "nikodym-ui = bayesrisk.ui.__main__:main" not in entry_points:
         raise CompatDistributionError("nikodym-ui no apunta a bayesrisk.ui.__main__:main")
@@ -93,7 +101,15 @@ def verificar(directorio: Path) -> str:
     base = f"nikodym-{version}/"
     with tarfile.open(sdists[0], "r:gz") as sdist:
         archivos = {m.name[len(base) :] for m in sdist.getmembers() if m.isfile()}
-    permitidos = {"src/nikodym/__init__.py", "README.md", "LICENSE", "pyproject.toml", "PKG-INFO"}
+    # `.gitignore`: hatchling lo incluye en todo sdist (también en el de bayesrisk).
+    permitidos = {
+        "src/nikodym/__init__.py",
+        "README.md",
+        "LICENSE",
+        "pyproject.toml",
+        "PKG-INFO",
+        ".gitignore",
+    }
     if archivos != permitidos:
         raise CompatDistributionError(
             f"el sdist no trae exactamente {sorted(permitidos)}: {sorted(archivos)}"
