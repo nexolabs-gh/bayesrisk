@@ -1,16 +1,16 @@
 {
  "status": "done",
- "run_id": "6e31f5e9a899435e9f4d75cf0e6754ff",
+ "run_id": "c91f0d06b0cb4b7c864b58905fbd3e3b",
  "error": null,
  "model_card": {
-  "run_id": "6e31f5e9a899435e9f4d75cf0e6754ff",
+  "run_id": "c91f0d06b0cb4b7c864b58905fbd3e3b",
   "config_hash": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
   "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8",
-  "git_sha": "e77cc6a5d3c91915cd790d92cf8cad2930a04c81",
+  "git_sha": "57e1246ee83b7f20a60ceee287bd73a2f62d64d6",
   "git_dirty": false,
   "root_seed": 20240706,
   "schema_version": "1.0.0",
-  "created_at": "2026-09-22T15:30:11.791012Z",
+  "created_at": "2026-09-27T02:24:59.977985Z",
   "purpose": "Demostración pública de Nikodym RiskLib: scorecard de comportamiento sobre una cartera de consumo sintética. Ilustra el flujo completo de construcción y validación; no decide sobre ninguna operación real.",
   "assumptions": [
    "Los datos son sintéticos y reproducibles: no representan a ninguna institución.",
@@ -110,7 +110,7 @@
     "umbral": "cohort",
     "valor": "cohort",
     "accion": "aplicar_estrategia",
-    "ts": "2026-09-22T15:30:12.067320Z",
+    "ts": "2026-09-27T02:25:00.236660Z",
     "autor": null,
     "motivo": null
    },
@@ -133,7 +133,7 @@
      }
     },
     "accion": "reportar_particiones",
-    "ts": "2026-09-22T15:30:12.067402Z",
+    "ts": "2026-09-27T02:25:00.236740Z",
     "autor": null,
     "motivo": null
    },
@@ -143,7 +143,7 @@
     "umbral": 0.25,
     "valor": "eje de cohorte sin cronología",
     "accion": "no_evaluable",
-    "ts": "2026-09-22T15:30:12.083533Z",
+    "ts": "2026-09-27T02:25:00.252136Z",
     "autor": null,
     "motivo": null
    },
@@ -156,7 +156,7 @@
      "variable": "ingreso_mensual"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-22T15:30:18.208228Z",
+    "ts": "2026-09-27T02:25:05.386981Z",
     "autor": null,
     "motivo": null
    },
@@ -169,7 +169,7 @@
      "variable": "deuda_ingreso"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-22T15:30:18.208319Z",
+    "ts": "2026-09-27T02:25:05.387062Z",
     "autor": null,
     "motivo": null
    },
@@ -182,7 +182,7 @@
      "variable": "utilizacion_linea"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-22T15:30:18.208340Z",
+    "ts": "2026-09-27T02:25:05.387081Z",
     "autor": null,
     "motivo": null
    },
@@ -195,7 +195,7 @@
      "variable": "mora_max_12m"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-22T15:30:18.208353Z",
+    "ts": "2026-09-27T02:25:05.387094Z",
     "autor": null,
     "motivo": null
    },
@@ -208,7 +208,7 @@
      "variable": "antiguedad_meses"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-22T15:30:18.208365Z",
+    "ts": "2026-09-27T02:25:05.387106Z",
     "autor": null,
     "motivo": null
    },
@@ -221,7 +221,7 @@
      "variable": "utilizacion_linea"
     },
     "accion": "conservar_variable",
-    "ts": "2026-09-22T15:30:18.208785Z",
+    "ts": "2026-09-27T02:25:05.387499Z",
     "autor": null,
     "motivo": null
    },
@@ -234,7 +234,7 @@
      "variable": "segmento"
     },
     "accion": "conservar_variable",
-    "ts": "2026-09-22T15:30:18.208810Z",
+    "ts": "2026-09-27T02:25:05.387530Z",
     "autor": null,
     "motivo": null
    },
@@ -247,7 +247,7 @@
      "variable": "segmento"
     },
     "accion": "diagnosticar_sin_eliminar",
-    "ts": "2026-09-22T15:30:18.208824Z",
+    "ts": "2026-09-27T02:25:05.387543Z",
     "autor": null,
     "motivo": null
    },
@@ -262,7 +262,7 @@
      "woe_column": "segmento__woe"
     },
     "accion": "excluir",
-    "ts": "2026-09-22T15:30:18.419859Z",
+    "ts": "2026-09-27T02:25:05.593925Z",
     "autor": null,
     "motivo": null
    },
@@ -277,7 +277,7 @@
      "p_value": 9.904266606974601e-41
     },
     "accion": "enter",
-    "ts": "2026-09-22T15:30:18.694800Z",
+    "ts": "2026-09-27T02:25:06.121557Z",
     "autor": null,
     "motivo": null
    },
@@ -292,7 +292,7 @@
      "p_value": null
     },
     "accion": "flag",
-    "ts": "2026-09-22T15:30:18.702574Z",
+    "ts": "2026-09-27T02:25:06.129303Z",
     "autor": null,
     "motivo": null
    },
@@ -307,7 +307,7 @@
      "p_value": 4.298619202001295e-28
     },
     "accion": "enter",
-    "ts": "2026-09-22T15:30:18.733239Z",
+    "ts": "2026-09-27T02:25:06.159862Z",
     "autor": null,
     "motivo": null
    },
@@ -322,7 +322,7 @@
      "p_value": 9.97028567388611e-12
     },
     "accion": "enter",
-    "ts": "2026-09-22T15:30:18.768926Z",
+    "ts": "2026-09-27T02:25:06.190599Z",
     "autor": null,
     "motivo": null
    },
@@ -337,7 +337,7 @@
      "p_value": 1.7899471110038037e-07
     },
     "accion": "enter",
-    "ts": "2026-09-22T15:30:18.795524Z",
+    "ts": "2026-09-27T02:25:06.214311Z",
     "autor": null,
     "motivo": null
    },
@@ -352,7 +352,7 @@
      "p_value": 0.00036461213095663236
     },
     "accion": "enter",
-    "ts": "2026-09-22T15:30:18.814582Z",
+    "ts": "2026-09-27T02:25:06.231761Z",
     "autor": null,
     "motivo": null
    },
@@ -371,7 +371,7 @@
      "woe_column": "ingreso_mensual__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-22T15:30:18.857286Z",
+    "ts": "2026-09-27T02:25:06.272770Z",
     "autor": null,
     "motivo": null
    },
@@ -392,7 +392,7 @@
      "woe_column": "ingreso_mensual__woe"
     },
     "accion": "flag",
-    "ts": "2026-09-22T15:30:18.857379Z",
+    "ts": "2026-09-27T02:25:06.272847Z",
     "autor": null,
     "motivo": null
    },
@@ -411,7 +411,7 @@
      "woe_column": "deuda_ingreso__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-22T15:30:18.857411Z",
+    "ts": "2026-09-27T02:25:06.272874Z",
     "autor": null,
     "motivo": null
    },
@@ -430,7 +430,7 @@
      "woe_column": "utilizacion_linea__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-22T15:30:18.857435Z",
+    "ts": "2026-09-27T02:25:06.272893Z",
     "autor": null,
     "motivo": null
    },
@@ -449,7 +449,7 @@
      "woe_column": "antiguedad_meses__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-22T15:30:18.857453Z",
+    "ts": "2026-09-27T02:25:06.272910Z",
     "autor": null,
     "motivo": null
    },
@@ -468,7 +468,7 @@
      "woe_column": "mora_max_12m__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-22T15:30:18.857470Z",
+    "ts": "2026-09-27T02:25:06.272925Z",
     "autor": null,
     "motivo": null
    },
@@ -485,7 +485,7 @@
      "optimizer": "newton"
     },
     "accion": "aceptar_ajuste",
-    "ts": "2026-09-22T15:30:18.857489Z",
+    "ts": "2026-09-27T02:25:06.272943Z",
     "autor": null,
     "motivo": null
    },
@@ -531,7 +531,7 @@
      }
     ],
     "accion": "usar_punto_determinista",
-    "ts": "2026-09-22T15:30:18.871197Z",
+    "ts": "2026-09-27T02:25:06.289187Z",
     "autor": null,
     "motivo": null
    },
@@ -545,7 +545,7 @@
      "n_variables": 5
     },
     "accion": "publicar_puntos_redondeados",
-    "ts": "2026-09-22T15:30:18.871480Z",
+    "ts": "2026-09-27T02:25:06.289435Z",
     "autor": null,
     "motivo": null
    },
@@ -558,7 +558,7 @@
      "feature": "antiguedad_meses"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-22T15:30:18.879646Z",
+    "ts": "2026-09-27T02:25:06.298177Z",
     "autor": null,
     "motivo": null
    },
@@ -571,7 +571,7 @@
      "feature": "deuda_ingreso"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-22T15:30:18.884801Z",
+    "ts": "2026-09-27T02:25:06.304081Z",
     "autor": null,
     "motivo": null
    },
@@ -584,7 +584,7 @@
      "feature": "ingreso_mensual"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-22T15:30:18.889866Z",
+    "ts": "2026-09-27T02:25:06.310167Z",
     "autor": null,
     "motivo": null
    },
@@ -597,7 +597,7 @@
      "feature": "mora_max_12m"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-22T15:30:18.895569Z",
+    "ts": "2026-09-27T02:25:06.317317Z",
     "autor": null,
     "motivo": null
    },
@@ -610,7 +610,7 @@
      "feature": "utilizacion_linea"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-22T15:30:18.901259Z",
+    "ts": "2026-09-27T02:25:06.323305Z",
     "autor": null,
     "motivo": null
    },
@@ -624,7 +624,7 @@
      "target_pd": 0.23327442565008835
     },
     "accion": "fijar_ancla",
-    "ts": "2026-09-22T15:30:18.951285Z",
+    "ts": "2026-09-27T02:25:06.372434Z",
     "autor": null,
     "motivo": null
    },
@@ -637,7 +637,7 @@
      "n_fit": 3961
     },
     "accion": "ajustar_calibracion",
-    "ts": "2026-09-22T15:30:18.951349Z",
+    "ts": "2026-09-27T02:25:06.372528Z",
     "autor": null,
     "motivo": null
    },
@@ -651,7 +651,7 @@
      "raw_mean_pd_dev": 0.23327442565008835
     },
     "accion": "publicar_pd_calibrada",
-    "ts": "2026-09-22T15:30:18.951374Z",
+    "ts": "2026-09-27T02:25:06.372554Z",
     "autor": null,
     "motivo": null
    },
@@ -664,7 +664,7 @@
      "ties_created": 0
     },
     "accion": "registrar_ranking",
-    "ts": "2026-09-22T15:30:18.951394Z",
+    "ts": "2026-09-27T02:25:06.372573Z",
     "autor": null,
     "motivo": null
    },
@@ -678,7 +678,7 @@
      "statistic": 19.4510712384807
     },
     "accion": "revisar_calibracion",
-    "ts": "2026-09-22T15:30:19.059173Z",
+    "ts": "2026-09-27T02:25:06.476700Z",
     "autor": null,
     "motivo": null
    },
@@ -742,7 +742,7 @@
      ]
     },
     "accion": "renderizar_reporte",
-    "ts": "2026-09-22T15:30:32.519021Z",
+    "ts": "2026-09-27T02:25:24.021531Z",
     "autor": null,
     "motivo": null
    },
@@ -754,7 +754,7 @@
      "provider": "none"
     },
     "accion": "usar_narrativa_basica",
-    "ts": "2026-09-22T15:30:32.520583Z",
+    "ts": "2026-09-27T02:25:24.023019Z",
     "autor": null,
     "motivo": null
    },
@@ -764,10 +764,10 @@
     "umbral": "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/reports",
     "valor": {
      "path": "scorecard_report.html",
-     "sha256": "a52f73faff3f37a2c3ae4af81af29c460f81d5172a9440052d73c21aabbb4c47"
+     "sha256": "f59398aee34cdf6c994106afc36b188ad8fb9274f044c8c5b49d7b778feaedc6"
     },
     "accion": "publicar_html_local",
-    "ts": "2026-09-22T15:30:32.520652Z",
+    "ts": "2026-09-27T02:25:24.023074Z",
     "autor": null,
     "motivo": null
    },
@@ -779,7 +779,7 @@
      "path": "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/reports/scorecard_report.pdf"
     },
     "accion": "publicar_pdf_local",
-    "ts": "2026-09-22T15:30:32.520677Z",
+    "ts": "2026-09-27T02:25:24.023097Z",
     "autor": null,
     "motivo": null
    },
@@ -791,7 +791,7 @@
      "path": "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/reports/scorecard_report.qmd"
     },
     "accion": "publicar_qmd_local",
-    "ts": "2026-09-22T15:30:32.520696Z",
+    "ts": "2026-09-27T02:25:24.023110Z",
     "autor": null,
     "motivo": null
    },
@@ -803,19 +803,19 @@
      "path": "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/reports/scorecard_report.docx"
     },
     "accion": "publicar_docx_local",
-    "ts": "2026-09-22T15:30:32.520706Z",
+    "ts": "2026-09-27T02:25:24.023121Z",
     "autor": null,
     "motivo": null
    }
   ],
   "determinism_caveats": [],
-  "review_date": "2026-09-22T15:30:32.528397Z",
-  "next_review_date": "2027-09-22T15:30:32.528397Z",
+  "review_date": "2026-09-27T02:25:24.030635Z",
+  "next_review_date": "2027-09-27T02:25:24.030635Z",
   "environment": {
    "python_version": "3.12.14",
    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
    "library_versions": {
-    "nikodym": "1.19.0",
+    "nikodym": "1.20.0",
     "numpy": "2.4.6",
     "pandas": "2.3.3",
     "pandera": "0.32.0",
@@ -825,26 +825,26 @@
     "PyYAML": "6.0.3"
    },
    "uv_lock_hash": "32c611ad4b1e061c14e1262548bf30346610d7529a6e4fb7bc52c68ec3540d24",
-   "captured_at": "2026-09-22T15:30:32.529294Z"
+   "captured_at": "2026-09-27T02:25:24.031612Z"
   }
  },
  "lineage": {
-  "git_sha": "e77cc6a5d3c91915cd790d92cf8cad2930a04c81",
+  "git_sha": "57e1246ee83b7f20a60ceee287bd73a2f62d64d6",
   "git_dirty": false,
   "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8",
   "config_hash": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
   "root_seed": 20240706,
   "uv_lock_hash": "32c611ad4b1e061c14e1262548bf30346610d7529a6e4fb7bc52c68ec3540d24",
-  "runtime_environment_hash": "5b9f004ccf409b18dfdb62d3948ea3d3322cd9caa2fc3d00f99ab894eed80740",
+  "runtime_environment_hash": "c5925338574f045c38ec9a17f69d59ec787f77e79907e3a271ff39669b24d8bb",
   "library_versions": {
-   "nikodym": "1.19.0",
+   "nikodym": "1.20.0",
    "numpy": "2.4.6",
    "pandas": "2.3.3",
    "pydantic": "2.13.4",
    "PyYAML": "6.0.3"
   },
   "determinism_caveats": [],
-  "created_at": "2026-09-22T15:30:11.791012Z",
+  "created_at": "2026-09-27T02:24:59.977985Z",
   "schema_version": "1.0.0",
   "injected_artifacts": []
  },
@@ -865,6 +865,8 @@
   "axis": "cohort",
   "axis_inferred": false,
   "stability_not_evaluable_reason": "eje_cohorte",
+  "default_rate_not_evaluable_reason": null,
+  "failed_analyses": {},
   "default_rate": [
    {
     "period": "2023Q1",
@@ -1425,6 +1427,8 @@
   "missing_handling": "empirical",
   "optbinning_version": "0.20.0",
   "excluded_by_target_rule": [],
+  "rare_category_regroupings": {},
+  "assigned_bins": [],
   "tables_by_variable": {
    "ingreso_mensual": [
     {
@@ -1993,6 +1997,64 @@
      "IV": 0.002922409359928141,
      "JS": 0.0003652349497844324
     }
+   ]
+  },
+  "bin_labels_by_variable": {
+   "ingreso_mensual": [
+    "< 242.795,8828125",
+    "≥ 242.795,8828125 y < 354.256,5",
+    "≥ 354.256,5 y < 464.805,09375",
+    "≥ 464.805,09375 y < 631.639,46875",
+    "≥ 631.639,46875 y < 913.196,96875",
+    "≥ 913.196,96875",
+    "Valores especiales",
+    "Faltantes"
+   ],
+   "deuda_ingreso": [
+    "< 0,07795000076293945",
+    "≥ 0,07795000076293945 y < 0,1565999984741211",
+    "≥ 0,1565999984741211 y < 0,374099999666214",
+    "≥ 0,374099999666214 y < 0,5116499960422516",
+    "≥ 0,5116499960422516 y < 0,8504999876022339",
+    "≥ 0,8504999876022339",
+    "Valores especiales",
+    "Faltantes"
+   ],
+   "utilizacion_linea": [
+    "< 0,10254999995231628",
+    "≥ 0,10254999995231628 y < 0,25129999220371246",
+    "≥ 0,25129999220371246 y < 0,4483500123023987",
+    "≥ 0,4483500123023987 y < 0,6779000163078308",
+    "≥ 0,6779000163078308",
+    "Valores especiales",
+    "Faltantes"
+   ],
+   "mora_max_12m": [
+    "< 2,5",
+    "≥ 2,5 y < 3,5",
+    "≥ 3,5 y < 5,5",
+    "≥ 5,5 y < 7,5",
+    "≥ 7,5 y < 9,5",
+    "≥ 9,5",
+    "Valores especiales",
+    "Faltantes"
+   ],
+   "antiguedad_meses": [
+    "< 12,5",
+    "≥ 12,5 y < 36,5",
+    "≥ 36,5 y < 43,5",
+    "≥ 43,5 y < 89,5",
+    "≥ 89,5 y < 114,5",
+    "≥ 114,5",
+    "Valores especiales",
+    "Faltantes"
+   ],
+   "segmento": [
+    "independiente",
+    "asalariado",
+    "pensionado",
+    "Valores especiales",
+    "Faltantes"
    ]
   }
  },
@@ -11774,7 +11836,7 @@
      "Archivo: consumo_comportamiento",
      "6.000 filas · 1.407 malos (23,45 %) · 8 columnas",
      "Muestras: Desarrollo 3.961 (23,33 %) · Holdout 1.031 (23,67 %) · Fuera de tiempo (OOT) 1.008 (23,71 %) — cohortes fuera de tiempo: 2024Q2 (columna «cohorte»); holdout 20 % del resto",
-     "Evidencia de la corrida: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/6e31f5e9a899435e9f4d75cf0e6754ff"
+     "Evidencia de la corrida: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/c91f0d06b0cb4b7c864b58905fbd3e3b"
     ],
     "alerts": [],
     "table": {
@@ -12068,7 +12130,7 @@
        "intercepto",
        "-1,1921",
        "0,0405",
-       "0,0000",
+       "< 0,001",
        "—",
        "—",
        "—"
@@ -12077,7 +12139,7 @@
        "antiguedad_meses",
        "-1,0810",
        "0,2101",
-       "0,0000",
+       "< 0,001",
        "sí",
        "0,041",
        "6,98 %"
@@ -12086,7 +12148,7 @@
        "deuda_ingreso",
        "-1,0783",
        "0,0971",
-       "0,0000",
+       "< 0,001",
        "sí",
        "0,164",
        "27,60 %"
@@ -12095,7 +12157,7 @@
        "ingreso_mensual",
        "-1,0517",
        "0,0772",
-       "0,0000",
+       "< 0,001",
        "sí",
        "0,305",
        "51,43 %"
@@ -12104,7 +12166,7 @@
        "mora_max_12m",
        "-0,9678",
        "0,2715",
-       "0,0004",
+       "< 0,001",
        "sí",
        "0,022",
        "3,69 %"
@@ -12113,7 +12175,7 @@
        "utilizacion_linea",
        "-1,1154",
        "0,1632",
-       "0,0000",
+       "< 0,001",
        "sí",
        "0,061",
        "10,30 %"
@@ -12140,235 +12202,235 @@
      "rows": [
       [
        "antiguedad_meses",
-       "(-inf, 12.50)",
+       "< 12,5",
        "-0,315",
        "94"
       ],
       [
        "antiguedad_meses",
-       "[12.50, 36.50)",
+       "≥ 12,5 y < 36,5",
        "-0,135",
        "100"
       ],
       [
        "antiguedad_meses",
-       "[36.50, 43.50)",
+       "≥ 36,5 y < 43,5",
        "-0,019",
        "104"
       ],
       [
        "antiguedad_meses",
-       "[43.50, 89.50)",
+       "≥ 43,5 y < 89,5",
        "0,005",
        "104"
       ],
       [
        "antiguedad_meses",
-       "[89.50, 114.50)",
+       "≥ 89,5 y < 114,5",
        "0,135",
        "109"
       ],
       [
        "antiguedad_meses",
-       "[114.50, inf)",
+       "≥ 114,5",
        "0,750",
        "128"
       ],
       [
        "antiguedad_meses",
-       "Special",
+       "Valores especiales",
        "0,000",
        "104"
       ],
       [
        "antiguedad_meses",
-       "Missing",
+       "Faltantes",
        "0,000",
        "104"
       ],
       [
        "deuda_ingreso",
-       "(-inf, 0.08)",
+       "< 0,07795000076293945",
        "0,714",
        "127"
       ],
       [
        "deuda_ingreso",
-       "[0.08, 0.16)",
+       "≥ 0,07795000076293945 y < 0,1565999984741211",
        "0,272",
        "113"
       ],
       [
        "deuda_ingreso",
-       "[0.16, 0.37)",
+       "≥ 0,1565999984741211 y < 0,374099999666214",
        "0,218",
        "111"
       ],
       [
        "deuda_ingreso",
-       "[0.37, 0.51)",
+       "≥ 0,374099999666214 y < 0,5116499960422516",
        "-0,103",
        "101"
       ],
       [
        "deuda_ingreso",
-       "[0.51, 0.85)",
+       "≥ 0,5116499960422516 y < 0,8504999876022339",
        "-0,390",
        "92"
       ],
       [
        "deuda_ingreso",
-       "[0.85, inf)",
+       "≥ 0,8504999876022339",
        "-1,082",
        "71"
       ],
       [
        "deuda_ingreso",
-       "Special",
+       "Valores especiales",
        "0,000",
        "104"
       ],
       [
        "deuda_ingreso",
-       "Missing",
+       "Faltantes",
        "0,000",
        "104"
       ],
       [
        "ingreso_mensual",
-       "(-inf, 242795.88)",
+       "< 242.795,8828125",
        "-0,902",
        "77"
       ],
       [
        "ingreso_mensual",
-       "[242795.88, 354256.50)",
+       "≥ 242.795,8828125 y < 354.256,5",
        "-0,582",
        "87"
       ],
       [
        "ingreso_mensual",
-       "[354256.50, 464805.09)",
+       "≥ 354.256,5 y < 464.805,09375",
        "-0,254",
        "97"
       ],
       [
        "ingreso_mensual",
-       "[464805.09, 631639.47)",
+       "≥ 464.805,09375 y < 631.639,46875",
        "0,036",
        "105"
       ],
       [
        "ingreso_mensual",
-       "[631639.47, 913196.97)",
+       "≥ 631.639,46875 y < 913.196,96875",
        "0,428",
        "117"
       ],
       [
        "ingreso_mensual",
-       "[913196.97, inf)",
+       "≥ 913.196,96875",
        "1,210",
        "141"
       ],
       [
        "ingreso_mensual",
-       "Special",
+       "Valores especiales",
        "0,000",
        "104"
       ],
       [
        "ingreso_mensual",
-       "Missing",
+       "Faltantes",
        "0,000",
        "104"
       ],
       [
        "mora_max_12m",
-       "(-inf, 2.50)",
+       "< 2,5",
        "0,361",
        "114"
       ],
       [
        "mora_max_12m",
-       "[2.50, 3.50)",
+       "≥ 2,5 y < 3,5",
        "0,214",
        "110"
       ],
       [
        "mora_max_12m",
-       "[3.50, 5.50)",
+       "≥ 3,5 y < 5,5",
        "0,091",
        "107"
       ],
       [
        "mora_max_12m",
-       "[5.50, 7.50)",
+       "≥ 5,5 y < 7,5",
        "-0,075",
        "102"
       ],
       [
        "mora_max_12m",
-       "[7.50, 9.50)",
+       "≥ 7,5 y < 9,5",
        "-0,126",
        "101"
       ],
       [
        "mora_max_12m",
-       "[9.50, inf)",
+       "≥ 9,5",
        "-0,206",
        "99"
       ],
       [
        "mora_max_12m",
-       "Special",
+       "Valores especiales",
        "0,000",
        "104"
       ],
       [
        "mora_max_12m",
-       "Missing",
+       "Faltantes",
        "0,000",
        "104"
       ],
       [
        "utilizacion_linea",
-       "(-inf, 0.10)",
+       "< 0,10254999995231628",
        "0,612",
        "124"
       ],
       [
        "utilizacion_linea",
-       "[0.10, 0.25)",
+       "≥ 0,10254999995231628 y < 0,25129999220371246",
        "0,250",
        "112"
       ],
       [
        "utilizacion_linea",
-       "[0.25, 0.45)",
+       "≥ 0,25129999220371246 y < 0,4483500123023987",
        "0,062",
        "106"
       ],
       [
        "utilizacion_linea",
-       "[0.45, 0.68)",
+       "≥ 0,4483500123023987 y < 0,6779000163078308",
        "-0,165",
        "99"
       ],
       [
        "utilizacion_linea",
-       "[0.68, inf)",
+       "≥ 0,6779000163078308",
        "-0,466",
        "89"
       ],
       [
        "utilizacion_linea",
-       "Special",
+       "Valores especiales",
        "0,000",
        "104"
       ],
       [
        "utilizacion_linea",
-       "Missing",
+       "Faltantes",
        "0,000",
        "104"
       ]
@@ -12904,12 +12966,12 @@
     "stage": "validation",
     "label": "Validación formal",
     "lines": [
-     "Estado técnico: Falla — lo decide Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013)",
+     "Estado técnico: Falla — lo decide Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada)",
      "3 pruebas con veredicto, 1 fallida; familias: discriminación, calibración y estabilidad",
      "El estado técnico es una síntesis del motor; el veredicto lo firma un validador"
     ],
     "alerts": [
-     "Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013)"
+     "Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada)"
     ],
     "table": {
      "columns": [
@@ -12950,7 +13012,7 @@
        "Hosmer-Lemeshow",
        "Desarrollo",
        "6,0079",
-       "0,6463",
+       "0,646",
        "Pasa"
       ],
       [
@@ -12966,7 +13028,7 @@
        "Hosmer-Lemeshow",
        "Fuera de tiempo (OOT)",
        "19,4511",
-       "0,0126",
+       "0,013",
        "Falla"
       ],
       [
@@ -12982,7 +13044,7 @@
        "Hosmer-Lemeshow",
        "Holdout",
        "10,1206",
-       "0,2567",
+       "0,257",
        "Pasa"
       ],
       [
@@ -13124,7 +13186,7 @@
      "Informe Word: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/reports/scorecard_report.docx",
      "Informe PDF: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/reports/scorecard_report.pdf",
      "Fuente editable (Quarto): /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/reports/scorecard_report.qmd",
-     "Registro de auditoría: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/6e31f5e9a899435e9f4d75cf0e6754ff/audit_trail.jsonl"
+     "Registro de auditoría: /home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/c91f0d06b0cb4b7c864b58905fbd3e3b/audit_trail.jsonl"
     ],
     "alerts": [],
     "table": null
@@ -13132,7 +13194,7 @@
   ],
   "final": {
    "execution": "completada",
-   "validation": "Falla — lo decide Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013)",
+   "validation": "Falla — lo decide Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada)",
    "figures": [
     [
      "AUC en Fuera de tiempo (OOT)",
@@ -13161,21 +13223,21 @@
     "Tramos y WoE: ingreso_mensual: la tasa de malos invierte la tendencia en Fuera de tiempo (OOT)",
     "Tramos y WoE: mora_max_12m: la tasa de malos invierte la tendencia en Holdout y Fuera de tiempo (OOT)",
     "Modelo: Concentra más del 90 % del IV del modelo: ingreso_mensual",
-    "Validación formal: Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013)"
+    "Validación formal: Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada)"
    ],
    "decisions": [],
    "files": [
     [
      "Carpeta del proyecto",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/6e31f5e9a899435e9f4d75cf0e6754ff"
+     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/c91f0d06b0cb4b7c864b58905fbd3e3b"
     ],
     [
      "Evidencia de la corrida",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/6e31f5e9a899435e9f4d75cf0e6754ff"
+     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/c91f0d06b0cb4b7c864b58905fbd3e3b"
     ],
     [
      "Registro de auditoría",
-     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/6e31f5e9a899435e9f4d75cf0e6754ff/audit_trail.jsonl"
+     "/home/runner/work/nikodym/nikodym/.nikodym-demo-fixtures-f1/runs/c91f0d06b0cb4b7c864b58905fbd3e3b/audit_trail.jsonl"
     ],
     [
      "Informe HTML",

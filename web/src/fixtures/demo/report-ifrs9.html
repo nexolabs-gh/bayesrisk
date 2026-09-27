@@ -107,7 +107,10 @@ a:hover {
 .doc-shell {
   display: grid;
   grid-template-columns: 264px minmax(0, 1fr) 236px;
-  max-width: 1360px;
+  /* 1.920 px: en una pantalla de 2.560 la columna de contenido pasa de 756 a ~1.316 px y nueve de
+     las diez tablas que se desplazaban caben. Sin tope, las tarjetas de tres columnas de la
+     portada se separarían más de lo que se leen en un monitor ultra ancho. */
+  max-width: 1920px;
   margin: 0 auto;
   align-items: start;
   background: var(--paper);
@@ -758,6 +761,9 @@ dt {
 dd {
   margin: 0;
   min-width: 0;
+  /* Una ruta de archivo no tiene dónde partirse y empujaba la página a 825 px en un teléfono de
+     375: el valor de una lista puede partirse en cualquier punto, como un `<code>` en una celda. */
+  overflow-wrap: anywhere;
 }
 
 pre {
@@ -796,8 +802,38 @@ tbody td {
   padding: 7px 12px;
   text-align: left;
   vertical-align: top;
-  /* Una celda larga se parte en vez de empujar la tabla fuera de la caja: en el PDF no hay scroll. */
+  /* En pantalla una celda se parte sólo entre palabras, y una cifra nunca. Con `overflow-wrap:
+     anywhere` el navegador podía angostar una columna hasta el ancho de un carácter: bajo un
+     encabezado corto (`iv`, `js`), `0.094802` salía en seis renglones. Una tabla que no cabe se
+     desplaza dentro de su `.table-block`; partir en cualquier punto queda sólo para el papel
+     (`@media print`), donde no hay desplazamiento. */
+}
+
+/* Un identificador o un nombre de archivo en una celda (`<code>`) sí se parte en cualquier punto:
+   no es una cifra, y entero empujaría la página en una pantalla angosta. */
+td code {
   overflow-wrap: anywhere;
+}
+
+/* Las tablas que no van en un `.table-block` (adjuntos, métricas ejecutivas) también se desplazan
+   dentro de su bloque en pantalla, en vez de ensanchar la página. */
+@media screen {
+  .data-exports,
+  .exec-metrics-slot {
+    overflow-x: auto;
+  }
+
+  /* En pantalla una tabla toma el ancho de su contenido, no el de la columna: con 1.316 px, una
+     tabla de tres columnas estirada al 100 % se lee peor. En papel sigue al 100 %, la regla
+     general, con su `table-layout: fixed`. */
+  table {
+    width: auto;
+  }
+
+  td.num,
+  th.num {
+    white-space: nowrap;
+  }
 }
 
 td.num,
@@ -947,11 +983,14 @@ figcaption {
     border: 1px solid var(--line);
   }
 
-  /* El encabezado se parte igual que la celda. Con `table-layout: fixed` el ancho de columna no
-     cede, así que un nombre largo (`total_exposure_amount`, 21 caracteres) desbordaba su celda e
-     invadía la vecina: en el PDF se leía «total_exposure_amounttotal_provision_amount», tres
-     encabezados encimados. `tbody td` ya se partía; a `thead th` le faltaba la misma regla. */
-  thead th {
+  /* En papel no hay desplazamiento: una celda larga se parte en cualquier punto antes que empujar la
+     tabla fuera de la hoja. El encabezado se parte igual que la celda. Con `table-layout: fixed` el
+     ancho de columna no cede, así que un nombre largo (`total_exposure_amount`, 21 caracteres)
+     desbordaba su celda e invadía la vecina: en el PDF se leía
+     «total_exposure_amounttotal_provision_amount», tres encabezados encimados. Sólo aquí: en
+     pantalla la misma regla partía las cifras carácter por carácter (ver `tbody td`). */
+  thead th,
+  tbody td {
     overflow-wrap: anywhere;
   }
 
@@ -1001,6 +1040,25 @@ figcaption {
 }
 
 /* ─────────────────────────── responsive (pantalla angosta) ─────────────────────────── */
+
+/* El índice de la derecha («En esta página») repite 13 capítulos que el de la izquierda ya lista:
+   bajo 1.600 px sus 236 px valen más para las tablas. Sólo en pantalla: en papel no hay índices. */
+@media screen and (max-width: 1599px) {
+  .doc-shell {
+    grid-template-columns: 264px minmax(0, 1fr);
+  }
+  .doc-rail {
+    display: none;
+  }
+}
+
+/* En un teléfono, la clave arriba y el valor debajo: en dos columnas el valor quedaba en 59 px.
+   Sólo en pantalla: el PDF conserva sus listas en dos columnas. */
+@media screen and (max-width: 720px) {
+  dl {
+    grid-template-columns: 1fr;
+  }
+}
 
 @media (max-width: 1080px) {
   .doc-shell {
@@ -1118,7 +1176,7 @@ figcaption {
     </div>
     <div class="cover-field">
       <dt>Fecha de emisión</dt>
-      <dd>2026-09-22</dd>
+      <dd>2026-09-27</dd>
     </div>
   </dl>
 
@@ -1126,7 +1184,7 @@ figcaption {
     <p class="lineage-caption">Trazabilidad de la corrida (lineage)</p>
     <div class="lineage-line"><code>config_hash=013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6</code></div>
     <div class="lineage-line"><code>data_hash=d713808d0604110d6c450358453cea172934d93eb56ccdcb0e7aea7279a94e3e</code></div>
-    <div class="lineage-line"><code>git_sha=e77cc6a5d3c91915cd790d92cf8cad2930a04c81</code></div>
+    <div class="lineage-line"><code>git_sha=57e1246ee83b7f20a60ceee287bd73a2f62d64d6</code></div>
     <div class="lineage-line"><code>root_seed=20240706</code></div>
   </div>
 
@@ -1326,24 +1384,24 @@ figcaption {
 <figure class="table-block">
   <figcaption class="table-title">Estados de la población</figcaption>
   <table id="table-data-states" data-table-key="data.states">
-    <thead><tr><th>Estado</th><th>Observaciones</th></tr></thead>
+    <thead><tr><th>Estado</th><th class="num">Observaciones</th></tr></thead>
     <tbody>
-      <tr><td>bueno</td><td>5422</td></tr>
-      <tr><td>malo</td><td>578</td></tr>
-      <tr><td>indeterminado</td><td>0</td></tr>
-      <tr><td>excluido</td><td>0</td></tr>
+      <tr><td>bueno</td><td class="num">5.422</td></tr>
+      <tr><td>malo</td><td class="num">578</td></tr>
+      <tr><td>indeterminado</td><td class="num">0</td></tr>
+      <tr><td>excluido</td><td class="num">0</td></tr>
     </tbody>
   </table>
 </figure>
 <figure class="table-block">
   <figcaption class="table-title">Particiones de modelamiento</figcaption>
   <table id="table-data-partitions" data-table-key="data.partitions">
-    <thead><tr><th>Partición</th><th>Observaciones</th><th>Tasa de incumplimiento</th></tr></thead>
+    <thead><tr><th>Partición</th><th class="num">Observaciones</th><th class="num">Tasa de incumplimiento</th></tr></thead>
     <tbody>
-      <tr><td>desarrollo</td><td>4024</td><td>0.0964</td></tr>
-      <tr><td>holdout</td><td>1030</td><td>0.1000</td></tr>
-      <tr><td>oot</td><td>946</td><td>0.0920</td></tr>
-      <tr><td>fuera_de_modelo</td><td>0</td><td>0.0000</td></tr>
+      <tr><td>Desarrollo</td><td class="num">4.024</td><td class="num">0,0964</td></tr>
+      <tr><td>Holdout</td><td class="num">1.030</td><td class="num">0,1000</td></tr>
+      <tr><td>Fuera de tiempo (OOT)</td><td class="num">946</td><td class="num">0,09197</td></tr>
+      <tr><td>Fuera del ajuste</td><td class="num">0</td><td class="num">0,0000</td></tr>
     </tbody>
   </table>
 </figure>
@@ -1420,20 +1478,20 @@ figcaption {
 <figure class="table-block">
   <figcaption class="table-title">Pérdida crediticia esperada (ECL) por etapa</figcaption>
   <table id="table-provisioning_ifrs9-summary" data-table-key="provisioning_ifrs9.summary">
-    <thead><tr><th>portfolio</th><th>stage</th><th>scenario</th><th>n_rows</th><th>total_ead</th><th>total_ecl_reported</th><th>coverage_ratio</th></tr></thead>
+    <thead><tr><th>portfolio</th><th class="num">stage</th><th>scenario</th><th class="num">n_<wbr>rows</th><th class="num">total_<wbr>ead</th><th class="num">total_<wbr>ecl_<wbr>reported</th><th class="num">coverage_<wbr>ratio</th></tr></thead>
     <tbody>
-      <tr><td>Comercial</td><td>1</td><td>all</td><td>775</td><td>31178795.53</td><td>581332.24</td><td>0.018645</td></tr>
-      <tr><td>Comercial</td><td>2</td><td>all</td><td>75</td><td>3137275.52</td><td>390914.01</td><td>0.124603</td></tr>
-      <tr><td>Comercial</td><td>3</td><td>all</td><td>51</td><td>2145243.75</td><td>375806.68</td><td>0.175181</td></tr>
-      <tr><td>Consumo</td><td>1</td><td>all</td><td>2125</td><td>18099269.13</td><td>393131.23</td><td>0.021721</td></tr>
-      <tr><td>Consumo</td><td>2</td><td>all</td><td>177</td><td>1561397.65</td><td>201559.53</td><td>0.129089</td></tr>
-      <tr><td>Consumo</td><td>3</td><td>all</td><td>114</td><td>990794.93</td><td>178471.85</td><td>0.180130</td></tr>
-      <tr><td>Hipotecario</td><td>1</td><td>all</td><td>809</td><td>43611647.09</td><td>437771.24</td><td>0.010038</td></tr>
-      <tr><td>Hipotecario</td><td>2</td><td>all</td><td>69</td><td>3693801.39</td><td>303704.23</td><td>0.082220</td></tr>
-      <tr><td>Hipotecario</td><td>3</td><td>all</td><td>38</td><td>2244951.10</td><td>251942.93</td><td>0.112226</td></tr>
-      <tr><td>Tarjetas</td><td>1</td><td>all</td><td>1526</td><td>6614503.17</td><td>159269.35</td><td>0.024079</td></tr>
-      <tr><td>Tarjetas</td><td>2</td><td>all</td><td>156</td><td>672454.41</td><td>84444.87</td><td>0.125577</td></tr>
-      <tr><td>Tarjetas</td><td>3</td><td>all</td><td>85</td><td>375181.03</td><td>64767.96</td><td>0.172631</td></tr>
+      <tr><td>Comercial</td><td class="num">1</td><td>all</td><td class="num">775</td><td class="num">31.178.795,53</td><td class="num">581.332,24</td><td class="num">0,0186</td></tr>
+      <tr><td>Comercial</td><td class="num">2</td><td>all</td><td class="num">75</td><td class="num">3.137.275,52</td><td class="num">390.914,01</td><td class="num">0,1246</td></tr>
+      <tr><td>Comercial</td><td class="num">3</td><td>all</td><td class="num">51</td><td class="num">2.145.243,75</td><td class="num">375.806,68</td><td class="num">0,1752</td></tr>
+      <tr><td>Consumo</td><td class="num">1</td><td>all</td><td class="num">2.125</td><td class="num">18.099.269,13</td><td class="num">393.131,23</td><td class="num">0,0217</td></tr>
+      <tr><td>Consumo</td><td class="num">2</td><td>all</td><td class="num">177</td><td class="num">1.561.397,65</td><td class="num">201.559,53</td><td class="num">0,1291</td></tr>
+      <tr><td>Consumo</td><td class="num">3</td><td>all</td><td class="num">114</td><td class="num">990.794,93</td><td class="num">178.471,85</td><td class="num">0,1801</td></tr>
+      <tr><td>Hipotecario</td><td class="num">1</td><td>all</td><td class="num">809</td><td class="num">43.611.647,09</td><td class="num">437.771,24</td><td class="num">0,01004</td></tr>
+      <tr><td>Hipotecario</td><td class="num">2</td><td>all</td><td class="num">69</td><td class="num">3.693.801,39</td><td class="num">303.704,23</td><td class="num">0,0822</td></tr>
+      <tr><td>Hipotecario</td><td class="num">3</td><td>all</td><td class="num">38</td><td class="num">2.244.951,10</td><td class="num">251.942,93</td><td class="num">0,1122</td></tr>
+      <tr><td>Tarjetas</td><td class="num">1</td><td>all</td><td class="num">1.526</td><td class="num">6.614.503,17</td><td class="num">159.269,35</td><td class="num">0,0241</td></tr>
+      <tr><td>Tarjetas</td><td class="num">2</td><td>all</td><td class="num">156</td><td class="num">672.454,41</td><td class="num">84.444,87</td><td class="num">0,1256</td></tr>
+      <tr><td>Tarjetas</td><td class="num">3</td><td>all</td><td class="num">85</td><td class="num">375.181,03</td><td class="num">64.767,96</td><td class="num">0,1726</td></tr>
     </tbody>
   </table>
 </figure>
@@ -1470,20 +1528,20 @@ figcaption {
   <h4>Parámetros y payload</h4>
   <dl>
     <dt>config_hash</dt><dd>013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6</dd>
-    <dt>created_at</dt><dd>2026-09-22T15:39:44.439012Z</dd>
+    <dt>created_at</dt><dd>2026-09-27T02:26:04.112353Z</dd>
     <dt>data_hash</dt><dd>d713808d0604110d6c450358453cea172934d93eb56ccdcb0e7aea7279a94e3e</dd>
     <dt>determinism_caveats</dt><dd>[]</dd>
-    <dt>git_dirty</dt><dd>false</dd>
-    <dt>git_sha</dt><dd>e77cc6a5d3c91915cd790d92cf8cad2930a04c81</dd>
+    <dt>git_dirty</dt><dd>no</dd>
+    <dt>git_sha</dt><dd>57e1246ee83b7f20a60ceee287bd73a2f62d64d6</dd>
     <dt>library_versions</dt><dd><pre>{
   &#34;PyYAML&#34;: &#34;6.0.3&#34;,
-  &#34;nikodym&#34;: &#34;1.19.0&#34;,
+  &#34;nikodym&#34;: &#34;1.20.0&#34;,
   &#34;numpy&#34;: &#34;2.4.6&#34;,
   &#34;pandas&#34;: &#34;2.3.3&#34;,
   &#34;pydantic&#34;: &#34;2.13.4&#34;
 }</pre></dd>
     <dt>root_seed</dt><dd>20240706</dd>
-    <dt>runtime_environment_hash</dt><dd>5b9f004ccf409b18dfdb62d3948ea3d3322cd9caa2fc3d00f99ab894eed80740</dd>
+    <dt>runtime_environment_hash</dt><dd>c5925338574f045c38ec9a17f69d59ec787f77e79907e3a271ff39669b24d8bb</dd>
     <dt>schema_version</dt><dd>1.0.0</dd>
     <dt>uv_lock_hash</dt><dd>32c611ad4b1e061c14e1262548bf30346610d7529a6e4fb7bc52c68ec3540d24</dd>
   </dl>
@@ -1532,7 +1590,7 @@ figcaption {
 
   <h4>Parámetros y payload</h4>
   <dl>
-    <dt>bad_rate</dt><dd>0.0963</dd>
+    <dt>bad_rate</dt><dd>0,0963</dd>
     <dt>class_counts</dt><dd><pre>{
   &#34;bueno&#34;: 5422,
   &#34;excluido&#34;: 0,
@@ -1552,14 +1610,14 @@ figcaption {
     &#34;source&#34;: &#34;.nikodym-demo-fixtures-f4/datasets/ifrs9_retail_latam.parquet&#34;
   },
   &#34;missing&#34;: {
-    &#34;max_missing_rate&#34;: &#34;0.9900&#34;,
+    &#34;max_missing_rate&#34;: &#34;0,99&#34;,
     &#34;special_values&#34;: []
   },
   &#34;partition&#34;: {
     &#34;min_bads_per_partition&#34;: 30,
     &#34;strategy&#34;: {
       &#34;cohort_col&#34;: &#34;cohorte&#34;,
-      &#34;holdout_fraction&#34;: &#34;0.2000&#34;,
+      &#34;holdout_fraction&#34;: &#34;0,20&#34;,
       &#34;oot_cohorts&#34;: [
         &#34;2024Q2&#34;
       ],
@@ -1684,12 +1742,12 @@ figcaption {
 }</pre></dd>
     <dt>exclusions_by_reason</dt><dd>{}</dd>
     <dt>n_features</dt><dd>17</dd>
-    <dt>n_rows</dt><dd>6000</dd>
+    <dt>n_rows</dt><dd>6.000</dd>
     <dt>partition_bad_rates</dt><dd><pre>{
-  &#34;desarrollo&#34;: &#34;0.0964&#34;,
-  &#34;fuera_de_modelo&#34;: &#34;0.0000&#34;,
-  &#34;holdout&#34;: &#34;0.1000&#34;,
-  &#34;oot&#34;: &#34;0.0920&#34;
+  &#34;desarrollo&#34;: &#34;0,0964&#34;,
+  &#34;fuera_de_modelo&#34;: &#34;0,0000&#34;,
+  &#34;holdout&#34;: &#34;0,1000&#34;,
+  &#34;oot&#34;: &#34;0,09197&#34;
 }</pre></dd>
     <dt>partition_sizes</dt><dd><pre>{
   &#34;desarrollo&#34;: 4024,
@@ -1722,17 +1780,17 @@ figcaption {
     <dt>diagnostics</dt><dd><pre>{
   &#34;aft_family&#34;: null,
   &#34;fit_statistics&#34;: {
-    &#34;aic&#34;: &#34;11002.31&#34;,
+    &#34;aic&#34;: &#34;11.002,31&#34;,
     &#34;converged&#34;: &#34;True&#34;,
-    &#34;deviance&#34;: &#34;10984.31&#34;,
+    &#34;deviance&#34;: &#34;10.984,31&#34;,
     &#34;df_model&#34;: 8,
     &#34;df_resid&#34;: 26636,
-    &#34;llf&#34;: &#34;-5492.16&#34;,
+    &#34;llf&#34;: &#34;-5.492,16&#34;,
     &#34;n_iterations&#34;: 6,
     &#34;n_obs&#34;: 26645
   },
   &#34;link&#34;: &#34;logit&#34;,
-  &#34;max_observed_time&#34;: &#34;5.000000&#34;,
+  &#34;max_observed_time&#34;: &#34;5,0000&#34;,
   &#34;method&#34;: &#34;discrete_hazard&#34;,
   &#34;n_censored&#34;: 4498,
   &#34;n_events&#34;: 1502,
@@ -1770,7 +1828,7 @@ figcaption {
     &#34;segment_col&#34;: null
   },
   &#34;kaplan_meier&#34;: {
-    &#34;confidence_level&#34;: &#34;0.950000&#34;,
+    &#34;confidence_level&#34;: &#34;0,95&#34;,
     &#34;confidence_transform&#34;: &#34;loglog&#34;
   },
   &#34;method&#34;: &#34;discrete_hazard&#34;,
@@ -1785,9 +1843,9 @@ figcaption {
     <dt>event_col</dt><dd>event</dd>
     <dt>falta_dato</dt><dd>[]</dd>
     <dt>method</dt><dd>discrete_hazard</dd>
-    <dt>n_events</dt><dd>1502</dd>
+    <dt>n_events</dt><dd>1.502</dd>
     <dt>n_periods</dt><dd>5</dd>
-    <dt>n_rows</dt><dd>6000</dd>
+    <dt>n_rows</dt><dd>6.000</dd>
     <dt>output_columns</dt><dd><pre>[
   &#34;row_id&#34;,
   &#34;segment&#34;,
@@ -1838,8 +1896,8 @@ figcaption {
 }</pre></dd>
     <dt>schoenfeld</dt><dd>{}</dd>
     <dt>term_structure_summary</dt><dd><pre>{
-  &#34;max_pd_cumulative&#34;: &#34;0.995033&#34;,
-  &#34;min_survival&#34;: &#34;0.004967&#34;,
+  &#34;max_pd_cumulative&#34;: &#34;0,99503&#34;,
+  &#34;min_survival&#34;: &#34;0,00497&#34;,
   &#34;n_periods&#34;: 5,
   &#34;n_rows&#34;: 30000
 }</pre></dd>
@@ -1895,9 +1953,9 @@ figcaption {
   &#34;fail_on_falta_dato&#34;: true,
   &#34;lgd&#34;: {
     &#34;covariate_cols&#34;: [],
-    &#34;lgd_cap&#34;: &#34;1.000000&#34;,
+    &#34;lgd_cap&#34;: &#34;1,00&#34;,
     &#34;lgd_col&#34;: &#34;lgd&#34;,
-    &#34;lgd_floor&#34;: &#34;0.000000&#34;,
+    &#34;lgd_floor&#34;: &#34;0,00&#34;,
     &#34;method&#34;: &#34;provided&#34;,
     &#34;recovery_col&#34;: null,
     &#34;workout_discount&#34;: &#34;eir&#34;
@@ -1932,8 +1990,8 @@ figcaption {
     &#34;origination_pd_life_col&#34;: null,
     &#34;origination_rating_col&#34;: null,
     &#34;rating_col&#34;: null,
-    &#34;sicr_pd_pit_backstop_multiple&#34;: &#34;3.000000&#34;,
-    &#34;sicr_pd_ratio_threshold&#34;: &#34;2.000000&#34;,
+    &#34;sicr_pd_pit_backstop_multiple&#34;: &#34;3,00&#34;,
+    &#34;sicr_pd_ratio_threshold&#34;: &#34;2,00&#34;,
     &#34;stage_override_col&#34;: null
   },
   &#34;type&#34;: &#34;standard&#34;
@@ -1941,32 +1999,32 @@ figcaption {
     <dt>falta_dato</dt><dd><pre>[
   &#34;FALTA-DATO-IFRS-4&#34;
 ]</pre></dd>
-    <dt>n_rows</dt><dd>6000</dd>
-    <dt>n_stage1</dt><dd>5235</dd>
+    <dt>n_rows</dt><dd>6.000</dd>
+    <dt>n_stage1</dt><dd>5.235</dd>
     <dt>n_stage2</dt><dd>477</dd>
     <dt>n_stage3</dt><dd>288</dd>
     <dt>pit_mode</dt><dd>ttc_only</dd>
     <dt>scenario_weights</dt><dd><pre>{
-  &#34;base&#34;: &#34;1.000000&#34;
+  &#34;base&#34;: &#34;1,0000&#34;
 }</pre></dd>
     <dt>scenarios</dt><dd><pre>[
   &#34;base&#34;
 ]</pre></dd>
     <dt>segmentation</dt><dd>—</dd>
     <dt>term_structure_source</dt><dd>survival</dd>
-    <dt>total_ead</dt><dd>114325314.70</dd>
-    <dt>total_ecl_reported</dt><dd>3423116.12</dd>
+    <dt>total_ead</dt><dd>114.325.314,70</dd>
+    <dt>total_ecl_reported</dt><dd>3.423.116,12</dd>
   </dl>
 
   <h4>Métricas estructuradas</h4>
   <dl>
     <dt>ecl_by_scenario</dt><dd><pre>{
-  &#34;base&#34;: &#34;6911516.43&#34;
+  &#34;base&#34;: &#34;6.911.516,43&#34;
 }</pre></dd>
     <dt>ecl_by_scenario_basis</dt><dd>Diagnóstico auditable de la term-structure, no un desglose de total_ecl_reported: suma la ECL marginal descontada de cada escenario por separado, sin aplicar scenario_weights y sobre el horizonte completo de la curva, sin truncar Stage 1 a 12 meses. total_ecl_reported sí pondera por escenario y aplica ese corte por stage, de modo que ambas cifras no reconcilian entre sí: no deben sumarse ni compararse.</dd>
     <dt>rounding</dt><dd><pre>{
   &#34;policy&#34;: &#34;none&#34;,
-  &#34;total_difference&#34;: &#34;0.000000&#34;
+  &#34;total_difference&#34;: &#34;0,0000&#34;
 }</pre></dd>
     <dt>staging_migration</dt><dd><pre>{
   &#34;stage_1&#34;: 5235,
