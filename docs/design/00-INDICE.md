@@ -1115,7 +1115,7 @@ por módulo bajo SDD-31, la primera
 > `nikodym.<x>` que citen se lee `bayesrisk.<x>`, y `NikodymConfig` es `BayesRiskConfig`; los
 > documentos no se reescriben. Dos pasadas de Codex sobre el documento, tope alcanzado.
 
-> **Enmienda de las cifras en pantalla (2026-09-27; **propuesta**, primera de la FASE B de S23).**
+> **Enmienda de las cifras en pantalla (2026-09-27; **aprobada por Cami** el mismo día, primera de la FASE B de S23).**
 > [`_ENMIENDA-CIFRAS-EN-PANTALLA.md`](_ENMIENDA-CIFRAS-EN-PANTALLA.md), D-PAN-1…6, enmienda a
 > [`_ENMIENDA-INFORME-LEGIBLE.md`](_ENMIENDA-INFORME-LEGIBLE.md) y a la pantalla de
 > [`23-ui.md`](23-ui.md): la regla numérica del informe (`bayesrisk.report.cifras`) pasa a la

@@ -6,7 +6,7 @@
 | **Decisiones** | **D-PAN-1…6** |
 | **Módulos** | `web/src/lib` (`results-format`, `model-card`, `datasets`, nuevo `cifras`), `web/src/components` (`ResultsTab`, `charts/`, `DatosTab`, `PreflightNotice`, `FieldRenderer`, `LandingLauncher`), `bayesrisk.report.cifras`, `bayesrisk.guided.summaries`, `bayesrisk.report.prose`, `bayesrisk.methodology`, `bayesrisk.ui.routes` |
 | **Fase** | F1 (primera de la FASE B de S23) |
-| **Estado** | **PROPUESTA (S23, 2026-09-27)**, sin programar. Exige revisión adversarial (Codex, tope tres pasadas) y aprobación de Cami **antes de programar** |
+| **Estado** | **APROBADA por Cami el 2026-09-27** (S23, interactivo): «Aprobar y programar», tras tres pasadas de Codex (§11). Recaptura de la demo **«Con la próxima release»** (§8-2, opción a) |
 | **Depende de** | D-INF-1…4 (la regla numérica del informe, `bayesrisk.report.cifras`), D-MON-4/5 (la convención cuelga del idioma; el símbolo de moneda no se inventa), D-CPY-4 (p-valores «< 0,001») |
 | **Release** | Ningún número, `config_hash`, `data_hash` ni artefacto de cálculo cambia. Cambia el texto de los resúmenes por etapa (`summaries`), un rótulo del backend y los textos de auditoría del informe; la API de la pantalla gana campos aditivos (`*_legible`) y el resultado del EDA, `numeric_profiles` ⇒ «Corregido» en la próxima release, con su OK propio |
 | **Autor / Fecha** | Claude Code (writer) / 2026-09-27 |
