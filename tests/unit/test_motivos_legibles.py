@@ -21,6 +21,7 @@ from bayesrisk.eda.univariate import UnivariateProfiler
 from bayesrisk.report.cifras import (
     CRITERIOS_CON_PVALOR,
     MOTIVOS_DE_SELECCION,
+    PARTES_DEL_CRITERIO,
     PREFIJO_CONTRIBUCION_IV,
     frente_al_corte,
     motivo_legible,
@@ -100,7 +101,10 @@ def test_el_stepwise_se_compone_de_su_p_valor_y_su_umbral() -> None:
         "lr_stat": 6.2,
         "threshold": 0.05,
     }
-    assert motivo_legible_stepwise(fila) == "p-valor 0,012; umbral 0,05; estadístico LR 6,2000"
+    assert motivo_legible_stepwise(fila) == (
+        "p-valor 0,012 (Wald 0,012; razón de verosimilitud 0,020); umbral 0,05; "
+        "estadístico LR 6,2000"
+    )
     fila = {
         "criterion": "iv_contribution",
         "detail": "iv_contribution=0.00123456",
@@ -181,7 +185,7 @@ def test_cada_productor_numerico_del_detail_tiene_su_composicion_y_al_reves() ->
 
     # El modelo: la contribución de IV y los p-valores de `_criterion_detail`.
     assert {prefijo for _, prefijo in pares_modelo} == {PREFIJO_CONTRIBUCION_IV}
-    assert partes_modelo == {"wald_p=", "lr_p="}
+    assert partes_modelo == set(PARTES_DEL_CRITERIO)
     assert frozenset({"wald_pvalue", "lr_test", "both"}) == CRITERIOS_CON_PVALOR
 
 
@@ -244,3 +248,33 @@ def test_los_resumenes_escriben_la_observacion_frente_a_su_corte() -> None:
     assert _pvalor_frente(0.0004, 0.0005) == "0,00040"
     # Un corte que es proporción se escribe exacto, no redondeado a entero.
     assert _corte_pct(0.255) == "25,5 %"
+
+
+def test_con_both_se_conservan_los_p_valores_de_cada_prueba() -> None:
+    """Pasada 3 de Codex sobre el código: con `both`, `p_value` es el mayor y no dice cuál."""
+    fila = {
+        "criterion": "both",
+        "detail": "wald_p=0.0123, lr_p=0.0456",
+        "p_value": 0.0456,
+        "lr_stat": 4.0,
+        "threshold": 0.05,
+    }
+    texto = motivo_legible_stepwise(fila)
+    assert texto is not None
+    assert "Wald 0,012" in texto and "razón de verosimilitud 0,046" in texto
+    # El que coincide con el p-valor del criterio se escribe con su exacto, frente al corte.
+    fila = {
+        "criterion": "both",
+        # El motor escribe `:.6g`: 0.05000041 sale «0.0500004»; su exacto está en `p_value`.
+        "detail": "wald_p=0.01, lr_p=0.0500004",
+        "p_value": 0.05000041,
+        "lr_stat": 4.0,
+        "threshold": 0.05,
+    }
+    texto = motivo_legible_stepwise(fila)
+    # La prueba que decidió y el p-valor del criterio se leen igual: los dos desde el exacto.
+    assert texto is not None and texto.startswith("p-valor 0,0500004 (")
+    assert "razón de verosimilitud 0,0500004)" in texto
+    # Un `detail` que no es el de `_criterion_detail` no se adivina.
+    fila = {"criterion": "wald_pvalue", "detail": "otro", "p_value": 0.01, "threshold": 0.05}
+    assert motivo_legible_stepwise(fila) == "p-valor 0,010; umbral 0,05"

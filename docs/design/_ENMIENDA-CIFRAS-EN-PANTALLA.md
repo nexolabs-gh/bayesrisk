@@ -386,6 +386,14 @@ calibración por grado frente a los dos cortes del semáforo (el mismo defecto, 
 Las salidas del cuaderno publicado se regeneraron: sus cambios caen todos en las cuatro causas de
 D-PAN-3.
 
+**Pasada 3 sobre el código (sobre `ebe2702`, tope de tres alcanzado): `needs-attention`, un hallazgo,
+verificado y corregido, sin cuarta pasada.** Con el criterio `both` (y con Wald o LR), el texto
+legible perdía los p-valores de cada prueba, que sólo viajan en el `detail`: se conservan —«p-valor
+0,046 (Wald 0,012; razón de verosimilitud 0,046); umbral 0,05»—, leídos como observaciones con sus
+seis cifras, y el que coincide con el `p_value` estructurado se escribe con su exacto. Esta
+corrección no tuvo revisión adversarial propia; queda cubierta por su test
+(`test_con_both_se_conservan_los_p_valores_de_cada_prueba`).
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima**: ninguna nueva.

@@ -34,6 +34,7 @@ from typing import Final
 __all__ = [
     "CRITERIOS_CON_PVALOR",
     "MOTIVOS_DE_SELECCION",
+    "PARTES_DEL_CRITERIO",
     "PREFIJO_CONTRIBUCION_IV",
     "VACIO",
     "cifra",
@@ -286,6 +287,8 @@ MOTIVOS_DE_SELECCION: Final[dict[str, tuple[str, str, str, str]]] = {
 CRITERIOS_CON_PVALOR: Final = frozenset({"wald_pvalue", "lr_test", "both"})
 #: Prefijo del `detail` del criterio de contribución de IV.
 PREFIJO_CONTRIBUCION_IV: Final = "iv_contribution="
+#: Las partes que `_criterion_detail` une con «, » y cómo se nombran al leerlas.
+PARTES_DEL_CRITERIO: Final = {"wald_p=": "Wald", "lr_p=": "razón de verosimilitud"}
 
 
 def _numero(valor: object) -> float | None:
@@ -384,6 +387,28 @@ def motivo_legible(fila: Mapping[str, object], umbrales: Mapping[str, object]) -
     return texto
 
 
+def _pvalores_del_detail(detalle: object, p_valor: float, umbral: float) -> str:
+    """«Wald 0,012; razón de verosimilitud 0,034», del ``detail`` de ``_criterion_detail``."""
+    if not isinstance(detalle, str):
+        return ""
+    partes: list[str] = []
+    for trozo in detalle.split(", "):
+        prefijo = next((p for p in PARTES_DEL_CRITERIO if trozo.startswith(p)), None)
+        if prefijo is None:
+            return ""  # un `detail` que no es el de `_criterion_detail`: no se adivina
+        try:
+            valor = float(trozo.removeprefix(prefijo))
+        except ValueError:
+            return ""
+        if f"{valor:.6g}" == f"{p_valor:.6g}":
+            valor = p_valor  # es el p-valor del criterio: su exacto está en el campo estructurado
+        escrito = pvalor(valor)
+        if escrito.startswith("<") and umbral < float(_PEQUENO):
+            escrito = cifra(valor)
+        partes.append(f"{PARTES_DEL_CRITERIO[prefijo]} {frente_al_corte(escrito, valor, umbral)}")
+    return "; ".join(partes)
+
+
 def motivo_legible_stepwise(fila: Mapping[str, object]) -> str | None:
     """El motivo de una decisión del stepwise en es-CL, desde sus valores originales.
 
@@ -402,7 +427,14 @@ def motivo_legible_stepwise(fila: Mapping[str, object]) -> str | None:
         escrito = pvalor(p_valor)
         if escrito.startswith("<") and umbral < float(_PEQUENO):
             escrito = cifra(p_valor)  # «< 0,001» no dice de qué lado queda un corte menor
-        texto = f"p-valor {frente_al_corte(escrito, p_valor, umbral)}; umbral {corte(umbral)}"
+        # Los p-valores de cada prueba sólo viajan en el `detail` (seis cifras): son evidencia —con
+        # `both`, `p_value` es el mayor y no dice cuál de las dos decidió— y se conservan (pasada 3
+        # de Codex sobre el código). El que coincide con `p_value` se escribe con su valor exacto.
+        pruebas = _pvalores_del_detail(detalle, p_valor, umbral)
+        texto = f"p-valor {frente_al_corte(escrito, p_valor, umbral)}"
+        if pruebas:
+            texto += f" ({pruebas})"
+        texto += f"; umbral {corte(umbral)}"
         estadistico = _numero(fila.get("lr_stat"))
         if estadistico is not None:
             texto += f"; estadístico LR {cifra(estadistico)}"
