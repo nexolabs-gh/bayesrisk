@@ -1,16 +1,16 @@
 {
  "status": "done",
- "run_id": "51fc0072cb9543a194b71ba48438b23a",
+ "run_id": "2da4e2841421409c9005bfa4429a6bfd",
  "error": null,
  "model_card": {
-  "run_id": "51fc0072cb9543a194b71ba48438b23a",
+  "run_id": "2da4e2841421409c9005bfa4429a6bfd",
   "config_hash": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
   "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8",
-  "git_sha": "03c8b842d6f7ed740ab381384e0e4f4b8008b2a8",
+  "git_sha": "83917ce98ec05569b317097d2c88d7556d6982fc",
   "git_dirty": false,
   "root_seed": 20240706,
   "schema_version": "1.0.0",
-  "created_at": "2026-09-27T17:39:19.423268Z",
+  "created_at": "2026-09-28T13:23:21.908127Z",
   "purpose": "Demostración pública de bayesrisk: scorecard de comportamiento sobre una cartera de consumo sintética. Ilustra el flujo completo de construcción y validación; no decide sobre ninguna operación real.",
   "assumptions": [
    "Los datos son sintéticos y reproducibles: no representan a ninguna institución.",
@@ -110,9 +110,10 @@
     "umbral": "cohort",
     "valor": "cohort",
     "accion": "aplicar_estrategia",
-    "ts": "2026-09-27T17:39:19.738658Z",
+    "ts": "2026-09-28T13:23:22.218271Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -133,9 +134,10 @@
      }
     },
     "accion": "reportar_particiones",
-    "ts": "2026-09-27T17:39:19.738744Z",
+    "ts": "2026-09-28T13:23:22.218378Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -143,9 +145,10 @@
     "umbral": 0.25,
     "valor": "eje de cohorte sin cronología",
     "accion": "no_evaluable",
-    "ts": "2026-09-27T17:39:19.757197Z",
+    "ts": "2026-09-28T13:23:22.240570Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -156,9 +159,10 @@
      "variable": "ingreso_mensual"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-27T17:39:26.475231Z",
+    "ts": "2026-09-28T13:23:26.903755Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -169,9 +173,10 @@
      "variable": "deuda_ingreso"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-27T17:39:26.475324Z",
+    "ts": "2026-09-28T13:23:26.903837Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -182,9 +187,10 @@
      "variable": "utilizacion_linea"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-27T17:39:26.475348Z",
+    "ts": "2026-09-28T13:23:26.903864Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -195,9 +201,10 @@
      "variable": "mora_max_12m"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-27T17:39:26.475364Z",
+    "ts": "2026-09-28T13:23:26.903883Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -208,9 +215,10 @@
      "variable": "antiguedad_meses"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-09-27T17:39:26.475378Z",
+    "ts": "2026-09-28T13:23:26.903899Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -221,9 +229,10 @@
      "variable": "utilizacion_linea"
     },
     "accion": "conservar_variable",
-    "ts": "2026-09-27T17:39:26.475826Z",
+    "ts": "2026-09-28T13:23:26.904483Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -234,9 +243,10 @@
      "variable": "segmento"
     },
     "accion": "conservar_variable",
-    "ts": "2026-09-27T17:39:26.475856Z",
+    "ts": "2026-09-28T13:23:26.904523Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -247,9 +257,10 @@
      "variable": "segmento"
     },
     "accion": "diagnosticar_sin_eliminar",
-    "ts": "2026-09-27T17:39:26.475872Z",
+    "ts": "2026-09-28T13:23:26.904544Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -262,9 +273,10 @@
      "woe_column": "segmento__woe"
     },
     "accion": "excluir",
-    "ts": "2026-09-27T17:39:26.754066Z",
+    "ts": "2026-09-28T13:23:27.156569Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -277,9 +289,10 @@
      "p_value": 9.904266606971208e-41
     },
     "accion": "enter",
-    "ts": "2026-09-27T17:39:27.104333Z",
+    "ts": "2026-09-28T13:23:27.479996Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -292,9 +305,10 @@
      "p_value": null
     },
     "accion": "flag",
-    "ts": "2026-09-27T17:39:27.117154Z",
+    "ts": "2026-09-28T13:23:27.492668Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -307,9 +321,10 @@
      "p_value": 4.298619202001231e-28
     },
     "accion": "enter",
-    "ts": "2026-09-27T17:39:27.166703Z",
+    "ts": "2026-09-28T13:23:27.544731Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -322,9 +337,10 @@
      "p_value": 9.970285673886036e-12
     },
     "accion": "enter",
-    "ts": "2026-09-27T17:39:27.215041Z",
+    "ts": "2026-09-28T13:23:27.597201Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -337,9 +353,10 @@
      "p_value": 1.7899471110037847e-07
     },
     "accion": "enter",
-    "ts": "2026-09-27T17:39:27.252286Z",
+    "ts": "2026-09-28T13:23:27.637561Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -352,9 +369,10 @@
      "p_value": 0.00036461213095663236
     },
     "accion": "enter",
-    "ts": "2026-09-27T17:39:27.281148Z",
+    "ts": "2026-09-28T13:23:27.664898Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -371,9 +389,10 @@
      "woe_column": "ingreso_mensual__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-27T17:39:27.342083Z",
+    "ts": "2026-09-28T13:23:27.728355Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
    },
    {
     "step": null,
@@ -392,9 +411,10 @@
      "woe_column": "ingreso_mensual__woe"
     },
     "accion": "flag",
-    "ts": "2026-09-27T17:39:27.342188Z",
+    "ts": "2026-09-28T13:23:27.728451Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": "contribución al IV 1,0000 > máximo 0,90"
    },
    {
     "step": null,
@@ -411,9 +431,10 @@
      "woe_column": "deuda_ingreso__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-27T17:39:27.342221Z",
+    "ts": "2026-09-28T13:23:27.728487Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
    },
    {
     "step": null,
@@ -430,9 +451,10 @@
      "woe_column": "utilizacion_linea__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-27T17:39:27.342245Z",
+    "ts": "2026-09-28T13:23:27.728514Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
    },
    {
     "step": null,
@@ -449,9 +471,10 @@
      "woe_column": "antiguedad_meses__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-27T17:39:27.342265Z",
+    "ts": "2026-09-28T13:23:27.728537Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
    },
    {
     "step": null,
@@ -468,9 +491,10 @@
      "woe_column": "mora_max_12m__woe"
     },
     "accion": "entrar",
-    "ts": "2026-09-27T17:39:27.342283Z",
+    "ts": "2026-09-28T13:23:27.728559Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
    },
    {
     "step": null,
@@ -485,9 +509,10 @@
      "optimizer": "newton"
     },
     "accion": "aceptar_ajuste",
-    "ts": "2026-09-27T17:39:27.342304Z",
+    "ts": "2026-09-28T13:23:27.728584Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -531,9 +556,10 @@
      }
     ],
     "accion": "usar_punto_determinista",
-    "ts": "2026-09-27T17:39:27.363625Z",
+    "ts": "2026-09-28T13:23:27.752225Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -545,9 +571,10 @@
      "n_variables": 5
     },
     "accion": "publicar_puntos_redondeados",
-    "ts": "2026-09-27T17:39:27.363968Z",
+    "ts": "2026-09-28T13:23:27.752533Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -558,9 +585,10 @@
      "feature": "antiguedad_meses"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-27T17:39:27.375717Z",
+    "ts": "2026-09-28T13:23:27.763715Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -571,9 +599,10 @@
      "feature": "deuda_ingreso"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-27T17:39:27.382804Z",
+    "ts": "2026-09-28T13:23:27.771205Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -584,9 +613,10 @@
      "feature": "ingreso_mensual"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-27T17:39:27.389418Z",
+    "ts": "2026-09-28T13:23:27.778113Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -597,9 +627,10 @@
      "feature": "mora_max_12m"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-27T17:39:27.396629Z",
+    "ts": "2026-09-28T13:23:27.785694Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -610,9 +641,10 @@
      "feature": "utilizacion_linea"
     },
     "accion": "calcular_por_formula",
-    "ts": "2026-09-27T17:39:27.404828Z",
+    "ts": "2026-09-28T13:23:27.793238Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -624,9 +656,10 @@
      "target_pd": 0.23327442565008835
     },
     "accion": "fijar_ancla",
-    "ts": "2026-09-27T17:39:27.471461Z",
+    "ts": "2026-09-28T13:23:27.863248Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -637,9 +670,10 @@
      "n_fit": 3961
     },
     "accion": "ajustar_calibracion",
-    "ts": "2026-09-27T17:39:27.471544Z",
+    "ts": "2026-09-28T13:23:27.863362Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -651,9 +685,10 @@
      "raw_mean_pd_dev": 0.23327442565008835
     },
     "accion": "publicar_pd_calibrada",
-    "ts": "2026-09-27T17:39:27.471574Z",
+    "ts": "2026-09-28T13:23:27.863411Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -664,9 +699,10 @@
      "ties_created": 0
     },
     "accion": "registrar_ranking",
-    "ts": "2026-09-27T17:39:27.471598Z",
+    "ts": "2026-09-28T13:23:27.863444Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -678,9 +714,10 @@
      "statistic": 19.451071238480708
     },
     "accion": "revisar_calibracion",
-    "ts": "2026-09-27T17:39:27.594299Z",
+    "ts": "2026-09-28T13:23:28.001551Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -742,9 +779,10 @@
      ]
     },
     "accion": "renderizar_reporte",
-    "ts": "2026-09-27T17:39:48.490921Z",
+    "ts": "2026-09-28T13:23:52.753191Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
@@ -754,68 +792,73 @@
      "provider": "none"
     },
     "accion": "usar_narrativa_basica",
-    "ts": "2026-09-27T17:39:48.492401Z",
+    "ts": "2026-09-28T13:23:52.754958Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
     "regla": "report_export_html",
-    "umbral": "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports",
+    "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
     "valor": {
      "path": "scorecard_report.html",
-     "sha256": "ff1e4661549eb4ea625839d89a5d9482efb7c4d805b43f320d60f47cbddaf2a3"
+     "sha256": "757abb850be320f2d3850c383e8561b7c39fc0b8d6d7250af338d41da6144dd1"
     },
     "accion": "publicar_html_local",
-    "ts": "2026-09-27T17:39:48.492454Z",
+    "ts": "2026-09-28T13:23:52.755024Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
     "regla": "report_export_pdf",
-    "umbral": "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports",
+    "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
     "valor": {
-     "path": "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf"
+     "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf"
     },
     "accion": "publicar_pdf_local",
-    "ts": "2026-09-27T17:39:48.492481Z",
+    "ts": "2026-09-28T13:23:52.755053Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
     "regla": "report_export_md",
-    "umbral": "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports",
+    "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
     "valor": {
-     "path": "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd"
+     "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd"
     },
     "accion": "publicar_qmd_local",
-    "ts": "2026-09-27T17:39:48.492497Z",
+    "ts": "2026-09-28T13:23:52.755072Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    },
    {
     "step": null,
     "regla": "report_export_docx",
-    "umbral": "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports",
+    "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
     "valor": {
-     "path": "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx"
+     "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx"
     },
     "accion": "publicar_docx_local",
-    "ts": "2026-09-27T17:39:48.492510Z",
+    "ts": "2026-09-28T13:23:52.755087Z",
     "autor": null,
-    "motivo": null
+    "motivo": null,
+    "detalle_legible": null
    }
   ],
   "determinism_caveats": [],
-  "review_date": "2026-09-27T17:39:48.500548Z",
-  "next_review_date": "2027-09-27T17:39:48.500548Z",
+  "review_date": "2026-09-28T13:23:52.765295Z",
+  "next_review_date": "2027-09-28T13:23:52.765295Z",
   "environment": {
    "python_version": "3.12.14",
    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
    "library_versions": {
-    "bayesrisk": "2.0.0",
+    "bayesrisk": "2.1.0",
     "numpy": "2.4.6",
     "pandas": "2.3.3",
     "pandera": "0.32.0",
@@ -825,26 +868,26 @@
     "PyYAML": "6.0.3"
    },
    "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
-   "captured_at": "2026-09-27T17:39:48.501578Z"
+   "captured_at": "2026-09-28T13:23:52.766407Z"
   }
  },
  "lineage": {
-  "git_sha": "03c8b842d6f7ed740ab381384e0e4f4b8008b2a8",
+  "git_sha": "83917ce98ec05569b317097d2c88d7556d6982fc",
   "git_dirty": false,
   "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8",
   "config_hash": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
   "root_seed": 20240706,
   "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
-  "runtime_environment_hash": "53bc20eb0284c31924233eaefc5e26ad05d274791b6bad8f127d40ccbd37eedb",
+  "runtime_environment_hash": "931a0a0e187d6ba52fee369fe6118d0b0263ae350f6cec5f89303b44af8b28ac",
   "library_versions": {
-   "bayesrisk": "2.0.0",
+   "bayesrisk": "2.1.0",
    "numpy": "2.4.6",
    "pandas": "2.3.3",
    "pydantic": "2.13.4",
    "PyYAML": "6.0.3"
   },
   "determinism_caveats": [],
-  "created_at": "2026-09-27T17:39:19.423268Z",
+  "created_at": "2026-09-28T13:23:21.908127Z",
   "schema_version": "1.0.0",
   "injected_artifacts": []
  },
@@ -996,6 +1039,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(74032.56, 287183.36]",
+    "tramo_legible": "> 74.032,56 y ≤ 287.183,36",
     "n": 397,
     "coverage": 0.10022721534965917,
     "default_rate": 0.37531486146095716,
@@ -1004,6 +1048,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(287183.36, 353839.8]",
+    "tramo_legible": "> 287.183,36 y ≤ 353.839,8",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.3686868686868687,
@@ -1012,6 +1057,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(353839.8, 409923.63]",
+    "tramo_legible": "> 353.839,8 y ≤ 409.923,63",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.2777777777777778,
@@ -1020,6 +1066,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(409923.63, 460844.97]",
+    "tramo_legible": "> 409.923,63 y ≤ 460.844,97",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.2828282828282828,
@@ -1028,6 +1075,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(460844.97, 526601.82]",
+    "tramo_legible": "> 460.844,97 y ≤ 526.601,82",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.21717171717171718,
@@ -1036,6 +1084,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(526601.82, 600699.29]",
+    "tramo_legible": "> 526.601,82 y ≤ 600.699,29",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.2297979797979798,
@@ -1044,6 +1093,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(600699.29, 689809.83]",
+    "tramo_legible": "> 600.699,29 y ≤ 689.809,83",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.1893939393939394,
@@ -1052,6 +1102,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(689809.83, 810582.2]",
+    "tramo_legible": "> 689.809,83 y ≤ 810.582,2",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.17424242424242425,
@@ -1060,6 +1111,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(810582.2, 1017997.74]",
+    "tramo_legible": "> 810.582,2 y ≤ 1.017.997,74",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.12373737373737374,
@@ -1068,6 +1120,7 @@
    {
     "column": "ingreso_mensual",
     "tramo": "(1017997.74, 3524342.26]",
+    "tramo_legible": "> 1.017.997,74 y ≤ 3.524.342,26",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.09343434343434344,
@@ -1076,6 +1129,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.0032, 0.0919]",
+    "tramo_legible": "> 0,0032 y ≤ 0,0919",
     "n": 397,
     "coverage": 0.10022721534965917,
     "default_rate": 0.1561712846347607,
@@ -1084,6 +1138,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.0919, 0.1487]",
+    "tramo_legible": "> 0,0919 y ≤ 0,1487",
     "n": 398,
     "coverage": 0.10047967684928048,
     "default_rate": 0.18592964824120603,
@@ -1092,6 +1147,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.1487, 0.20200000000000007]",
+    "tramo_legible": "> 0,1487 y ≤ 0,20200000000000007",
     "n": 394,
     "coverage": 0.09946983085079525,
     "default_rate": 0.19543147208121828,
@@ -1100,6 +1156,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.20200000000000007, 0.2525]",
+    "tramo_legible": "> 0,20200000000000007 y ≤ 0,2525",
     "n": 397,
     "coverage": 0.10022721534965917,
     "default_rate": 0.19143576826196473,
@@ -1108,6 +1165,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.2525, 0.3088]",
+    "tramo_legible": "> 0,2525 y ≤ 0,3088",
     "n": 397,
     "coverage": 0.10022721534965917,
     "default_rate": 0.21914357682619648,
@@ -1116,6 +1174,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.3088, 0.3661]",
+    "tramo_legible": "> 0,3088 y ≤ 0,3661",
     "n": 395,
     "coverage": 0.09972229235041656,
     "default_rate": 0.17974683544303796,
@@ -1124,6 +1183,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.3661, 0.4454]",
+    "tramo_legible": "> 0,3661 y ≤ 0,4454",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.24242424242424243,
@@ -1132,6 +1192,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.4454, 0.5362]",
+    "tramo_legible": "> 0,4454 y ≤ 0,5362",
     "n": 395,
     "coverage": 0.09972229235041656,
     "default_rate": 0.2683544303797468,
@@ -1140,6 +1201,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.5362, 0.6925]",
+    "tramo_legible": "> 0,5362 y ≤ 0,6925",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.30303030303030304,
@@ -1148,6 +1210,7 @@
    {
     "column": "deuda_ingreso",
     "tramo": "(0.6925, 1.7973]",
+    "tramo_legible": "> 0,6925 y ≤ 1,7973",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.39141414141414144,
@@ -1156,6 +1219,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.0041, 0.1384]",
+    "tramo_legible": "> 0,0041 y ≤ 0,1384",
     "n": 397,
     "coverage": 0.10022721534965917,
     "default_rate": 0.17632241813602015,
@@ -1164,6 +1228,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.1384, 0.216]",
+    "tramo_legible": "> 0,1384 y ≤ 0,216",
     "n": 397,
     "coverage": 0.10022721534965917,
     "default_rate": 0.1964735516372796,
@@ -1172,6 +1237,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.216, 0.2795]",
+    "tramo_legible": "> 0,216 y ≤ 0,2795",
     "n": 395,
     "coverage": 0.09972229235041656,
     "default_rate": 0.20253164556962025,
@@ -1180,6 +1246,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.2795, 0.3346]",
+    "tramo_legible": "> 0,2795 y ≤ 0,3346",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.25,
@@ -1188,6 +1255,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.3346, 0.3881]",
+    "tramo_legible": "> 0,3346 y ≤ 0,3881",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.20202020202020202,
@@ -1196,6 +1264,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.3881, 0.44310000000000005]",
+    "tramo_legible": "> 0,3881 y ≤ 0,44310000000000005",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.20202020202020202,
@@ -1204,6 +1273,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.44310000000000005, 0.5066]",
+    "tramo_legible": "> 0,44310000000000005 y ≤ 0,5066",
     "n": 397,
     "coverage": 0.10022721534965917,
     "default_rate": 0.29974811083123426,
@@ -1212,6 +1282,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.5066, 0.5755]",
+    "tramo_legible": "> 0,5066 y ≤ 0,5755",
     "n": 395,
     "coverage": 0.09972229235041656,
     "default_rate": 0.2379746835443038,
@@ -1220,6 +1291,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.5755, 0.6618]",
+    "tramo_legible": "> 0,5755 y ≤ 0,6618",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.255050505050505,
@@ -1228,6 +1300,7 @@
    {
     "column": "utilizacion_linea",
     "tramo": "(0.6618, 0.9724]",
+    "tramo_legible": "> 0,6618 y ≤ 0,9724",
     "n": 396,
     "coverage": 0.09997475385003787,
     "default_rate": 0.3106060606060606,
@@ -1236,6 +1309,7 @@
    {
     "column": "mora_max_12m",
     "tramo": "(0.0, 3.0]",
+    "tramo_legible": "> 0 y ≤ 3",
     "n": 595,
     "coverage": 0.15021459227467812,
     "default_rate": 0.18823529411764706,
@@ -1244,6 +1318,7 @@
    {
     "column": "mora_max_12m",
     "tramo": "(3.0, 4.0]",
+    "tramo_legible": "> 3 y ≤ 4",
     "n": 547,
     "coverage": 0.13809644029285534,
     "default_rate": 0.21389396709323583,
@@ -1252,6 +1327,7 @@
    {
     "column": "mora_max_12m",
     "tramo": "(4.0, 5.0]",
+    "tramo_legible": "> 4 y ≤ 5",
     "n": 626,
     "coverage": 0.15804089876293864,
     "default_rate": 0.22044728434504793,
@@ -1260,6 +1336,7 @@
    {
     "column": "mora_max_12m",
     "tramo": "(5.0, 6.0]",
+    "tramo_legible": "> 5 y ≤ 6",
     "n": 636,
     "coverage": 0.16056551375915173,
     "default_rate": 0.25157232704402516,
@@ -1268,6 +1345,7 @@
    {
     "column": "mora_max_12m",
     "tramo": "(6.0, 7.0]",
+    "tramo_legible": "> 6 y ≤ 7",
     "n": 530,
     "coverage": 0.1338045947992931,
     "default_rate": 0.24150943396226415,
@@ -1276,6 +1354,7 @@
    {
     "column": "mora_max_12m",
     "tramo": "(7.0, 8.0]",
+    "tramo_legible": "> 7 y ≤ 8",
     "n": 390,
     "coverage": 0.09845998485231003,
     "default_rate": 0.2641025641025641,
@@ -1284,6 +1363,7 @@
    {
     "column": "mora_max_12m",
     "tramo": "(8.0, 9.0]",
+    "tramo_legible": "> 8 y ≤ 9",
     "n": 288,
     "coverage": 0.07270891189093663,
     "default_rate": 0.2465277777777778,
@@ -1292,6 +1372,7 @@
    {
     "column": "mora_max_12m",
     "tramo": "(9.0, 17.0]",
+    "tramo_legible": "> 9 y ≤ 17",
     "n": 349,
     "coverage": 0.0881090633678364,
     "default_rate": 0.2722063037249284,
@@ -1300,6 +1381,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(1.0, 13.0]",
+    "tramo_legible": "> 1 y ≤ 13",
     "n": 422,
     "coverage": 0.10653875284019187,
     "default_rate": 0.2843601895734597,
@@ -1308,6 +1390,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(13.0, 26.0]",
+    "tramo_legible": "> 13 y ≤ 26",
     "n": 399,
     "coverage": 0.1007321383489018,
     "default_rate": 0.22807017543859648,
@@ -1316,6 +1399,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(26.0, 38.0]",
+    "tramo_legible": "> 26 y ≤ 38",
     "n": 383,
     "coverage": 0.09669275435496087,
     "default_rate": 0.28720626631853785,
@@ -1324,6 +1408,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(38.0, 50.0]",
+    "tramo_legible": "> 38 y ≤ 50",
     "n": 393,
     "coverage": 0.09921736935117395,
     "default_rate": 0.22391857506361323,
@@ -1332,6 +1417,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(50.0, 62.0]",
+    "tramo_legible": "> 50 y ≤ 62",
     "n": 416,
     "coverage": 0.10502398384246403,
     "default_rate": 0.23076923076923078,
@@ -1340,6 +1426,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(62.0, 73.0]",
+    "tramo_legible": "> 62 y ≤ 73",
     "n": 371,
     "coverage": 0.09366321635950517,
     "default_rate": 0.22641509433962265,
@@ -1348,6 +1435,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(73.0, 85.0]",
+    "tramo_legible": "> 73 y ≤ 85",
     "n": 407,
     "coverage": 0.10275183034587225,
     "default_rate": 0.25552825552825553,
@@ -1356,6 +1444,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(85.0, 97.0]",
+    "tramo_legible": "> 85 y ≤ 97",
     "n": 416,
     "coverage": 0.10502398384246403,
     "default_rate": 0.21634615384615385,
@@ -1364,6 +1453,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(97.0, 108.0]",
+    "tramo_legible": "> 97 y ≤ 108",
     "n": 370,
     "coverage": 0.09341075485988387,
     "default_rate": 0.21351351351351353,
@@ -1372,6 +1462,7 @@
    {
     "column": "antiguedad_meses",
     "tramo": "(108.0, 120.0]",
+    "tramo_legible": "> 108 y ≤ 120",
     "n": 384,
     "coverage": 0.09694521585458217,
     "default_rate": 0.16145833333333334,
@@ -1380,6 +1471,7 @@
    {
     "column": "segmento",
     "tramo": "asalariado",
+    "tramo_legible": null,
     "n": 1303,
     "coverage": 0.328957334006564,
     "default_rate": 0.23177283192632386,
@@ -1388,6 +1480,7 @@
    {
     "column": "segmento",
     "tramo": "independiente",
+    "tramo_legible": null,
     "n": 1353,
     "coverage": 0.34158040898762937,
     "default_rate": 0.22246858832224686,
@@ -1396,6 +1489,7 @@
    {
     "column": "segmento",
     "tramo": "pensionado",
+    "tramo_legible": null,
     "n": 1305,
     "coverage": 0.3294622570058066,
     "default_rate": 0.24597701149425288,
@@ -2114,7 +2208,8 @@
     "vif": 1.0011146825015165,
     "max_csi": null,
     "forced": null,
-    "detail": null
+    "detail": null,
+    "detail_legible": null
    },
    {
     "feature": "deuda_ingreso",
@@ -2131,7 +2226,8 @@
     "vif": 1.0001298272482664,
     "max_csi": null,
     "forced": null,
-    "detail": null
+    "detail": null,
+    "detail_legible": null
    },
    {
     "feature": "ingreso_mensual",
@@ -2148,7 +2244,8 @@
     "vif": 1.0005676189646617,
     "max_csi": null,
     "forced": null,
-    "detail": null
+    "detail": null,
+    "detail_legible": null
    },
    {
     "feature": "mora_max_12m",
@@ -2165,7 +2262,8 @@
     "vif": 1.0015952155902363,
     "max_csi": null,
     "forced": null,
-    "detail": null
+    "detail": null,
+    "detail_legible": null
    },
    {
     "feature": "segmento",
@@ -2182,7 +2280,8 @@
     "vif": null,
     "max_csi": null,
     "forced": null,
-    "detail": "iv=0.00292241 < min_iv=0.02"
+    "detail": "iv=0.00292241 < min_iv=0.02",
+    "detail_legible": "IV 0,0029 < mínimo 0,02"
    },
    {
     "feature": "utilizacion_linea",
@@ -2199,7 +2298,8 @@
     "vif": 1.0005784094781898,
     "max_csi": null,
     "forced": null,
-    "detail": null
+    "detail": null,
+    "detail_legible": null
    }
   ]
  },
@@ -11836,7 +11936,7 @@
      "Archivo: consumo_comportamiento",
      "6.000 filas · 1.407 malos (23,45 %) · 8 columnas",
      "Muestras: Desarrollo 3.961 (23,33 %) · Holdout 1.031 (23,67 %) · Fuera de tiempo (OOT) 1.008 (23,71 %) — cohortes fuera de tiempo: 2024Q2 (columna «cohorte»); holdout 20 % del resto",
-     "Evidencia de la corrida: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/runs/51fc0072cb9543a194b71ba48438b23a"
+     "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/2da4e2841421409c9005bfa4429a6bfd"
     ],
     "alerts": [],
     "table": {
@@ -12005,7 +12105,7 @@
     "lines": [
      "Entran 5 de 6 variables candidatas",
      "Salen: segmento (IV insuficiente)",
-     "Correlación máxima entre las finales 0,030 y VIF máximo 1,00"
+     "Correlación máxima entre las finales 0,0303 y VIF máximo 1,002"
     ],
     "alerts": [],
     "table": {
@@ -12031,7 +12131,7 @@
        "0,548",
        "0,061",
        "—",
-       "1,00",
+       "1,001",
        "0,041",
        "0,109",
        "0,101"
@@ -12042,12 +12142,12 @@
        "inclusión",
        "0,164",
        "0,602",
-       "0,160",
+       "0,1601",
        "—",
-       "1,00",
+       "1,0001",
        "0,164",
        "0,107",
-       "0,170"
+       "0,1695"
       ],
       [
        "ingreso_mensual",
@@ -12057,20 +12157,20 @@
        "0,647",
        "0,212",
        "—",
-       "1,00",
+       "1,001",
        "0,305",
        "0,252",
-       "0,140"
+       "0,13999"
       ],
       [
        "mora_max_12m",
        "sí",
        "inclusión",
        "0,022",
-       "0,540",
+       "0,5399",
        "0,064",
        "—",
-       "1,00",
+       "1,002",
        "0,022",
        "0,033",
        "0,081"
@@ -12096,7 +12196,7 @@
        "0,566",
        "0,098",
        "—",
-       "1,00",
+       "1,001",
        "0,061",
        "0,219",
        "0,085"
@@ -12110,7 +12210,7 @@
     "lines": [
      "Variables finales (5): antiguedad_meses, deuda_ingreso, ingreso_mensual, mora_max_12m, utilizacion_linea",
      "Stepwise bidireccional: 5 iteraciones, 5 entradas y 0 salidas",
-     "Ajuste en Desarrollo: pseudo-R² de McFadden 0,097 · AIC 3898,7 · p-valor del test de razón de verosimilitud < 0,001 · convergió"
+     "Ajuste en Desarrollo: pseudo-R² de McFadden 0,097 · AIC 3.898,72 · p-valor del test de razón de verosimilitud < 0,001 · convergió"
     ],
     "alerts": [
      "Concentra más del 90 % del IV del modelo: ingreso_mensual"
@@ -12137,7 +12237,7 @@
       ],
       [
        "antiguedad_meses",
-       "-1,0810",
+       "-1,08104",
        "0,2101",
        "< 0,001",
        "sí",
@@ -12233,7 +12333,7 @@
       [
        "antiguedad_meses",
        "≥ 114,5",
-       "0,750",
+       "0,7505",
        "128"
       ],
       [
@@ -12275,7 +12375,7 @@
       [
        "deuda_ingreso",
        "≥ 0,5116499960422516 y < 0,8504999876022339",
-       "-0,390",
+       "-0,3902",
        "92"
       ],
       [
@@ -12329,7 +12429,7 @@
       [
        "ingreso_mensual",
        "≥ 913.196,96875",
-       "1,210",
+       "1,2099",
        "141"
       ],
       [
@@ -12401,7 +12501,7 @@
       [
        "utilizacion_linea",
        "≥ 0,10254999995231628 y < 0,25129999220371246",
-       "0,250",
+       "0,2496",
        "112"
       ],
       [
@@ -12442,7 +12542,7 @@
     "label": "Calibración",
     "lines": [
      "Método: desplazamiento del intercepto (intercept offset); ancla a través del ciclo (TTC): la tasa de incumplimiento observada en Desarrollo = 23,33 %",
-     "PD media en Desarrollo: cruda 23,33 % → calibrada 23,33 % (desplazamiento del intercepto -0,0000)",
+     "PD media en Desarrollo: cruda 23,33 % → calibrada 23,33 % (desplazamiento del intercepto 0,0000)",
      "Orden de riesgo preservado"
     ],
     "alerts": [],
@@ -12483,7 +12583,7 @@
     "stage": "performance",
     "label": "Desempeño",
     "lines": [
-     "Desarrollo: AUC 0,712 · Gini 0,425 · KS 0,320",
+     "Desarrollo: AUC 0,712 · Gini 0,425 · KS 0,3201",
      "Holdout: AUC 0,695 · Gini 0,389 · KS 0,312",
      "Fuera de tiempo (OOT): AUC 0,656 · Gini 0,312 · KS 0,252",
      "Caída Desarrollo → Fuera de tiempo (OOT): AUC -0,056 (-7,9 %) · KS -0,068 (-21,3 %)"
@@ -12577,7 +12677,7 @@
        "16,12 %",
        "534,32",
        "87,66 %",
-       "0,230"
+       "0,2303"
       ],
       [
        "Desarrollo",
@@ -12687,7 +12787,7 @@
        "16,65 %",
        "533,22",
        "86,07 %",
-       "0,210"
+       "0,2101"
       ],
       [
        "Holdout",
@@ -12698,7 +12798,7 @@
        "12,94 %",
        "541,86",
        "92,21 %",
-       "0,160"
+       "0,1597"
       ],
       [
        "Holdout",
@@ -12775,7 +12875,7 @@
        "21,99 %",
        "523,28",
        "66,11 %",
-       "0,210"
+       "0,2099"
       ],
       [
        "Fuera de tiempo (OOT)",
@@ -12914,7 +13014,7 @@
        "CSI",
        "Desarrollo vs. Holdout",
        "ingreso_mensual__points",
-       "0,0030",
+       "0,00299",
        "Estable"
       ],
       [
@@ -12949,7 +13049,7 @@
        "CSI",
        "Desarrollo vs. OOT",
        "utilizacion_linea__points",
-       "0,0040",
+       "0,00397",
        "Estable"
       ],
       [
@@ -13123,7 +13223,7 @@
        "Estabilidad",
        "CSI · ingreso_mensual",
        "Desarrollo vs. Holdout",
-       "0,0030",
+       "0,00299",
        "—",
        "Pasa (Estable)"
       ],
@@ -13163,7 +13263,7 @@
        "Estabilidad",
        "CSI · utilizacion_linea",
        "Desarrollo vs. OOT",
-       "0,0040",
+       "0,00397",
        "—",
        "Pasa (Estable)"
       ],
@@ -13182,11 +13282,11 @@
     "stage": "report",
     "label": "Informe y ficha",
     "lines": [
-     "Informe HTML: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.html",
-     "Informe Word: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx",
-     "Informe PDF: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf",
-     "Fuente editable (Quarto): /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd",
-     "Registro de auditoría: /home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/runs/51fc0072cb9543a194b71ba48438b23a/audit_trail.jsonl"
+     "Informe HTML: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.html",
+     "Informe Word: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx",
+     "Informe PDF: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf",
+     "Fuente editable (Quarto): /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd",
+     "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/2da4e2841421409c9005bfa4429a6bfd/audit_trail.jsonl"
     ],
     "alerts": [],
     "table": null
@@ -13229,31 +13329,31 @@
    "files": [
     [
      "Carpeta del proyecto",
-     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/runs/51fc0072cb9543a194b71ba48438b23a"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/2da4e2841421409c9005bfa4429a6bfd"
     ],
     [
      "Evidencia de la corrida",
-     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/runs/51fc0072cb9543a194b71ba48438b23a"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/2da4e2841421409c9005bfa4429a6bfd"
     ],
     [
      "Registro de auditoría",
-     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/runs/51fc0072cb9543a194b71ba48438b23a/audit_trail.jsonl"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/2da4e2841421409c9005bfa4429a6bfd/audit_trail.jsonl"
     ],
     [
      "Informe HTML",
-     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.html"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.html"
     ],
     [
      "Informe Word",
-     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx"
     ],
     [
      "Informe PDF",
-     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf"
     ],
     [
      "Fuente editable (Quarto)",
-     "/home/runner/work/nikodym/nikodym/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd"
     ]
    ]
   },

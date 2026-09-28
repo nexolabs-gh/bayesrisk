@@ -329,12 +329,14 @@ describe("«Selección de variables» (D-SC-10) sobre la corrida real de la demo
     expect(html).toContain("Excluidas")
   })
 
-  it("la exclusión real de la corrida sale con su motivo en español y su detalle del motor", () => {
-    // F1 excluye `segmento` por `low_iv`. El motivo se traduce; el `detail` NO se reescribe: es
-    // el dato de auditoría que ata la fila al audit-trail.
+  it("la exclusión real de la corrida sale con su motivo en español y su detalle legible", () => {
+    // F1 excluye `segmento` por `low_iv`. El motivo se traduce, y el detalle es el que compone el
+    // backend desde los valores originales (`detail_legible`, D-PAN-4); el `detail` del motor
+    // sigue intacto en `results.json` y en los exports, pero la pantalla ya no lo pinta.
     expect(html).toContain("segmento")
     expect(html).toContain("IV insuficiente")
-    expect(html).toContain("iv=0.00292241 &lt; min_iv=0.02")
+    expect(html).toContain("IV 0,0029 &lt; mínimo 0,02")
+    expect(html).not.toContain("iv=0.00292241")
     expect(html).not.toContain("low_iv")
   })
 
