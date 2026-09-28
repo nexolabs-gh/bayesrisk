@@ -22,7 +22,7 @@ import pytest
 import bayesrisk.api as api_module
 import bayesrisk.core.build as build_module
 from bayesrisk.core.config import BayesRiskConfig
-from bayesrisk.core.exceptions import ConfigError, ReproducibilityError
+from bayesrisk.core.exceptions import BayesRiskError, ConfigError, ReproducibilityError
 from bayesrisk.core.study import Study
 from bayesrisk.data.config import (
     CohortSplitConfig,
@@ -139,3 +139,26 @@ def test_un_fallo_del_lineage_no_tapa_el_de_la_resolucion(
     assert study.run_context.error is not None
     assert study.run_context.error.type == "ConfigError", "la causa es la de la resolución"
     assert study.run_context.lineage is None
+
+
+def test_un_study_reutilizado_no_conserva_el_lineage_de_la_corrida_anterior(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Revisión adversarial del parche: si el lineage de la segunda corrida falla, la evidencia de
+    la primera no se hace pasar por la de ésta —ni en memoria ni en lo que guarda `save`—."""
+    study = Study(_config_que_falla_en_datos())
+    with pytest.raises(BayesRiskError):
+        study.run()  # falla en `data`, pero con su lineage
+    anterior = study.run_context.lineage
+    assert anterior is not None
+
+    _lineage_que_falla(monkeypatch)
+    with pytest.raises(ReproducibilityError):
+        study.run()
+
+    assert study.run_context.status == "failed"
+    assert study.run_context.error is not None
+    assert study.run_context.error.type == "ReproducibilityError"
+    assert study.run_context.lineage is None
+    guardado = study.save(tmp_path / "estudio")
+    assert not (guardado / "lineage.json").exists()

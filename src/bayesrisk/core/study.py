@@ -446,6 +446,9 @@ class Study:
             try:
                 self.run_context.lineage = self._build_lineage()
             except Exception as exc_lineage:
+                # Un Study reutilizado no conserva el lineage de su corrida anterior: esa evidencia
+                # no es de ésta (revisión adversarial del parche 2.0.1).
+                self.run_context.lineage = None
                 if not resolucion_fallida:
                     self._registrar_fallo(exc_lineage, paso=None, run_id=run_id)
                     raise
