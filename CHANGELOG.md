@@ -7,7 +7,7 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
-## [Sin publicar]
+## [2.2.0] — 2026-09-28
 
 ### Cambiado
 

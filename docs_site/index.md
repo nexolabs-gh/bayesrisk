@@ -13,7 +13,7 @@ jurisdicción se aterriza encima**, y hay un caso de referencia implementado que
     bit que nikodym 1.20.0. Migrar es cambiar una línea —`import bayesrisk`—: lo explica
     [Migrar desde nikodym](migrar-desde-nikodym.md).
 
-!!! note "Estado: 2.1.0 — release estable"
+!!! note "Estado: 2.2.0 — release estable"
     Disponible en PyPI: `pip install bayesrisk`. El pipeline de scorecard (F1) es **API estable
     (SemVer 2.x)**; las superficies que aún crecen (modelado ML, provisiones, survival,
     forward-looking, stress, validación y gobernanza) siguen experimentales, fuera de la garantía
