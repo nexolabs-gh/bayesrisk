@@ -922,7 +922,12 @@ reimplementa por motor. El chequeo PIT de IFRS 9 es incondicional y ningún flag
   recibe su cierre). La pasada 3 (tope) cerró la regla por el otro lado: el paso de datos escribe
   su hash en el lineage **después** de publicar sus artefactos, así que volver a correr `data` sobre
   un `Study` que ya los tiene —falla con `ArtifactExistsError`— no deja un hash nuevo junto a los
-  artefactos viejos.
+  artefactos viejos. Precisión de la pasada 4 (confirmación): el lineage refleja el hash que
+  **quedó en el store**, se complete o no la publicación (`ArtifactStore.set` guarda antes de
+  emitir, así que un sink que falla al auditar la ficha de datos no borra la identidad de los datos
+  que sí quedaron). Revisión cerrada ahí: cuatro pasadas, cada hallazgo con su test y control
+  negativo; una quinta no se lanzó (criterio de parada: la familia quedó acotada al paso de datos y
+  al arranque de la corrida).
 
 ## Evidencia histórica preservada
 

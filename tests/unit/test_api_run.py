@@ -857,3 +857,31 @@ def test_volver_a_correr_datos_sobre_un_study_reutilizado_no_deja_un_hash_sin_su
         (study.save(tmp_path / "estudio") / "lineage.json").read_text(encoding="utf-8")
     )
     assert guardado["data_hash"] is None
+
+
+class _SinkQueFallaAlAuditarLaFichaDeDatos:
+    """Escribe todo menos el evento del último artefacto de datos (`data_card`)."""
+
+    def emit(self, event: Any) -> None:
+        if event.kind == "artifact" and event.payload.get("key") == "data_card":
+            raise OSError("disco lleno (doble de prueba)")
+
+
+def test_un_fallo_al_auditar_la_ficha_de_datos_no_borra_el_hash_que_quedo(tmp_path: Path) -> None:
+    """Pasada 4 de Codex en S24: el store guarda antes de emitir, así que los seis artefactos de
+    datos —`data_hash` incluido— quedan aunque el sink falle en el último; el lineage y `save()`
+    tienen que traer su identidad."""
+    parquet = tmp_path / "raw.parquet"
+    _write_parquet(parquet)
+    study = Study(BayesRiskConfig(data=_data_config(source=str(parquet))))
+    study.set_audit_sink(_SinkQueFallaAlAuditarLaFichaDeDatos())
+
+    with pytest.raises(OSError, match="disco lleno"):
+        study.run()
+
+    guardado_en_store = study.artifacts.get("data", "data_hash")
+    assert study.lineage_bundle().data_hash == guardado_en_store
+    guardado = json.loads(
+        (study.save(tmp_path / "estudio") / "lineage.json").read_text(encoding="utf-8")
+    )
+    assert guardado["data_hash"] == guardado_en_store

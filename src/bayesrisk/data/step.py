@@ -87,18 +87,26 @@ class DataStep(AuditableMixin):
         data_card = self._build_data_card(
             masked=masked, labeled=labeled, result=result, digest=digest
         )
-        self._publish_artifacts(
-            study=study,
-            result=result,
-            labeled=labeled,
-            masked=masked,
-            digest=digest,
-            data_card=data_card,
-        )
-        # El lineage toma el hash sólo DESPUÉS de publicar: si la publicación falla —p. ej. un Study
-        # reutilizado que ya tiene estos artefactos—, el lineage no atribuye a esta corrida unos
-        # datos que no quedaron en el store (pasada 3 de Codex en S24).
-        self._update_lineage(study, digest)
+        try:
+            self._publish_artifacts(
+                study=study,
+                result=result,
+                labeled=labeled,
+                masked=masked,
+                digest=digest,
+                data_card=data_card,
+            )
+        finally:
+            # El lineage refleja el hash que QUEDÓ en el store, se complete o no la publicación
+            # (pasadas 3 y 4 de Codex en S24): un Study reutilizado que ya tiene estos artefactos
+            # falla antes de guardar el hash y el lineage no se atribuye datos que no quedaron; un
+            # sink que falla al auditar un artefacto posterior no borra la identidad de los datos
+            # que sí quedaron (`ArtifactStore.set` guarda antes de emitir).
+            if (
+                study.artifacts.has("data", "data_hash")
+                and study.artifacts.get("data", "data_hash") == digest
+            ):
+                self._update_lineage(study, digest)
         return result
 
     def _resolve_load_source(self, study: Study) -> DataSource | None:
