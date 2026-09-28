@@ -278,3 +278,26 @@ def test_con_both_se_conservan_los_p_valores_de_cada_prueba() -> None:
     # Un `detail` que no es el de `_criterion_detail` no se adivina.
     fila = {"criterion": "wald_pvalue", "detail": "otro", "p_value": 0.01, "threshold": 0.05}
     assert motivo_legible_stepwise(fila) == "p-valor 0,010; umbral 0,05"
+
+
+def test_los_puntos_del_psi_se_leen_en_el_informe() -> None:
+    """La tabla del PSI/CSI rotula sus puntos discretos con la clave del motor (`pts=100.0`)."""
+    from bayesrisk.report.renderer import _textos_de_auditoria
+
+    filas = [
+        {"bin_label": "pts=100.0"},
+        {"bin_label": "pts=104.5"},
+        {"bin_label": "bin=Premium"},
+        {"bin_label": "__other__"},
+        {"bin_label": None},
+    ]
+    salida = _textos_de_auditoria("stability.psi_table", filas, {}, frozenset())
+    assert [f["bin_label"] for f in salida] == [
+        "100 puntos",
+        "104,5 puntos",
+        "Premium",
+        "otros",
+        None,
+    ]
+    # Otra tabla no se toca.
+    assert _textos_de_auditoria("stability.stability_metrics", filas, {}, frozenset()) == filas

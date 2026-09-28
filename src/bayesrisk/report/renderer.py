@@ -1004,6 +1004,13 @@ def _textos_de_auditoria(
             legible = motivo_legible_stepwise(record)
             salida.append({**record, "detail": legible} if legible is not None else record)
         return salida
+    if key == "stability.psi_table":
+        return [
+            {**record, "bin_label": _rotulo_de_punto_de_psi(record.get("bin_label"))}
+            if isinstance(record.get("bin_label"), str)
+            else record
+            for record in records
+        ]
     if key.startswith(_EDA_PROFILE_TABLE_PREFIX) and key[len(_EDA_PROFILE_TABLE_PREFIX) :] in (
         eda_numericas
     ):
@@ -1014,6 +1021,30 @@ def _textos_de_auditoria(
             for record in records
         ]
     return records
+
+
+def _rotulo_de_punto_de_psi(etiqueta: object) -> object:
+    """El rótulo de un punto discreto del PSI/CSI, en es-CL (D-PAN-3).
+
+    El motor lo escribe como clave estable —``pts=100.0`` para un puntaje, ``bin=<nivel>`` para
+    una categoría, ``__other__`` para el resto— y así sigue en el JSON y en los exports; la tabla
+    del informe lo lee: «100 puntos», «<nivel>», «otros».
+    """
+    from bayesrisk.report.cifras import corte
+
+    if not isinstance(etiqueta, str):
+        return etiqueta
+    if etiqueta == "__other__":
+        return "otros"
+    if etiqueta.startswith("bin="):
+        return etiqueta.removeprefix("bin=")
+    if etiqueta.startswith("pts="):
+        try:
+            puntos = float(etiqueta.removeprefix("pts="))
+        except ValueError:
+            return etiqueta
+        return f"{corte(puntos, minimo=0)} puntos"
+    return etiqueta
 
 
 def _table_view(

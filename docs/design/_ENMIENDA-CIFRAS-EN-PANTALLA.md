@@ -394,6 +394,17 @@ seis cifras, y el que coincide con el `p_value` estructurado se escribe con su e
 corrección no tuvo revisión adversarial propia; queda cubierta por su test
 (`test_con_both_se_conservan_los_p_valores_de_cada_prueba`).
 
+**Conteo final (§4.4), 2026-09-28.** Demo local con los fixtures publicados (lo que el Deploy
+muestra sin recaptura): porcentajes sin espacio 177 → 0; cifras con punto decimal 565 → 218, todas
+explicadas —44 marcas de tiempo, 73 miles es-CL (`3.961`) y 101 textos del motor que traen los
+fixtures anteriores (tramos del EDA y `detail`), que la recaptura reemplaza por sus campos
+legibles—. Corridas nuevas en la UI (el estado tras la recaptura): scorecard e IFRS 9 con **cero**
+cifras con punto decimal, porcentajes sin espacio o miles anglo, fuera de una marca de tiempo; el
+informe HTML del scorecard, **cero** fuera de fechas, miles y números de sección. El conteo del
+informe destapó una familia que el censo no vio: los puntos discretos de la tabla del PSI/CSI
+(`pts=100.0`, `bin=…`), que el renderer ahora escribe «100 puntos» (D-PAN-3); el valor del motor
+no cambia.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima**: ninguna nueva.
