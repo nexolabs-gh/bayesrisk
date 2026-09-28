@@ -918,7 +918,11 @@ reimplementa por motor. El chequeo PIT de IFRS 9 es incondicional y ningún flag
   otra vía: si el trail fallaba al emitir `run_start`, el `Study` quedaba en «running» con el
   lineage, el `error` y el `finished_at` de la corrida anterior. Todo el estado por corrida se
   reinicia antes de la primera emisión y ese fallo queda registrado en el `run_context` (sin
-  `run_end`, que el mismo sink no puede escribir).
+  `run_end` si el sink no puede escribirlo; si un sink compuesto sí escribió `run_start` en un hijo,
+  recibe su cierre). La pasada 3 (tope) cerró la regla por el otro lado: el paso de datos escribe
+  su hash en el lineage **después** de publicar sus artefactos, así que volver a correr `data` sobre
+  un `Study` que ya los tiene —falla con `ArtifactExistsError`— no deja un hash nuevo junto a los
+  artefactos viejos.
 
 ## Evidencia histórica preservada
 

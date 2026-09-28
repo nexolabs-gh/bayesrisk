@@ -818,3 +818,42 @@ def test_un_reintento_exitoso_no_conserva_el_error_de_la_corrida_anterior() -> N
 
     assert study.run_context.status == "done"
     assert study.run_context.error is None
+
+
+def test_un_fallo_parcial_de_run_start_cierra_el_trail_que_si_lo_escribio() -> None:
+    """Pasada 3 de Codex en S24: con un sink compuesto, el primer hijo escribe `run_start` y el
+    segundo falla; ese trail tiene que quedar con su `run_end` y el diagnóstico."""
+    escrito = InMemoryAuditSink()
+    study = Study(BayesRiskConfig())
+    study.set_audit_sink(FanOutSink([escrito, _SinkQueFallaEnRunStart()]))
+
+    with pytest.raises(OSError, match="disco lleno"):
+        study.run(steps=[])
+
+    assert study.run_context.status == "failed"
+    assert [evento.kind for evento in escrito.events] == ["run_start", "run_end"]
+    assert escrito.events[-1].payload["error_type"] == "OSError"
+
+
+def test_volver_a_correr_datos_sobre_un_study_reutilizado_no_deja_un_hash_sin_sus_artefactos(
+    tmp_path: Path,
+) -> None:
+    """Pasada 3 de Codex en S24: el paso de datos escribía el hash nuevo en el lineage antes de
+    publicar, y la publicación falla en un Study que ya tiene esos artefactos; `save()` guardaba el
+    hash nuevo junto a los artefactos viejos."""
+    parquet = tmp_path / "raw.parquet"
+    _write_parquet(parquet)
+    study = Study(BayesRiskConfig(data=_data_config(source=str(parquet))))
+    study.run()
+    anterior = study.artifacts.get("data", "data_hash")
+    _raw_frame().assign(score=lambda frame: frame["score"] + 1).to_parquet(parquet)
+
+    with pytest.raises(BayesRiskError):
+        study.run()
+
+    assert study.lineage_bundle().data_hash is None
+    assert study.artifacts.get("data", "data_hash") == anterior
+    guardado = json.loads(
+        (study.save(tmp_path / "estudio") / "lineage.json").read_text(encoding="utf-8")
+    )
+    assert guardado["data_hash"] is None

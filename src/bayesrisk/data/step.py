@@ -84,7 +84,6 @@ class DataStep(AuditableMixin):
             audit=self._audit,
         )
         digest = data_hash(result.frame)
-        self._update_lineage(study, digest)
         data_card = self._build_data_card(
             masked=masked, labeled=labeled, result=result, digest=digest
         )
@@ -96,6 +95,10 @@ class DataStep(AuditableMixin):
             digest=digest,
             data_card=data_card,
         )
+        # El lineage toma el hash sólo DESPUÉS de publicar: si la publicación falla —p. ej. un Study
+        # reutilizado que ya tiene estos artefactos—, el lineage no atribuye a esta corrida unos
+        # datos que no quedaron en el store (pasada 3 de Codex en S24).
+        self._update_lineage(study, digest)
         return result
 
     def _resolve_load_source(self, study: Study) -> DataSource | None:

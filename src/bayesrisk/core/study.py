@@ -17,6 +17,7 @@ diferido) en las versiones 1.x. En F0
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import importlib
 import json
@@ -420,9 +421,12 @@ class Study:
         try:
             self._emit("run_start", None, {"run_id": run_id, "name": self.config.name})
         except Exception as exc:
-            # Un sink que no puede escribir `run_start` tampoco escribirá `run_end`: el fallo queda
-            # en el `run_context`, que el usuario ya tiene en la mano, y no «running» para siempre.
-            self._registrar_fallo(exc, paso=None, run_id=run_id, emitir_run_end=False)
+            # El fallo queda en el `run_context`, que el usuario ya tiene en la mano, y no «running»
+            # para siempre. El `run_end` se intenta igual: un sink compuesto puede haber escrito
+            # `run_start` en su primer hijo antes de fallar en el segundo, y ese trail merece su
+            # cierre (pasada 3 de Codex en S24). Si el cierre también falla, gana la causa original.
+            with contextlib.suppress(Exception):
+                self._registrar_fallo(exc, paso=None, run_id=run_id)
             raise
 
         # La RESOLUCIÓN del pipeline va después del `run_id` y bajo el mismo registro de fallo que
@@ -549,14 +553,7 @@ class Study:
         self._validate_pipeline(pasos)
         return [paso.name for paso in pasos]
 
-    def _registrar_fallo(
-        self,
-        exc: Exception,
-        *,
-        paso: Step | None,
-        run_id: str,
-        emitir_run_end: bool = True,
-    ) -> None:
+    def _registrar_fallo(self, exc: Exception, *, paso: Step | None, run_id: str) -> None:
         """Deja el rastro de una corrida fallida en ``run_context`` y en el trail (D-ERR-10).
 
         UN solo sitio para las dos fases —resolución del pipeline y ejecución de los pasos—, porque
@@ -578,8 +575,6 @@ class Study:
             is_domain_error=isinstance(exc, BayesRiskError),
             ts=self.run_context.finished_at,
         )
-        if not emitir_run_end:
-            return
         # Payload aditivo (D-ERR-6): 'error' se conserva tal cual estaba; un lector existente
         # del trail no se entera de las claves nuevas (CT-3).
         self._emit(
