@@ -402,6 +402,12 @@ class Study:
         self.run_context.run_id = run_id
         self.run_context.started_at = datetime.now(UTC)
         self.run_context.status = "running"
+        # Todo el estado por corrida se reinicia ANTES de la primera emisión, que puede fallar: un
+        # Study reutilizado no conserva el lineage, el error ni el cierre de su corrida anterior
+        # (pasada 2 de Codex en S24; decisión de Cami del 2026-09-28).
+        self.run_context.lineage = None
+        self.run_context.error = None
+        self.run_context.finished_at = None
         # El preámbulo es de ESTA corrida: se vacía al arrancar (un Study reutilizado no arrastra
         # el de la anterior) y se rellena evento a evento, después de que cada uno llegó al trail.
         self.run_context.preamble = ()
@@ -411,7 +417,13 @@ class Study:
         # Secuencia del SDD-01 §7.3 paso 2: status="running" → emitir run_start → iniciar el
         # LineageBundle. En F0 ``data_hash`` queda None; en B2+ lo completa el paso de datos antes
         # de cerrar.
-        self._emit("run_start", None, {"run_id": run_id, "name": self.config.name})
+        try:
+            self._emit("run_start", None, {"run_id": run_id, "name": self.config.name})
+        except Exception as exc:
+            # Un sink que no puede escribir `run_start` tampoco escribirá `run_end`: el fallo queda
+            # en el `run_context`, que el usuario ya tiene en la mano, y no «running» para siempre.
+            self._registrar_fallo(exc, paso=None, run_id=run_id, emitir_run_end=False)
+            raise
 
         # La RESOLUCIÓN del pipeline va después del `run_id` y bajo el mismo registro de fallo que
         # la ejecución (D-ERR-8/D-ERR-9). Estaba antes, y sin `try`: un config inejecutable dejaba
@@ -537,7 +549,14 @@ class Study:
         self._validate_pipeline(pasos)
         return [paso.name for paso in pasos]
 
-    def _registrar_fallo(self, exc: Exception, *, paso: Step | None, run_id: str) -> None:
+    def _registrar_fallo(
+        self,
+        exc: Exception,
+        *,
+        paso: Step | None,
+        run_id: str,
+        emitir_run_end: bool = True,
+    ) -> None:
         """Deja el rastro de una corrida fallida en ``run_context`` y en el trail (D-ERR-10).
 
         UN solo sitio para las dos fases —resolución del pipeline y ejecución de los pasos—, porque
@@ -559,6 +578,8 @@ class Study:
             is_domain_error=isinstance(exc, BayesRiskError),
             ts=self.run_context.finished_at,
         )
+        if not emitir_run_end:
+            return
         # Payload aditivo (D-ERR-6): 'error' se conserva tal cual estaba; un lector existente
         # del trail no se entera de las claves nuevas (CT-3).
         self._emit(

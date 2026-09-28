@@ -914,7 +914,11 @@ reimplementa por motor. El chequeo PIT de IFRS 9 es incondicional y ningún flag
   para pasos que no republican. Tests
   `test_un_study_reutilizado_no_hereda_el_data_hash_de_la_corrida_anterior` (falla al resolver / no
   corre datos, con el hash publicado o inyectado; memoria y `lineage.json`), con control negativo;
-  el caso inyectado lo encontró la pasada 1 de Codex en S24.
+  el caso inyectado lo encontró la pasada 1 de Codex en S24. La pasada 2 añadió el mismo defecto por
+  otra vía: si el trail fallaba al emitir `run_start`, el `Study` quedaba en «running» con el
+  lineage, el `error` y el `finished_at` de la corrida anterior. Todo el estado por corrida se
+  reinicia antes de la primera emisión y ese fallo queda registrado en el `run_context` (sin
+  `run_end`, que el mismo sink no puede escribir).
 
 ## Evidencia histórica preservada
 

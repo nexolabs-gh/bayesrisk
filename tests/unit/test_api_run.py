@@ -780,3 +780,41 @@ def test_invoke_run_carga_el_stack_de_computo_de_dominio(tmp_path: Path) -> None
     )
     assert completed.returncode == 0, completed.stderr + completed.stdout
     assert completed.stdout.strip() == "ok"
+
+
+class _SinkQueFallaEnRunStart:
+    """Un trail que no puede escribir, como un disco lleno: falla desde el primer evento."""
+
+    def emit(self, event: object) -> None:
+        raise OSError("disco lleno (doble de prueba)")
+
+
+def test_un_study_reutilizado_cuyo_trail_falla_al_arrancar_no_conserva_la_corrida_anterior(
+    tmp_path: Path,
+) -> None:
+    """Pasada 2 de Codex en S24: si `run_start` falla, el Study quedaba en «running» con el
+    lineage —y el `data_hash`— de la corrida anterior, y `save()` lo persistía."""
+    study, _digest = _study_con_datos_publicados(tmp_path, "paso-de-datos")
+    study.set_audit_sink(_SinkQueFallaEnRunStart())
+
+    with pytest.raises(OSError, match="disco lleno"):
+        study.run(steps=[])
+
+    assert study.run_context.status == "failed"
+    assert study.run_context.error is not None
+    assert study.run_context.error.type == "OSError"
+    assert study.run_context.finished_at is not None
+    assert study.run_context.lineage is None
+    assert not (study.save(tmp_path / "estudio") / "lineage.json").exists()
+
+
+def test_un_reintento_exitoso_no_conserva_el_error_de_la_corrida_anterior() -> None:
+    study = Study(BayesRiskConfig())
+    with pytest.raises(BayesRiskError):
+        study.run(steps=["no_existe"])
+    assert study.run_context.error is not None
+
+    study.run(steps=[])
+
+    assert study.run_context.status == "done"
+    assert study.run_context.error is None

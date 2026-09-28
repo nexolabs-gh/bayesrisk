@@ -81,7 +81,7 @@ cada paso— está en su §0.3. Cada hito de abajo se mide con sus cinco cifras 
 
 | Módulo | Motor | Pantalla | Informe | Forma de uso (SDD-31) |
 |---|---|---|---|---|
-| Scorecard F1 (eda, binning, selección, modelo, scorecard, calibración, desempeño, estabilidad, validación) | **Estable** (SemVer 2.x) | sí: 409 campos en 12 secciones | sí: 126 tablas | **no**: config completo o preset; `run()` mudo |
+| Scorecard F1 (eda, binning, selección, modelo, scorecard, calibración, desempeño, estabilidad, validación) | **Estable** (SemVer 1.x) | sí: 409 campos en 12 secciones | sí: 126 tablas | **no**: config completo o preset; `run()` mudo |
 | IFRS 9 / ECL (`survival` + `provisioning_ifrs9`) | Experimental | sí: 72 campos en 2 secciones más `data` | sí | no |
 | LGD modelada y provisión interna | Experimental | sí | sí | no |
 | Validación formal (cotejada contra el BCE) | Experimental | sí | sí | no |
@@ -119,7 +119,7 @@ mejor del mundo». Ningún SDD se reescribe de oficio; su enmienda de simplicida
 |---|---|---|---|---|
 | `core`, `data`, `audit`, `governance`, `tracking` (01–04) | estables; trail, lineage, ficha; MLflow opt-in | entrada mínima e inferencias declaradas; decisiones humanas al trail; `track=` | C3 sostenido; C7 (escala) | H1 |
 | `eda` (27) | estable; en pantalla e informe | resumen de etapa | curvas de vintage y roll-rate para definir el target (C2) | H1; después |
-| `binning`, `selection`, `model`, `scorecard`, `calibration` (06–10) | estables, SemVer 2.x | resúmenes por etapa, decisiones humanas, IV por muestra y monotonía fuera de desarrollo como artefactos aparte, esenciales | benchmarks (C6); export SQL de la tarjeta (C2) | H1; H10 |
+| `binning`, `selection`, `model`, `scorecard`, `calibration` (06–10) | estables, SemVer 1.x | resúmenes por etapa, decisiones humanas, IV por muestra y monotonía fuera de desarrollo como artefactos aparte, esenciales | benchmarks (C6); export SQL de la tarjeta (C2) | H1; H10 |
 | `performance`, `stability` (11) | estables | resúmenes por etapa | historia por período → módulo de monitoreo (C2) | H1; H4 |
 | `validation` (22) | experimental, cotejada contra el BCE | resumen y esenciales | representatividad y bootstrap cuando tengan evidencia; «Validar un modelo existente» en ≤ 25 líneas | H4 |
 | `report` (26) | estable; 126 tablas en la demo | página ejecutiva = resumen final; Excel opcional; marca | capítulos nuevos por módulo (monitoreo, escala maestra, equidad) | H1 (C); cada hito |
@@ -176,7 +176,7 @@ El estado y el plan de esta sección eran la fuente vigente en esa fecha, no hoy
 
 | Capacidad | Estado | Límite en esa fecha |
 |---|---|---|
-| F0/F1 · núcleo y scorecard de comportamiento | **Estable** | Garantía SemVer 2.x para el pipeline F1 (la 1.x fue nikodym) |
+| F0/F1 · núcleo y scorecard de comportamiento | **Estable** | Garantía SemVer 1.x para el pipeline F1 |
 | F2 · ML/tuning/explain | Implementado, **experimental** | No sustituye la scorecard ni amplía SemVer F1 |
 | F3/F8 · CMF, método interno y orquestación | Implementado, **experimental** | Validación humana de matrices/haircuts pendiente |
 | F4 · IFRS 9/ECL | Implementado, **experimental** | Independiente del máximo B-1 chileno |

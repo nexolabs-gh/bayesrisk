@@ -368,7 +368,7 @@ Estado resumido a `1.10.0`:
 
 | Capacidad | Estado de producto |
 |---|---|
-| Pipeline scorecard F1 | **Estable** bajo SemVer 2.x (la 1.x fue nikodym) |
+| Pipeline scorecard F1 | **Estable** bajo SemVer 1.x |
 | ML, CMF, método interno, IFRS 9, forward, survival, Markov, stress y validación | **Implementados; experimentales** |
 | UI React/FastAPI e informes HTML/PDF/Word | **Disponibles**; demo F1/F3/F4 publicada |
 
