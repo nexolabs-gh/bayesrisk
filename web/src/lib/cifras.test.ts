@@ -14,6 +14,7 @@ import {
   cifra,
   conteo,
   corte,
+  frenteAlCorte,
   marca,
   monto,
   montoCompacto,
@@ -21,15 +22,31 @@ import {
   pvalor,
 } from "@/lib/cifras"
 
-type Entrada = { float: string } | { especial: "nan" | "inf" | "-inf" } | { entero: string } | null
+type Entrada =
+  | { float: string }
+  | { especial: "nan" | "inf" | "-inf" }
+  | { entero: string }
+  | { par: [string, string] }
+  | null
 type Caso = [string, number | null, Entrada, string]
 
 function leer(entrada: Entrada): number | null {
   if (entrada === null) return null
+  if ("par" in entrada) throw new Error("un par se lee en llamarCaso")
   if ("float" in entrada) return Number(entrada.float)
   if ("entero" in entrada) return Number(entrada.entero)
   if (entrada.especial === "nan") return Number.NaN
   return entrada.especial === "inf" ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY
+}
+
+function llamarCaso(funcion: string, argumento: number | null, entrada: Entrada): string {
+  if (entrada !== null && "par" in entrada) {
+    const [observado, umbral] = entrada.par.map(Number)
+    if (funcion === "frente_cifra") return frenteAlCorte(cifra(observado), observado, umbral)
+    if (funcion === "frente_pvalor") return frenteAlCorte(pvalor(observado), observado, umbral)
+    throw new Error(`función de par desconocida: ${funcion}`)
+  }
+  return llamar(funcion, argumento, leer(entrada))
 }
 
 function llamar(funcion: string, argumento: number | null, valor: number | null): string {
@@ -56,20 +73,29 @@ const CASOS = (golden as { version: number; casos: Caso[] }).casos
 describe("golden Python → TypeScript de las cifras (D-PAN-1)", () => {
   it("el golden trae las seis funciones y miles de casos", () => {
     expect(new Set(CASOS.map((c) => c[0]))).toEqual(
-      new Set(["cifra", "pvalor", "corte", "porcentaje", "monto", "conteo"]),
+      new Set([
+        "cifra",
+        "pvalor",
+        "corte",
+        "porcentaje",
+        "monto",
+        "conteo",
+        "frente_cifra",
+        "frente_pvalor",
+      ]),
     )
     expect(CASOS.length).toBeGreaterThan(4000)
   })
 
   it("el espejo escribe cada caso exactamente como Python", () => {
     const distintos = CASOS.filter(
-      ([funcion, argumento, entrada, salida]) => llamar(funcion, argumento, leer(entrada)) !== salida,
+      ([funcion, argumento, entrada, salida]) => llamarCaso(funcion, argumento, entrada) !== salida,
     ).map(([funcion, argumento, entrada, salida]) => ({
       funcion,
       argumento,
       entrada,
       python: salida,
-      espejo: llamar(funcion, argumento, leer(entrada)),
+      espejo: llamarCaso(funcion, argumento, entrada),
     }))
     expect(distintos.slice(0, 20)).toEqual([])
   })

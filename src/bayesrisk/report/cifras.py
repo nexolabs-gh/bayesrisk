@@ -326,6 +326,11 @@ def frente_al_corte(texto: str, valor: float, umbral: float) -> str:
     """
     exacto, frontera = _exacto(valor), _exacto(umbral)
     lado = _signo(exacto - frontera)
+    # «< 0,001» ya dice su lado cuando la cota no pasa del corte.
+    if texto.startswith("< "):
+        cota = _leer(texto[2:])
+        if lado < 0 and cota is not None and cota <= frontera:
+            return texto
     leido = _leer(texto)
     # En la igualdad, la cifra también tiene que decir el corte (pasada 1 de Codex sobre el código:
     # con `iv == max_iv == 0.24994`, «IV 0,2499 ≥ máximo 0,24994» era falso).

@@ -127,6 +127,8 @@ def _float_sembrado(rng: random.Random) -> float:
 def _entrada(valor: Any) -> Any:
     if valor is None:
         return None
+    if isinstance(valor, tuple):
+        return {"par": [repr(valor[0]), repr(valor[1])]}
     if isinstance(valor, int) and not isinstance(valor, bool):
         return {"entero": str(valor)}
     if math.isnan(valor):
@@ -134,6 +136,28 @@ def _entrada(valor: Any) -> Any:
     if math.isinf(valor):
         return {"especial": "inf" if valor > 0 else "-inf"}
     return {"float": repr(valor)}
+
+
+#: Pares (observación, corte) junto a su frontera: la regla `frente_al_corte` (D-PAN-3/4).
+_PARES: list[tuple[float, float]] = [
+    (0.249962, 0.24996),
+    (0.249958, 0.24996),
+    (0.24996, 0.24996),
+    (0.24994, 0.24994),
+    (0.2499402, 0.2499404),
+    (0.0499555, 0.049956),
+    (0.050036, 0.05004),
+    (0.3, 0.25),
+    (0.2, 0.25),
+    (1234.567, 1234.5671),
+    (1234.5671, 1234.567),
+    (0.00040, 0.0005),
+    (0.0001, 0.05004),
+    (0.0001, 0.0005),
+    (0.0009, 0.001),
+    (5.1234567, 5.0),
+    (-0.2500001, -0.25),
+]
 
 
 def _llamar(funcion: str, argumento: int | None, valor: Any) -> str:
@@ -149,6 +173,12 @@ def _llamar(funcion: str, argumento: int | None, valor: Any) -> str:
         return cifras.monto(valor, simbolo="$")
     if funcion == "conteo":
         return cifras.conteo(valor)
+    if funcion == "frente_cifra":
+        observado, umbral = valor
+        return cifras.frente_al_corte(cifras.cifra(observado), observado, umbral)
+    if funcion == "frente_pvalor":
+        observado, umbral = valor
+        return cifras.frente_al_corte(cifras.pvalor(observado), observado, umbral)
     raise ValueError(funcion)
 
 
@@ -175,6 +205,17 @@ def casos() -> list[list[Any]]:
         agregar(funcion, argumento, None)
     for entero in _ENTEROS:
         agregar("conteo", None, entero)
+
+    rng_pares = random.Random(_SEMILLA + 1)
+    pares = list(_PARES)
+    for _ in range(400):
+        # Un corte con muchos decimales y una observación que comparte sus primeras cifras.
+        corte = round(rng_pares.uniform(0.001, 0.9), rng_pares.randrange(3, 8))
+        delta = rng_pares.choice([1, -1]) * 10 ** -rng_pares.randrange(4, 9)
+        pares.append((corte + delta * rng_pares.random(), corte))
+    for par in pares:
+        agregar("frente_cifra", None, par)
+        agregar("frente_pvalor", None, par)
 
     rng = random.Random(_SEMILLA)
     for indice in range(_SEMBRADOS):

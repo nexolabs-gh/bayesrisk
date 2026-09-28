@@ -377,6 +377,11 @@ _ESPEJOS_DEL_TIPO: dict[str, type[BaseModel]] = {
     "ModelCardEnvironment": EnvironmentSnapshot,
     "ModelCardDataDescription": DataCardSection,
 }
+#: Claves que el serializer añade para PRESENTAR y que no son del modelo (enmienda
+#: CIFRAS-EN-PANTALLA, D-PAN-4): van al final del tipo y el serializer las emite siempre.
+_CLAVES_DE_PRESENTACION: dict[str, tuple[str, ...]] = {
+    "ModelCardDecision": ("detalle_legible",),
+}
 
 #: Los rótulos que la sección «Ficha del modelo» escribe en Resultados. ⚠️ «Ficha del modelo» a
 #: secas ya viajaba en el bundle desde S3 —cuatro veces, como nombre de grupo del formulario
@@ -438,7 +443,10 @@ def test_el_tipo_del_front_espeja_las_claves_del_modelo_pydantic(
     interfaz: str, modelo: type[BaseModel]
 ) -> None:
     """D-GOB-16: renombrar, añadir o quitar un campo en cualquiera de los dos lados pone rojo."""
-    assert _claves_de_la_interfaz_ts(interfaz) == list(modelo.model_fields)
+    presentacion = _CLAVES_DE_PRESENTACION.get(interfaz, ())
+    claves = _claves_de_la_interfaz_ts(interfaz)
+    assert claves[len(claves) - len(presentacion) :] == list(presentacion)
+    assert claves[: len(claves) - len(presentacion)] == list(modelo.model_fields)
 
 
 def test_el_tipo_del_front_declara_diecinueve_claves() -> None:

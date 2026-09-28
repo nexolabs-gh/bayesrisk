@@ -617,9 +617,7 @@ def _selection_decisions(
     registros: list[dict[str, Any]] = []
     for decision in study.artifacts.get("selection", "result").decisions:
         registro = dump_dto(decision)
-        legible = motivo_legible(registro, thresholds or {})
-        if legible is not None:
-            registro["detail_legible"] = legible
+        registro["detail_legible"] = motivo_legible(registro, thresholds or {})
         registros.append(registro)
     return registros
 
@@ -940,11 +938,13 @@ def _detalles_legibles(decisions: object) -> None:
         if not isinstance(decision, dict):
             continue
         valor = decision.get("valor")
-        if not isinstance(valor, Mapping) or "detail" not in valor:
-            continue
-        legible = motivo_legible_stepwise({**valor, "threshold": decision.get("umbral")})
-        if legible is not None:
-            decision["detalle_legible"] = legible
+        # Siempre presente y al final (`null` si no aplica): el espejo D-GOB-16 exige que cada
+        # decisión emita exactamente las claves del tipo del front.
+        decision["detalle_legible"] = (
+            motivo_legible_stepwise({**valor, "threshold": decision.get("umbral")})
+            if isinstance(valor, Mapping) and "detail" in valor
+            else None
+        )
 
 
 def _resolve_governance(governance: object) -> GovernanceConfig | None:

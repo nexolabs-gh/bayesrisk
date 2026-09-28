@@ -50,6 +50,7 @@ import {
   monotonicityLabel,
   normalizeBinLabel,
   partitionLabel,
+  pValorFrenteALosCortes,
   primaryPartition,
   provisioningComparisonBars,
   provisioningHeadline,
@@ -2929,5 +2930,27 @@ describe("edaRateWindow: cuántas filas de la tasa llegaron frente a cuántas ca
       truncated: false,
     })
     expect(edaRateWindow(null)).toEqual({ shown: 0, total: 0, truncated: false })
+  })
+})
+
+describe("pValorFrenteALosCortes (pasada 2 de Codex sobre el código)", () => {
+  const cortes = { green_alpha: 0.05004, red_alpha: 0.01 }
+
+  it("un p-valor apenas bajo un corte no se escribe igual al corte", () => {
+    expect(formatPValue(0.050036)).toBe("0,05004")
+    expect(pValorFrenteALosCortes(0.050036, cortes)).toBe("0,050036")
+  })
+
+  it("lejos de los cortes, la regla de siempre", () => {
+    expect(pValorFrenteALosCortes(0.2, cortes)).toBe("0,200")
+    expect(pValorFrenteALosCortes(0.0001, cortes)).toBe("< 0,001")
+    expect(pValorFrenteALosCortes(null, cortes)).toBe(EMPTY)
+    expect(pValorFrenteALosCortes(0.2, null)).toBe("0,200")
+  })
+
+  it("«< 0,001» no dice el lado de un corte menor", () => {
+    expect(pValorFrenteALosCortes(0.0004, { green_alpha: 0.0005, red_alpha: 0.0001 })).toBe(
+      "0,00040",
+    )
   })
 })

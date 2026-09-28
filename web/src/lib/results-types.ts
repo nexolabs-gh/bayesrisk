@@ -215,8 +215,9 @@ export interface SelectionDecision {
   max_csi: number | null
   forced: "include" | "exclude" | null
   detail: string | null
-  /** El motivo en es-CL, compuesto por el backend (D-PAN-4); ausente en fixtures anteriores. */
-  detail_legible?: string
+  /** El motivo en es-CL, compuesto por el backend (D-PAN-4); `null` sin composición, ausente en
+   * fixtures anteriores. */
+  detail_legible?: string | null
 }
 
 /**
@@ -1158,9 +1159,6 @@ export interface ModelCardDecision {
   regla: string
   umbral: unknown
   valor: unknown
-  /** El motivo del stepwise en es-CL que compone el backend para el `detail` de `valor`
-   * (D-PAN-4); ausente en fixtures anteriores. */
-  detalle_legible?: string
   accion: string
   ts: string
   /**
@@ -1170,6 +1168,12 @@ export interface ModelCardDecision {
    */
   autor?: string | null
   motivo?: string | null
+  /**
+   * Presentación, no parte de `DecisionRecord` (D-PAN-4): el motivo del stepwise en es-CL que el
+   * serializer compone para el `detail` de `valor`; `null` si la decisión no lo tiene, ausente en
+   * fixtures anteriores.
+   */
+  detalle_legible?: string | null
 }
 
 /** Snapshot del entorno que acompañó a la corrida (`EnvironmentSnapshot`). */

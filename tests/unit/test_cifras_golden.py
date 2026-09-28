@@ -31,7 +31,16 @@ def test_el_golden_versionado_es_el_que_genera_el_codigo() -> None:
 def test_el_golden_cubre_cada_funcion_y_los_bordes_tipados() -> None:
     filas = golden.casos()
     funciones = {fila[0] for fila in filas}
-    assert funciones == {"cifra", "pvalor", "corte", "porcentaje", "monto", "conteo"}
+    assert funciones == {
+        "cifra",
+        "pvalor",
+        "corte",
+        "porcentaje",
+        "monto",
+        "conteo",
+        "frente_cifra",
+        "frente_pvalor",
+    }
     entradas = [fila[2] for fila in filas]
     assert {"float": "-0.0"} in entradas
     assert {"especial": "nan"} in entradas and {"especial": "-inf"} in entradas

@@ -37,7 +37,11 @@ function pot10(n: number): bigint {
 
 /** El decimal más corto que vuelve a `x` (el `repr` de Python). `x` finito. */
 function exactoCorto(x: number): Dec {
-  const texto = String(x)
+  return decimalDeTexto(String(x))
+}
+
+/** Un decimal escrito con punto y, quizá, exponente (`-1.5e-7`), exacto. */
+function decimalDeTexto(texto: string): Dec {
   const neg = texto.startsWith("-")
   const cuerpo = neg ? texto.slice(1) : texto
   const [mantisa, expTexto] = cuerpo.split("e")
@@ -85,6 +89,20 @@ function redondeado(d: Dec, decimales: number): Dec {
   const doble = (d.coef % divisor) * 2n
   if (doble > divisor || (doble === divisor && cociente % 2n === 1n)) cociente += 1n
   return { neg: d.neg, coef: cociente, exp: objetivo }
+}
+
+/** Compara `a` con `b` (con signo): -1, 0 o 1. */
+function comparar(a: Dec, b: Dec): number {
+  const exp = Math.min(a.exp, b.exp)
+  const va = (a.neg ? -1n : 1n) * a.coef * pot10(a.exp - exp)
+  const vb = (b.neg ? -1n : 1n) * b.coef * pot10(b.exp - exp)
+  return va === vb ? 0 : va > vb ? 1 : -1
+}
+
+/** El número que dice un texto de `cifra` o `pvalor` (`1.234,5`, `2,3e-07`); `null` si no dice uno. */
+function leer(texto: string): Dec | null {
+  const limpio = texto.replace(/\./g, "").replace(",", ".")
+  return /^-?\d+(\.\d+)?(e[+-]?\d+)?$/.test(limpio) ? decimalDeTexto(limpio) : null
 }
 
 /** Compara `|d|` con `10^k`: -1, 0 o 1. */
@@ -187,6 +205,36 @@ export function corte(x: number, minimo = 2): string {
   }
   fraccion = fraccion.replace(/0+$/, "").padEnd(minimo, "0")
   return fraccion ? `${signo}${entero},${fraccion}` : `${signo}${entero}`
+}
+
+/**
+ * `texto` —la cifra de `valor`— con los decimales que la dejan del lado correcto de `umbral`: el
+ * espejo de `cifras.frente_al_corte`. Junto a su corte, una observación redondeada puede escribirse
+ * igual a él o cruzarlo (`0.249962` frente a `0,24996` se leía «0,24996»); se extiende hasta que el
+ * texto conserve el orden —en la igualdad, hasta decir el corte—, como máximo hasta el exacto.
+ */
+export function frenteAlCorte(texto: string, valor: number, umbral: number): string {
+  if (!Number.isFinite(valor) || !Number.isFinite(umbral)) return texto
+  const exacto = exactoCorto(valor)
+  const frontera = exactoCorto(umbral)
+  const lado = comparar(exacto, frontera)
+  // «< 0,001» ya dice su lado cuando la cota no pasa del corte.
+  if (texto.startsWith("< ")) {
+    const cota = leer(texto.slice(2))
+    if (lado < 0 && cota !== null && comparar(cota, frontera) <= 0) return texto
+  }
+  const leido = leer(texto)
+  if (leido !== null && comparar(leido, frontera) === lado) return texto
+  const miles = compararPot10(exacto, 3) >= 0
+  const fraccion = texto.includes(",") ? texto.slice(texto.indexOf(",") + 1) : ""
+  let decimales = /^\d+$/.test(fraccion) ? fraccion.length : 0
+  const limite = decimalesDelExacto(exacto)
+  while (decimales < limite) {
+    decimales += 1
+    const r = redondeado(exacto, decimales)
+    if (comparar(r, frontera) === lado) return posicional(r, decimales, miles)
+  }
+  return posicional(redondeado(exacto, limite), limite, miles)
 }
 
 /**

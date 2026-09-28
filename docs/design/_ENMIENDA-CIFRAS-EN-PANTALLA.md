@@ -376,6 +376,16 @@ exigiría cambiar la traza, que la enmienda no toca. (3) Los resúmenes escriben
 frente a su corte (deterioro de la tasa del EDA, p-valor del stepwise), y el umbral de concentración
 de IV como porcentaje exacto (`corte_porcentual`), no redondeado a entero.
 
+**Pasada 2 sobre el código (sobre `d7c092d`): `needs-attention`, un hallazgo, verificado y
+corregido.** El panel del análisis exploratorio escribía la observación de estabilidad sin la regla
+de orden junto a su corte. `frente_al_corte` pasa al espejo (`frenteAlCorte`), con 828 casos de
+pares observación-corte en el golden, y la pantalla lo usa en ese panel y en los p-valores de la
+calibración por grado frente a los dos cortes del semáforo (el mismo defecto, no señalado). Además,
+«< 0,001» se conserva cuando ya queda del lado de su corte. La ficha emite `detalle_legible` siempre
+(`null` si no aplica) y el espejo D-GOB-16 lo declara como clave de presentación, no del modelo.
+Las salidas del cuaderno publicado se regeneraron: sus cambios caen todos en las cuatro causas de
+D-PAN-3.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima**: ninguna nueva.

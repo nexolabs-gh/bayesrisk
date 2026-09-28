@@ -101,6 +101,7 @@ import {
   scoreHistogram,
   selectionDecisionRows,
   selectionThresholdRows,
+  pValorFrenteALosCortes,
   stabilityProvenance,
   sicrTriggerLabel,
   sortByIv,
@@ -141,6 +142,7 @@ import type {
   MethodologyFact,
 } from "@/lib/results-types"
 import type { ValidationState } from "@/lib/validation"
+import { frenteAlCorte } from "@/lib/cifras"
 import { useAppState } from "@/state/appStore"
 import type { LastRun } from "@/state/appStore"
 
@@ -747,7 +749,12 @@ export function ResultsPanel({
                     : "Sin aviso"}
                   : {edaStability.indicator}{" "}
                   <span className="font-mono tabular-nums">
-                    {formatMetric(edaStability.value)}
+                    {/* Frente a su corte, del lado correcto (pasada 2 de Codex sobre el código). */}
+                    {frenteAlCorte(
+                      formatMetric(edaStability.value),
+                      edaStability.value,
+                      edaStability.threshold,
+                    )}
                   </span>{" "}
                   frente al umbral{" "}
                   <span className="font-mono tabular-nums">
@@ -1275,7 +1282,7 @@ export function ResultsPanel({
                           <NumCell>{formatCount(row.observed_defaults)}</NumCell>
                           <NumCell>{formatMetric(row.expected_pd)}</NumCell>
                           <NumCell>{formatMetric(row.observed_dr)}</NumCell>
-                          <NumCell>{formatPValue(row.p_value)}</NumCell>
+                          <NumCell>{pValorFrenteALosCortes(row.p_value, valCuts)}</NumCell>
                           <td className="py-2 pl-3 text-muted-foreground">
                             {row.traffic_light
                               ? (TRAFFIC_LIGHT_LABELS[row.traffic_light] ??

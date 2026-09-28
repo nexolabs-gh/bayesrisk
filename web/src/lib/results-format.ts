@@ -41,6 +41,7 @@ import {
   cifra,
   conteo,
   corte,
+  frenteAlCorte,
   monto,
   montoCompacto,
   porcentaje,
@@ -2119,6 +2120,25 @@ export function hlNotEvaluablePartitions(
 export function formatCut(x: number | null | undefined): string {
   if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
   return corte(x)
+}
+
+/**
+ * El p-valor de un grado junto a los dos cortes que decidieron su color, del lado correcto de cada
+ * uno (pasada 2 de Codex sobre el código): `0.050036` frente a un corte de `0,05004` se escribía
+ * «0,05004», igual al corte que no alcanza. «< 0,001» no dice el lado de un corte menor.
+ */
+export function pValorFrenteALosCortes(
+  p: number | null | undefined,
+  cortes: ValidationTrafficLightCuts | null,
+): string {
+  const texto = formatPValue(p)
+  if (p === null || p === undefined || !Number.isFinite(p) || cortes === null) return texto
+  const menores = [cortes.green_alpha, cortes.red_alpha].filter((c) => c < 0.001)
+  let escrito = texto.startsWith("<") && menores.length > 0 ? formatMetric(p) : texto
+  for (const corteDelColor of [cortes.green_alpha, cortes.red_alpha]) {
+    escrito = frenteAlCorte(escrito, p, corteDelColor)
+  }
+  return escrito
 }
 
 /**
