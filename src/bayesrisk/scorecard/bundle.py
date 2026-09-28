@@ -1874,7 +1874,8 @@ def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
     if (
         isinstance(schema, bool)
         or schema not in _BUNDLE_SCHEMAS_LEIDOS
-        or value.get("format") != "nikodym.scorecard.bundle"
+        or "format" not in value
+        or value["format"] != "nikodym.scorecard.bundle"
     ):
         raise ScorecardBundleError("Schema o formato de bundle no soportado.")
     if schema >= 2:

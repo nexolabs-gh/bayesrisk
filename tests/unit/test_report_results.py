@@ -131,6 +131,9 @@ def test_report_input_bundle_golden_copias_frozen_y_extra() -> None:
         # D-CPY-3: los rótulos legibles de los tramos, aditivos con default vacío; el valor de las
         # tablas —el del JSON y del CSV— sigue siendo la etiqueta del motor.
         "bin_labels",
+        # D-NOV-1 §1.1: por categórica del modelo, la fila de puntos de su tramo de referencia,
+        # aditiva con default vacío; sólo la vista gana la línea de no vistas.
+        "unseen_reference_bins",
         # D-PAN-4: las columnas que el EDA perfiló como numéricas, aditivas con default vacío: sólo
         # sus tramos se reescriben con comparadores en es-CL.
         "eda_numeric_profiles",
