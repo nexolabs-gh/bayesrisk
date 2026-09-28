@@ -156,18 +156,26 @@ def installed_distribution_hash() -> str:
 
 
 def runtime_environment_hash() -> str:
-    """Hashea Python, plataforma y todas las distribuciones instaladas, sin timestamps."""
+    """Hashea Python, plataforma y todas las distribuciones instaladas, sin timestamps.
+
+    Una distribución instalada dos veces con versiones distintas —la imagen de Colab trae trece,
+    entre el ``dist-packages`` de apt y el de pip, y cualquier Debian/Ubuntu con paquetes
+    ``python3-*`` cae igual— ya no aborta la corrida (2.0.1): cuenta la **primera** en el orden de
+    ``sys.path``, que es la que Python importa y la que devuelve ``metadata.version``, y las demás
+    versiones entran al hash como **sombreadas**. Sin duplicados el payload —y el hash— es el de
+    2.0.0; con duplicados queda definido y distingue un entorno sombreado de uno limpio.
+    """
     distributions: dict[str, str] = {}
+    sombreadas: dict[str, list[str]] = {}
     for distribution in metadata.distributions():
         name = distribution.metadata.get("Name")
         if not name:
             continue
         normalized = re.sub(r"[-_.]+", "-", name).lower()
-        if normalized in distributions and distributions[normalized] != distribution.version:
-            raise ReproducibilityError(
-                f"Colisión de distribuciones instaladas tras normalización PEP 503: {normalized}."
-            )
-        distributions[normalized] = distribution.version
+        efectiva = distributions.setdefault(normalized, distribution.version)
+        otras = sombreadas.setdefault(normalized, [])
+        if distribution.version != efectiva and distribution.version not in otras:
+            otras.append(distribution.version)
     payload = {
         "schema_version": 1,
         "python": {
@@ -181,6 +189,10 @@ def runtime_environment_hash() -> str:
         },
         "distributions": {name: distributions[name] for name in sorted(distributions)},
     }
+    con_sombras = {name: versions for name, versions in sorted(sombreadas.items()) if versions}
+    if con_sombras:
+        # Sólo cuando existen: sin duplicados, el payload es byte a byte el de 2.0.0.
+        payload["shadowed_distributions"] = con_sombras
     return hashlib.sha256(_canonical_json(payload)).hexdigest()
 
 

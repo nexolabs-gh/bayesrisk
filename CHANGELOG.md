@@ -28,6 +28,22 @@ entradas anteriores conservan el nombre con el que se publicaron.
   en la pantalla, la tabla y el gráfico del informe; un nivel categórico con forma de intervalo
   queda tal cual.
 
+## [2.0.1] — 2026-09-28
+
+### Corregido
+
+- **bayesrisk corre en Colab y en Debian/Ubuntu con paquetes `python3-*` de apt.** Cuando una
+  distribución estaba instalada dos veces con versiones distintas —la imagen de Colab trae trece,
+  entre el `dist-packages` de apt y el de pip, desde antes de cualquier `pip install`—, la huella
+  del entorno (`runtime_environment_hash`) abortaba la corrida. Ahora cuenta la versión que Python
+  importa de verdad (la primera en `sys.path`) y registra las demás como sombreadas: sin
+  duplicados la huella es idéntica a la de 2.0.0, y con duplicados distingue un entorno sombreado
+  de uno limpio. `config_hash`, `data_hash` y los resultados no cambian.
+- **Una corrida ya no queda en «running» para siempre si falla al armar su lineage.** El fallo
+  salía sin registrarse: sin `error`, sin `run_end` en el registro de auditoría y con el estado
+  «running». Ahora la corrida termina en «failed» con su diagnóstico, y si ya había fallado la
+  resolución del pipeline, esa causa es la que se reporta.
+
 ## [2.0.0] — 2026-09-27
 
 **nikodym ahora se llama bayesrisk.** Esta versión es **equivalente funcional a nikodym 1.20.0**:

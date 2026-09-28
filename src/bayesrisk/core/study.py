@@ -411,6 +411,7 @@ class Study:
         # produce ahí un diagnóstico exacto («el paso X requiere (Y, Z), que ningún paso aguas
         # arriba produce»); se perdía entero, y aguas abajo la UI no podía ni persistir la corrida
         # —sin `run_id` no hay qué guardar— así que respondía un HTTP 500 opaco.
+        resolucion_fallida = False
         try:
             pasos = self._resolve_steps(nombres)
             self._validate_injected_artifacts(pasos, emit_warnings=True)
@@ -418,6 +419,7 @@ class Study:
         except Exception as exc:
             # step=None a propósito (D-ERR-11): no hay paso en curso porque el config es
             # inejecutable ANTES del primero, y eso le dice al lector dónde mirar.
+            resolucion_fallida = True
             self._registrar_fallo(exc, paso=None, run_id=run_id)
             raise
         finally:
@@ -435,7 +437,21 @@ class Study:
             # de guardar. Medido con un config cargado de YAML al que le falta un campo con default
             # —el caso de quien lo escribe a mano—; no se ve con los presets, que escriben todos los
             # campos explícitos, ni con un config construido en Python, que ya llega tipado.
-            self.run_context.lineage = self._build_lineage()
+            #
+            # 🔴 Y si armar el lineage falla, eso también es un fallo registrado (2.0.1): salía sin
+            # pasar por `_registrar_fallo` y la corrida quedaba en «running» para siempre, sin
+            # `error` ni `run_end` —lo que esta sección promete evitar—. En Colab lo gatillaba la
+            # huella del entorno. Si la resolución ya había fallado, su causa es la que se reporta:
+            # un segundo error no la tapa, y el lineage queda ausente.
+            try:
+                self.run_context.lineage = self._build_lineage()
+            except Exception as exc_lineage:
+                # Un Study reutilizado no conserva el lineage de su corrida anterior: esa evidencia
+                # no es de ésta (revisión adversarial del parche 2.0.1).
+                self.run_context.lineage = None
+                if not resolucion_fallida:
+                    self._registrar_fallo(exc_lineage, paso=None, run_id=run_id)
+                    raise
 
         # El paso en curso se rastrea fuera del try para poder nombrarlo en el rastro del fallo:
         # sin él, "falló la corrida" no dice en qué etapa del pipeline (enmienda RUN-ERROR, D-ERR-2)
