@@ -897,6 +897,23 @@ reimplementa por motor. El chequeo PIT de IFRS 9 es incondicional y ningún flag
   Codex se contradijo entre sus pasadas 10–11 y 14 sobre proteger también tras `;` dentro del
   texto; se eligió conservar el dato y declarar el límite, y Cami lo aprobó.
 
+- **Study reutilizado: el lineage sólo toma lo de su corrida (decisión de Cami del 2026-09-28,
+  interactiva, al cierre de S23; implementada en S24, sin SDD porque no cambia ningún contrato
+  publicado salvo el defecto).** Nació de la pasada 2 de Codex sobre el parche 2.0.1 y existía
+  desde 2.0.0: si un `Study` que ya había corrido el paso de datos volvía a correr y la segunda
+  corrida fallaba al resolver el pipeline —o no incluía `data`—, `_build_lineage` adoptaba el
+  `data_hash` que la primera había dejado en el `ArtifactStore`, y `save()` persistía la corrida
+  fallida con los datos de otra. **Regla:** el `data_hash` del lineage es el de ESTA corrida —lo
+  completa el paso de datos al correr, o, con `data` apagado, se adopta el **inyectado** por la
+  puerta de artefactos (D-ART-8 intacta)—; un `data_hash` del store que no se inyectó es de una
+  corrida anterior y **no** se adopta: queda `None` con el caveat «data_hash ausente: la corrida no
+  ejecutó el paso de datos». **No cambia** qué artefactos conserva el `Study` (el store no se
+  limpia; los inyectados siguen). Medido de paso: volver a correr `data` sobre el mismo `Study`
+  levanta `ArtifactExistsError` (el store no sobrescribe), así que reutilizar un `Study` sólo sirve
+  para pasos que no republican. Tests
+  `test_un_study_reutilizado_no_hereda_el_data_hash_de_la_corrida_anterior` (falla al resolver / no
+  corre datos; memoria y `lineage.json`), con control negativo.
+
 ## Evidencia histórica preservada
 
 Los corpus previos no se deduplicaron ni reescribieron:

@@ -24,6 +24,7 @@ from bayesrisk.binning.config import BinningConfig
 from bayesrisk.calibration.config import CalibrationConfig
 from bayesrisk.core.audit import AuditSink, FanOutSink, InMemoryAuditSink, NullAuditSink
 from bayesrisk.core.config import BayesRiskConfig, ReproConfig
+from bayesrisk.core.exceptions import BayesRiskError
 from bayesrisk.core.study import Study
 from bayesrisk.data.config import (
     CohortSplitConfig,
@@ -490,6 +491,54 @@ def test_data_hash_inyectado_se_adopta_sin_caveat_de_ausencia() -> None:
     assert lineage.data_hash == digest
     assert lineage.injected_artifacts == ("data.data_hash",)
     assert not any("data_hash ausente" in caveat for caveat in lineage.determinism_caveats)
+
+
+# --- Study reutilizado: el lineage sólo toma lo de su corrida (decisión de Cami del 2026-09-28) ---
+
+
+def _study_con_datos_publicados(tmp_path: Path) -> tuple[Study, str]:
+    """Primera corrida: el paso de datos corre y publica su ``data_hash`` en el store."""
+    parquet = tmp_path / "raw.parquet"
+    _write_parquet(parquet)
+    study = Study(BayesRiskConfig(data=_data_config(source=str(parquet))))
+    study.run()
+    digest = study.lineage_bundle().data_hash
+    assert digest is not None and study.artifacts.get("data", "data_hash") == digest
+    return study, digest
+
+
+@pytest.mark.parametrize(
+    "steps",
+    [
+        pytest.param(["no_existe"], id="la-segunda-falla-al-resolver"),
+        pytest.param([], id="la-segunda-no-corre-datos"),
+    ],
+)
+def test_un_study_reutilizado_no_hereda_el_data_hash_de_la_corrida_anterior(
+    tmp_path: Path, steps: list[str]
+) -> None:
+    """Revisión de Codex del parche 2.0.1: la segunda corrida se atribuía los datos de la primera,
+    en memoria y en el ``lineage.json`` de ``save()``. Ahora queda vacío y declarado, y el store no
+    se toca."""
+    study, digest = _study_con_datos_publicados(tmp_path)
+
+    if steps:
+        with pytest.raises(BayesRiskError):
+            study.run(steps=steps)
+        assert study.run_context.status == "failed"
+    else:
+        study.run(steps=steps)
+        assert study.run_context.status == "done"
+
+    lineage = study.lineage_bundle()
+    assert lineage.data_hash is None
+    assert any("data_hash ausente" in caveat for caveat in lineage.determinism_caveats)
+    assert study.artifacts.get("data", "data_hash") == digest, "el Study conserva sus artefactos"
+
+    guardado = json.loads(
+        (study.save(tmp_path / "estudio") / "lineage.json").read_text(encoding="utf-8")
+    )
+    assert guardado["data_hash"] is None
 
 
 def test_input_frame_opcional_se_consume_y_no_se_declara_inerte() -> None:

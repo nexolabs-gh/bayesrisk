@@ -295,7 +295,6 @@ class Study:
         self.run_context = RunContext()
         self._injected_artifacts: set[ArtifactKey] = set()
         self._inert_injected_artifacts: tuple[ArtifactKey, ...] = ()
-        self._resolved_step_names: frozenset[str] = frozenset()
 
     # --- Gobernanza (hooks hacia SDD-03; core recibe el sink ya compuesto, CT-4) --------------
 
@@ -412,10 +411,14 @@ class Study:
         # arriba produce»); se perdía entero, y aguas abajo la UI no podía ni persistir la corrida
         # —sin `run_id` no hay qué guardar— así que respondía un HTTP 500 opaco.
         resolucion_fallida = False
+        # El pipeline de ESTA corrida, o None si no llegó a resolverse: el lineage lo necesita para
+        # saber si el paso de datos va a correr ahora (decisión de Cami del 2026-09-28).
+        pasos_resueltos: list[Step] | None = None
         try:
             pasos = self._resolve_steps(nombres)
             self._validate_injected_artifacts(pasos, emit_warnings=True)
             self._validate_pipeline(pasos)
+            pasos_resueltos = pasos
         except Exception as exc:
             # step=None a propósito (D-ERR-11): no hay paso en curso porque el config es
             # inejecutable ANTES del primero, y eso le dice al lector dónde mirar.
@@ -444,7 +447,7 @@ class Study:
             # huella del entorno. Si la resolución ya había fallado, su causa es la que se reporta:
             # un segundo error no la tapa, y el lineage queda ausente.
             try:
-                self.run_context.lineage = self._build_lineage()
+                self.run_context.lineage = self._build_lineage(pasos_resueltos)
             except Exception as exc_lineage:
                 # Un Study reutilizado no conserva el lineage de su corrida anterior: esa evidencia
                 # no es de ésta (revisión adversarial del parche 2.0.1).
@@ -808,7 +811,6 @@ class Study:
 
         providers: dict[ArtifactKey, str] = {}
         required: set[ArtifactKey] = set()
-        self._resolved_step_names = frozenset(paso.name for paso in pasos)
         for paso in pasos:
             required.update(paso.requires)
             required.update(getattr(paso, "optional_requires", ()))
@@ -978,8 +980,12 @@ class Study:
         """Construye y emite un :class:`AuditEvent` por el sink interno (siempre seguro)."""
         self._audit.emit(AuditEvent(kind=kind, step=step, payload=payload, ts=datetime.now(UTC)))
 
-    def _build_lineage(self) -> LineageBundle:
-        """Ensambla el :class:`LineageBundle` de la corrida (git, config_hash, versiones, seed)."""
+    def _build_lineage(self, pasos: Sequence[Step] | None = None) -> LineageBundle:
+        """Ensambla el :class:`LineageBundle` de la corrida (git, config_hash, versiones, seed).
+
+        ``pasos`` es el pipeline resuelto de ESTA corrida, o ``None`` si la resolución falló (el
+        paso de datos, entonces, no va a correr).
+        """
         git_sha, git_dirty = _estado_git()
         caveats: list[str] = []
         if git_dirty:
@@ -997,15 +1003,21 @@ class Study:
                 "artefactos inyectados desde fuera de la corrida: "
                 f"{len(injected_artifacts)} clave(s) no reconstruibles desde config+datos"
             )
-        stored_data_hash = (
-            self.artifacts.get("data", "data_hash")
-            if self.artifacts.has("data", "data_hash")
-            else None
-        )
+        # El `data_hash` del lineage es el de ESTA corrida (decisión de Cami del 2026-09-28): lo
+        # completa el paso de datos al correr (`DataStep._update_lineage`) o, con `data` apagado,
+        # se adopta el inyectado por la puerta de artefactos (D-ART-8). El lineage se arma ANTES
+        # del primer paso, así que un `data_hash` que ya esté en el store y no se haya inyectado
+        # es de una corrida anterior del mismo Study: adoptarlo atribuía a ésta los datos de
+        # aquélla —p. ej. si la segunda corrida fallaba al resolver—. Queda vacío y declarado; el
+        # store no se toca (el Study conserva sus artefactos).
+        hay_hash_en_store = self.artifacts.has("data", "data_hash")
+        hash_inyectado = hay_hash_en_store and ("data", "data_hash") in self._injected_artifacts
+        data_hash = self.artifacts.get("data", "data_hash") if hash_inyectado else None
+        datos_corren_ahora = pasos is not None and any(paso.name == "data" for paso in pasos)
         if (
-            injected_artifacts
-            and "data" not in self._resolved_step_names
-            and stored_data_hash is None
+            not datos_corren_ahora
+            and data_hash is None
+            and (injected_artifacts or hay_hash_en_store)
         ):
             caveats.append("data_hash ausente: la corrida no ejecutó el paso de datos")
         from bayesrisk.core.build import build_uv_lock_hash, runtime_environment_hash
@@ -1013,7 +1025,7 @@ class Study:
         return LineageBundle(
             git_sha=git_sha,
             git_dirty=git_dirty,
-            data_hash=stored_data_hash,
+            data_hash=data_hash,
             config_hash=config_hash(self.config),
             root_seed=self.config.repro.seed,
             uv_lock_hash=build_uv_lock_hash(),
