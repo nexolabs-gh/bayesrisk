@@ -7,7 +7,7 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
-## [Sin publicar]
+## [2.1.0] — 2026-09-28
 
 ### Corregido
 
@@ -16,7 +16,7 @@ entradas anteriores conservan el nombre con el que se publicaron.
   cortes del config exactos: un umbral `0,025` ya no se lee `0,03`. Antes convivían cuatro
   convenciones en la misma pantalla —`6.000` y `6,000` eran el mismo número—. Aplica también a
   los gráficos, sus ejes y tooltips, la ficha del modelo y los montos de IFRS 9. La regla es la del
-  informe, con un espejo en el front atado a Python por 4.702 casos de prueba.
+  informe, con un espejo en el front atado a Python por 5.534 casos de prueba.
 - **El motivo de una exclusión se lee en español**, en la pantalla y en el informe: «IV 0,000029 <
   mínimo 0,02», «VIF 5,1235 > máximo 5,00», compuesto de la observación y el umbral originales, y
   escrito con los decimales que lo dejan del lado correcto del corte. El texto del motor
@@ -27,6 +27,15 @@ entradas anteriores conservan el nombre con el que se publicaron.
 - **Los tramos numéricos del análisis exploratorio se escriben con comparadores** (`> 0,5 y ≤ 1,25`)
   en la pantalla, la tabla y el gráfico del informe; un nivel categórico con forma de intervalo
   queda tal cual.
+- **Un `Study` reutilizado ya no se atribuye los datos de su corrida anterior.** Si un `Study` que
+  ya había corrido el paso de datos volvía a correr y esa segunda corrida fallaba al resolver el
+  pipeline —o no incluía `data`—, su lineage (y el `lineage.json` de `save()`) traía el
+  `data_hash` de la primera. Ahora el `data_hash` del lineage es sólo el de su corrida: el que
+  publicó su paso de datos o el que se inyectó para ella; si no hay, queda vacío con el aviso
+  «data_hash ausente». Un fallo del trail al arrancar ya no deja la corrida en «running» con el
+  lineage y el error de la anterior. El `Study` conserva sus artefactos como antes.
+- **La portada de la demo dice que la API estable está congelada bajo SemVer 2.x**, no 1.x (la 1.x
+  fue nikodym).
 
 ## [2.0.1] — 2026-09-28
 
