@@ -43,7 +43,7 @@ consultoría**: la consultoría vive encima, nunca dentro. Todo lo que sigue se 
 | C6 | **Benchmarks públicos reproducibles** | German credit, Lending Club, Home Credit y PAKDD contra scorecardpy, OptBinning y skorecard (y `scorecard` de R): AUC/Gini, tiempo y líneas hasta un scorecard documentado; notebooks públicos re-ejecutados por release | H10 (nuevo), desde H1 |
 | C7 | **Escala del banco real** | 1–5 M de filas y 100–300 variables en 4 CPU / 8 GB (H9 de SDD-30), con tiempos publicados | readiness W1+ |
 | C8 | **Documentación que enseña** | cada guía abre con el notebook mínimo; glosario; curso sobre los notebooks (Academia Bayes); **inglés como segunda lengua** para ser conocida en el mundo | H10 (nuevo) |
-| C9 | **Comunidad y gobernanza del proyecto** | CONTRIBUTING, plantillas de issues/PR, código de conducta, roadmap público (este), releases semestrales, **2.0 con API podada y estable**; adopción medida en la landing (descargas, instituciones con permiso) | H11 (nuevo) |
+| C9 | **Comunidad y gobernanza del proyecto** | CONTRIBUTING, plantillas de issues/PR, código de conducta, roadmap público (este), releases semestrales, **3.0 —la próxima mayor— con API podada y estable** (la 2.0.0 la consumió el renombre a bayesrisk sin retirar perillas; D-SIM, 2026-09-27); adopción medida en la landing (descargas, instituciones con permiso) | H11 (nuevo) |
 | C10 | **Norma local encima, nunca dentro** (D-JUR) | la guía «Aterrizar una norma local» con un segundo caso trabajado no chileno (Bolivia o Perú) sin motor nuevo; CMF como caso de referencia | transversal |
 
 ### Cómo leer este roadmap si eres el agente que programa
@@ -57,7 +57,7 @@ consultoría**: la consultoría vive encima, nunca dentro. Todo lo que sigue se 
 - **Lo que un validador pregunta primero va en el resumen de la etapa**, no en un anexo.
 - **Español en todo lo que se lee, inglés en identificadores, una sola fuente de rótulos.**
 - **Medir antes y después** (las cinco cifras de SDD-31 §5); un gate que nace verde no prueba nada.
-- **Aditivo en 1.x:** ningún resultado cambia con el mismo config; la poda espera al 2.0.
+- **Aditivo en 2.x:** ningún resultado cambia con el mismo config; la poda espera a la próxima mayor (3.0).
 - **Ningún hito arranca por estar aquí:** enmienda con §13, revisión de Codex y OK de Cami, siempre.
 - **Los módulos nuevos** (monitoreo, escala maestra, originación, crédito justo) nacen con SDD
   numerado, §13, notebook y capítulo de informe.
@@ -72,7 +72,7 @@ pantalla), **entrada mínima** igual a las decisiones institucionales, **default
 constantes**, campos **esenciales** visibles y el resto plegado en «Avanzado», **cada etapa habla**
 con un resumen legible en español, **parar y seguir** con decisiones humanas registradas, Excel por
 etapa **opcional**, un **notebook mínimo** por módulo ejecutado en CI, identificadores en inglés y
-lectura en español, MLflow opt-in, y **poda sin ruptura** (plegar y fijar en 1.x; retirar en 2.0).
+lectura en español, MLflow opt-in, y **poda sin ruptura** (plegar y fijar en 2.x; retirar en 3.0).
 La medición que lo motiva —572 campos en pantalla, un preset de ~380 líneas que toca 14 hojas, un
 `run()` mudo y un informe de 126 tablas, frente a un flujo de banco de 27 llamadas que hablaba en
 cada paso— está en su §0.3. Cada hito de abajo se mide con sus cinco cifras (SDD-31 §5).
@@ -81,7 +81,7 @@ cada paso— está en su §0.3. Cada hito de abajo se mide con sus cinco cifras 
 
 | Módulo | Motor | Pantalla | Informe | Forma de uso (SDD-31) |
 |---|---|---|---|---|
-| Scorecard F1 (eda, binning, selección, modelo, scorecard, calibración, desempeño, estabilidad, validación) | **Estable** (SemVer 1.x) | sí: 409 campos en 12 secciones | sí: 126 tablas | **no**: config completo o preset; `run()` mudo |
+| Scorecard F1 (eda, binning, selección, modelo, scorecard, calibración, desempeño, estabilidad, validación) | **Estable** (SemVer 2.x) | sí: 409 campos en 12 secciones | sí: 126 tablas | **no**: config completo o preset; `run()` mudo |
 | IFRS 9 / ECL (`survival` + `provisioning_ifrs9`) | Experimental | sí: 72 campos en 2 secciones más `data` | sí | no |
 | LGD modelada y provisión interna | Experimental | sí | sí | no |
 | Validación formal (cotejada contra el BCE) | Experimental | sí | sí | no |
@@ -106,9 +106,9 @@ cada paso— está en su §0.3. Cada hito de abajo se mide con sus cinco cifras 
 | **H6 · ML retador** | Bloque B de PARIDAD-1-1 bajo SDD-31 | enmienda | minor |
 | **H7 · Forward, survival, Markov y stress** | Bloque C de PARIDAD-1-1 bajo SDD-31 (empieza por los datos que hoy faltan) | enmienda | minor |
 | **H8 · Originación y reject inference** | Scorecard de admisión con reject inference (parcelling, fuzzy, reweighting) | SDD nuevo | minor |
-| **H10 · Benchmarks públicos y documentación bilingüe** (aprobado por Cami el 2026-09-18) | Notebooks públicos reproducibles sobre German credit, Lending Club, Home Credit y PAKDD contra scorecardpy, OptBinning y skorecard, re-ejecutados por release y publicados en docs (el primero, del scorecard, al cerrar H1); inglés como segunda lengua de `docs_site/` cuando el 2.0 esté podado | enmienda (docs, CI) | por release |
-| **H11 · Comunidad y 2.0** (aprobado por Cami el 2026-09-18) | CONTRIBUTING, plantillas de issues/PR, código de conducta, releases semestrales, métricas de adopción en la landing; el **2.0**: poda con censo de uso (SIMPLICIDAD-DEL-CONFIG), API guiada estable por módulo, una sola ruptura declarada | enmienda + SDD del 2.0 | 2.0 |
-| **Transversales** | SIMPLICIDAD-DEL-CONFIG (censo y poda, hacia 2.0); export SQL de la tarjeta y de los tramos para puntuar en el DWH; conectores (BigQuery/SQL) sobre la entrada `("data", "input_frame")`; INTEGRACION-EXTERNA #1/#2/#6/#7; lo residual de ENTREGABLES-LEGIBLES; el segundo caso de norma local (C10) | enmiendas | — |
+| **H10 · Benchmarks públicos y documentación bilingüe** (aprobado por Cami el 2026-09-18) | Notebooks públicos reproducibles sobre German credit, Lending Club, Home Credit y PAKDD contra scorecardpy, OptBinning y skorecard, re-ejecutados por release y publicados en docs (el primero, del scorecard, al cerrar H1); inglés como segunda lengua de `docs_site/` cuando el 3.0 esté podado | enmienda (docs, CI) | por release |
+| **H11 · Comunidad y 3.0** (aprobado por Cami el 2026-09-18 como «2.0»; tras el renombre, la próxima mayor es la 3.0) | CONTRIBUTING, plantillas de issues/PR, código de conducta, releases semestrales, métricas de adopción en la landing; el **3.0**: poda con censo de uso (SIMPLICIDAD-DEL-CONFIG), API guiada estable por módulo, una sola ruptura declarada | enmienda + SDD del 3.0 | 3.0 |
+| **Transversales** | SIMPLICIDAD-DEL-CONFIG (censo y poda, hacia 3.0); export SQL de la tarjeta y de los tramos para puntuar en el DWH; conectores (BigQuery/SQL) sobre la entrada `("data", "input_frame")`; INTEGRACION-EXTERNA #1/#2/#6/#7; lo residual de ENTREGABLES-LEGIBLES; el segundo caso de norma local (C10) | enmiendas | — |
 
 ### Matriz de alineación por módulo (para el agente que programa)
 
@@ -119,7 +119,7 @@ mejor del mundo». Ningún SDD se reescribe de oficio; su enmienda de simplicida
 |---|---|---|---|---|
 | `core`, `data`, `audit`, `governance`, `tracking` (01–04) | estables; trail, lineage, ficha; MLflow opt-in | entrada mínima e inferencias declaradas; decisiones humanas al trail; `track=` | C3 sostenido; C7 (escala) | H1 |
 | `eda` (27) | estable; en pantalla e informe | resumen de etapa | curvas de vintage y roll-rate para definir el target (C2) | H1; después |
-| `binning`, `selection`, `model`, `scorecard`, `calibration` (06–10) | estables, SemVer 1.x | resúmenes por etapa, decisiones humanas, IV por muestra y monotonía fuera de desarrollo como artefactos aparte, esenciales | benchmarks (C6); export SQL de la tarjeta (C2) | H1; H10 |
+| `binning`, `selection`, `model`, `scorecard`, `calibration` (06–10) | estables, SemVer 2.x | resúmenes por etapa, decisiones humanas, IV por muestra y monotonía fuera de desarrollo como artefactos aparte, esenciales | benchmarks (C6); export SQL de la tarjeta (C2) | H1; H10 |
 | `performance`, `stability` (11) | estables | resúmenes por etapa | historia por período → módulo de monitoreo (C2) | H1; H4 |
 | `validation` (22) | experimental, cotejada contra el BCE | resumen y esenciales | representatividad y bootstrap cuando tengan evidencia; «Validar un modelo existente» en ≤ 25 líneas | H4 |
 | `report` (26) | estable; 126 tablas en la demo | página ejecutiva = resumen final; Excel opcional; marca | capítulos nuevos por módulo (monitoreo, escala maestra, equidad) | H1 (C); cada hito |
@@ -133,7 +133,7 @@ mejor del mundo». Ningún SDD se reescribe de oficio; su enmienda de simplicida
 | **escala maestra y puntos de corte** (nuevo) | — | SDD nuevo con §13 | C2 | H5 |
 | **originación y reject inference** (nuevo) | — | SDD nuevo con §13 | C2 | H8 |
 | **crédito justo** (nuevo) | — | SDD nuevo con §13 | C4 | H9 |
-| packaging, CI, readiness (24, 25, 30) | 18 jobs; W0 PASS; W1 bloqueada por H9 | — | C5, C7, C9 (releases, 2.0) | sostenido; H11 |
+| packaging, CI, readiness (24, 25, 30) | 18 jobs; W0 PASS; W1 bloqueada por H9 | — | C5, C7, C9 (releases, 3.0) | sostenido; H11 |
 
 ### Qué falta para que Nikodym sea la librería de referencia en LatAm
 
@@ -151,13 +151,13 @@ referencia:
 - **No módulos, y pesan igual:** comunidad (issues, contribuciones, releases previsibles),
   benchmarks públicos reproducibles contra las alternativas (German credit, Lending Club, Home
   Credit), material de curso sobre el notebook mínimo (Academia Bayes), la estabilidad del API con
-  un 2.0 podado, y casos reales publicados con permiso.
+  un 3.0 podado, y casos reales publicados con permiso.
 
 ### Regla de secuencia
 
 **Orden de ejecución (decidido por Cami el 2026-09-18):** H1 → H2 → H3 → H4 → **H9** → H5 → H6 →
 H7 → H8; H10 corre por release desde que cierre H1 (el primer benchmark es el del scorecard); H11
-cierra la serie con el 2.0. Los números son identificadores estables, no el orden.
+cierra la serie con el 3.0 (la próxima mayor; la 2.0.0 fue el renombre). Los números son identificadores estables, no el orden.
 
 Un módulo a la vez, en ese orden; Cami puede reordenar. Nada arranca sin su enmienda
 medida, la revisión de Codex y el OK. Cada hito termina con el notebook mínimo en CI y sus cinco
@@ -176,7 +176,7 @@ El estado y el plan de esta sección eran la fuente vigente en esa fecha, no hoy
 
 | Capacidad | Estado | Límite en esa fecha |
 |---|---|---|
-| F0/F1 · núcleo y scorecard de comportamiento | **Estable** | Garantía SemVer 1.x para el pipeline F1 |
+| F0/F1 · núcleo y scorecard de comportamiento | **Estable** | Garantía SemVer 2.x para el pipeline F1 (la 1.x fue nikodym) |
 | F2 · ML/tuning/explain | Implementado, **experimental** | No sustituye la scorecard ni amplía SemVer F1 |
 | F3/F8 · CMF, método interno y orquestación | Implementado, **experimental** | Validación humana de matrices/haircuts pendiente |
 | F4 · IFRS 9/ECL | Implementado, **experimental** | Independiente del máximo B-1 chileno |

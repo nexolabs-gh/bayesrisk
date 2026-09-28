@@ -670,7 +670,7 @@ export function LandingLauncher({
                   Garantía
                 </span>
                 : <span className="text-foreground">estable</span> (contrato congelado bajo SemVer
-                1.x) o <span className="text-foreground">experimental</span> (el motor calcula y
+                2.x) o <span className="text-foreground">experimental</span> (el motor calcula y
                 está cubierto por tests, pero la firma puede cambiar dentro de la 2.x; no está
                 certificado ni es apto para producción por el solo hecho de existir).
               </p>
