@@ -688,25 +688,57 @@ def _point_lookup(
     scorecard: DataFrame,
 ) -> tuple[dict[tuple[str, float], float | int], list[dict[str, object]]]:
     """Construye lookup determinista ``(feature, woe) -> points`` con primer bin ganador."""
-    lookup: dict[tuple[str, float], float | int] = {}
+    primeras, duplicate_rows = _primeras_filas_por_woe(scorecard)
+    lookup = {clave: cast(float | int, row["points"]) for clave, row in primeras.items()}
+    return lookup, duplicate_rows
+
+
+def _primeras_filas_por_woe(
+    scorecard: DataFrame,
+) -> tuple[dict[tuple[str, float], dict[str, object]], list[dict[str, object]]]:
+    """La primera fila de puntos por ``(feature, woe)`` en orden de tabla, y las repetidas."""
+    primeras: dict[tuple[str, float], dict[str, object]] = {}
     duplicate_rows: list[dict[str, object]] = []
     for row in scorecard.to_dict(orient="records"):
         feature = str(row["feature"])
         woe = _normalize_float(float(row["woe"]))
         key = (feature, woe)
-        if key in lookup:
+        if key in primeras:
             duplicate_rows.append(
                 {
                     "feature": feature,
                     "woe": woe,
                     "bin_label": str(row["bin_label"]),
-                    "points_usados": lookup[key],
+                    "points_usados": primeras[key]["points"],
                     "points_descartados": cast(float | int, row["points"]),
                 }
             )
             continue
-        lookup[key] = cast(float | int, row["points"])
-    return lookup, duplicate_rows
+        primeras[key] = {str(campo): valor for campo, valor in row.items()}
+    return primeras, duplicate_rows
+
+
+def filas_de_referencia_no_vista(
+    scorecard: DataFrame, referencias: Mapping[str, Any]
+) -> dict[str, dict[str, object]]:
+    """Por variable de la tabla de puntos, la fila que recibe una categoría no vista (D-NOV-1).
+
+    ``referencias`` es ``unseen_reference_`` del binner: por variable categórica, su tramo de
+    referencia con el WoE exacto de la tabla. La fila es la que devuelve para ese WoE la búsqueda
+    de :meth:`PointsScaler.transform` —la primera con ese ``(feature, woe)``, con su ajuste manual
+    y su redondeo—: con ella el bundle congela la referencia y el resumen y el informe escriben su
+    línea, así que la corrida, el bundle y los documentos dan los mismos puntos (§1.1).
+    """
+    primeras, _ = _primeras_filas_por_woe(scorecard)
+    salida: dict[str, dict[str, object]] = {}
+    for feature in dict.fromkeys(str(valor) for valor in scorecard["feature"].tolist()):
+        referencia = referencias.get(feature)
+        if referencia is None:
+            continue
+        fila = primeras.get((feature, _normalize_float(float(referencia.woe))))
+        if fila is not None:
+            salida[feature] = fila
+    return salida
 
 
 def _validate_transform_columns(

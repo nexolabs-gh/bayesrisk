@@ -16,7 +16,7 @@ contaminar el núcleo liviano; las dependencias tabulares y de scoring se cargan
 from __future__ import annotations
 
 import importlib
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from importlib import metadata
 from typing import TYPE_CHECKING, Any, Final, Literal, TypeAlias, cast
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
 
-    from bayesrisk.binning.results import BinningCardSection, BinningResult
+    from bayesrisk.binning.results import BinningCardSection, BinningResult, UnseenReference
     from bayesrisk.binning.transformer import WoEBinner
     from bayesrisk.core.study import Study
     from bayesrisk.data.partition import PartitionResult
@@ -78,6 +78,15 @@ _OUT_OF_MODEL_PARTITION: Final = "fuera_de_modelo"
 #: Las muestras en que se cuentan las categorías no vistas (D-TTD-5), en el orden en que se leen.
 #: Desarrollo no está: por construcción, todo lo que trae lo vio el ajuste.
 _UNSEEN_SAMPLES: Final[tuple[str, ...]] = ("holdout", "oot", _OUT_OF_MODEL_PARTITION)
+#: Las columnas de ``("binning", "unseen_categories")``; ``tramo_asignado`` es aditiva (D-NOV-4): el
+#: tramo de referencia que recibe la fila, con su etiqueta del motor.
+_UNSEEN_COLUMNS: Final[tuple[str, ...]] = ("variable", "muestra", "filas", "tramo_asignado")
+_UNSEEN_DTYPES: Final[dict[str, str]] = {
+    "variable": "object",
+    "muestra": "object",
+    "filas": "int64",
+    "tramo_asignado": "object",
+}
 _MODEL_PARTITIONS: Final[frozenset[str]] = frozenset({"desarrollo", "holdout", "oot"})
 _AUTO_MONOTONIC_TRENDS: Final[frozenset[str]] = frozenset(
     {"auto", "auto_heuristic", "auto_asc_desc"}
@@ -239,9 +248,7 @@ class BinningStep(AuditableMixin):
                 },
                 pd=pd,
             ),
-            vacio=pd.DataFrame(columns=["variable", "muestra", "filas"]).astype(
-                {"variable": "object", "muestra": "object", "filas": "int64"}
-            ),
+            vacio=pd.DataFrame(columns=list(_UNSEEN_COLUMNS)).astype(_UNSEEN_DTYPES),
         )
         bordes = self._diagnostico_aislado(
             "bordes_de_tramo_no_publicados",
@@ -388,7 +395,9 @@ class BinningStep(AuditableMixin):
         self._log_monotonicity_overrides(feature_columns)
         self._log_monotonicity_auto_resolved(feature_columns, summary)
         self._log_summary_diagnostics(summary, pd)
-        self._log_unknown_categories(binner.unknown_categories_, binner.cat_unknown)
+        self._log_unknown_categories(
+            binner.unknown_categories_, getattr(binner, "unseen_reference_", {})
+        )
 
     def _log_skipped_variables(self, skipped: dict[str, str]) -> None:
         """Registra variables omitidas por casos borde o status del solver."""
@@ -500,22 +509,24 @@ class BinningStep(AuditableMixin):
         del pd
 
     def _log_unknown_categories(
-        self, unknown_categories: dict[str, int], cat_unknown: float | str | None = None
+        self,
+        unknown_categories: dict[str, int],
+        referencias: Mapping[str, UnseenReference] | None = None,
     ) -> None:
         """Registra categorías no vistas durante la transformación WoE, con su tratamiento real.
 
-        Con el default (``cat_unknown=None``) OptBinning asigna WoE 0 y el evento es el de siempre.
-        Con un valor declarado, el evento decía «neutral» aunque se aplicara ese valor: ahora dice
-        el valor (enmienda PUNTUAR-POBLACION-TTD, D-TTD-5, revisión adversarial, pasada 3).
+        Reciben el WoE de su tramo de referencia, que va en ``umbral`` (D-NOV-4); un binner
+        ajustado antes de D-NOV no trae referencias y el evento es el de entonces: WoE 0.
         """
         for variable, count in unknown_categories.items():
             if count <= 0:
                 continue
+            referencia = (referencias or {}).get(variable)
             self.log_decision(
                 regla="categoria_no_vista",
-                umbral=0 if cat_unknown is None else cat_unknown,
+                umbral=0 if referencia is None else referencia.reference_bin,
                 valor={"variable": variable, "conteo": count},
-                accion="asignar_woe_neutral" if cat_unknown is None else "asignar_woe_declarado",
+                accion="asignar_woe_neutral" if referencia is None else "asignar_woe_peor_tramo",
             )
 
     def metrics(self, study: Study) -> dict[str, float | None]:
@@ -912,17 +923,22 @@ def _categorias_no_vistas_por_muestra(
         for muestra, mascara in muestras.items()
         if bool(mascara.any())
     }
+    referencias = getattr(binner, "unseen_reference_", {})
     for variable in binner.process_columns_:
+        referencia = referencias.get(variable)
         for muestra in _UNSEEN_SAMPLES:
             n = int(conteos.get(muestra, {}).get(variable, 0))
             if n > 0:
-                filas.append({"variable": str(variable), "muestra": muestra, "filas": n})
-    return cast(
-        DataFrame,
-        pd.DataFrame(filas, columns=["variable", "muestra", "filas"]).astype(
-            {"variable": "object", "muestra": "object", "filas": "int64"}
-        ),
-    )
+                filas.append(
+                    {
+                        "variable": str(variable),
+                        "muestra": muestra,
+                        "filas": n,
+                        "tramo_asignado": None if referencia is None else referencia.reference_bin,
+                    }
+                )
+    tabla = pd.DataFrame(filas, columns=list(_UNSEEN_COLUMNS)).astype(_UNSEEN_DTYPES)
+    return cast(DataFrame, tabla)
 
 
 def _modelable_mask(frame: DataFrame, partition_col: str) -> Series:

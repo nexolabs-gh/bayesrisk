@@ -184,6 +184,15 @@ class ReportInputBundle(_ReportBaseModel):
     del JSON y del CSV— sigue siendo la etiqueta del motor. Sin él, el documento pinta las
     categorías unidas con «, » y los rangos como los escribió el motor.
     """
+    unseen_reference_bins: dict[str, int] = Field(default_factory=dict)
+    """Por categórica del modelo, el ``bin_index`` de la fila de puntos que recibe una categoría no
+    vista (D-NOV-1 §1.1).
+
+    Aditivo (default vacío): lo llena ``ReportBuilder.collect`` con la misma búsqueda del escalador
+    que congela el bundle. El renderer escribe, tras los tramos de esa variable en
+    ``scorecard.scorecard``, la línea «Categorías no vistas → como «<tramo>»»; el JSON y el CSV de
+    la tabla no cambian.
+    """
     eda_numeric_profiles: tuple[str, ...] = Field(default=())
     """Las columnas que el EDA perfiló como numéricas (D-PAN-4, CIFRAS-EN-PANTALLA).
 

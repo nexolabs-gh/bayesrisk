@@ -980,7 +980,7 @@ def test_special_codes_se_entregan_por_variable_sin_catalogo_global() -> None:
     ].tolist() == [2]
 
 
-def test_categoricas_agrupan_raros_y_unknown_transforma_neutral() -> None:
+def test_categoricas_agrupan_raros_y_unknown_recibe_su_peor_tramo() -> None:
     """``cat_cutoff`` agrupa niveles raros y una categoría no vista recibe WoE neutral 0."""
     index = _index(16)
     X = pd.DataFrame(
@@ -1003,7 +1003,15 @@ def test_categoricas_agrupan_raros_y_unknown_transforma_neutral() -> None:
     oot = pd.DataFrame({"segment": ["A", "Z", "B", "R1"]}, index=_index(4))
     transformed = binner.transform(oot)
 
-    assert transformed.loc["op-001", "segment__woe"] == 0.0
+    # D-NOV-1: la categoría no vista «Z» recibe el WoE de su peor tramo —el de menor WoE—, no 0.
+    regulares = table.loc[
+        (table.index.astype(str) != "Totals")
+        & ~table["Bin"].astype(str).isin({"Special", "Missing"})
+        & table["Count"].gt(0)
+    ]
+    peor = binner.unseen_reference_["segment"]
+    assert peor.woe == float(regulares["WoE"].min())
+    assert transformed.loc["op-001", "segment__woe"] == peor.woe
     assert binner.unknown_categories_ == {"segment": 1}
 
 

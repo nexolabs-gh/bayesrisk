@@ -24,7 +24,12 @@ import numpy as np
 import pandas as pd
 
 from bayesrisk.binning.results import IV_BAND_LABELS
-from bayesrisk.core.tramos import es_fila_de_totales, filas_que_casan, rotulos_por_fila
+from bayesrisk.core.tramos import (
+    es_fila_de_totales,
+    filas_que_casan,
+    rotulo_de_no_vistas,
+    rotulos_por_fila,
+)
 from bayesrisk.eda.card import FAILED_ANALYSIS_LABELS, failed_analysis_sentence
 from bayesrisk.eda.default_rate import (
     AXIS_LABELS,
@@ -655,25 +660,12 @@ _MUESTRA_NO_VISTA_LABELS: Final[dict[str, str]] = {
 def _alertas_categorias_no_vistas(study: Study) -> tuple[str, ...]:
     """Una alerta por variable con categorías que no existían en Desarrollo (D-TTD-5).
 
-    Dice el tratamiento **efectivo**: con ``binning.cat_unknown`` en su default, WoE 0 —el riesgo
-    promedio—; con un valor declarado, ese valor.
+    Dice el tratamiento **efectivo**: el riesgo de su peor tramo, nombrado (D-NOV-4). Una tabla
+    publicada antes de D-NOV no trae ``tramo_asignado``: esas filas recibieron WoE 0.
     """
     tabla = _artifact(study, "binning", "unseen_categories")
     if not isinstance(tabla, pd.DataFrame) or tabla.empty:
         return ()
-    binning = getattr(study.config, "binning", None)
-    declarado = (
-        binning.get("cat_unknown")
-        if isinstance(binning, Mapping)
-        else getattr(binning, "cat_unknown", None)
-    )
-    tratamiento = (
-        "WoE 0, el riesgo promedio"
-        if declarado is None
-        else f"el WoE declarado para categorías no vistas ({_cut(declarado)})"
-        if isinstance(declarado, int | float)
-        else f"el valor declarado para categorías no vistas ({declarado})"
-    )
     alertas: list[str] = []
     for variable, filas in tabla.groupby("variable", sort=False):
         total = int(filas["filas"].sum())
@@ -684,12 +676,96 @@ def _alertas_categorias_no_vistas(study: Study) -> tuple[str, ...]:
                 for _, fila in filas.iterrows()
             )
         )
+        tramo = filas["tramo_asignado"].iloc[0] if "tramo_asignado" in filas.columns else None
+        tratamiento = (
+            "WoE 0, el riesgo promedio"
+            if tramo is None or pd.isna(tramo)
+            else f"el riesgo de su peor tramo («{_tramo_legible(study, str(variable), tramo)}»)"
+        )
         alertas.append(
             f"«{variable}»: {_miles(total)} {_plural(total, 'operación', 'operaciones')} con una "
             f"categoría que no existía en Desarrollo ({detalle}); en esa variable "
             f"{_plural(total, 'recibe', 'reciben')} {tratamiento}"
         )
     return tuple(alertas)
+
+
+def _tramo_legible(study: Study, variable: str, etiqueta_del_motor: Any) -> str:
+    """El rótulo legible del tramo con esa etiqueta del motor, desde la tabla de la variable."""
+    etiqueta = str(etiqueta_del_motor)
+    tablas = _artifact(study, "binning", "tables")
+    tabla = tablas.get(variable) if isinstance(tablas, Mapping) else None
+    if not isinstance(tabla, pd.DataFrame) or "Bin" not in tabla.columns:
+        return etiqueta
+    regulares = [
+        not es_fila_de_totales(indice, valor)
+        for indice, valor in zip(tabla.index, tabla["Bin"], strict=True)
+    ]
+    filas = tabla.loc[regulares]
+    for posicion, valor in enumerate(filas["Bin"].tolist()):
+        if str(valor) == etiqueta:
+            rotulos = rotulos_por_fila(filas, _artifact(study, "binning", "bin_edges"), variable)
+            return str(rotulos[posicion])
+    return etiqueta
+
+
+#: Desde qué fracción de una muestra una variable categórica con valores que no existían en
+#: Desarrollo recibe además la alerta de cambio de dominio (D-NOV-3). Constante aprobada: medido,
+#: una categoría nueva de verdad queda muy por debajo (``programa`` 1,0 % de OOT en el SBA) y una
+#: predictora derivada de la fecha, muy por encima (``anio_fiscal`` 45,8 %).
+_UMBRAL_CAMBIO_DE_DOMINIO: Final = 0.10
+
+#: La muestra de una alerta de cambio de dominio, dicha tras «de las operaciones».
+_MUESTRA_DOMINIO_LABELS: Final[dict[str, str]] = {
+    "holdout": "de Holdout",
+    "oot": "fuera de tiempo (OOT)",
+    "fuera_de_modelo": "fuera del ajuste",
+}
+
+
+def _alertas_cambio_de_dominio(
+    study: Study, variables: Iterable[str] | None = None
+) -> tuple[str, ...]:
+    """Una alerta por (variable, muestra) con valores no vistos desde el 10 % de esa muestra.
+
+    Se suma a la de D-TTD-5, que sigue para toda variable con una sola fila no vista (D-NOV-3).
+    No excluye nada: excluir es una decisión humana con motivo. ``variables`` limita las alertas a
+    esas variables —la selección las repite sólo para las que entran—.
+    """
+    tabla = _artifact(study, "binning", "unseen_categories")
+    if not isinstance(tabla, pd.DataFrame) or tabla.empty:
+        return ()
+    tamanos = _tamanos_de_muestra(study)
+    permitidas = None if variables is None else set(variables)
+    alertas: list[str] = []
+    for _, fila in tabla.iterrows():
+        variable, muestra = str(fila["variable"]), str(fila["muestra"])
+        tamano = tamanos.get(muestra, 0)
+        if (permitidas is not None and variable not in permitidas) or tamano <= 0:
+            continue
+        fraccion = int(fila["filas"]) / tamano
+        if fraccion < _UMBRAL_CAMBIO_DE_DOMINIO:
+            continue
+        alertas.append(
+            f"«{variable}»: el {_pct(fraccion, decimals=1)} de las operaciones "
+            f"{_MUESTRA_DOMINIO_LABELS.get(muestra, muestra)} trae un valor que no existía en "
+            "Desarrollo. Si la variable se deriva de la fecha, no sirve para predecir fuera de "
+            "tiempo: considera excluirla (`exclude`)."
+        )
+    return tuple(alertas)
+
+
+def _tamanos_de_muestra(study: Study) -> dict[str, int]:
+    """Filas de Holdout, OOT y fuera del ajuste: las muestras en que se cuentan las no vistas."""
+    tamanos = {"fuera_de_modelo": _filas_fuera_en_ttd(study)}
+    frame = _artifact(study, "data", "frame")
+    splits = _artifact(study, "data", "splits")
+    particion = getattr(splits, "partition_col", "partition")
+    if isinstance(frame, pd.DataFrame) and particion in frame.columns:
+        conteos = frame[particion].astype("string").value_counts()
+        for muestra in ("holdout", "oot"):
+            tamanos[muestra] = int(conteos.get(muestra, 0))
+    return tamanos
 
 
 def _tabla_muestras(study: Study) -> pd.DataFrame | None:
@@ -976,6 +1052,7 @@ def _resumen_binning(study: Study, context: SummaryContext) -> StageSummary:
             )
         alerts.extend(_alertas_de_inversion(study))
         alerts.extend(_alertas_categorias_no_vistas(study))
+        alerts.extend(_alertas_cambio_de_dominio(study))
         alerts.extend(
             _alerta_fuera_del_ajuste(
                 _filas_fuera_en_ttd(study), _filas(study, "binning", "out_of_model_woe_frame")
@@ -1074,6 +1151,9 @@ def _resumen_selection(study: Study, context: SummaryContext) -> StageSummary:
         if inestables:
             alerts.append(f"Inestabilidad temporal: {', '.join(inestables)}")
         alerts.extend(_alertas_iv_por_muestra(study))
+        if isinstance(tabla, pd.DataFrame) and "included" in tabla.columns:
+            entran = tabla.loc[tabla["included"].astype(bool), "feature"].astype(str)
+            alerts.extend(_alertas_cambio_de_dominio(study, entran))
     if not lines:
         lines.append("La selección no publicó su resumen.")
     return StageSummary(
@@ -1326,6 +1406,7 @@ def _resumen_scorecard(study: Study, context: SummaryContext) -> StageSummary:
                         table["Variable"], table["Tramo"], posiciones, strict=True
                     )
                 ]
+                table = _con_lineas_no_vistas(study, tarjeta, table)
         alerts.extend(_overrides_sin_casar(study))
     if not lines:
         lines.append("La tarjeta no publicó su resumen.")
@@ -1410,6 +1491,47 @@ def _legibles(study: Study) -> dict[str, list[str]]:
         for variable, tabla in tablas.items()
         if isinstance(tabla, pd.DataFrame)
     }
+
+
+def _con_lineas_no_vistas(study: Study, tarjeta: pd.DataFrame, table: pd.DataFrame) -> pd.DataFrame:
+    """Tras los tramos de cada categórica del modelo, la línea de sus categorías no vistas.
+
+    «Categorías no vistas → como «<tramo>»», con el WoE y los puntos de la fila que les da la
+    búsqueda del escalador (D-NOV-1 §1.1). ``table`` es ``tarjeta`` con sus columnas públicas y el
+    mismo índice; es la tabla del resumen, del Excel y de la pantalla.
+    """
+    from bayesrisk.scorecard.scaler import filas_de_referencia_no_vista
+
+    proceso = _artifact(study, "binning", "process")
+    referencias = getattr(proceso, "unseen_reference_", None)
+    if not referencias or "bin_index" not in tarjeta.columns:
+        return table
+    filas = filas_de_referencia_no_vista(tarjeta, referencias)
+    if not filas:
+        return table
+    variables = [str(valor) for valor in tarjeta["feature"].tolist()]
+    posiciones = tarjeta["bin_index"].tolist()
+    publicas = [
+        {str(clave): valor for clave, valor in registro.items()}
+        for registro in table.to_dict(orient="records")
+    ]
+    registros: list[dict[str, Any]] = []
+    for posicion, registro in enumerate(publicas):
+        registros.append(registro)
+        variable = variables[posicion]
+        fila = filas.get(variable)
+        ultima = posicion + 1 == len(variables) or variables[posicion + 1] != variable
+        if fila is None or not ultima:
+            continue
+        propia = next(
+            i
+            for i, (v, b) in enumerate(zip(variables, posiciones, strict=True))
+            if v == variable and b == fila["bin_index"]
+        )
+        referencia = dict(publicas[propia])
+        referencia["Tramo"] = rotulo_de_no_vistas(str(referencia["Tramo"]))
+        registros.append(referencia)
+    return pd.DataFrame(registros, columns=table.columns)
 
 
 def _legible_en(legibles: list[str], posicion: Any, respaldo: str) -> str:

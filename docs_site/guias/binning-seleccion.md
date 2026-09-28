@@ -214,10 +214,15 @@ Los nombres y defaults salen directo de `bayesrisk.binning.config.BinningConfig`
 
 !!! note "Una categoría que no existía en Desarrollo"
     Si Holdout, fuera de tiempo o las operaciones fuera del ajuste traen una categoría que el ajuste
-    no vio —un año fiscal posterior a la frontera, un programa nuevo—, esa variable le asigna WoE 0,
-    el riesgo promedio. El resumen de «Tramos y WoE» lo avisa por variable y por muestra. Si la
+    no vio —un año fiscal posterior a la frontera, un programa nuevo—, esa variable le asigna el
+    riesgo de su **peor tramo**: el de mayor tasa de malos observada en Desarrollo, la misma regla
+    de los faltantes sin una clase. Un producto que el modelo nunca vio no se aprueba a ciegas con
+    el promedio. La fila recibe el WoE y los puntos de ese tramo, en la corrida y en el bundle
+    guardado, y la tabla de puntos lo dice con una línea «Categorías no vistas → como «tramo»». El
+    resumen de «Tramos y WoE» lo avisa por variable y por muestra; si además una muestra trae
+    valores nuevos en el 10 % o más de sus filas, avisa que la variable cambió de dominio. Si la
     variable es la fecha con otro nombre (un año o un trimestre), considera excluirla: fuera de
-    tiempo siempre traerá categorías nuevas.
+    tiempo siempre traerá categorías nuevas, y ninguna regla la arregla.
 
 ## Selección de variables
 

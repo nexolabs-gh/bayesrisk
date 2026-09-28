@@ -11975,12 +11975,12 @@
                   }
                 ],
                 "default": null,
-                "description": "En blanco asigna WoE 0 (neutral) a las categorías nunca vistas.",
+                "description": "Sólo admite el vacío: una categoría que no existía en el ajuste recibe el riesgo de su peor tramo.",
                 "title": "Valor para categoría no vista",
                 "ui_group": "Categóricas",
-                "ui_help": "WoE a usar cuando en producción aparece una categoría nunca vista en el ajuste. None asigna WoE neutral (0), tratándola como neutra respecto al riesgo.",
+                "ui_help": "Una categoría que no existía en el ajuste recibe el WoE de su peor tramo, en la corrida y en el bundle; no se configura.",
                 "ui_order": 2,
-                "ui_widget": "text_or_number"
+                "ui_widget": "hidden"
               },
               "categorical_columns": {
                 "column_role": "input",

@@ -10,7 +10,7 @@ aunque SDD-31 §8 ya prometía que «se puntúan, no se ajustan».
 - **D-TTD-3**: «Fuera del ajuste (TTD)» con su composición.
 - **D-TTD-4**: PSI de representatividad frente a Desarrollo, con los cortes efectivos.
 - **D-TTD-5**: las categorías que no existían en Desarrollo se cuentan por muestra y se dicen; el
-  evento del trail dice el ``cat_unknown`` efectivo.
+  evento del trail dice el tratamiento efectivo —desde D-NOV, el peor tramo—.
 
 Estos tests usan **OptBinning real**, como los de D-FAL: la cartera sintética tiene indeterminados
 repartidos en el tiempo y una categoría que sólo aparece después de la frontera OOT.
@@ -239,11 +239,12 @@ def test_paridad_de_la_calibracion_con_cada_metodo(
     )
 
 
-def test_paridad_con_el_bundle_y_el_desacuerdo_conocido_en_categorias_no_vistas(
+def test_paridad_con_el_bundle_tambien_en_categorias_no_vistas(
     _corrida: tuple[bayesrisk.Scorecard, pd.DataFrame],
 ) -> None:
-    """🔴 Test 3: donde el bundle puntúa, da lo mismo; donde no —una categoría no vista—, el
-    motor da el riesgo promedio y el bundle la rechaza (§7, defecto previo fijado a propósito)."""
+    """🔴 Test 3, invertido por D-NOV-1 (§6): el bundle puntúa todas las filas y da lo mismo que la
+    corrida, también las de una categoría no vista —antes el motor daba el riesgo promedio y el
+    bundle las rechazaba—, que llevan el aviso de su tramo de referencia."""
     sc, datos = _corrida
     st = sc.study
     fuera = _fuera(datos)
@@ -252,30 +253,25 @@ def test_paridad_con_el_bundle_y_el_desacuerdo_conocido_en_categorias_no_vistas(
     aplicado.index = fuera[aplicado["input_position"].to_numpy()]
     puntaje = st.artifacts.get("scorecard", "out_of_model_score")
     calibrada = st.artifacts.get("calibration", "out_of_model_calibrated_pd_frame")
-    puntuadas = aplicado.index[aplicado["scoring_status"].eq("scored")]
-    rechazadas = aplicado.index[~aplicado["scoring_status"].eq("scored")]
-    assert len(puntuadas) > 0
+    assert set(aplicado["scoring_status"]) == {"scored"}
     np.testing.assert_allclose(
-        aplicado.loc[puntuadas, "score"].to_numpy(dtype="float64"),
-        puntaje.loc[puntuadas, "score"].to_numpy(dtype="float64"),
+        aplicado["score"].to_numpy(dtype="float64"),
+        puntaje.loc[aplicado.index, "score"].to_numpy(dtype="float64"),
         atol=0,
     )
     np.testing.assert_allclose(
-        aplicado.loc[puntuadas, "pd_calibrated"].to_numpy(dtype="float64"),
-        calibrada.loc[puntuadas, "pd_calibrated"].to_numpy(dtype="float64"),
+        aplicado["pd_calibrated"].to_numpy(dtype="float64"),
+        calibrada.loc[aplicado.index, "pd_calibrated"].to_numpy(dtype="float64"),
         rtol=0,
         atol=1e-12,
     )
-    finales = st.artifacts.get("model", "final_features")
-    if "segmento" in finales:
-        assert set(datos.loc[rechazadas, "segmento"]) <= {"D"}
-        assert (
-            aplicado.loc[rechazadas, "not_scorable_reason"]
-            .astype(str)
-            .str.contains("categoria_no_observada_en_fit")
-            .all()
-        )
-        assert puntaje.loc[rechazadas, "score"].notna().all()
+    assert "segmento" in st.artifacts.get("model", "final_features")
+    nuevas = aplicado.index[datos.loc[aplicado.index, "segmento"].eq("D")]
+    assert len(nuevas) > 0
+    assert all(
+        "categoria_no_vista_como_referencia" in codigos
+        for codigos in aplicado.loc[nuevas, "warning_codes"]
+    )
 
 
 def test_con_ttd_sin_excluidos_no_se_puntua_ninguna_fila_nueva(
@@ -673,24 +669,28 @@ def test_las_categorias_no_vistas_se_cuentan_por_muestra_sin_tocar_lo_auditado(
         if d["valor"]["variable"] == "segmento"
     ]
     assert evento["valor"]["conteo"] == en_oot
-    assert evento["accion"] == "asignar_woe_neutral"
+    referencia = st.artifacts.get("binning", "process").unseen_reference_["segmento"]
+    assert (evento["accion"], evento["umbral"]) == (
+        "asignar_woe_peor_tramo",
+        referencia.reference_bin,
+    )
+    assert set(tabla.loc[tabla["variable"].eq("segmento"), "tramo_asignado"]) == {
+        referencia.reference_bin
+    }
     assert st.artifacts.get("binning", "process").unknown_categories_["segmento"] == en_oot
     alertas = "\n".join(sc.summary("binning").alerts)
     assert (
         f"«segmento»: {en_oot + en_fuera} operaciones con una categoría que no existía en "
         f"Desarrollo ({en_oot} en Fuera de tiempo (OOT) y {en_fuera} fuera del ajuste); en esa "
-        "variable reciben WoE 0, el riesgo promedio"
+        "variable reciben el riesgo de su peor tramo («C»)"
     ) in alertas
 
 
-def test_con_cat_unknown_declarado_el_trail_y_la_alerta_dicen_ese_valor() -> None:
-    """🔴 Test 10d, a nivel de unidad: el evento decía «neutral» aunque se declarara otro valor, y
-    la alerta dice el tratamiento efectivo.
-
-    De punta a punta no es alcanzable hoy: con un ``cat_unknown`` numérico la corrida muere en
-    ``transform_bins`` (OptBinning exige texto para la métrica de bins). Es un defecto previo,
-    registrado aparte en la enmienda; este test fija lo que D-TTD-5 promete sobre el registro.
-    """
+def test_un_binning_anterior_a_d_nov_se_sigue_diciendo_como_fue() -> None:
+    """🔴 Test 10d, rehecho por D-NOV-2: ``cat_unknown`` ya no admite un valor declarado —se
+    rechaza al validar, ``test_categorias_no_vistas.py``—, así que su evento y su alerta ya no
+    existen. Un binning ajustado antes de D-NOV —sin referencias ni ``tramo_asignado``— se dice
+    como fue: WoE 0, el riesgo promedio."""
     from types import SimpleNamespace
 
     from bayesrisk.binning.config import BinningConfig
@@ -701,10 +701,8 @@ def test_con_cat_unknown_declarado_el_trail_y_la_alerta_dicen_ese_valor() -> Non
     step = BinningStep(BinningConfig())
     sink = InMemoryAuditSink()
     step._audit = sink
-    step._log_unknown_categories({"segmento": 3, "otra": 0}, -0.5)
-    step._log_unknown_categories({"segmento": 2}, None)
-    declarado, neutral = (e.payload for e in sink.events if e.kind == "decision")
-    assert (declarado["accion"], declarado["umbral"]) == ("asignar_woe_declarado", -0.5)
+    step._log_unknown_categories({"segmento": 2, "otra": 0}, {})
+    (neutral,) = (e.payload for e in sink.events if e.kind == "decision")
     assert (neutral["accion"], neutral["umbral"]) == ("asignar_woe_neutral", 0)
 
     tabla = pd.DataFrame({"variable": ["segmento"], "muestra": ["oot"], "filas": [3]})
@@ -716,15 +714,9 @@ def test_con_cat_unknown_declarado_el_trail_y_la_alerta_dicen_ese_valor() -> Non
         def get(self, domain: str, key: str) -> Any:
             return tabla
 
-    for valor, esperado in (
-        (-0.5, "reciben el WoE declarado para categorías no vistas (-0,50)"),
-        (None, "reciben WoE 0, el riesgo promedio"),
-    ):
-        study = SimpleNamespace(
-            artifacts=_Almacen(), config=SimpleNamespace(binning=SimpleNamespace(cat_unknown=valor))
-        )
-        (alerta,) = _alertas_categorias_no_vistas(study)  # type: ignore[arg-type]
-        assert alerta == (
-            "«segmento»: 3 operaciones con una categoría que no existía en Desarrollo "
-            f"(3 en Fuera de tiempo (OOT)); en esa variable {esperado}"
-        )
+    study = SimpleNamespace(artifacts=_Almacen(), config=SimpleNamespace(binning=BinningConfig()))
+    (alerta,) = _alertas_categorias_no_vistas(study)  # type: ignore[arg-type]
+    assert alerta == (
+        "«segmento»: 3 operaciones con una categoría que no existía en Desarrollo "
+        "(3 en Fuera de tiempo (OOT)); en esa variable reciben WoE 0, el riesgo promedio"
+    )

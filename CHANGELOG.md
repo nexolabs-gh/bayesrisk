@@ -7,6 +7,42 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [Sin publicar]
+
+### Cambiado
+
+- **Una categoría que no existía en Desarrollo recibe el riesgo de su peor tramo, en la corrida y
+  en el bundle.** Antes la corrida le daba el riesgo promedio —en una cartera real, 65 puntos, los
+  de las filas vacías de faltantes— y el bundle la rechazaba (`not_scorable`), así que los dos
+  discrepaban. Ahora Holdout, fuera de tiempo, las operaciones fuera del ajuste y el bundle le dan
+  el WoE y los puntos del tramo regular de mayor tasa de malos observada de esa variable —la regla
+  que ya regía los faltantes sin una clase—, con su ajuste manual y su redondeo. La vista por tramos
+  la rotula con ese tramo, el trail registra `asignar_woe_peor_tramo` con el tramo, la tabla de
+  no vistas gana la columna `tramo_asignado` y la tabla de puntos del resumen, del Excel y del
+  informe gana, por variable categórica del modelo, la línea «Categorías no vistas → como
+  «tramo»». **Cambia números** sólo en corridas con categorías no vistas: en la muestra SBA de la
+  prueba real, el AUC fuera de tiempo pasa de 0,7865 a 0,7861 y el KS de 0,4849 a 0,4840. Sin
+  categorías no vistas —el preset y la demo— nada se mueve.
+- **Bundle en esquema 2.** Los bundles nuevos declaran `treatment_policy.unseen="reference_bin"` y
+  congelan en `unseen_reference`, por variable categórica del modelo, el tramo, su WoE y sus
+  puntos, validados al cargar contra su propia tabla de puntos. La fila con una categoría no vista
+  se puntúa con el aviso `categoria_no_vista_como_referencia`. **Un bundle de esquema 1 guardado
+  antes carga y se aplica igual que siempre**: sigue rechazando esa fila con
+  `categoria_no_observada_en_fit`. El lineage de `apply` declara el esquema del bundle cargado.
+  Una librería anterior no lee un bundle de esquema 2 («Schema o formato de bundle no soportado»).
+- **`binning.cat_unknown` sólo admite el vacío.** Otro valor nunca llegó a funcionar —la corrida
+  moría en «Tramos y WoE» con un error de OptBinning—; ahora se rechaza al validar el config, con un
+  mensaje que dice por qué, y el campo deja de mostrarse en la pantalla. Sigue en el config por
+  compatibilidad y se retira en la 3.0.
+
+### Añadido
+
+- **Aviso de cambio de dominio.** Cuando Holdout, fuera de tiempo o las operaciones fuera del
+  ajuste traen valores que no existían en Desarrollo en el 10 % o más de sus filas, el resumen de
+  «Tramos y WoE» —y el de la selección, si la variable entra— avisa que, si la variable se deriva
+  de la fecha, no sirve para predecir fuera de tiempo. No excluye nada: excluir es una decisión con
+  motivo. La alerta por variable con una sola fila no vista sigue como antes.
+
 ## [2.1.0] — 2026-09-28
 
 ### Corregido

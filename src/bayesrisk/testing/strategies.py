@@ -225,7 +225,8 @@ def _binning_config_strategy(st: Any) -> Any:
         metric_special=st.one_of(st.just("empirical"), st.floats(allow_nan=False)),
         metric_missing=st.one_of(st.just("empirical"), st.floats(allow_nan=False)),
         cat_cutoff=st.one_of(st.none(), st.floats(min_value=0.0, max_value=0.5, allow_nan=False)),
-        cat_unknown=st.one_of(st.none(), st.just("empirical"), st.floats(allow_nan=False)),
+        # D-NOV-2: el config sólo admite el vacío; samplear otro valor generaría configs inválidos.
+        cat_unknown=st.none(),
         split_digits=st.one_of(st.none(), st.integers(min_value=0, max_value=10)),
         output_suffix=st.sampled_from(["__woe", "_woe"]),
         keep_structural_columns=st.booleans(),

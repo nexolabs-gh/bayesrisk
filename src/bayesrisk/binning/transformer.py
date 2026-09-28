@@ -54,7 +54,7 @@ except ModuleNotFoundError as exc:
 if TYPE_CHECKING:
     import pandas as pd
 
-    from bayesrisk.binning.results import AssignedBin, RareCategoryRegrouping
+    from bayesrisk.binning.results import AssignedBin, RareCategoryRegrouping, UnseenReference
     from bayesrisk.core.audit import AuditSink
     from bayesrisk.data.special import MaskedFrame
 
@@ -353,6 +353,7 @@ class WoEBinner(TransformerMixin, BaseEstimator, BayesRiskTransformer):  # type:
             fitted_dtypes,
             special_state.codes,
         )
+        self.unseen_reference_ = _referencias_no_vistas(tables, self.category_levels_)
         self._special_mask_ = special_state.mask
         self._special_fill_values_ = special_state.fill_values
         return self
@@ -411,6 +412,11 @@ class WoEBinner(TransformerMixin, BaseEstimator, BayesRiskTransformer):  # type:
                         metric_missing=woe_por_bin.get("Missing", self.metric_missing),
                         check_input=True,
                     )
+            # D-NOV-1: una categoría que no existía en el ajuste recibe el WoE exacto de su tramo
+            # de referencia —el número de la tabla—, así que el escalador le da los puntos de ese
+            # tramo y el bundle, los mismos. OptBinning le daba el riesgo promedio.
+            for column, mascara in self._no_vistas(working).items():
+                transformed.loc[mascara, column] = self.unseen_reference_[column].woe
         except Exception as exc:
             raise BinningTransformError(f"No se pudo transformar a WoE: {exc}") from exc
 
@@ -467,6 +473,12 @@ class WoEBinner(TransformerMixin, BaseEstimator, BayesRiskTransformer):  # type:
                     metric_missing=0,
                     check_input=True,
                 )
+            # D-NOV-1: la fila no vista se rotula con su tramo de referencia (OptBinning la dejaba
+            # «unknown»), así que las tablas por tramo cuentan lo mismo que el WoE.
+            for column, mascara in self._no_vistas(working).items():
+                etiquetas = transformed[column].astype("object")
+                etiquetas[mascara] = self.unseen_reference_[column].reference_bin
+                transformed[column] = etiquetas
         except Exception as exc:
             raise BinningTransformError(
                 f"No se pudieron recuperar los bins congelados: {exc}"
@@ -483,6 +495,22 @@ class WoEBinner(TransformerMixin, BaseEstimator, BayesRiskTransformer):  # type:
                     f"La transformación de bins produjo nulos: columna='{column}'."
                 )
         return bins
+
+    def _no_vistas(self, working: DataFrame) -> dict[str, Any]:
+        """Por variable con referencia, la máscara de sus filas no vistas; sólo las que tienen.
+
+        Un binner ajustado antes de D-NOV no trae ``unseen_reference_`` y transforma como antes.
+        """
+        mascaras: dict[str, Any] = {}
+        for column in getattr(self, "unseen_reference_", {}):
+            mascara = _mascara_no_vista(
+                working[column],
+                self.category_levels_[column],
+                self.special_codes_.get(column, []),
+            ).to_numpy(dtype=bool)
+            if bool(mascara.any()):
+                mascaras[column] = mascara
+        return mascaras
 
     def fit_transform(
         self,
@@ -1418,10 +1446,10 @@ def _assign_classless_bins(
     if not degenerados or not regulares or any(sin_una_clase(i) for i in regulares):
         return table, frozenset()
 
-    woe_regulares = [(i, float(table["WoE"].iloc[i])) for i in regulares if counts[i] > 0]
-    woe_asignado = min(woe for _, woe in woe_regulares)
-    referencia = next(i for i, woe in woe_regulares if woe == woe_asignado)
-    tramo = str(table["Bin"].iloc[referencia])
+    peor = _peor_tramo_regular(table)
+    if peor is None:
+        return table, frozenset()
+    _, tramo, woe_asignado = peor
 
     patched = table.copy(deep=True)
     asignados: set[str] = set()
@@ -1452,6 +1480,52 @@ def _assign_classless_bins(
         )
         asignados.add(label)
     return patched, frozenset(asignados)
+
+
+def _peor_tramo_regular(table: DataFrame) -> tuple[int, str, float] | None:
+    """El tramo regular de mayor tasa de malos observada: posición, etiqueta del motor y WoE.
+
+    Es el criterio de D-FAL-1, que también fija la referencia de una categoría no vista (D-NOV-1):
+    entre las filas regulares con observaciones —ni ``Special``, ni ``Missing``, ni totales— la de
+    menor WoE; ante un empate, la primera, que es la que devuelve la búsqueda de puntos del
+    escalador. ``None`` si la tabla no tiene ninguna.
+    """
+    is_totals = table.index.astype(str) == "Totals"
+    labels = table["Bin"].tolist()
+    counts = [float(value) for value in table["Count"].tolist()]
+    woe_regulares = [
+        (i, float(table["WoE"].iloc[i]))
+        for i, label in enumerate(labels)
+        if not is_totals[i]
+        and not (isinstance(label, str) and label in _SPECIAL_BIN_LABELS)
+        and counts[i] > 0
+    ]
+    if not woe_regulares:
+        return None
+    woe = min(valor for _, valor in woe_regulares)
+    posicion = next(i for i, valor in woe_regulares if valor == woe)
+    return posicion, str(labels[posicion]), woe
+
+
+def _referencias_no_vistas(
+    tables: dict[str, DataFrame], category_levels: dict[str, set[object]]
+) -> dict[str, UnseenReference]:
+    """El tramo de referencia de cada variable categórica ajustada (D-NOV-1)."""
+    from bayesrisk.binning.results import UnseenReference
+
+    referencias: dict[str, UnseenReference] = {}
+    for column in category_levels:
+        peor = _peor_tramo_regular(tables[column])
+        if peor is not None:
+            referencias[column] = UnseenReference(
+                variable=column, reference_bin=peor[1], woe=peor[2]
+            )
+    return referencias
+
+
+def _mascara_no_vista(series: Series, known: set[object], special: list[object]) -> Series:
+    """Las filas con una categoría que no existía en el ajuste: ni vista, ni especial, ni vacía."""
+    return cast(Series, series.notna() & ~series.isin(known | set(special)))
 
 
 def _assigned_woe_by_column(estimator: WoEBinner) -> dict[str, dict[str, float]]:
@@ -1719,13 +1793,9 @@ def _count_unknown_categories(
         if column not in frame.columns:
             counts[column] = 0
             continue
-        series = frame[column].dropna()
-        if series.empty:
-            counts[column] = 0
-            continue
-        special = set(special_codes.get(column, []))
-        unknown_mask = ~series.isin(known | special)
-        counts[column] = int(unknown_mask.sum())
+        counts[column] = int(
+            _mascara_no_vista(frame[column], known, special_codes.get(column, [])).sum()
+        )
     return counts
 
 

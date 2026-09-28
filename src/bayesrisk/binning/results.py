@@ -146,6 +146,21 @@ class AssignedBin(BaseModel):
     reference_bin: str
 
 
+class UnseenReference(BaseModel):
+    """El tramo que recibe una categoría que no existía en el ajuste (D-NOV-1).
+
+    El tramo regular de mayor tasa de malos observada de la variable categórica —el criterio de
+    D-FAL-1—, con su etiqueta del motor y su WoE exacto de la tabla. Se fija al ajustar; Holdout,
+    OOT, fuera del ajuste y el bundle lo aplican igual.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    variable: str
+    reference_bin: str
+    woe: float
+
+
 class BinningCardSection(BaseModel):
     """Resumen compacto de ``binning`` para model card y reporte."""
 

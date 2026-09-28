@@ -51,7 +51,14 @@ __all__ = [
     "fit_scorecard_bundle",
 ]
 
-_BUNDLE_SCHEMA: Final = 1
+#: El esquema que se escribe. El 2 (D-NOV-1 §1.2) puntúa una categoría no vista con los puntos de
+#: su tramo de referencia, congelados en ``unseen_reference``; el 1 la rechaza. El lector acepta los
+#: dos y despacha por la política declarada: un bundle ya entregado no cambia su resultado.
+_BUNDLE_SCHEMA: Final = 2
+_BUNDLE_SCHEMAS_LEIDOS: Final = frozenset({1, 2})
+#: La política de categorías no vistas de cada esquema.
+_UNSEEN_POLICY: Final[dict[int, str]] = {1: "not_scorable", 2: "reference_bin"}
+_UNSEEN_REFERENCE_KEYS: Final = frozenset({"bin_index", "woe", "raw_points", "points"})
 _BUNDLE_FILES: Final = frozenset({"manifest.json", "bins.parquet"})
 _MAX_MANIFEST_BYTES: Final = 2 * 1024 * 1024
 _MAX_RULES_BYTES: Final = 256 * 1024 * 1024
@@ -124,6 +131,7 @@ class _PreparedFeatureRules:
     numeric_points: np.ndarray[Any, Any]
     numeric_bin_ids: np.ndarray[Any, Any]
     missing_rule: pd.Series[Any] | None
+    unseen_rule: pd.Series[Any] | None = None
 
 
 class FittedScorecardBundle:
@@ -147,10 +155,16 @@ class FittedScorecardBundle:
             )
         self._manifest = normalized
         self._rules = normalized_rules
+        referencias = normalized.get("unseen_reference", {})
         self._prepared_rules = {
             feature: _prepare_feature_rules(
                 normalized_rules.loc[normalized_rules["feature"].eq(feature)].copy(deep=False),
                 special_values=tuple(normalized["special_catalog"].get(feature, ())),
+                unseen_bin_id=(
+                    f"{feature}:{referencias[feature]['bin_index']}"
+                    if feature in referencias
+                    else None
+                ),
             )
             for feature in normalized["model"]["features"]
         }
@@ -226,6 +240,9 @@ class FittedScorecardBundle:
         input_schema, row_identity, treatment_policy, special_catalog = _inference_contracts(
             study, features
         )
+        unseen_reference = _unseen_reference_from_fitted(
+            binner=binner, features=features, rules=rules, scorecard=scorecard
+        )
         model = {
             "features": list(features),
             "woe_columns": list(woe_columns),
@@ -250,6 +267,7 @@ class FittedScorecardBundle:
             "rules_sha256": _rules_hash(rules),
             "files": {},
             "bundle_hash": "",
+            "unseen_reference": unseen_reference,
         }
         manifest["bundle_hash"] = _bundle_hash(manifest)
         return cls(manifest=manifest, rules=rules)
@@ -523,7 +541,9 @@ class FittedScorecardBundle:
             "git_sha": fit_lineage["git_sha"],
             "git_dirty": fit_lineage["git_dirty"],
             "root_seed": fit_lineage["root_seed"],
-            "bundle_schema_version": _BUNDLE_SCHEMA,
+            # El esquema del bundle CARGADO, no la constante del código: aplicar un bundle de
+            # esquema 1 dice esquema 1 (D-NOV-1 §1.2).
+            "bundle_schema_version": self._manifest["schema_version"],
             "bayesrisk_version": version,
             "uv_lock_hash": current_build_hash,
             "runtime_environment_hash": current_runtime_hash,
@@ -883,11 +903,50 @@ def _inference_contracts(
     treatment_policy = {
         "special_handling": str(binning_config.special_handling),
         "missing": "frozen_bin_or_not_scorable",
-        "unseen": "not_scorable",
+        "unseen": _UNSEEN_POLICY[_BUNDLE_SCHEMA],
         "outlier": "frozen_support_or_not_scorable",
         "non_finite": "declared_special_or_not_scorable",
     }
     return input_schema, row_identity, treatment_policy, special_catalog
+
+
+def _unseen_reference_from_fitted(
+    *, binner: Any, features: tuple[str, ...], rules: pd.DataFrame, scorecard: pd.DataFrame
+) -> dict[str, dict[str, Any]]:
+    """Congela, por variable categórica del modelo, la fila de puntos de su tramo de referencia.
+
+    La referencia es la que fijó el binning al ajustar (D-NOV-1) y la fila, la que devuelve para
+    su WoE la búsqueda del escalador —la primera con ese WoE, con su ajuste manual y su redondeo—:
+    la corrida y el bundle dan los mismos puntos a una categoría no vista (§1.1).
+    """
+    from bayesrisk.scorecard.scaler import filas_de_referencia_no_vista
+
+    categoricas = [
+        feature
+        for feature in features
+        if rules.loc[rules["feature"].eq(feature), "kind"].eq("categorical").any()
+    ]
+    referencias = getattr(binner, "unseen_reference_", None)
+    if categoricas and referencias is None:
+        raise ScorecardBundleError(
+            "El binning de este Study se ajustó sin la referencia de las categorías no vistas "
+            "(anterior a D-NOV): vuelve a correr el pipeline para construir el bundle."
+        )
+    filas = filas_de_referencia_no_vista(scorecard, referencias or {})
+    congeladas: dict[str, dict[str, Any]] = {}
+    for feature in categoricas:
+        fila = filas.get(feature)
+        if fila is None:
+            raise ScorecardBundleError(
+                f"No se pudo congelar el tramo de referencia de la categórica '{feature}'."
+            )
+        congeladas[feature] = {
+            "bin_index": int(cast(int, fila["bin_index"])),
+            "woe": float(cast(float, fila["woe"])),
+            "raw_points": float(cast(float, fila["raw_points"])),
+            "points": float(cast(float, fila["points"])),
+        }
+    return congeladas
 
 
 def _logical_dtype(dtype: Any) -> str:
@@ -1167,7 +1226,12 @@ def _apply_feature(
     special_handling: str,
     prepared: _PreparedFeatureRules | None = None,
 ) -> dict[str, np.ndarray[Any, Any]]:
-    """Resuelve valores únicos preservando estado, regla y puntos antes del rounding."""
+    """Resuelve valores únicos preservando estado, regla y puntos antes del rounding.
+
+    Una categoría no vista toma la regla de su tramo de referencia si el bundle la congeló
+    (esquema 2, D-NOV-1), con el aviso ``categoria_no_vista_como_referencia``; si no (esquema 1),
+    la fila no se puntúa.
+    """
     row_count = len(series.index)
     codes, uniques = pd.factorize(series, sort=False, use_na_sentinel=True)
     unique_count = len(uniques)
@@ -1186,6 +1250,7 @@ def _apply_feature(
     numeric = prepared.numeric
     numeric_uppers = prepared.numeric_uppers
     missing_rule = prepared.missing_rule
+    unseen_rule = prepared.unseen_rule
 
     def assign_rule(mask: np.ndarray[Any, Any], row: pd.Series[Any]) -> None:
         unique_woe[mask] = float(row["woe"])
@@ -1285,6 +1350,13 @@ def _apply_feature(
                     continue
             else:
                 matched = categorical.get(encoded)
+                if matched is None and unseen_rule is not None:
+                    unique_states[unique_position] = "unseen"
+                    unique_warnings[unique_position] = "categoria_no_vista_como_referencia"
+                    single = np.zeros(unique_count, dtype="bool")
+                    single[unique_position] = True
+                    assign_rule(single, unseen_rule)
+                    continue
                 if matched is None:
                     unique_states[unique_position] = "unseen"
                     unique_reasons[unique_position] = "categoria_no_observada_en_fit"
@@ -1339,8 +1411,12 @@ def _prepare_feature_rules(
     rules: pd.DataFrame,
     *,
     special_values: tuple[Mapping[str, Any], ...],
+    unseen_bin_id: str | None = None,
 ) -> _PreparedFeatureRules:
-    """Compila sólo invariantes del bundle; no conserva estado de una aplicación."""
+    """Compila sólo invariantes del bundle; no conserva estado de una aplicación.
+
+    ``unseen_bin_id`` es la regla del tramo de referencia de una categórica (esquema 2).
+    """
     special_rules: dict[tuple[str, Any], pd.Series[Any]] = {}
     for _, row in rules.loc[rules["kind"].eq("special")].iterrows():
         for value in json.loads(row["values_json"]):
@@ -1364,6 +1440,9 @@ def _prepare_feature_rules(
         numeric_points=numeric["points"].to_numpy(dtype="float64", copy=True),
         numeric_bin_ids=numeric["bin_id"].to_numpy(dtype="object", copy=True),
         missing_rule=None if missing_rows.empty else missing_rows.iloc[0],
+        unseen_rule=(
+            None if unseen_bin_id is None else rules.loc[rules["bin_id"].eq(unseen_bin_id)].iloc[0]
+        ),
     )
 
 
@@ -1670,9 +1749,51 @@ def _validate_rule_mapping(manifest: Mapping[str, Any], rules: pd.DataFrame) -> 
                 raise ScorecardBundleError(
                     f"'{feature}' declara special as_missing sin bin missing congelado."
                 )
+    if manifest["schema_version"] >= 2:
+        _validate_unseen_reference(manifest["unseen_reference"], rules, features)
+
+
+def _validate_unseen_reference(
+    referencias: Any, rules: pd.DataFrame, features: tuple[str, ...]
+) -> None:
+    """La referencia congelada de cada categórica casa con su propia regla de puntos (esquema 2).
+
+    Una por variable categórica del modelo, ni más ni menos, y su bin, WoE y puntos son los de una
+    regla categórica del mismo bundle: una referencia que no casa no carga.
+    """
+    categoricas = {
+        feature
+        for feature in features
+        if rules.loc[rules["feature"].eq(feature), "kind"].eq("categorical").any()
+    }
+    if not isinstance(referencias, dict) or set(referencias) != categoricas:
+        raise ScorecardBundleError(
+            "unseen_reference no declara una referencia por cada variable categórica del modelo."
+        )
+    for feature, referencia in referencias.items():
+        if not isinstance(referencia, dict) or set(referencia) != _UNSEEN_REFERENCE_KEYS:
+            raise ScorecardBundleError(f"unseen_reference de '{feature}' es inválido.")
+        indice = referencia["bin_index"]
+        if isinstance(indice, bool) or not isinstance(indice, int):
+            raise ScorecardBundleError(f"unseen_reference de '{feature}' es inválido.")
+        regla = rules.loc[rules["bin_id"].eq(f"{feature}:{indice}")]
+        if (
+            len(regla.index) != 1
+            or regla["feature"].iloc[0] != feature
+            or regla["kind"].iloc[0] != "categorical"
+            or any(
+                not _is_finite_number(referencia[campo])
+                or float(referencia[campo]) != float(regla[campo].iloc[0])
+                for campo in ("woe", "raw_points", "points")
+            )
+        ):
+            raise ScorecardBundleError(
+                f"unseen_reference de '{feature}' no casa con su tabla de puntos congelada."
+            )
 
 
 def _validate_inference_contracts(value: Mapping[str, Any], features: list[str]) -> None:
+    unseen_policy = _UNSEEN_POLICY[int(value["schema_version"])]
     schema = value.get("input_schema")
     if not isinstance(schema, dict) or set(schema) != {"columns", "extra_columns"}:
         raise ScorecardBundleError("Schema de input_schema inválido.")
@@ -1716,7 +1837,7 @@ def _validate_inference_contracts(value: Mapping[str, Any], features: list[str])
         or set(treatment) != treatment_keys
         or treatment["special_handling"] not in {"separate", "as_missing"}
         or treatment["missing"] != "frozen_bin_or_not_scorable"
-        or treatment["unseen"] != "not_scorable"
+        or treatment["unseen"] != unseen_policy
         or treatment["outlier"] != "frozen_support_or_not_scorable"
         or treatment["non_finite"] != "declared_special_or_not_scorable"
     ):
@@ -1749,13 +1870,20 @@ def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
         "files",
         "bundle_hash",
     }
+    schema = value.get("schema_version")
+    if (
+        isinstance(schema, bool)
+        or schema not in _BUNDLE_SCHEMAS_LEIDOS
+        or value.get("format") != "nikodym.scorecard.bundle"
+    ):
+        raise ScorecardBundleError("Schema o formato de bundle no soportado.")
+    if schema >= 2:
+        required = required | {"unseen_reference"}
     if set(value) != required:
         raise ScorecardBundleError(
             f"Claves de manifest inválidas: faltan={sorted(required - set(value))}, "
             f"sobran={sorted(set(value) - required)}."
         )
-    if value["schema_version"] != _BUNDLE_SCHEMA or value["format"] != "nikodym.scorecard.bundle":
-        raise ScorecardBundleError("Schema o formato de bundle no soportado.")
     for field in ("rules_sha256", "bundle_hash"):
         if not _is_sha256(value[field]):
             raise ScorecardBundleError(f"{field} no es un SHA-256 hexadecimal.")

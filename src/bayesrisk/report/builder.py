@@ -224,6 +224,8 @@ class ReportBuilder:
             summary=_run_summary(study, self.config),
             # D-CPY-3: los tramos con su rótulo legible, desde los bordes efectivos.
             bin_labels=_rotulos_de_tramos(study),
+            # D-NOV-1 §1.1: la fila de puntos que recibe una categoría no vista, por variable.
+            unseen_reference_bins=_referencias_no_vistas(study),
             # D-PAN-4: la procedencia de los tramos del EDA, declarada por el perfilador.
             eda_numeric_profiles=_perfiles_numericos(study),
         )
@@ -1066,6 +1068,28 @@ def _rotulos_de_tramos(study: Study) -> dict[str, list[str]]:
         str(variable): rotulos_por_fila(tabla, bordes, str(variable))
         for variable, tabla in tablas.items()
         if _is_dataframe_like(tabla)
+    }
+
+
+def _referencias_no_vistas(study: Study) -> dict[str, int]:
+    """Por categórica del modelo, el ``bin_index`` de la fila de puntos de su tramo de referencia.
+
+    La misma búsqueda del escalador con que el bundle congela la referencia (D-NOV-1 §1.1). Vacío
+    sin tabla de puntos o con un binning ajustado antes de D-NOV.
+    """
+    if not (
+        study.artifacts.has("scorecard", "scorecard") and study.artifacts.has("binning", "process")
+    ):
+        return {}
+    referencias = getattr(study.artifacts.get("binning", "process"), "unseen_reference_", None)
+    tarjeta = study.artifacts.get("scorecard", "scorecard")
+    if not referencias or not _is_dataframe_like(tarjeta):
+        return {}
+    from bayesrisk.scorecard.scaler import filas_de_referencia_no_vista
+
+    return {
+        variable: int(cast(int, fila["bin_index"]))
+        for variable, fila in filas_de_referencia_no_vista(tarjeta, referencias).items()
     }
 
 

@@ -26,6 +26,7 @@ __all__ = [
     "filas_que_casan",
     "formatear_borde",
     "rotulo_de_intervalo",
+    "rotulo_de_no_vistas",
     "rotulo_de_rango",
     "rotulo_de_tramo",
     "rotulos_por_fila",
@@ -120,6 +121,14 @@ def rotulo_de_tramo(valor: Any) -> str:
             return ", ".join(str(elemento) for elemento in elementos)
     texto = str(valor)
     return AUX_BIN_LABELS.get(texto, texto)
+
+
+def rotulo_de_no_vistas(tramo: str) -> str:
+    """La línea de una tabla de puntos para las categorías que no existían en el ajuste (D-NOV-1).
+
+    ``tramo`` es el rótulo legible del tramo de referencia, cuyos puntos reciben.
+    """
+    return f"Categorías no vistas → como «{tramo}»"
 
 
 def es_fila_de_totales(indice: Any, valor: Any) -> bool:

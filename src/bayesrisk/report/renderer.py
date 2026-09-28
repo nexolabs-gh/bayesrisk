@@ -743,6 +743,7 @@ def _tables_for_section(
             max_rows=max_visible_rows(key, max_rows),
             internal_grouping=internal_grouping,
             bin_labels=bundle.bin_labels,
+            lineas_no_vistas=bundle.unseen_reference_bins,
             umbrales_de_seleccion=_umbrales_de_seleccion(bundle),
             eda_numericas=frozenset(bundle.eda_numeric_profiles),
         )
@@ -969,6 +970,50 @@ def _rotulos_de_tramo(
     return records
 
 
+#: La tabla de puntos del informe, que gana la línea de las categorías no vistas (D-NOV-1 §1.1).
+_SCORECARD_TABLE: Final = "scorecard.scorecard"
+
+
+def _con_lineas_no_vistas(
+    records: list[Mapping[Any, Any]], lineas: Mapping[str, int]
+) -> list[Mapping[Any, Any]]:
+    """Tras los tramos de cada categórica del modelo, la línea de sus categorías no vistas.
+
+    Copia la fila de su tramo de referencia —``lineas`` da su ``bin_index``— con el tramo
+    «Categorías no vistas → como «<tramo>»». Sólo es vista: el JSON y el CSV de la tabla no la
+    traen. Filas ya con su rótulo legible (D-CPY-3).
+    """
+    if not lineas:
+        return records
+    from bayesrisk.core.tramos import rotulo_de_no_vistas
+
+    salida: list[Mapping[Any, Any]] = []
+    for posicion, record in enumerate(records):
+        salida.append(record)
+        variable = str(record.get("feature"))
+        siguiente = records[posicion + 1].get("feature") if posicion + 1 < len(records) else None
+        if variable not in lineas or str(siguiente) == variable:
+            continue
+        referencia = next(
+            (
+                fila
+                for fila in records
+                if str(fila.get("feature")) == variable
+                and fila.get("bin_index") == lineas[variable]
+            ),
+            None,
+        )
+        if referencia is not None:
+            salida.append(
+                {
+                    **referencia,
+                    "bin_index": None,
+                    "bin_label": rotulo_de_no_vistas(str(referencia.get("bin_label"))),
+                }
+            )
+    return salida
+
+
 def _umbrales_de_seleccion(bundle: ReportInputBundle) -> Mapping[str, Any]:
     """Los ``thresholds`` efectivos de la selección, desde su card; vacío sin card (D-PAN-4)."""
     card = bundle.cards.get("selection")
@@ -1054,6 +1099,7 @@ def _table_view(
     max_rows: int,
     internal_grouping: str = "",
     bin_labels: Mapping[str, list[str]] | None = None,
+    lineas_no_vistas: Mapping[str, int] | None = None,
     umbrales_de_seleccion: Mapping[str, Any] | None = None,
     eda_numericas: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
@@ -1063,7 +1109,11 @@ def _table_view(
         )
     audit_only = _audit_only_columns(key)
     columns = tuple(c for c in table.columns if str(c) not in audit_only)
-    total_rows = len(table.index)
+    lineas = dict(lineas_no_vistas or {}) if key == _SCORECARD_TABLE else {}
+    if lineas:
+        presentes = {str(valor) for valor in table["feature"].tolist()}
+        lineas = {variable: indice for variable, indice in lineas.items() if variable in presentes}
+    total_rows = len(table.index) + len(lineas)
     labels_by_column = _public_labels_by_table().get(key, {})
     # Se recorta ANTES de formatear: la tasa por una cohorte casi única trae una fila por
     # operación, y formatear el millón de celdas para mostrar doscientas costaba 5,9 s medidos
@@ -1076,8 +1126,11 @@ def _table_view(
         }
         for record in _textos_de_auditoria(
             key,
-            _rotulos_de_tramo(
-                key, [_public_record(key, fila) for fila in records], bin_labels or {}
+            _con_lineas_no_vistas(
+                _rotulos_de_tramo(
+                    key, [_public_record(key, fila) for fila in records], bin_labels or {}
+                ),
+                lineas,
             ),
             umbrales_de_seleccion or {},
             eda_numericas,

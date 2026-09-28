@@ -47,7 +47,10 @@ TOPE_CONCEPTOS: Final = 5
 #: `binning.variable_overrides[].user_splits` y `[].user_splits_fixed` (§8-9 (a), Cami 2026-09-20;
 #: cuatro nodos, porque cada lista cuenta su fila),
 #: la única excepción al presupuesto cero —una decisión humana del flujo del banco, `merge_bins`/
-#: `set_bins`, que no existía en ninguna puerta—; ambas plegadas en «Avanzado».
+#: `set_bins`, que no existía en ninguna puerta—; ambas plegadas en «Avanzado». 411 el
+#: 2026-09-28 con D-NOV-2 (CATEGORIAS-NO-VISTAS): `binning.cat_unknown` sale de la pantalla
+#: (`hidden`) porque sólo admite el vacío; es un campo, pero el formulario lo pintaba como dos
+#: nodos —número o texto—.
 SECCIONES_DEL_SCORECARD: Final[tuple[str, ...]] = (
     "data",
     "eda",
@@ -62,7 +65,7 @@ SECCIONES_DEL_SCORECARD: Final[tuple[str, ...]] = (
     "report",
     "governance",
 )
-PERILLAS_DE_LAS_DOCE_SECCIONES: Final = 413
+PERILLAS_DE_LAS_DOCE_SECCIONES: Final = 411
 
 #: Cifra 4: segundos hasta el primer resumen (el de «Datos y muestras») con el dataset del
 #: paquete. Medido el 2026-09-19 en el entorno de referencia: 1,0 s; la corrida completa, 10,2 s.

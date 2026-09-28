@@ -577,13 +577,16 @@ class BinningConfig(BayesRiskBaseConfig):
     cat_unknown: float | str | None = Field(
         default=None,
         title="Valor para categoría no vista",
-        description="En blanco asigna WoE 0 (neutral) a las categorías nunca vistas.",
+        description=(
+            "Sólo admite el vacío: una categoría que no existía en el ajuste recibe el riesgo de "
+            "su peor tramo."
+        ),
         json_schema_extra={
-            "ui_widget": "text_or_number",
+            "ui_widget": "hidden",
             "ui_group": "Categóricas",
             "ui_order": 2,
-            "ui_help": "WoE a usar cuando en producción aparece una categoría nunca vista en el "
-            "ajuste. None asigna WoE neutral (0), tratándola como neutra respecto al riesgo.",
+            "ui_help": "Una categoría que no existía en el ajuste recibe el WoE de su peor tramo, "
+            "en la corrida y en el bundle; no se configura.",
         },
     )
     split_digits: int | None = Field(
@@ -683,6 +686,25 @@ class BinningConfig(BayesRiskBaseConfig):
                 # usuario en vez de dejarle un mensaje sin control. La ruta va absoluta desde la
                 # raíz del config, y un gate exige que resuelva contra `BayesRiskConfig`.
                 loc=(*_LOC_SECCION, "solver"),
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _check_cat_unknown_vacio(self) -> Self:
+        """``cat_unknown`` sólo admite el vacío (D-NOV-2).
+
+        Una categoría que no existía en el ajuste recibe el WoE de su peor tramo, en la corrida y
+        en el bundle (D-NOV-1): la regla es del motor. Otro valor nunca funcionó —un número moría
+        en la vista por tramos y un texto en la transformación a WoE, con un error de OptBinning y
+        después de cargar los datos—; ahora se rechaza aquí, antes de pagar la corrida. El campo
+        sigue en el schema porque el config es API estable en 2.x; se retira en la 3.0.
+        """
+        if self.cat_unknown is not None:
+            raise ConfigError(
+                "El valor para una categoría no vista no se configura: una categoría que no "
+                "existía en el ajuste recibe el riesgo de su peor tramo, en la corrida y en el "
+                "bundle. Deja el campo vacío.",
+                loc=(*_LOC_SECCION, "cat_unknown"),
             )
         return self
 

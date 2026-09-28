@@ -6,7 +6,7 @@
 | **Decisiones** | **D-NOV-1** (la regla), **D-NOV-2** (`binning.cat_unknown`), **D-NOV-3** (el aviso de una predictora que cambia de dominio), **D-NOV-4** (qué dicen las superficies) |
 | **Módulos** | `bayesrisk.binning` (`transformer`, `step`, `config`), `bayesrisk.scorecard` (`bundle`, `scaler`), `bayesrisk.guided` (`summaries`) |
 | **Fase** | F1 (pipeline estable, serie 2.x) |
-| **Estado** | **APROBADA por Cami el 2026-09-28** (S24, interactivo, con la recomendación de los tres puntos de §5): regla del **peor tramo** (5.1 a), `cat_unknown` **sólo vacío** con rechazo al validar y retiro en 3.0 (5.2 a), **alerta de cambio de dominio desde el 10 %** sin excluir sola (5.3 a). Tres pasadas de Codex (tope, §8). Sin programar |
+| **Estado** | **APROBADA por Cami el 2026-09-28** (S24, interactivo, con la recomendación de los tres puntos de §5): regla del **peor tramo** (5.1 a), `cat_unknown` **sólo vacío** con rechazo al validar y retiro en 3.0 (5.2 a), **alerta de cambio de dominio desde el 10 %** sin excluir sola (5.3 a). Tres pasadas de Codex (tope, §8). **Implementada el 2026-09-28 (S25)**; lo que el código precisó, en §9 |
 | **Depende de** | D-TTD-5 (el conteo por muestra ya existe), D-FAL-1 (el precedente de la regla conservadora), D-RAR (categorías raras), SDD-31 |
 | **Release** | **Cambia números** de corridas que hoy terminan —las que tienen categorías no vistas en Holdout, OOT o fuera del ajuste— y el resultado del bundle en esas filas ⇒ en 2.x exige la decisión explícita de Cami; minor con cambio declarado en el CHANGELOG |
 | **Autor / Fecha** | Claude Code (writer) / 2026-09-28 |
@@ -223,3 +223,43 @@ contractual no se programa: se eleva.
 | 1 | (high) cambiar `apply` alteraría bundles ya guardados; (high) el menor WoE no siempre es conservador con un signo invertido; (high) sin regla para overrides la corrida y el bundle divergen; (medium) el umbral suprimiría la alerta ya aprobada de D-TTD-5 | Esquema 2 con lector de 1 y 2 (§1.2); referencia por **puntos publicados** (§1); referencia congelada con herencia de override y redondeo (§1.1); la alerta de D-TTD-5 sigue y el umbral suma una segunda (§3); tests nuevos (§6) |
 | 2 | (high) la referencia por puntos se decidía después de que el modelo ya calculó la PD de Holdout/OOT; (high) el WoE no identifica la fila de puntos si hay WoE duplicados con override; (medium) el lineage de un bundle de esquema 1 declararía esquema 2 | La referencia vuelve al criterio de D-FAL-1 (menor WoE, fijado al transformar) con el límite del signo declarado como allí (§1); el escalador congela la fila que su propia búsqueda resuelve, y `bin_no_visto` no cambia (§1.1); el lineage toma el esquema del bundle cargado (§1.2); tests (§6) |
 | 3 (tope) | (medium) la alternativa (b) calculaba los puntos del bundle por fórmula y podía divergir de la corrida | (b) congela la misma fila que resuelve el escalador (§1). La opción recomendada (a) pasó la pasada sin hallazgos. Revisión cerrada en el tope |
+
+## 9. Lo que el código precisó (S25, 2026-09-28)
+
+Implementada según §1–§4 con la opción (a) de cada punto. Precisiones del código, ninguna
+contractual:
+
+1. **Una sola regla para el tramo de referencia.** `binning.transformer._peor_tramo_regular` —fila
+   regular con observaciones, sin `Special`/`Missing` ni totales, menor WoE, empate → primera— la
+   usan D-FAL-1 (sin cambio de comportamiento) y D-NOV-1. Se fija al ajustar en
+   `WoEBinner.unseen_reference_` (`UnseenReference`: variable, etiqueta del motor, WoE de la
+   tabla), por variable categórica.
+2. **Qué fila es «no vista»** es la misma máscara que ya contaba D-TTD-5 (`_mascara_no_vista`): ni
+   vista en el ajuste, ni especial declarado, ni vacía. `transform` le pone el WoE exacto de la
+   referencia y `transform_bins`, su etiqueta del motor —la del `bin_frame`, que así cuenta lo mismo
+   que el WoE en la selección y la estabilidad—. Un binner ajustado antes de D-NOV transforma como
+   antes.
+3. **Una sola búsqueda de puntos.** `scorecard.scaler.filas_de_referencia_no_vista` es la regla de
+   `PointsScaler.transform` —primera fila por `(feature, woe)`— y la usan el bundle (congela),
+   el resumen (línea de la tabla de puntos, que es la del Excel y la pantalla) y el informe.
+4. **Bundle esquema 2.** `unseen_reference` es una clave de primer nivel del manifiesto —sólo en
+   esquema 2— con `bin_index`, `woe`, `raw_points` y `points` por variable categórica del modelo.
+   Al cargar se exige una por categórica, ni más ni menos, y que casen exactos con la regla
+   categórica `feature:bin_index` del mismo bundle. Construir un bundle desde un `Study` cuyo
+   binning se ajustó antes de D-NOV falla con un mensaje que pide volver a correr: congelar una
+   referencia que la corrida no usó volvería a separar corrida y bundle.
+5. **La línea del informe es sólo vista**: la tabla `scorecard.scorecard` de `results.json` y del
+   CSV no cambia; el campo aditivo `ReportInputBundle.unseen_reference_bins` da el `bin_index`.
+6. **Denominadores del aviso de dominio**: Holdout y OOT, sus filas en `data.frame`; fuera del
+   ajuste, las filas fuera del ajuste que la TTD incluye —las mismas poblaciones en que se cuentan
+   las no vistas—. La selección repite el aviso para las variables con `included` en su tabla.
+7. **`cat_unknown`** queda con `ui_widget="hidden"` y la estrategia de Hypothesis sólo genera el
+   vacío.
+
+**Medido** (YAML SBA de Cami en un temporal, `config_hash` `08cf3076…` sin cambio): AUC OOT
+0,786496 → **0,78612**, KS 0,484854 → **0,483961**, Gini 0,572992 → 0,57224; Holdout AUC 0,864395
+→ 0,86438 (una fila de `estado_del_proyecto`); peor PSI 0,1612 → 0,1624. Las 58 filas OOT con
+«Rural Loan Initiative» reciben **58** puntos («Community Express») en la corrida y en el bundle
+—diferencia de puntaje 0—; antes, 65 y rechazo. Preset F1: `config_hash` `1063d6cf…` intacto y
+proyección canónica idéntica salvo el esquema (vacío) de `("binning", "unseen_categories")`, que gana
+la columna `tramo_asignado`; su modelo no tiene categóricas, así que su informe no gana la línea.

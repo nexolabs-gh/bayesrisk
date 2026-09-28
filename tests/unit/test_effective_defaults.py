@@ -110,7 +110,11 @@ from bayesrisk.ui.routes import schema_payload
 #: nodos y no dos: cada campo de lista cuenta su fila (``user_splits[]``, ``user_splits_fixed[]``),
 #: como ``validation.families[]``. Descriptores 1076 → 1078 (los dos campos, una vez en ``$defs``)
 #: y hojas resueltas 455 → 459.
-HOJAS_DEL_FORMULARIO = 576
+#:
+#: 576 → 574 el 2026-09-28 con D-NOV-2 (CATEGORIAS-NO-VISTAS): ``binning.cat_unknown`` pasa a
+#: ``hidden`` —sólo admite el vacío y se rechaza otro valor al validar—. Un campo, dos nodos: el
+#: formulario lo pintaba como número o texto. Hojas resueltas 459 → 458.
+HOJAS_DEL_FORMULARIO = 574
 
 #: Hojas que el barrido de PARIDAD contra el catálogo de defaults efectivos resuelve.
 #:
@@ -143,7 +147,8 @@ HOJAS_DEL_FORMULARIO = 576
 #: 454 → 455 el 2026-09-15 con D-VAL-16, por el mismo nodo ``validation.stability.
 #: consume_stability`` del golden de arriba: un ``bool`` con default ``True``, sin unión
 #: discriminada, resuelve con default efectivo.
-HOJAS_CON_DEFAULT_EFECTIVO = 459
+#: 459 → 458 el 2026-09-28 con D-NOV-2: ``binning.cat_unknown`` sale del formulario (``hidden``).
+HOJAS_CON_DEFAULT_EFECTIVO = 458
 
 #: Descriptores de hoja que el barrido de paridad compara, en las DOS coordenadas (`$defs` y
 #: `sections`). Segundo golden, por la misma razón que el de 394: un barrido que recorra menos
