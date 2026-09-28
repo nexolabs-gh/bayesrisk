@@ -1354,7 +1354,8 @@ def _resumen_calibration(study: Study, context: SummaryContext) -> StageSummary:
             f"PD media en Desarrollo: cruda {_pct(card.get('raw_mean_pd_dev'))} → calibrada "
             f"{_pct(card.get('calibrated_mean_pd_dev'))}"
             + (
-                f" (desplazamiento del intercepto {_cifra(card.get('offset'), decimales=4)})"
+                " (desplazamiento del intercepto "
+                f"{_cifra(_sin_ruido(card.get('offset')), decimales=4)})"
                 if card.get("offset") is not None
                 else ""
             )
@@ -2215,6 +2216,24 @@ def _celda_texto(valor: Any) -> str:
     if isinstance(valor, bool | np.bool_):
         return "sí" if bool(valor) else "no"
     return str(valor)
+
+
+#: Bajo este valor absoluto, un desplazamiento del intercepto es ruido de coma flotante.
+_RUIDO_DEL_INTERCEPTO: Final = 1e-12
+
+
+def _sin_ruido(valor: Any) -> Any:
+    """El desplazamiento del intercepto, con el ruido de coma flotante escrito como cero.
+
+    Cuando la calibración ancla a la tasa observada, el desplazamiento es cero salvo el residuo del
+    solver (``-1,01e-16`` en Windows, ``-2,7e-16`` en Linux): la regla del informe lo escribiría en
+    notación científica, distinto en cada plataforma, y el cuaderno publicado dejaría de ser
+    reproducible (CI de ``be3130e``). Es presentación: el número del artefacto no cambia.
+    """
+    numero = _float(valor)
+    if numero is not None and abs(numero) < _RUIDO_DEL_INTERCEPTO:
+        return 0.0
+    return valor
 
 
 def _frente(valor: Any, umbral: Any, *, decimales: int = 4) -> str:

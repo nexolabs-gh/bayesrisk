@@ -301,3 +301,15 @@ def test_los_puntos_del_psi_se_leen_en_el_informe() -> None:
     ]
     # Otra tabla no se toca.
     assert _textos_de_auditoria("stability.stability_metrics", filas, {}, frozenset()) == filas
+
+
+def test_el_ruido_del_intercepto_se_escribe_cero_en_cualquier_plataforma() -> None:
+    """CI de `be3130e`: el residuo del solver es -1,01e-16 en Windows y -2,7e-16 en Linux; escrito
+    en notación científica, el cuaderno publicado dejaba de ser reproducible entre plataformas."""
+    from bayesrisk.guided.summaries import _cifra, _sin_ruido
+
+    for residuo in (-1.01e-16, -2.7e-16, 3e-15, 0.0):
+        assert _cifra(_sin_ruido(residuo), decimales=4) == "0,0000"
+    assert _cifra(_sin_ruido(0.0123), decimales=4) == "0,0123"
+    # Sobre el umbral de ruido, la cifra se escribe con la regla de siempre.
+    assert _cifra(_sin_ruido(2e-9), decimales=4) == _cifra(2e-9, decimales=4)
