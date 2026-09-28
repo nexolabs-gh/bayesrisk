@@ -263,10 +263,14 @@ export interface ModelCardDecisionRow {
  */
 export function modelCardDecisionRows(card: ModelCard): ModelCardDecisionRow[] {
   return card.decisions.map((d) => {
-    // El umbral es un corte: se escribe exacto (D-PAN-2; un 0.24994 no se lee «0,2499»). Si el
-    // backend publica la versión legible (D-PAN-4), ésa manda.
-    const umbral = d.umbral_legible ?? describeValue(d.umbral, 0, "corte")
-    const valor = d.valor_legible ?? describeValue(d.valor)
+    // El umbral es un corte: se escribe exacto (D-PAN-2; un 0.24994 no se lee «0,2499»). El
+    // `detail` del motor dentro del valor se reemplaza por el motivo legible del backend (D-PAN-4).
+    const umbral = describeValue(d.umbral, 0, "corte")
+    const valor = describeValue(
+      d.detalle_legible && d.valor !== null && typeof d.valor === "object"
+        ? { ...(d.valor as Record<string, unknown>), detail: d.detalle_legible }
+        : d.valor,
+    )
     return {
       ts: d.ts,
       step: d.step,

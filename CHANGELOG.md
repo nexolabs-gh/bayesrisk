@@ -7,6 +7,27 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [Sin publicar]
+
+### Corregido
+
+- **La pantalla escribe las cifras como el informe.** Coma decimal y punto de miles (`0,7534`,
+  `3.961`), porcentajes con espacio (`23,8 %`), p-valores `< 0,001` o con tres decimales, y los
+  cortes del config exactos: un umbral `0,025` ya no se lee `0,03`. Antes convivían cuatro
+  convenciones en la misma pantalla —`6.000` y `6,000` eran el mismo número—. Aplica también a
+  los gráficos, sus ejes y tooltips, la ficha del modelo y los montos de IFRS 9. La regla es la del
+  informe, con un espejo en el front atado a Python por 4.702 casos de prueba.
+- **El motivo de una exclusión se lee en español**, en la pantalla y en el informe: «IV 0,000029 <
+  mínimo 0,02», «VIF 5,1235 > máximo 5,00», compuesto de la observación y el umbral originales, y
+  escrito con los decimales que lo dejan del lado correcto del corte. El texto del motor
+  (`iv=2.94993e-05 < min_iv=0.02`) sigue igual en `results.json` y en los exports.
+- **Los resúmenes por etapa aplican la regla del informe**: un PSI de `0.24996` junto a su corte de
+  `0,25` se escribe `0,24996`, no `0,2500`; un umbral efectivo se escribe exacto; un año de
+  cohorte no se agrupa en miles. Ningún número cambia: sólo cómo se escriben.
+- **Los tramos numéricos del análisis exploratorio se escriben con comparadores** (`> 0,5 y ≤ 1,25`)
+  en la pantalla, la tabla y el gráfico del informe; un nivel categórico con forma de intervalo
+  queda tal cual.
+
 ## [2.0.0] — 2026-09-27
 
 **nikodym ahora se llama bayesrisk.** Esta versión es **equivalente funcional a nikodym 1.20.0**:

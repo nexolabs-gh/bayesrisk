@@ -184,6 +184,14 @@ class ReportInputBundle(_ReportBaseModel):
     del JSON y del CSV— sigue siendo la etiqueta del motor. Sin él, el documento pinta las
     categorías unidas con «, » y los rangos como los escribió el motor.
     """
+    eda_numeric_profiles: tuple[str, ...] = Field(default=())
+    """Las columnas que el EDA perfiló como numéricas (D-PAN-4, CIFRAS-EN-PANTALLA).
+
+    Aditivo (default vacío): lo llena ``ReportBuilder.collect`` desde
+    ``UnivariateResult.numeric_profiles``. El renderer reescribe en es-CL, con comparadores, sólo
+    los tramos de esas columnas —en sus tablas y en el eje del gráfico—; un nivel categórico con
+    forma de intervalo queda como lo escribió el motor.
+    """
     summary: dict[str, Any] | None = Field(default=None)
     """El resumen final de la corrida para la página ejecutiva (capa C de FLUJO-GUIADO-SCORECARD).
 

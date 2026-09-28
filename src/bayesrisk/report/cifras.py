@@ -27,17 +27,24 @@ Sólo presentación: los números de ``results``, de los exports y del ``data_ha
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 from typing import Final
 
 __all__ = [
+    "CRITERIOS_CON_PVALOR",
+    "MOTIVOS_DE_SELECCION",
+    "PREFIJO_CONTRIBUCION_IV",
     "VACIO",
     "cifra",
     "conteo",
     "corte",
     "es_columna_de_conteo",
     "es_columna_de_pvalor",
+    "frente_al_corte",
     "monto",
+    "motivo_legible",
+    "motivo_legible_stepwise",
     "porcentaje",
     "pvalor",
 ]
@@ -251,3 +258,145 @@ def es_columna_de_pvalor(nombre: str) -> bool:
         clave.startswith(("entry_", "exit_", "max_", "min_"))
         or any(marca in clave for marca in ("threshold", "alpha", "cut", "corte"))
     )
+
+
+# --- El motivo de una decisión del motor, legible (enmienda CIFRAS-EN-PANTALLA, D-PAN-4) ---------
+#
+# El `detail` del motor es texto de auditoría con `:.6g` y no cambia: viaja en `results.json` y en
+# los exports, y `model/step.py` lo vuelve a leer. El texto legible NO se obtiene parseándolo —ya
+# redondeó a seis cifras y un corte redondeado es otra política—: se compone desde la observación y
+# el umbral **originales**. Un motivo sin composición, o sin sus valores, devuelve `None` y quien
+# presenta muestra el `detail` crudo.
+
+#: Motivo de la selección → (columna de la observación, clave del umbral en `thresholds`, frase,
+#: prefijo con que el selector escribe su `detail` numérico).
+MOTIVOS_DE_SELECCION: Final[dict[str, tuple[str, str, str, str]]] = {
+    "low_iv": ("iv", "min_iv", "IV {obs} < mínimo {umbral}", "iv="),
+    "high_iv": ("iv", "max_iv", "IV {obs} ≥ máximo {umbral}", "iv="),
+    "high_correlation": (
+        "max_abs_corr",
+        "correlation.threshold",
+        "correlación {obs} > máximo {umbral}",
+        "|rho|=",
+    ),
+    "high_vif": ("vif", "vif.threshold", "VIF {obs} > máximo {umbral}", "vif="),
+}
+#: Criterios del stepwise cuyo `detail` escribe `_criterion_detail` (p-valores de Wald y LR).
+CRITERIOS_CON_PVALOR: Final = frozenset({"wald_pvalue", "lr_test", "both"})
+#: Prefijo del `detail` del criterio de contribución de IV.
+PREFIJO_CONTRIBUCION_IV: Final = "iv_contribution="
+
+
+def _numero(valor: object) -> float | None:
+    """``valor`` como ``float`` finito, o ``None`` (ausente, texto, ``NaN``, infinito)."""
+    if isinstance(valor, bool) or not isinstance(valor, int | float | Decimal):
+        try:
+            import numpy as np  # los frames del motor traen escalares de numpy
+
+            if not isinstance(valor, np.floating | np.integer):
+                return None
+        except ImportError:  # pragma: no cover - numpy es dependencia base
+            return None
+    numero = float(valor)
+    return numero if math.isfinite(numero) else None
+
+
+def _leer(texto: str) -> Decimal | None:
+    """El número que dice un texto de :func:`cifra` o :func:`pvalor`; ``None`` si no dice uno."""
+    limpio = texto.replace(".", "").replace(",", ".")
+    try:
+        return Decimal(limpio)
+    except ArithmeticError:
+        return None
+
+
+def _signo(valor: Decimal) -> int:
+    return (valor > 0) - (valor < 0)
+
+
+def frente_al_corte(texto: str, valor: float, umbral: float) -> str:
+    """La cifra ``texto`` de ``valor``, con los decimales que la dejan del lado correcto del corte.
+
+    Una cifra redondeada puede escribirse igual al corte o cruzarlo cuando el corte tiene más
+    decimales que ella: ``0.0499555`` a cinco decimales es ``0,04996``, **sobre** un corte de
+    ``0,049956`` que el valor exacto no alcanza. Junto a su corte, una observación se escribe con
+    los decimales que conservan el orden —como máximo, el exacto—. Revisión adversarial del diseño
+    (pasada 3 de Codex): una comparación imposible en el texto es un defecto de presentación.
+    """
+    exacto, frontera = _exacto(valor), _exacto(umbral)
+    lado = _signo(exacto - frontera)
+    leido = _leer(texto)
+    if lado == 0 or (leido is not None and _signo(leido - frontera) == lado):
+        return texto
+    miles = exacto.copy_abs() >= _GRANDE
+    _, _, fraccion = texto.partition(",")
+    decimales = len(fraccion) if fraccion.isdigit() else 0
+    limite = _decimales_del_exacto(exacto)
+    while decimales < limite:
+        decimales += 1
+        redondeado = _redondeado(exacto, decimales)
+        if _signo(redondeado - frontera) == lado:
+            return _posicional(redondeado, decimales, miles=miles)
+    return _posicional(_redondeado(exacto, limite), limite, miles=miles)
+
+
+def motivo_legible(fila: Mapping[str, object], umbrales: Mapping[str, object]) -> str | None:
+    """El motivo de una fila de ``selection_table`` en es-CL, desde sus valores originales.
+
+    ``fila`` trae ``reason``, ``detail`` y la observación (``iv``, ``max_abs_corr``, ``vif``) a
+    precisión completa; ``umbrales`` son los ``thresholds`` efectivos de la selección. Sólo se
+    compone cuando el ``detail`` es el numérico del selector (una variable desplazada por
+    ``force_include`` también es ``high_correlation``, con otro texto, y se deja tal cual).
+    """
+    motivo = fila.get("reason")
+    detalle = fila.get("detail")
+    if not isinstance(motivo, str) or motivo not in MOTIVOS_DE_SELECCION:
+        return None
+    columna, clave, frase, prefijo = MOTIVOS_DE_SELECCION[motivo]
+    if not isinstance(detalle, str) or not detalle.startswith(prefijo):
+        return None
+    observado = _numero(fila.get(columna))
+    umbral = _numero(umbrales.get(clave))
+    if observado is None or umbral is None:
+        return None
+    obs = frente_al_corte(cifra(observado), observado, umbral)
+    texto = frase.format(obs=obs, umbral=corte(umbral))
+    con = fila.get("max_corr_with")
+    if motivo == "high_correlation" and isinstance(con, str) and con:
+        texto += f" con {con}"
+    return texto
+
+
+def motivo_legible_stepwise(fila: Mapping[str, object]) -> str | None:
+    """El motivo de una decisión del stepwise en es-CL, desde sus valores originales.
+
+    ``fila`` trae ``criterion``, ``detail``, ``p_value``, ``lr_stat`` y ``threshold`` (una fila de
+    ``stepwise_trace`` o el ``valor`` de la decisión en la ficha, con su umbral). La contribución de
+    IV es una observación y el motor la publica sólo en su ``detail``: se lee de ahí, con sus seis
+    cifras significativas; el umbral, en cambio, viene siempre del campo estructurado.
+    """
+    criterio = fila.get("criterion")
+    detalle = fila.get("detail")
+    umbral = _numero(fila.get("threshold"))
+    if criterio in CRITERIOS_CON_PVALOR:
+        p_valor = _numero(fila.get("p_value"))
+        if p_valor is None or umbral is None:
+            return None
+        escrito = pvalor(p_valor)
+        if escrito.startswith("<") and umbral < float(_PEQUENO):
+            escrito = cifra(p_valor)  # «< 0,001» no dice de qué lado queda un corte menor
+        texto = f"p-valor {frente_al_corte(escrito, p_valor, umbral)}; umbral {corte(umbral)}"
+        estadistico = _numero(fila.get("lr_stat"))
+        if estadistico is not None:
+            texto += f"; estadístico LR {cifra(estadistico)}"
+        return texto
+    if criterio == "iv_contribution" and isinstance(detalle, str):
+        if not detalle.startswith(PREFIJO_CONTRIBUCION_IV) or umbral is None:
+            return None
+        try:
+            contribucion = float(detalle.removeprefix(PREFIJO_CONTRIBUCION_IV))
+        except ValueError:
+            return None
+        escrita = frente_al_corte(cifra(contribucion), contribucion, umbral)
+        return f"contribución al IV {escrita}; umbral {corte(umbral)}"
+    return None

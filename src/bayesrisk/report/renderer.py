@@ -743,6 +743,8 @@ def _tables_for_section(
             max_rows=max_visible_rows(key, max_rows),
             internal_grouping=internal_grouping,
             bin_labels=bundle.bin_labels,
+            umbrales_de_seleccion=_umbrales_de_seleccion(bundle),
+            eda_numericas=frozenset(bundle.eda_numeric_profiles),
         )
         for key in keys
     ]
@@ -967,6 +969,53 @@ def _rotulos_de_tramo(
     return records
 
 
+def _umbrales_de_seleccion(bundle: ReportInputBundle) -> Mapping[str, Any]:
+    """Los ``thresholds`` efectivos de la selección, desde su card; vacío sin card (D-PAN-4)."""
+    card = bundle.cards.get("selection")
+    umbrales = card.get("thresholds") if isinstance(card, Mapping) else None
+    return umbrales if isinstance(umbrales, Mapping) else {}
+
+
+def _textos_de_auditoria(
+    key: str,
+    records: list[Mapping[Any, Any]],
+    umbrales_de_seleccion: Mapping[str, Any],
+    eda_numericas: frozenset[str],
+) -> list[Mapping[Any, Any]]:
+    """El texto del motor que la tabla publica, legible y en es-CL (D-PAN-4).
+
+    El ``detail`` de la selección y del stepwise se compone de la observación y el umbral
+    originales (``cifras.motivo_legible*``); un motivo sin composición queda como lo escribió el
+    motor. Los tramos de un perfil **numérico** del EDA se escriben con comparadores. El valor de la
+    tabla —el del JSON y del CSV— no cambia.
+    """
+    from bayesrisk.core.tramos import rotulo_de_intervalo
+    from bayesrisk.report.cifras import motivo_legible, motivo_legible_stepwise
+
+    if key == "selection.selection_table":
+        salida: list[Mapping[Any, Any]] = []
+        for record in records:
+            legible = motivo_legible(record, umbrales_de_seleccion)
+            salida.append({**record, "detail": legible} if legible is not None else record)
+        return salida
+    if key == "model.stepwise_trace":
+        salida = []
+        for record in records:
+            legible = motivo_legible_stepwise(record)
+            salida.append({**record, "detail": legible} if legible is not None else record)
+        return salida
+    if key.startswith(_EDA_PROFILE_TABLE_PREFIX) and key[len(_EDA_PROFILE_TABLE_PREFIX) :] in (
+        eda_numericas
+    ):
+        return [
+            {**record, "tramo": rotulo_de_intervalo(str(record["tramo"]))}
+            if isinstance(record.get("tramo"), str) or hasattr(record.get("tramo"), "left")
+            else record
+            for record in records
+        ]
+    return records
+
+
 def _table_view(
     key: str,
     table: Any,
@@ -974,6 +1023,8 @@ def _table_view(
     max_rows: int,
     internal_grouping: str = "",
     bin_labels: Mapping[str, list[str]] | None = None,
+    umbrales_de_seleccion: Mapping[str, Any] | None = None,
+    eda_numericas: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
     if not _is_dataframe_like(table):
         raise ReportRenderError(
@@ -992,8 +1043,13 @@ def _table_view(
             column: _public_cell(record.get(column), labels_by_column.get(str(column)))
             for column in columns
         }
-        for record in _rotulos_de_tramo(
-            key, [_public_record(key, fila) for fila in records], bin_labels or {}
+        for record in _textos_de_auditoria(
+            key,
+            _rotulos_de_tramo(
+                key, [_public_record(key, fila) for fila in records], bin_labels or {}
+            ),
+            umbrales_de_seleccion or {},
+            eda_numericas,
         )
     ]
     visible_rows = [
@@ -1068,7 +1124,12 @@ def _chart_eda_profiles(charts: Any, bundle: ReportInputBundle, fmt: ChartFormat
     }
     return cast(
         "str | bytes",
-        charts.render_eda_profiles(profiles, title=_CHART_TITLES["eda_profiles"], fmt=fmt),
+        charts.render_eda_profiles(
+            profiles,
+            title=_CHART_TITLES["eda_profiles"],
+            fmt=fmt,
+            numericas=frozenset(bundle.eda_numeric_profiles),
+        ),
     )
 
 

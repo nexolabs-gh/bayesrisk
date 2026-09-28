@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import warnings
+from collections.abc import Mapping
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Final
 
@@ -259,7 +260,9 @@ def _augment_with_rich_artifacts(study: Study, payload: dict[str, Any]) -> None:
         payload["binning"]["tables_by_variable"] = _binning_tables(study)
         payload["binning"]["bin_labels_by_variable"] = _bin_labels(study)
     if isinstance(payload["selection"], dict):
-        payload["selection"]["decisions"] = _selection_decisions(study)
+        payload["selection"]["decisions"] = _selection_decisions(
+            study, payload["selection"].get("thresholds")
+        )
     if isinstance(payload["model"], dict):
         payload["model"]["coefficients"] = _domain_records(study, "model", "coefficients")
     if isinstance(payload["scorecard"], dict):
@@ -477,13 +480,21 @@ def _eda_univariate(study: Study) -> list[dict[str, Any]] | None:
     if not study.artifacts.has("eda", "univariate"):
         return None
     univariate = study.artifacts.get("eda", "univariate")
+    # La procedencia la declara el perfilador (D-PAN-4): sólo los tramos de una numérica son
+    # intervalos que se reescriben; un nivel categórico con esa forma queda tal cual.
+    from bayesrisk.core.tramos import rotulo_de_intervalo
+
+    numericas = set(getattr(univariate, "numeric_profiles", ()))
     rows: list[dict[str, Any]] = []
     for column, profile in univariate.profiles.items():
         for row in profile.to_dict(orient="records"):
+            tramo = _tramo_label(row.get("tramo"))
+            es_intervalo = column in numericas and isinstance(tramo, str) and tramo != "missing"
             rows.append(
                 {
                     "column": str(column),
-                    "tramo": _tramo_label(row.get("tramo")),
+                    "tramo": tramo,
+                    "tramo_legible": rotulo_de_intervalo(str(tramo)) if es_intervalo else None,
                     "n": _to_json_native(row.get("n")),
                     "coverage": _to_json_native(row.get("coverage")),
                     "default_rate": _to_json_native(row.get("default_rate")),
@@ -588,15 +599,29 @@ def _bin_labels(study: Study) -> dict[str, list[str]] | None:
     }
 
 
-def _selection_decisions(study: Study) -> list[dict[str, Any]] | None:
+def _selection_decisions(
+    study: Study, thresholds: Mapping[str, Any] | None = None
+) -> list[dict[str, Any]] | None:
     """Decisiones de selección por variable (DTOs ``VariableSelectionDecision``) → records.
 
     ``None`` si el resultado de selección está ausente. Se excluyen a propósito
-    ``correlation_matrix``/``vif_table``/``stability`` (fuera de alcance de esta capa).
+    ``correlation_matrix``/``vif_table``/``stability`` (fuera de alcance de esta capa). Cada
+    decisión con un motivo numérico gana ``detail_legible`` (aditivo, D-PAN-4): el motivo en es-CL
+    compuesto de la observación y el umbral efectivo; ``detail`` sigue siendo el del motor.
     """
     if not study.artifacts.has("selection", "result"):
         return None
-    return [dump_dto(decision) for decision in study.artifacts.get("selection", "result").decisions]
+    # Import perezoso: la capa ui no carga el informe al importarse (D-HASH-5).
+    from bayesrisk.report.cifras import motivo_legible
+
+    registros: list[dict[str, Any]] = []
+    for decision in study.artifacts.get("selection", "result").decisions:
+        registro = dump_dto(decision)
+        legible = motivo_legible(registro, thresholds or {})
+        if legible is not None:
+            registro["detail_legible"] = legible
+        registros.append(registro)
+    return registros
 
 
 def _score_values(study: Study) -> list[float] | None:
@@ -896,7 +921,30 @@ def _serialize_model_card(
     except BayesRiskError:
         # Corrida demasiado parcial para una card válida: ausente, no fabricada (SDD-23 §6/§8).
         return None
-    return dump_dto(card)
+    payload = dump_dto(card)
+    _detalles_legibles(payload.get("decisions"))
+    return payload
+
+
+def _detalles_legibles(decisions: object) -> None:
+    """Añade ``detalle_legible`` a las decisiones del stepwise de la ficha (aditivo, D-PAN-4).
+
+    Su ``valor`` trae el ``detail`` del motor (``wald_p=…``, ``iv_contribution=…``); la versión
+    legible se compone de ``p_value``/``lr_stat`` y del ``umbral`` de la decisión, no del texto.
+    """
+    if not isinstance(decisions, list):
+        return
+    from bayesrisk.report.cifras import motivo_legible_stepwise
+
+    for decision in decisions:
+        if not isinstance(decision, dict):
+            continue
+        valor = decision.get("valor")
+        if not isinstance(valor, Mapping) or "detail" not in valor:
+            continue
+        legible = motivo_legible_stepwise({**valor, "threshold": decision.get("umbral")})
+        if legible is not None:
+            decision["detalle_legible"] = legible
 
 
 def _resolve_governance(governance: object) -> GovernanceConfig | None:

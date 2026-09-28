@@ -50,6 +50,11 @@ class UnivariateResult(BaseModel):
 
     profiles: dict[str, pd.DataFrame]
     descriptive_iv: dict[str, float]
+    #: Las columnas perfiladas como numéricas (por cuantil): sus tramos son intervalos escritos por
+    #: ``_interval_label``, y sólo ésos se reescriben en es-CL al presentarlos. La procedencia la
+    #: declara quien eligió el perfil; un nivel categórico con forma de intervalo no está aquí
+    #: (enmienda CIFRAS-EN-PANTALLA, D-PAN-4).
+    numeric_profiles: tuple[str, ...] = ()
 
 
 class UnivariateProfiler:
@@ -110,6 +115,7 @@ class UnivariateProfiler:
         bad = _bad_mask(source[target_col]).loc[eligible]
         profiles: dict[str, pd.DataFrame] = {}
         descriptive_iv: dict[str, float] = {}
+        numericas: list[str] = []
 
         for column in columns:
             column_data = source.loc[:, column]
@@ -119,12 +125,16 @@ class UnivariateProfiler:
                     f"la columna '{column}' aparece más de una vez."
                 )
             series = column_data.loc[eligible].copy(deep=True)
+            if _es_perfil_numerico(series):
+                numericas.append(column)
             full_profile = _profile_feature(series, bad, self.config)
             profiles[column] = full_profile.loc[:, list(_RESULT_COLUMNS)].copy(deep=True)
             if self.config.compute_descriptive_iv:
                 descriptive_iv[column] = _descriptive_iv(full_profile)
 
-        return UnivariateResult(profiles=profiles, descriptive_iv=descriptive_iv)
+        return UnivariateResult(
+            profiles=profiles, descriptive_iv=descriptive_iv, numeric_profiles=tuple(numericas)
+        )
 
 
 def _validate_profile_columns(frame: pd.DataFrame, columns: tuple[str, ...]) -> None:
@@ -137,13 +147,18 @@ def _validate_profile_columns(frame: pd.DataFrame, columns: tuple[str, ...]) -> 
     raise EdaError(f"El perfil univariado requiere columna(s) existente(s): {joined}.")
 
 
+def _es_perfil_numerico(series: pd.Series) -> bool:
+    """Si la columna se perfila por cuantil: una sola regla para el perfil y su procedencia."""
+    return bool(pd.api.types.is_numeric_dtype(series.dtype))
+
+
 def _profile_feature(
     series: pd.Series,
     bad: pd.Series,
     config: UnivariateConfig,
 ) -> pd.DataFrame:
     """Despacha el perfil según dtype pandas de la columna."""
-    if pd.api.types.is_numeric_dtype(series.dtype):
+    if _es_perfil_numerico(series):
         return _numeric_profile(series, bad, config)
     return _categorical_profile(series, bad, config)
 

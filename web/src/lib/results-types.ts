@@ -215,6 +215,8 @@ export interface SelectionDecision {
   max_csi: number | null
   forced: "include" | "exclude" | null
   detail: string | null
+  /** El motivo en es-CL, compuesto por el backend (D-PAN-4); ausente en fixtures anteriores. */
+  detail_legible?: string
 }
 
 /**
@@ -303,6 +305,9 @@ export interface EdaQualityRow {
 export interface EdaProfileRow {
   column: string
   tramo: string | number | null
+  /** El tramo de un perfil numérico con comparadores en es-CL (D-PAN-4); `null` en una
+   * categórica, ausente en fixtures anteriores. */
+  tramo_legible?: string | null
   n: number
   coverage: number
   default_rate: number | null
@@ -1153,10 +1158,9 @@ export interface ModelCardDecision {
   regla: string
   umbral: unknown
   valor: unknown
-  /** Versión legible que escribe el backend con la regla del informe (D-PAN-4); ausente en
-   * fixtures anteriores, donde el front describe el valor crudo. */
-  umbral_legible?: string
-  valor_legible?: string
+  /** El motivo del stepwise en es-CL que compone el backend para el `detail` de `valor`
+   * (D-PAN-4); ausente en fixtures anteriores. */
+  detalle_legible?: string
   accion: string
   ts: string
   /**

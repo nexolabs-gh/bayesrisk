@@ -375,5 +375,9 @@ def _scenario_label(name: str, weight: float | None) -> str:
     label = name.capitalize()
     if weight is None:
         return label
-    percentage = f"{weight * 100:.2f}".rstrip("0").rstrip(".")
+    # La regla de `cifras.porcentaje` (D-PAN-3), sin los ceros finales: «Base 33,33 %», «Base 50 %».
+    # Import perezoso: `methodology` lo importa el propio informe al cargarse.
+    from bayesrisk.report.cifras import porcentaje
+
+    percentage = porcentaje(weight, decimales=2).removesuffix(" %").rstrip("0").rstrip(",")
     return f"{label} {percentage} %"

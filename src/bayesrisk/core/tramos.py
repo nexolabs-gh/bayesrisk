@@ -15,6 +15,7 @@ importa ``pandas``: opera sobre los ``DataFrame`` que recibe.
 from __future__ import annotations
 
 import math
+import re
 from decimal import Decimal
 from typing import Any
 
@@ -24,6 +25,7 @@ __all__ = [
     "es_fila_de_totales",
     "filas_que_casan",
     "formatear_borde",
+    "rotulo_de_intervalo",
     "rotulo_de_rango",
     "rotulo_de_tramo",
     "rotulos_por_fila",
@@ -74,6 +76,33 @@ def rotulo_de_rango(lower: float, upper: float) -> str:
     if math.isinf(upper):
         return f"≥ {formatear_borde(lower)}"
     return f"≥ {formatear_borde(lower)} y < {formatear_borde(upper)}"
+
+
+_INTERVALO = re.compile(r"^([\[(])\s*([^,\s]+),\s*([^,\s]+)\s*([\])])$")
+
+
+def rotulo_de_intervalo(texto: str) -> str:
+    """El tramo de un perfil **numérico** del EDA con comparadores en es-CL (D-PAN-4).
+
+    El perfilador escribe el tramo como ``str(pd.Interval)``, cerrado a la derecha como
+    ``pd.qcut``: ``(0.5, 1.25]`` → «> 0,5 y ≤ 1,25»; un tramo constante ``[a, a]`` → «= a». Los
+    bordes, exactos (:func:`formatear_borde`). Se aplica sólo a las columnas que el perfilador
+    declaró numéricas (``UnivariateResult.numeric_profiles``): un nivel categórico con esa forma no
+    es un intervalo. Un texto sin la forma de un intervalo se devuelve igual.
+    """
+    coincide = _INTERVALO.match(str(texto).strip())
+    if coincide is None:
+        return str(texto)
+    abre, izquierdo, derecho, cierra = coincide.groups()
+    try:
+        inferior, superior = float(izquierdo), float(derecho)
+    except ValueError:
+        return str(texto)
+    if inferior == superior:
+        return f"= {formatear_borde(inferior)}"
+    desde = "≥" if abre == "[" else ">"
+    hasta = "≤" if cierra == "]" else "<"
+    return f"{desde} {formatear_borde(inferior)} y {hasta} {formatear_borde(superior)}"
 
 
 def rotulo_de_tramo(valor: Any) -> str:

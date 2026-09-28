@@ -224,6 +224,8 @@ class ReportBuilder:
             summary=_run_summary(study, self.config),
             # D-CPY-3: los tramos con su rótulo legible, desde los bordes efectivos.
             bin_labels=_rotulos_de_tramos(study),
+            # D-PAN-4: la procedencia de los tramos del EDA, declarada por el perfilador.
+            eda_numeric_profiles=_perfiles_numericos(study),
         )
         return bundle.model_copy(update={"sections": self.build_sections(bundle)})
 
@@ -1036,6 +1038,14 @@ def _validate_metric_sections(metric_sections: Mapping[str, Any], *, artifact: s
 
 def _raise_not_json_serializable(value: object) -> NoReturn:
     raise TypeError(f"{type(value).__name__} no es JSON-serializable")
+
+
+def _perfiles_numericos(study: Study) -> tuple[str, ...]:
+    """Las columnas que el EDA perfiló como numéricas; vacío sin perfiles (D-PAN-4)."""
+    if not study.artifacts.has("eda", "univariate"):
+        return ()
+    univariate = study.artifacts.get("eda", "univariate")
+    return tuple(str(columna) for columna in getattr(univariate, "numeric_profiles", ()))
 
 
 def _rotulos_de_tramos(study: Study) -> dict[str, list[str]]:

@@ -351,6 +351,22 @@ el texto legible se compone desde la observación y el umbral efectivo originale
 Estas dos correcciones no tuvieron revisión adversarial propia del documento; la tendrán en la
 revisión del código, que es obligatoria al implementar.
 
+**Implementación (S23, 2026-09-27), con lo que se ajustó al programar.** (a) El texto legible del
+stepwise en la ficha viaja como un solo campo aditivo, `detalle_legible`, y no como
+`umbral_legible`/`valor_legible`: el front ya sabe que el umbral es un corte y lo escribe con
+`corte`; lo único que necesita del backend es el `detail`, que no puede componer sin duplicar la
+regla. (b) La correlación se escribe «correlación 0,93 > máximo 0,90»: el `|ρ|` del borrador lo
+rechaza el lint (carácter ambiguo) y un modelador lee mejor la palabra. (c) Se añadió
+`cifras.frente_al_corte`: al componer una comparación, la observación lleva los decimales que la
+dejan del lado correcto del corte (con cuatro decimales, `0.249958` frente a `0,24996` se leía
+«0,24996 < 0,24996»). (d) El front tiene cuatro formateadores propios cubiertos por vitest y no por
+el golden, porque Python no los tiene: `marca` (el tick exacto de un eje), `entero`, `montoCompacto`
+y `puntosPorcentuales`. (e) Los módulos que el informe o la capa ui cargan al importarse
+(`methodology`, `ui/routes`, `data/config`) importan `cifras` de forma perezosa (D-HASH-5). (f)
+`corte(-0.0)` escribe `0,00` y un monto negativo pone el signo antes del símbolo (`-$1.200`).
+(g) `.gitattributes` fija LF para `ts`, `tsx` y `css`: con `core.autocrlf` el checkout en Windows
+dejaba los guardrails estáticos de vitest leyendo vacío.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima**: ninguna nueva.

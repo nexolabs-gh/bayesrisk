@@ -138,7 +138,8 @@ def test_random_fracciones_no_suman_uno_levanta() -> None:
     """Fracciones que no suman 1.0 -> ``ValidationError`` con la suma observada."""
     with pytest.raises(ValidationError) as info:
         RandomSplitConfig(dev_fraction=0.6, holdout_fraction=0.3, oot_fraction=0.3)
-    assert "debe sumar 1.0" in str(info.value)
+    # La cifra observada, en es-CL (D-PAN-3).
+    assert "debe sumar 1; suma observada = 1,2000" in str(info.value)
 
 
 def test_rule_no_vacia_ok() -> None:

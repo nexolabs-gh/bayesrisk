@@ -850,6 +850,7 @@ def render_eda_profiles(
     *,
     title: str,
     fmt: ChartFormat = "svg",
+    numericas: frozenset[str] = frozenset(),
 ) -> str | bytes:
     """Un panel por variable descrita: la tasa de incumplimiento por tramo, en barras (D-SC-5).
 
@@ -857,8 +858,11 @@ def render_eda_profiles(
     default_rate)}``), en el orden que decidió el motor. Se dibujan como máximo
     :data:`_MAX_EDA_PROFILE_PANELS` paneles —los primeros en ese orden; el resto sigue en las
     tablas del anexo— para que la figura quepa en una página. Los tramos se rotulan con su texto,
-    acortado si no cabe: la tabla trae el literal completo.
+    acortado si no cabe: la tabla trae el literal completo. Los de las columnas en ``numericas``
+    (las que el perfilador declaró numéricas) se escriben con comparadores en es-CL (D-PAN-4).
     """
+    from bayesrisk.core.tramos import rotulo_de_intervalo
+
     items = [(str(name), frame) for name, frame in dict(profiles).items()]
     if not items:
         raise ReportInputError("render_eda_profiles: no hay perfiles por variable que dibujar.")
@@ -890,7 +894,14 @@ def render_eda_profiles(
         _set_thinned_xticks(
             axes,
             positions,
-            [_short_label(str(record["tramo"])) for record in records],
+            [
+                _short_label(
+                    rotulo_de_intervalo(str(record["tramo"]))
+                    if name in numericas
+                    else str(record["tramo"])
+                )
+                for record in records
+            ],
             rotation=60,
             fontsize=6,
         )

@@ -397,15 +397,18 @@ def _preflight_insumos(
             filas_externas = datasets.row_count(origen, workdir=workdir)
             filas_cartera = datasets.row_count(dataset_id, workdir=workdir)
             if filas_externas != filas_cartera:
+                # Import perezoso: la capa ui no carga dominios al importarse (D-HASH-5).
+                from bayesrisk.report.cifras import conteo
+
                 avisos.append(
                     {
                         "path": None,
                         "declared": None,
                         "kind": "external_row_count",
                         "message": (
-                            f"El archivo que trajiste tiene {filas_externas} filas y tu cartera "
-                            f"tiene {filas_cartera}. Sin una columna que identifique cada "
-                            "operación, las filas se emparejan por su orden."
+                            f"El archivo que trajiste tiene {conteo(filas_externas)} filas y tu "
+                            f"cartera tiene {conteo(filas_cartera)}. Sin una columna que "
+                            "identifique cada operación, las filas se emparejan por su orden."
                         ),
                     }
                 )
@@ -430,11 +433,22 @@ def _preflight_insumos(
                             "kind": "external_missing_column",
                             "message": (
                                 f"El archivo que trajiste no tiene la columna «{esperada}»; "
-                                f"tiene {sorted(presentes)[:8]}."
+                                f"tiene {_columnas_en_prosa(sorted(presentes))}."
                             ),
                         }
                     )
     return avisos
+
+
+def _columnas_en_prosa(columnas: list[str], *, tope: int = 8) -> str:
+    """Las columnas como se leen en una frase: «a», «b» y «c»; más allá del tope, cuántas faltan."""
+    mostradas = [f"«{c}»" for c in columnas[:tope]]
+    resto = len(columnas) - len(mostradas)
+    if resto > 0:
+        return ", ".join(mostradas) + f" y {resto} más"
+    if len(mostradas) <= 1:
+        return "".join(mostradas) or "ninguna"
+    return ", ".join(mostradas[:-1]) + f" y {mostradas[-1]}"
 
 
 def preflight_dataset(

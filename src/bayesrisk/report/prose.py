@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 from bayesrisk.core.markers import strip_declared_codes
 from bayesrisk.methodology import build_ifrs9_methodology_card, methodology_paragraphs
-from bayesrisk.report.cifras import cifra, corte, monto, porcentaje
+from bayesrisk.report.cifras import cifra, conteo, corte, monto, porcentaje
 from bayesrisk.report.document import DOMAIN_TITLES, internal_grouping_label
 
 # Las cuatro palabras de las bandas del PSI y la identidad de la magnitud ganadora del resumen A1
@@ -1845,8 +1845,8 @@ def _results_scorecard(bundle: ReportInputBundle) -> tuple[str, ...]:
         )
         if min_score is not None and max_score is not None:
             frase += (
-                f", con un rango teórico de puntaje entre {_num(min_score, decimals=0)} y "
-                f"{_num(max_score, decimals=0)} puntos"
+                f", con un rango teórico de puntaje entre {_cifra(min_score, decimales=0)} y "
+                f"{_cifra(max_score, decimales=0)} puntos"
             )
         paragraphs.append(f"{frase}.")
     return tuple(paragraphs)
@@ -3145,7 +3145,7 @@ def _rotulo_moneda(bundle: ReportInputBundle) -> str:
 
 def _miles(value: int) -> str:
     """Formatea un conteo con punto como separador de miles (``5.235``), convención es-CL."""
-    return f"{value:,}".replace(",", ".")
+    return conteo(value)
 
 
 def _plural(count: int, singular: str, plural: str) -> str:

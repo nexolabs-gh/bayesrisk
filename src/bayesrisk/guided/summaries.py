@@ -32,6 +32,7 @@ from bayesrisk.eda.default_rate import (
 )
 from bayesrisk.eda.quality import QUALITY_FLAG_LABELS
 from bayesrisk.eda.stability import NOT_EVALUABLE_REASON_LABELS, STABILITY_INDICATOR_LABELS
+from bayesrisk.report.cifras import es_columna_de_conteo, pvalor
 from bayesrisk.report.prose import (
     _ANCHOR_KINDS,
     _ANCHOR_SOURCES,
@@ -41,10 +42,11 @@ from bayesrisk.report.prose import (
     _MONOTONIC_LABELS,
     _PARTITION_LABELS,
     _STEPWISE_DIRECTIONS,
+    _cifra,
+    _cut,
     _declared_warning_descriptions,
     _enumerar,
     _miles,
-    _num,
     _pct,
     _plural,
 )
@@ -662,7 +664,7 @@ def _alertas_categorias_no_vistas(study: Study) -> tuple[str, ...]:
     tratamiento = (
         "WoE 0, el riesgo promedio"
         if declarado is None
-        else f"el WoE declarado para categorías no vistas ({_num(declarado, decimals=2)})"
+        else f"el WoE declarado para categorías no vistas ({_cut(declarado)})"
         if isinstance(declarado, int | float)
         else f"el valor declarado para categorías no vistas ({declarado})"
     )
@@ -783,14 +785,14 @@ def _resumen_eda(study: Study, context: SummaryContext) -> StageSummary:
         elif card.get("stability_flagged"):
             alerts.append(
                 f"La tasa de malos se deteriora en el tiempo: {indicador} "
-                f"{_num(card.get('stability_value'))} supera el umbral "
-                f"{_num(card.get('stability_threshold'))}"
+                f"{_cifra(card.get('stability_value'))} supera el umbral "
+                f"{_cut(card.get('stability_threshold'))}"
             )
         else:
             lines.append(
                 f"Deterioro de la tasa en el tiempo: sin señal ({indicador} "
-                f"{_num(card.get('stability_value'))}, umbral "
-                f"{_num(card.get('stability_threshold'))})"
+                f"{_cifra(card.get('stability_value'))}, umbral "
+                f"{_cut(card.get('stability_threshold'))})"
             )
         if "univariate" not in fallos:
             lines.append(
@@ -1051,9 +1053,9 @@ def _resumen_selection(study: Study, context: SummaryContext) -> StageSummary:
         vif = card.get("max_vif_after_selection")
         frases: list[str] = []
         if corr is not None:
-            frases.append(f"correlación máxima entre las finales {_num(corr, decimals=3)}")
+            frases.append(f"correlación máxima entre las finales {_cifra(corr, decimales=3)}")
         if vif is not None:
-            frases.append(f"VIF máximo {_num(vif, decimals=2)}")
+            frases.append(f"VIF máximo {_cifra(vif, decimales=2)}")
         if frases:
             lines.append(_capitalizar(_enumerar(tuple(frases))))
         high_iv = tuple(str(c) for c in _sequence(card.get("high_iv_flags")))
@@ -1123,8 +1125,8 @@ def _resumen_model(study: Study, context: SummaryContext) -> StageSummary:
         fit = _mapping(card.get("fit_statistics"))
         if fit:
             partes = [
-                f"pseudo-R² de McFadden {_num(fit.get('pseudo_r2_mcfadden'), decimals=3)}",
-                f"AIC {_num(fit.get('aic'), decimals=1)}",
+                f"pseudo-R² de McFadden {_cifra(fit.get('pseudo_r2_mcfadden'), decimales=3)}",
+                f"AIC {_cifra(fit.get('aic'), decimales=1)}",
             ]
             if fit.get("llr_p_value") is not None:
                 partes.append(
@@ -1226,10 +1228,10 @@ def _detalle_stepwise(decision: Any) -> str:
     p_value = getattr(decision, "p_value", None)
     threshold = getattr(decision, "threshold", None)
     if p_value is not None and threshold is not None:
-        return f" (p-valor {_pvalor(p_value)}, umbral {_num(threshold, decimals=2)})"
+        return f" (p-valor {_pvalor(p_value)}, umbral {_cut(threshold)})"
     beta = getattr(decision, "beta", None)
     if beta is not None:
-        return f" (coeficiente {_num(beta, decimals=3)})"
+        return f" (coeficiente {_cifra(beta, decimales=3)})"
     return ""
 
 
@@ -1241,11 +1243,11 @@ def _resumen_scorecard(study: Study, context: SummaryContext) -> StageSummary:
     table: pd.DataFrame | None = None
     if card is not None:
         lines.append(
-            f"Escala: {_num(card.get('pdo'), decimals=0)} puntos por duplicar las odds, "
-            f"{_num(card.get('target_score'), decimals=0)} puntos a odds "
-            f"{_num(card.get('target_odds'), decimals=0)}:1 "
-            f"(factor {_num(card.get('factor'), decimals=2)}, "
-            f"desplazamiento {_num(card.get('offset'), decimals=2)})"
+            f"Escala: {_cut(card.get('pdo'), minimo=0)} puntos por duplicar las odds, "
+            f"{_cut(card.get('target_score'), minimo=0)} puntos a odds "
+            f"{_cut(card.get('target_odds'), minimo=0)}:1 "
+            f"(factor {_cifra(card.get('factor'), decimales=2)}, "
+            f"desplazamiento {_cifra(card.get('offset'), decimales=2)})"
         )
         score = _artifact(study, "scorecard", "score")
         columna = str(card.get("score_column", "score"))
@@ -1253,8 +1255,9 @@ def _resumen_scorecard(study: Study, context: SummaryContext) -> StageSummary:
             valores = pd.to_numeric(score[columna], errors="coerce").dropna()
             if not valores.empty:
                 lines.append(
-                    f"Puntajes observados: de {_num(valores.min(), decimals=0)} a "
-                    f"{_num(valores.max(), decimals=0)} (media {_num(valores.mean(), decimals=1)})"
+                    f"Puntajes observados: de {_cifra(valores.min(), decimales=0)} a "
+                    f"{_cifra(valores.max(), decimales=0)} "
+                    f"(media {_cifra(valores.mean(), decimales=1)})"
                 )
         n_var = _int(card.get("n_variables")) or 0
         lines.append(
@@ -1286,8 +1289,8 @@ def _resumen_scorecard(study: Study, context: SummaryContext) -> StageSummary:
                 f"Fuera del ajuste (TTD): {_miles(n)} "
                 f"{_plural(n, 'operación puntuada', 'operaciones puntuadas')} "
                 f"({_composicion_de(study, fuera.index)}), puntaje medio "
-                f"{_num(pd.to_numeric(fuera[columna], errors='coerce').mean(), decimals=0)}"
-                + (f" (Desarrollo {_num(dev.mean(), decimals=0)})" if not dev.empty else "")
+                f"{_cifra(pd.to_numeric(fuera[columna], errors='coerce').mean(), decimales=0)}"
+                + (f" (Desarrollo {_cifra(dev.mean(), decimales=0)})" if not dev.empty else "")
             )
         alerts.extend(
             _alerta_fuera_del_ajuste(
@@ -1346,7 +1349,7 @@ def _resumen_calibration(study: Study, context: SummaryContext) -> StageSummary:
             f"PD media en Desarrollo: cruda {_pct(card.get('raw_mean_pd_dev'))} → calibrada "
             f"{_pct(card.get('calibrated_mean_pd_dev'))}"
             + (
-                f" (desplazamiento del intercepto {_num(card.get('offset'), decimals=4)})"
+                f" (desplazamiento del intercepto {_cifra(card.get('offset'), decimales=4)})"
                 if card.get("offset") is not None
                 else ""
             )
@@ -1560,9 +1563,9 @@ def _resumen_performance(study: Study, context: SummaryContext) -> StageSummary:
                 )
                 continue
             lines.append(
-                f"{_partition_label(pid)}: AUC {_num(valores.get('auc'), decimals=3)} · "
-                f"Gini {_num(valores.get('gini'), decimals=3)} · "
-                f"KS {_num(valores.get('ks'), decimals=3)}"
+                f"{_partition_label(pid)}: AUC {_cifra(valores.get('auc'), decimales=3)} · "
+                f"Gini {_cifra(valores.get('gini'), decimales=3)} · "
+                f"KS {_cifra(valores.get('ks'), decimales=3)}"
             )
             if banda == "threshold_flag":
                 alerts.append(
@@ -1624,7 +1627,7 @@ def _caida_dev_oot(maximos: Mapping[str, Any]) -> str | None:
         delta = b - a
         relativo = f" ({_pct(delta / a, decimals=1)})" if a else ""
         signo = "+" if delta > 0 else ""
-        frases.append(f"{rotulo} {signo}{_num(delta, decimals=3)}{relativo}")
+        frases.append(f"{rotulo} {signo}{_cifra(delta, decimales=3)}{relativo}")
     if not frases:
         return None
     return f"Caída Desarrollo → {_partition_label(destino)}: {' · '.join(frases)}"
@@ -1659,7 +1662,7 @@ def _resumen_stability(study: Study, context: SummaryContext) -> StageSummary:
                 lines.append(f"{_COMPARISON_LABELS.get(cid, cid)}: PSI no evaluable")
                 continue
             frase = (
-                f"{_COMPARISON_LABELS.get(cid, cid)}: peor PSI {_num(valor)} "
+                f"{_COMPARISON_LABELS.get(cid, cid)}: peor PSI {_cifra(valor)} "
                 f"({magnitud}) → {rotulo_banda}"
             )
             lines.append(frase)
@@ -1671,7 +1674,7 @@ def _resumen_stability(study: Study, context: SummaryContext) -> StageSummary:
         if peor is not None:
             lines.append(
                 f"CSI más alto: {str(peor).removesuffix('__points').removesuffix('__bin')} "
-                f"({_num(card.get('worst_csi_value'))})"
+                f"({_cifra(card.get('worst_csi_value'))})"
             )
         representatividad = _linea_representatividad(study)
         if representatividad is not None:
@@ -1733,7 +1736,7 @@ def _linea_representatividad(study: Study) -> tuple[str, str | None] | None:
     total = _float(psi["total_value"].iloc[0])
     banda = str(psi["band"].iloc[0])
     lectura = _REPRESENTATIVIDAD_LABELS.get(banda, banda)
-    linea = f"Fuera del ajuste frente a Desarrollo: PSI {_num(total)} — {lectura}"
+    linea = f"Fuera del ajuste frente a Desarrollo: PSI {_cifra(total)} — {lectura}"
     modelables = _artifact(study, "calibration", "calibrated_pd_frame")
     fuera = _artifact(study, "calibration", "out_of_model_calibrated_pd_frame")
     if (
@@ -1758,8 +1761,8 @@ def _linea_representatividad(study: Study) -> tuple[str, str | None] | None:
                 f"frente a {_pct(dev)})"
             )
     alerta = (
-        f"Las operaciones fuera del ajuste difieren de Desarrollo (PSI {_num(total)}): la muestra "
-        "de ajuste no las representa"
+        f"Las operaciones fuera del ajuste difieren de Desarrollo (PSI {_cifra(total)}): la "
+        "muestra de ajuste no las representa"
         if banda == "redevelop"
         else None
     )
@@ -2090,16 +2093,19 @@ def _cinco_cifras(study: Study) -> tuple[tuple[str, str], ...]:
         if destino is not None:
             valores = _mapping(maximos.get(destino))
             rotulo = _partition_label(destino)
-            cifras.append((f"AUC en {rotulo}", _num(valores.get("auc"), decimals=3)))
-            cifras.append((f"Gini en {rotulo}", _num(valores.get("gini"), decimals=3)))
-            cifras.append((f"KS en {rotulo}", _num(valores.get("ks"), decimals=3)))
+            cifras.append((f"AUC en {rotulo}", _cifra(valores.get("auc"), decimales=3)))
+            cifras.append((f"Gini en {rotulo}", _cifra(valores.get("gini"), decimales=3)))
+            cifras.append((f"KS en {rotulo}", _cifra(valores.get("ks"), decimales=3)))
             dev = _float(_mapping(maximos.get("desarrollo")).get("auc"))
             fuera = _float(valores.get("auc"))
             if dev is not None and fuera is not None:
                 delta = fuera - dev
                 relativo = f" ({_pct(delta / dev, decimals=1)})" if dev else ""
                 cifras.append(
-                    (f"Caída del AUC Desarrollo → {rotulo}", f"{_num(delta, decimals=3)}{relativo}")
+                    (
+                        f"Caída del AUC Desarrollo → {rotulo}",
+                        f"{_cifra(delta, decimales=3)}{relativo}",
+                    )
                 )
     stability = _card(study, "stability", "card")
     if stability is not None:
@@ -2115,7 +2121,7 @@ def _cinco_cifras(study: Study) -> tuple[tuple[str, str], ...]:
             cifras.append(
                 (
                     "Peor PSI entre score y PD",
-                    f"{_num(peor[1])} ({_COMPARISON_LABELS.get(peor[0], peor[0])}) → {banda}",
+                    f"{_cifra(peor[1])} ({_COMPARISON_LABELS.get(peor[0], peor[0])}) → {banda}",
                 )
             )
     return tuple(cifras)
@@ -2166,7 +2172,9 @@ def _formatear(table: pd.DataFrame, formats: Mapping[str, _Kind]) -> pd.DataFram
         if tipo is None:
             if pd.api.types.is_float_dtype(salida[columna].dtype):
                 tipo = "num"
-            elif pd.api.types.is_integer_dtype(salida[columna].dtype):
+            elif pd.api.types.is_integer_dtype(salida[columna].dtype) and es_columna_de_conteo(
+                str(columna)
+            ):
                 tipo = "int"
             else:
                 salida[columna] = salida[columna].map(_celda_texto)
@@ -2183,11 +2191,11 @@ def _celda(valor: Any, tipo: _Kind) -> str:
     if tipo == "pct":
         return _pct(valor)
     if tipo == "num2":
-        return _num(valor, decimals=2)
+        return _cifra(valor, decimales=2)
     if tipo == "num3":
-        return _num(valor, decimals=3)
+        return _cifra(valor, decimales=3)
     if tipo == "num":
-        return _num(valor)
+        return _cifra(valor)
     if tipo == "bool":
         return "sí" if bool(valor) else "no"
     if tipo == "pvalor":
@@ -2208,9 +2216,7 @@ def _pvalor(valor: Any) -> str:
     numero = _float(valor)
     if numero is None:
         return "—"
-    if numero < 0.001:
-        return "< 0,001"
-    return _num(numero, decimals=3)
+    return pvalor(numero)
 
 
 def _ruta_absoluta(ruta: Any, context: SummaryContext) -> str:

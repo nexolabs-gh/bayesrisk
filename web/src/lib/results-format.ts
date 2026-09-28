@@ -1846,7 +1846,8 @@ export function selectionDecisionRows(
       vif: formatMetric(d.vif, 2),
       csi: formatMetric(d.max_csi),
       forced: FORCED_LABELS[d.forced ?? ""] ?? null,
-      detail: d.detail,
+      // El motivo legible que compone el backend (D-PAN-4); sin él, el texto del motor.
+      detail: d.detail_legible ?? d.detail,
     }))
 }
 
@@ -2400,7 +2401,7 @@ export function edaProfiles(eda: EdaResult | null | undefined): EdaProfileView[]
       rows: [],
     }
     view.rows.push({
-      tramo: row.tramo === null ? EMPTY : String(row.tramo),
+      tramo: row.tramo === null ? EMPTY : (row.tramo_legible ?? String(row.tramo)),
       n: row.n,
       coverage: row.coverage,
       rate: row.default_rate,

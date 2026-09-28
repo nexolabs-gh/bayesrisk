@@ -743,7 +743,10 @@ class RandomSplitConfig(BayesRiskBaseConfig):
         """dev+holdout+oot debe sumar 1.0 (con tolerancia float); si no, ConfigError."""
         total = self.dev_fraction + self.holdout_fraction + self.oot_fraction
         if abs(total - 1.0) > 1e-9:
-            raise ValueError(f"dev+holdout+oot debe sumar 1.0; suma observada = {total:.4f}.")
+            # Import perezoso: el config no carga el informe. La cifra, en es-CL (D-PAN-3).
+            from bayesrisk.report.cifras import cifra
+
+            raise ValueError(f"dev+holdout+oot debe sumar 1; suma observada = {cifra(total)}.")
         return self
 
 

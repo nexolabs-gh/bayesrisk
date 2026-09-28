@@ -142,6 +142,8 @@ def test_eda_se_serializa_con_la_card_sus_tres_tablas_y_el_nan_como_ausencia(
     assert list(eda["univariate"][0]) == [
         "column",
         "tramo",
+        # D-PAN-4: el tramo de una numérica con comparadores en es-CL; `None` en una categórica.
+        "tramo_legible",
         "n",
         "coverage",
         "default_rate",
