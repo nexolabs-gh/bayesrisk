@@ -32,7 +32,13 @@ from bayesrisk.eda.default_rate import (
 )
 from bayesrisk.eda.quality import QUALITY_FLAG_LABELS
 from bayesrisk.eda.stability import NOT_EVALUABLE_REASON_LABELS, STABILITY_INDICATOR_LABELS
-from bayesrisk.report.cifras import es_columna_de_conteo, pvalor
+from bayesrisk.report.cifras import (
+    cifra,
+    corte_porcentual,
+    es_columna_de_conteo,
+    frente_al_corte,
+    pvalor,
+)
 from bayesrisk.report.prose import (
     _ANCHOR_KINDS,
     _ANCHOR_SOURCES,
@@ -785,14 +791,14 @@ def _resumen_eda(study: Study, context: SummaryContext) -> StageSummary:
         elif card.get("stability_flagged"):
             alerts.append(
                 f"La tasa de malos se deteriora en el tiempo: {indicador} "
-                f"{_cifra(card.get('stability_value'))} supera el umbral "
-                f"{_cut(card.get('stability_threshold'))}"
+                f"{_frente(card.get('stability_value'), card.get('stability_threshold'))} "
+                f"supera el umbral {_cut(card.get('stability_threshold'))}"
             )
         else:
             lines.append(
                 f"Deterioro de la tasa en el tiempo: sin señal ({indicador} "
-                f"{_cifra(card.get('stability_value'))}, umbral "
-                f"{_cut(card.get('stability_threshold'))})"
+                f"{_frente(card.get('stability_value'), card.get('stability_threshold'))}, "
+                f"umbral {_cut(card.get('stability_threshold'))})"
             )
         if "univariate" not in fallos:
             lines.append(
@@ -1148,8 +1154,7 @@ def _resumen_model(study: Study, context: SummaryContext) -> StageSummary:
         if concentran:
             umbral = umbrales.get("iv_contribution.threshold")
             alerts.append(
-                f"Concentra más del {_pct(umbral, decimals=0)} del IV del modelo: "
-                f"{', '.join(concentran)}"
+                f"Concentra más del {_corte_pct(umbral)} del IV del modelo: {', '.join(concentran)}"
             )
         coeficientes = _artifact(study, "model", "coefficients")
         if isinstance(coeficientes, pd.DataFrame) and not coeficientes.empty:
@@ -1228,7 +1233,7 @@ def _detalle_stepwise(decision: Any) -> str:
     p_value = getattr(decision, "p_value", None)
     threshold = getattr(decision, "threshold", None)
     if p_value is not None and threshold is not None:
-        return f" (p-valor {_pvalor(p_value)}, umbral {_cut(threshold)})"
+        return f" (p-valor {_pvalor_frente(p_value, threshold)}, umbral {_cut(threshold)})"
     beta = getattr(decision, "beta", None)
     if beta is not None:
         return f" (coeficiente {_cifra(beta, decimales=3)})"
@@ -2210,6 +2215,35 @@ def _celda_texto(valor: Any) -> str:
     if isinstance(valor, bool | np.bool_):
         return "sí" if bool(valor) else "no"
     return str(valor)
+
+
+def _frente(valor: Any, umbral: Any, *, decimales: int = 4) -> str:
+    """Una observación junto a su corte, con los decimales que la dejan de su lado (D-PAN-3).
+
+    Pasada 1 de Codex sobre el código: con 0.249962 frente a 0,24996, la alerta decía «0,24996
+    supera el umbral 0,24996».
+    """
+    numero, corte_ = _float(valor), _float(umbral)
+    if numero is None or corte_ is None:
+        return _cifra(valor, decimales=decimales)
+    return frente_al_corte(cifra(numero, decimales=decimales), numero, corte_)
+
+
+def _pvalor_frente(valor: Any, umbral: Any) -> str:
+    """Un p-valor junto a su corte: «< 0,001» no dice el lado de un corte menor que 0,001."""
+    numero, corte_ = _float(valor), _float(umbral)
+    if numero is None or corte_ is None:
+        return _pvalor(valor)
+    escrito = pvalor(numero)
+    if escrito.startswith("<") and corte_ < 0.001:
+        escrito = cifra(numero)
+    return frente_al_corte(escrito, numero, corte_)
+
+
+def _corte_pct(valor: Any) -> str:
+    """Un corte que es una proporción, como porcentaje exacto; «No disponible» si falta."""
+    numero = _float(valor)
+    return corte_porcentual(numero) if numero is not None else _cifra(valor)
 
 
 def _pvalor(valor: Any) -> str:

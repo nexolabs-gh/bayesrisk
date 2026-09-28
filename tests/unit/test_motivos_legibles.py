@@ -106,7 +106,7 @@ def test_el_stepwise_se_compone_de_su_p_valor_y_su_umbral() -> None:
         "detail": "iv_contribution=0.00123456",
         "threshold": 0.001,
     }
-    assert motivo_legible_stepwise(fila) == "contribución al IV 0,0012; umbral 0,001"
+    assert motivo_legible_stepwise(fila) == "contribución al IV 0,0012 > máximo 0,001"
     # Un p-valor bajo 0,001 frente a un corte menor no se escribe «< 0,001»: no diría el lado.
     fila = {"criterion": "lr_test", "detail": "x", "p_value": 0.0004, "threshold": 0.0005}
     assert motivo_legible_stepwise(fila) == "p-valor 0,00040; umbral 0,0005"
@@ -216,3 +216,31 @@ def test_sólo_los_tramos_de_una_numerica_se_reescriben() -> None:
     tramo_numerico = str(resultado.profiles["monto"]["tramo"].iloc[0])
     assert rotulo_de_intervalo(tramo_numerico).startswith(">")
     assert "(0.5, 1.25]" in set(resultado.profiles["segmento"]["tramo"].astype(str))
+
+
+# --- pasada 1 de Codex sobre el código ------------------------------------------------------
+
+
+def test_en_la_igualdad_la_cifra_escrita_tambien_dice_el_corte() -> None:
+    fila = {"reason": "high_iv", "detail": "iv=0.24994 >= max_iv=0.24994", "iv": 0.24994}
+    assert motivo_legible(fila, {"max_iv": 0.24994}) == "IV 0,24994 ≥ máximo 0,24994"
+
+
+def test_una_contribucion_de_iv_que_las_seis_cifras_no_ubican_no_se_compara() -> None:
+    """El motor registra la contribución que SUPERA el corte; su valor exacto no viaja."""
+    fila = {"criterion": "iv_contribution", "detail": "iv_contribution=0.24994"}
+    assert motivo_legible_stepwise({**fila, "threshold": 0.2499403}) is None
+    fila = {"criterion": "iv_contribution", "detail": "iv_contribution=0.31", "threshold": 0.25}
+    assert motivo_legible_stepwise(fila) == "contribución al IV 0,3100 > máximo 0,25"
+
+
+def test_los_resumenes_escriben_la_observacion_frente_a_su_corte() -> None:
+    from bayesrisk.guided.summaries import _corte_pct, _frente, _pvalor_frente
+
+    assert _frente(0.249962, 0.24996) == "0,249962"
+    assert _frente(0.3, 0.25) == "0,3000"
+    assert _frente(None, 0.25) == "No disponible"
+    assert _pvalor_frente(0.0499555, 0.049956) == "0,0499555"
+    assert _pvalor_frente(0.0004, 0.0005) == "0,00040"
+    # Un corte que es proporción se escribe exacto, no redondeado a entero.
+    assert _corte_pct(0.255) == "25,5 %"

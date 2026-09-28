@@ -39,6 +39,7 @@ __all__ = [
     "cifra",
     "conteo",
     "corte",
+    "corte_porcentual",
     "es_columna_de_conteo",
     "es_columna_de_pvalor",
     "frente_al_corte",
@@ -326,7 +327,9 @@ def frente_al_corte(texto: str, valor: float, umbral: float) -> str:
     exacto, frontera = _exacto(valor), _exacto(umbral)
     lado = _signo(exacto - frontera)
     leido = _leer(texto)
-    if lado == 0 or (leido is not None and _signo(leido - frontera) == lado):
+    # En la igualdad, la cifra también tiene que decir el corte (pasada 1 de Codex sobre el código:
+    # con `iv == max_iv == 0.24994`, «IV 0,2499 ≥ máximo 0,24994» era falso).
+    if leido is not None and _signo(leido - frontera) == lado:
         return texto
     miles = exacto.copy_abs() >= _GRANDE
     _, _, fraccion = texto.partition(",")
@@ -338,6 +341,15 @@ def frente_al_corte(texto: str, valor: float, umbral: float) -> str:
         if _signo(redondeado - frontera) == lado:
             return _posicional(redondeado, decimales, miles=miles)
     return _posicional(_redondeado(exacto, limite), limite, miles=miles)
+
+
+def corte_porcentual(valor: float | Decimal) -> str:
+    """Un corte que es una proporción, como porcentaje **exacto**: ``0.255`` → ``25,5 %``.
+
+    Se multiplica el decimal exacto, no el binario (``0.255 * 100`` es ``25.500000000000004``), y
+    no se redondea: un corte redondeado describiría otra política.
+    """
+    return f"{corte(_exacto(valor) * 100, minimo=0)} %"
 
 
 def motivo_legible(fila: Mapping[str, object], umbrales: Mapping[str, object]) -> str | None:
@@ -397,6 +409,11 @@ def motivo_legible_stepwise(fila: Mapping[str, object]) -> str | None:
             contribucion = float(detalle.removeprefix(PREFIJO_CONTRIBUCION_IV))
         except ValueError:
             return None
+        # El motor sólo registra la contribución que SUPERA el corte, pero su valor exacto no
+        # viaja: si las seis cifras del `detail` no lo dicen, no se afirma una comparación (pasada
+        # 1 de Codex sobre el código) y queda el texto del motor.
+        if not contribucion > umbral:
+            return None
         escrita = frente_al_corte(cifra(contribucion), contribucion, umbral)
-        return f"contribución al IV {escrita}; umbral {corte(umbral)}"
+        return f"contribución al IV {escrita} > máximo {corte(umbral)}"
     return None

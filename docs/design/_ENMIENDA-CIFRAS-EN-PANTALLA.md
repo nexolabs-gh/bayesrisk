@@ -367,6 +367,15 @@ y `puntosPorcentuales`. (e) Los módulos que el informe o la capa ui cargan al i
 (g) `.gitattributes` fija LF para `ts`, `tsx` y `css`: con `core.autocrlf` el checkout en Windows
 dejaba los guardrails estáticos de vitest leyendo vacío.
 
+**Pasada 1 de Codex sobre el código (sobre `e68be0e`): `needs-attention`, tres hallazgos, los tres
+verificados y corregidos.** (1) En la igualdad (`iv == max_iv`), la cifra escrita también tiene que
+decir el corte: `frente_al_corte` la extiende hasta el exacto. (2) La contribución de IV sólo
+existe en el `detail`, con seis cifras: el motor la registra cuando supera el corte, y si esas seis
+cifras no lo muestran no se afirma la comparación (queda el texto del motor); traer el valor exacto
+exigiría cambiar la traza, que la enmienda no toca. (3) Los resúmenes escriben la observación
+frente a su corte (deterioro de la tasa del EDA, p-valor del stepwise), y el umbral de concentración
+de IV como porcentaje exacto (`corte_porcentual`), no redondeado a entero.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima**: ninguna nueva.
