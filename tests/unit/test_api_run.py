@@ -496,17 +496,22 @@ def test_data_hash_inyectado_se_adopta_sin_caveat_de_ausencia() -> None:
 # --- Study reutilizado: el lineage sólo toma lo de su corrida (decisión de Cami del 2026-09-28) ---
 
 
-def _study_con_datos_publicados(tmp_path: Path) -> tuple[Study, str]:
-    """Primera corrida: el paso de datos corre y publica su ``data_hash`` en el store."""
-    parquet = tmp_path / "raw.parquet"
-    _write_parquet(parquet)
-    study = Study(BayesRiskConfig(data=_data_config(source=str(parquet))))
-    study.run()
+def _study_con_datos_publicados(tmp_path: Path, origen: str) -> tuple[Study, str]:
+    """Primera corrida: su ``data_hash`` queda en el store, publicado por el paso de datos o
+    inyectado por la puerta pública de artefactos (D-ART-8)."""
+    if origen == "inyectado":
+        study = api_module.run(BayesRiskConfig(), artifacts={("data", "data_hash"): "a" * 64})
+    else:
+        parquet = tmp_path / "raw.parquet"
+        _write_parquet(parquet)
+        study = Study(BayesRiskConfig(data=_data_config(source=str(parquet))))
+        study.run()
     digest = study.lineage_bundle().data_hash
     assert digest is not None and study.artifacts.get("data", "data_hash") == digest
     return study, digest
 
 
+@pytest.mark.parametrize("origen", ["paso-de-datos", "inyectado"])
 @pytest.mark.parametrize(
     "steps",
     [
@@ -515,12 +520,12 @@ def _study_con_datos_publicados(tmp_path: Path) -> tuple[Study, str]:
     ],
 )
 def test_un_study_reutilizado_no_hereda_el_data_hash_de_la_corrida_anterior(
-    tmp_path: Path, steps: list[str]
+    tmp_path: Path, steps: list[str], origen: str
 ) -> None:
-    """Revisión de Codex del parche 2.0.1: la segunda corrida se atribuía los datos de la primera,
-    en memoria y en el ``lineage.json`` de ``save()``. Ahora queda vacío y declarado, y el store no
-    se toca."""
-    study, digest = _study_con_datos_publicados(tmp_path)
+    """Revisión de Codex del parche 2.0.1 (y pasada 1 de S24, para el inyectado): la segunda
+    corrida se atribuía los datos de la primera, en memoria y en el ``lineage.json`` de ``save()``.
+    Ahora queda vacío y declarado, y el store no se toca."""
+    study, digest = _study_con_datos_publicados(tmp_path, origen)
 
     if steps:
         with pytest.raises(BayesRiskError):
@@ -534,6 +539,10 @@ def test_un_study_reutilizado_no_hereda_el_data_hash_de_la_corrida_anterior(
     assert lineage.data_hash is None
     assert any("data_hash ausente" in caveat for caveat in lineage.determinism_caveats)
     assert study.artifacts.get("data", "data_hash") == digest, "el Study conserva sus artefactos"
+    if origen == "inyectado":
+        assert lineage.injected_artifacts == ("data.data_hash",), (
+            "la procedencia se sigue declarando"
+        )
 
     guardado = json.loads(
         (study.save(tmp_path / "estudio") / "lineage.json").read_text(encoding="utf-8")

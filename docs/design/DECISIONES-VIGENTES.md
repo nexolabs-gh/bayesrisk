@@ -904,15 +904,17 @@ reimplementa por motor. El chequeo PIT de IFRS 9 es incondicional y ningún flag
   corrida fallaba al resolver el pipeline —o no incluía `data`—, `_build_lineage` adoptaba el
   `data_hash` que la primera había dejado en el `ArtifactStore`, y `save()` persistía la corrida
   fallida con los datos de otra. **Regla:** el `data_hash` del lineage es el de ESTA corrida —lo
-  completa el paso de datos al correr, o, con `data` apagado, se adopta el **inyectado** por la
-  puerta de artefactos (D-ART-8 intacta)—; un `data_hash` del store que no se inyectó es de una
-  corrida anterior y **no** se adopta: queda `None` con el caveat «data_hash ausente: la corrida no
-  ejecutó el paso de datos». **No cambia** qué artefactos conserva el `Study` (el store no se
+  completa el paso de datos al correr, o, con `data` apagado, se adopta el **inyectado para esta
+  corrida** por la puerta de artefactos (D-ART-8 intacta)—; cualquier otro `data_hash` del store
+  —el que publicó o se inyectó para una corrida anterior— **no** se adopta: queda `None` con el
+  caveat «data_hash ausente: la corrida no ejecutó el paso de datos». La procedencia acumulada
+  (`injected_artifacts`) se sigue declarando en cada lineage. **No cambia** qué artefactos conserva el `Study` (el store no se
   limpia; los inyectados siguen). Medido de paso: volver a correr `data` sobre el mismo `Study`
   levanta `ArtifactExistsError` (el store no sobrescribe), así que reutilizar un `Study` sólo sirve
   para pasos que no republican. Tests
   `test_un_study_reutilizado_no_hereda_el_data_hash_de_la_corrida_anterior` (falla al resolver / no
-  corre datos; memoria y `lineage.json`), con control negativo.
+  corre datos, con el hash publicado o inyectado; memoria y `lineage.json`), con control negativo;
+  el caso inyectado lo encontró la pasada 1 de Codex en S24.
 
 ## Evidencia histórica preservada
 

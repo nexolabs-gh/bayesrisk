@@ -294,6 +294,12 @@ class Study:
         self.results: dict[str, Any] = {}
         self.run_context = RunContext()
         self._injected_artifacts: set[ArtifactKey] = set()
+        # Las claves inyectadas PARA la próxima corrida y las de la corrida en curso: la procedencia
+        # acumulada (`_injected_artifacts`) se sigue declarando en cada lineage, pero un `data_hash`
+        # inyectado sólo se adopta en la corrida para la que se inyectó (decisión de Cami del
+        # 2026-09-28; pasada 1 de Codex en S24).
+        self._inyectados_pendientes: set[ArtifactKey] = set()
+        self._inyectados_de_la_corrida: frozenset[ArtifactKey] = frozenset()
         self._inert_injected_artifacts: tuple[ArtifactKey, ...] = ()
 
     # --- Gobernanza (hooks hacia SDD-03; core recibe el sink ya compuesto, CT-4) --------------
@@ -324,6 +330,7 @@ class Study:
         importe DTOs de dominio.
         """
         self._injected_artifacts.add((domain, key))
+        self._inyectados_pendientes.add((domain, key))
 
     @property
     def inert_injected_artifacts(self) -> tuple[ArtifactKey, ...]:
@@ -398,6 +405,9 @@ class Study:
         # El preámbulo es de ESTA corrida: se vacía al arrancar (un Study reutilizado no arrastra
         # el de la anterior) y se rellena evento a evento, después de que cada uno llegó al trail.
         self.run_context.preamble = ()
+        # Lo inyectado desde la corrida anterior es de ésta; lo que se inyecte luego, de la próxima.
+        self._inyectados_de_la_corrida = frozenset(self._inyectados_pendientes)
+        self._inyectados_pendientes.clear()
         # Secuencia del SDD-01 §7.3 paso 2: status="running" → emitir run_start → iniciar el
         # LineageBundle. En F0 ``data_hash`` queda None; en B2+ lo completa el paso de datos antes
         # de cerrar.
@@ -1005,13 +1015,16 @@ class Study:
             )
         # El `data_hash` del lineage es el de ESTA corrida (decisión de Cami del 2026-09-28): lo
         # completa el paso de datos al correr (`DataStep._update_lineage`) o, con `data` apagado,
-        # se adopta el inyectado por la puerta de artefactos (D-ART-8). El lineage se arma ANTES
-        # del primer paso, así que un `data_hash` que ya esté en el store y no se haya inyectado
-        # es de una corrida anterior del mismo Study: adoptarlo atribuía a ésta los datos de
-        # aquélla —p. ej. si la segunda corrida fallaba al resolver—. Queda vacío y declarado; el
-        # store no se toca (el Study conserva sus artefactos).
+        # se adopta el inyectado PARA esta corrida por la puerta de artefactos (D-ART-8). El
+        # lineage se arma ANTES del primer paso, así que cualquier otro `data_hash` del store —el
+        # que publicó el paso de datos de una corrida anterior del mismo Study, o el que se inyectó
+        # para ella— es de otra corrida: adoptarlo atribuía a ésta los datos de aquélla —p. ej. si
+        # la segunda corrida fallaba al resolver—. Queda vacío y declarado; el store no se toca (el
+        # Study conserva sus artefactos).
         hay_hash_en_store = self.artifacts.has("data", "data_hash")
-        hash_inyectado = hay_hash_en_store and ("data", "data_hash") in self._injected_artifacts
+        hash_inyectado = (
+            hay_hash_en_store and ("data", "data_hash") in self._inyectados_de_la_corrida
+        )
         data_hash = self.artifacts.get("data", "data_hash") if hash_inyectado else None
         datos_corren_ahora = pasos is not None and any(paso.name == "data" for paso in pasos)
         if (
