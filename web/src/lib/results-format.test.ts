@@ -275,32 +275,44 @@ const sample: ResultsResponse = {
   },
 }
 
-describe("formatMetric", () => {
-  it("formatea a 4 decimales por defecto (AUC/Gini/KS)", () => {
-    expect(formatMetric(0.7123458941453674)).toBe("0.7123")
+describe("formatMetric (la regla del informe, D-PAN-1)", () => {
+  it("formatea a 4 decimales por defecto (AUC/Gini/KS), con coma decimal", () => {
+    expect(formatMetric(0.7123458941453674)).toBe("0,7123")
   })
 
   it("respeta el número de decimales pedido", () => {
-    expect(formatMetric(0.42469178829073484, 3)).toBe("0.425")
+    expect(formatMetric(0.42469178829073484, 3)).toBe("0,425")
   })
 
-  it("devuelve EMPTY para null/undefined/no finito", () => {
+  it("un redondeo no se hace pasar por un corte: la regla del cero final", () => {
+    expect(formatMetric(0.24996)).toBe("0,24996")
+    expect(formatMetric(0.25)).toBe("0,2500")
+  })
+
+  it("desde 1.000, dos decimales y punto de miles; bajo 0,001, dos cifras significativas", () => {
+    expect(formatMetric(1234.5678)).toBe("1.234,57")
+    expect(formatMetric(0.000291842)).toBe("0,00029")
+  })
+
+  it("ausente → EMPTY; un infinito se escribe, como en el informe", () => {
     expect(formatMetric(null)).toBe(EMPTY)
     expect(formatMetric(undefined)).toBe(EMPTY)
     expect(formatMetric(Number.NaN)).toBe(EMPTY)
-    expect(formatMetric(Number.POSITIVE_INFINITY)).toBe(EMPTY)
+    expect(formatMetric(Number.POSITIVE_INFINITY)).toBe("inf")
   })
 })
 
-describe("formatPValue", () => {
-  it("usa notación exponencial para p-values diminutos", () => {
-    expect(formatPValue(8.086740322817964e-88)).toBe("8.1e-88")
-    expect(formatPValue(3.0566632058876624e-190)).toBe("3.1e-190")
+describe("formatPValue (D-CPY-4)", () => {
+  it("bajo 0,001 escribe «< 0,001»", () => {
+    expect(formatPValue(8.086740322817964e-88)).toBe("< 0,001")
+    expect(formatPValue(3.0566632058876624e-190)).toBe("< 0,001")
+    expect(formatPValue(0)).toBe("< 0,001")
   })
 
-  it("usa 4 decimales para p-values normales", () => {
-    expect(formatPValue(0.0342)).toBe("0.0342")
-    expect(formatPValue(0)).toBe("0.0000")
+  it("si no, tres decimales con la regla del cero final", () => {
+    expect(formatPValue(0.0342)).toBe("0,034")
+    expect(formatPValue(0.05)).toBe("0,050")
+    expect(formatPValue(0.04996)).toBe("0,04996")
   })
 
   it("devuelve EMPTY para ausente/no finito", () => {
@@ -311,8 +323,8 @@ describe("formatPValue", () => {
 
 describe("formatPercent", () => {
   it("convierte proporción a porcentaje (1 decimal por defecto)", () => {
-    expect(formatPercent(0.2)).toBe("20.0%")
-    expect(formatPercent(0.23327442565008835, 2)).toBe("23.33%")
+    expect(formatPercent(0.2)).toBe("20,0 %")
+    expect(formatPercent(0.23327442565008835, 2)).toBe("23,33 %")
   })
 
   it("devuelve EMPTY para ausente/no finito", () => {
@@ -321,9 +333,9 @@ describe("formatPercent", () => {
 })
 
 describe("formatCount", () => {
-  it("agrupa miles con coma inequívoca (determinista, sin ICU)", () => {
-    expect(formatCount(3961)).toBe("3,961")
-    expect(formatCount(1234567)).toBe("1,234,567")
+  it("agrupa miles con punto, como el informe (determinista, sin ICU)", () => {
+    expect(formatCount(3961)).toBe("3.961")
+    expect(formatCount(1234567)).toBe("1.234.567")
     expect(formatCount(0)).toBe("0")
     expect(formatCount(924)).toBe("924")
   })
@@ -525,8 +537,8 @@ describe("comparisonLabel", () => {
 describe("stabilityThresholdLabels", () => {
   it("publica los operadores semiabiertos que ejecutan los tres motores", () => {
     expect(stabilityThresholdLabels(0.1, 0.25)).toEqual({
-      review: "revisión 0.10 ≤ índice < 0.25",
-      redevelop: "redesarrollo índice ≥ 0.25",
+      review: "revisión 0,10 ≤ índice < 0,25",
+      redevelop: "redesarrollo índice ≥ 0,25",
     })
   })
 
@@ -1607,8 +1619,8 @@ describe("formatClp", () => {
 
 describe("formatAmount", () => {
   it("formatea montos sin inventar símbolo ni jurisdicción", () => {
-    expect(formatAmount(3_873_413_550.49)).toBe("3,873,413,550")
-    expect(formatAmount(-1_250)).toBe("-1,250")
+    expect(formatAmount(3_873_413_550.49)).toBe("3.873.413.550")
+    expect(formatAmount(-1_250)).toBe("-1.250")
     expect(formatAmount(null)).toBe(EMPTY)
   })
 })
@@ -1629,9 +1641,9 @@ describe("formatClpCompact", () => {
 
 describe("formatPercentValue", () => {
   it("formatea un valor que YA es porcentaje sin reescalar", () => {
-    expect(formatPercentValue(8.631965650236614)).toBe("8.63%")
-    expect(formatPercentValue(47.16019814154514, 1)).toBe("47.2%")
-    expect(formatPercentValue(3.697335445253305, 0)).toBe("4%")
+    expect(formatPercentValue(8.631965650236614)).toBe("8,63 %")
+    expect(formatPercentValue(47.16019814154514, 1)).toBe("47,2 %")
+    expect(formatPercentValue(3.697335445253305, 0)).toBe("4 %")
   })
 
   it("ausente/no finito → EMPTY", () => {
@@ -2150,22 +2162,22 @@ const ifrs9Results: ResultsResponse = {
 }
 
 describe("MONEY (moneda agnóstica configurable)", () => {
-  it("por defecto es neutra: símbolo '$' y separador de miles anglo, NO casada a CLP", () => {
+  it("por defecto es neutra: símbolo '$', NO casada a CLP; el separador es el del idioma", () => {
     expect(MONEY.symbol).toBe("$")
-    expect(MONEY.thousands).toBe(",")
+    expect(Object.keys(MONEY)).toEqual(["symbol"])
   })
 })
 
 describe("formatMoney", () => {
-  it("formatea con símbolo agnóstico + separador de miles, sin decimales", () => {
-    expect(formatMoney(3423116.1185982637)).toBe("$3,423,116")
-    expect(formatMoney(114325314.7)).toBe("$114,325,315") // redondea al entero
-    expect(formatMoney(18826.69723987618)).toBe("$18,827")
+  it("formatea con símbolo agnóstico + punto de miles, sin decimales", () => {
+    expect(formatMoney(3423116.1185982637)).toBe("$3.423.116")
+    expect(formatMoney(114325314.7)).toBe("$114.325.315") // redondea al entero
+    expect(formatMoney(18826.69723987618)).toBe("$18.827")
     expect(formatMoney(0)).toBe("$0")
   })
 
   it("respeta el signo de un monto negativo", () => {
-    expect(formatMoney(-1500.4)).toBe("-$1,500")
+    expect(formatMoney(-1500.4)).toBe("-$1.500")
   })
 
   it("ausente/no finito → EMPTY", () => {
@@ -2179,15 +2191,15 @@ describe("formatMoney", () => {
 describe("formatMoneyCompact", () => {
   it("adapta la unidad (M con 1 decimal <10M, k, o entero)", () => {
     expect(formatMoneyCompact(114325314.7)).toBe("$114 M")
-    expect(formatMoneyCompact(3423116.12)).toBe("$3.4 M")
-    expect(formatMoneyCompact(2262676.42)).toBe("$2.3 M")
+    expect(formatMoneyCompact(3423116.12)).toBe("$3,4 M")
+    expect(formatMoneyCompact(2262676.42)).toBe("$2,3 M")
     expect(formatMoneyCompact(80000)).toBe("$80 k")
     expect(formatMoneyCompact(500)).toBe("$500")
-    expect(formatMoneyCompact(-2262676.42)).toBe("-$2.3 M")
+    expect(formatMoneyCompact(-2262676.42)).toBe("-$2,3 M")
   })
 
   it("agrupa miles en la parte de millones para cifras muy grandes", () => {
-    expect(formatMoneyCompact(1_234_000_000)).toBe("$1,234 M")
+    expect(formatMoneyCompact(1_234_000_000)).toBe("$1.234 M")
   })
 
   it("ausente/no finito → EMPTY", () => {
@@ -2227,7 +2239,7 @@ describe("ifrs9Headline", () => {
     expect(h?.pitMode).toBe("ttc_only")
     expect(h?.faltaDato).toEqual(["FALTA-DATO-IFRS-4"])
     // El titular formateado que ve el banco (moneda agnóstica).
-    expect(formatMoney(h?.reportedEcl)).toBe("$3,423,116")
+    expect(formatMoney(h?.reportedEcl)).toBe("$3.423.116")
   })
 
   it("coverage null si la EAD es ≤ 0", () => {
@@ -2669,7 +2681,8 @@ describe("selectionThresholdRows (D-SC-10)", () => {
       "correlation.clustering_method",
       "vif.threshold",
     ])
-    expect(filas[0]).toEqual({ key: "min_iv", label: "IV mínimo", value: "0.02" })
+    // Un corte se escribe exacto (`corte`), no redondeado a dos decimales (D-PAN-2).
+    expect(filas[0]).toEqual({ key: "min_iv", label: "IV mínimo", value: "0,02" })
     // El valor de un enum se muestra crudo: es lo mismo que enseña el selector del formulario.
     expect(filas[2].value).toBe("flag")
   })
@@ -2726,7 +2739,7 @@ describe("selectionDecisionRows (D-SC-10)", () => {
     const [fila] = selectionDecisionRows([decision])
     expect(fila.reason).toBe("IV insuficiente")
     expect(fila.ivBand).toBe("sin poder")
-    expect(fila.iv).toBe("0.0029")
+    expect(fila.iv).toBe("0,0029")
     expect(fila.detail).toBe("iv=0.00292241 < min_iv=0.02")
     expect(fila.included).toBe(false)
   })
@@ -2742,7 +2755,7 @@ describe("selectionDecisionRows (D-SC-10)", () => {
     const [fila] = selectionDecisionRows([
       { ...decision, max_abs_corr: 0.81, max_corr_with: "deuda_ingreso" },
     ])
-    expect(fila.correlation).toBe("0.8100 · deuda_ingreso")
+    expect(fila.correlation).toBe("0,8100 · deuda_ingreso")
   })
 
   it("una variable forzada lo dice en palabras", () => {

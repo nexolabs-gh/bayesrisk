@@ -24,6 +24,7 @@ import {
   niceBound,
   woeColor,
 } from "./chart-theme"
+import { marca, porcentaje } from "@/lib/cifras"
 
 /** Props que Recharts inyecta a un tick personalizado del eje (subconjunto usado). */
 interface BinTickProps {
@@ -137,7 +138,7 @@ export function WoeByBinChart({ rows }: { rows: BinDetailRow[] }) {
               tickLine={false}
               axisLine={false}
               tick={AXIS_TICK}
-              tickFormatter={(v: number) => v.toFixed(2)}
+              tickFormatter={marca}
             />
             <YAxis
               yAxisId="rate"
@@ -147,7 +148,7 @@ export function WoeByBinChart({ rows }: { rows: BinDetailRow[] }) {
               tickLine={false}
               axisLine={false}
               tick={AXIS_TICK}
-              tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+              tickFormatter={(v: number) => porcentaje(v, 0)}
             />
             <ReferenceLine
               yAxisId="woe"

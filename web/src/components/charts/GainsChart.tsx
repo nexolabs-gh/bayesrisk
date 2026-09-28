@@ -20,6 +20,7 @@ import {
   isPrimaryPartition,
   partitionColor,
 } from "./chart-theme"
+import { marca, porcentaje } from "@/lib/cifras"
 
 /** Ítem que Recharts inyecta al tooltip de la curva. */
 interface GainsTooltipProps {
@@ -35,7 +36,7 @@ interface GainsTooltipProps {
 
 /** Porcentaje a 1 decimal (la ganancia acumulada es una proporción 0–1). */
 function pct(v: number): string {
-  return `${(v * 100).toFixed(1)}%`
+  return porcentaje(v, 1)
 }
 
 /** Tooltip dedicado: tramo (u origen) + ganancia por serie en %, incluida la diagonal. */
@@ -91,6 +92,7 @@ export function GainsChart({ series }: { series: GainsSeries }) {
           <XAxis
             type="number"
             dataKey="decile"
+            tickFormatter={marca}
             domain={[0, maxDecile]}
             ticks={ticks}
             tickLine={false}
@@ -100,7 +102,7 @@ export function GainsChart({ series }: { series: GainsSeries }) {
           <YAxis
             domain={[0, 1]}
             ticks={[0, 0.25, 0.5, 0.75, 1]}
-            tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
+            tickFormatter={(v: number) => porcentaje(v, 0)}
             tickLine={false}
             axisLine={false}
             tick={AXIS_TICK}

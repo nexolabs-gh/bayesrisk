@@ -1153,6 +1153,10 @@ export interface ModelCardDecision {
   regla: string
   umbral: unknown
   valor: unknown
+  /** Versión legible que escribe el backend con la regla del informe (D-PAN-4); ausente en
+   * fixtures anteriores, donde el front describe el valor crudo. */
+  umbral_legible?: string
+  valor_legible?: string
   accion: string
   ts: string
   /**

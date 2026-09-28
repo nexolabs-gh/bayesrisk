@@ -37,6 +37,8 @@ __all__ = [
     "corte",
     "es_columna_de_conteo",
     "es_columna_de_pvalor",
+    "monto",
+    "porcentaje",
     "pvalor",
 ]
 
@@ -177,7 +179,8 @@ def corte(valor: float | Decimal, *, minimo: int = 2) -> str:
     """
     exacto = _exacto(valor)
     texto = format(exacto, "f")
-    signo = "-" if texto.startswith("-") else ""
+    # Un cero no lleva signo: `-0.0` es un corte en cero (enmienda CIFRAS-EN-PANTALLA, D-PAN-1 a).
+    signo = "-" if texto.startswith("-") and exacto != 0 else ""
     entero, _, fraccion = texto.lstrip("-").partition(".")
     fraccion = fraccion.rstrip("0").ljust(minimo, "0")
     return f"{signo}{entero},{fraccion}" if fraccion else f"{signo}{entero}"
@@ -186,6 +189,37 @@ def corte(valor: float | Decimal, *, minimo: int = 2) -> str:
 def conteo(valor: int) -> str:
     """Un conteo con punto de miles: ``30.316``."""
     return f"{valor:,}".replace(",", ".")
+
+
+def porcentaje(valor: float | None, *, decimales: int = 2) -> str:
+    """Una proporción como porcentaje, con coma y espacio: ``0.238`` → ``23,80 %``.
+
+    Decimales fijos, sin la regla del cero final: un porcentaje no se lee junto a un corte. Redondea
+    el producto binario ``valor * 100`` al par más cercano, como el formato ``f`` de Python —que es
+    lo que el informe ya escribía—. Un cero redondeado no lleva signo.
+    """
+    if valor is None or not math.isfinite(valor):
+        return VACIO
+    texto = f"{valor * 100:.{decimales}f}"
+    if texto.startswith("-") and not texto.strip("-0."):
+        texto = texto[1:]
+    return f"{texto} %".replace(".", ",")
+
+
+def monto(valor: float | Decimal | None, *, simbolo: str) -> str:
+    """Un monto redondeado a la unidad con punto de miles y su símbolo: ``$697.376.974``.
+
+    El redondeo es al par más cercano (``round`` de Python); el signo va antes del símbolo
+    (``-$1.200``). ``simbolo`` es obligatorio y sin default a propósito (D-MON-4).
+    """
+    if valor is None:
+        return VACIO
+    numero = float(valor)
+    if not math.isfinite(numero):
+        return VACIO
+    entero = round(numero)
+    signo = "-" if entero < 0 else ""
+    return f"{signo}{simbolo}{abs(entero):,}".replace(",", ".")
 
 
 def es_columna_de_conteo(nombre: str) -> bool:

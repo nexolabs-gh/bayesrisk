@@ -36,55 +36,55 @@ import type {
   ValidationResult,
   ValidationStabilityRecompute,
 } from "@/lib/results-types"
+import {
+  VACIO,
+  cifra,
+  conteo,
+  corte,
+  monto,
+  montoCompacto,
+  porcentaje,
+  puntosPorcentuales,
+  pvalor,
+} from "@/lib/cifras"
 
 /** Placeholder uniforme para valores ausentes/no finitos en toda la pestaña. */
-export const EMPTY = "—"
+export const EMPTY = VACIO
+
+// Los formateadores de la pantalla son envoltorios del espejo de `bayesrisk.report.cifras`
+// (`@/lib/cifras`, enmienda CIFRAS-EN-PANTALLA, D-PAN-1): la pantalla escribe cada número como el
+// informe —coma decimal, punto de miles, la regla del cero final— y el golden los ata a Python.
+// Conservan sus nombres para que los call sites no cambien de forma.
 
 /**
- * Formatea una métrica numérica a `digits` decimales fijos (default 4, para AUC/Gini/KS).
- * Ausente/no finito → `EMPTY`. NO redondea con criterio de dominio: solo presentación.
+ * Una métrica (AUC, Gini, KS, IV…) con la regla del informe: `digits` decimales de base entre
+ * 0,001 y 1.000, dos con miles desde 1.000, dos cifras significativas bajo 0,001, y nunca un cero
+ * final que haga pasar un redondeo por un corte. Ausente → `EMPTY`.
  */
 export function formatMetric(
   x: number | null | undefined,
   digits = 4,
 ): string {
-  if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  return x.toFixed(digits)
+  return cifra(x, digits)
 }
 
-/**
- * Formatea un p-value: valores diminutos (|x| < 1e-4) en notación exponencial (así no
- * colapsan a "0.0000"); el resto a 4 decimales. Ausente/no finito → `EMPTY`.
- */
+/** Un p-valor: `< 0,001` bajo ese corte; si no, tres decimales. Ausente → `EMPTY`. */
 export function formatPValue(x: number | null | undefined): string {
-  if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  if (x !== 0 && Math.abs(x) < 1e-4) return x.toExponential(1)
-  return x.toFixed(4)
+  return pvalor(x)
 }
 
-/**
- * Formatea una proporción [0,1] como porcentaje (default 1 decimal). Ausente/no
- * finito → `EMPTY`. Presentación pura: no interpreta el número.
- */
+/** Una proporción [0,1] como porcentaje es-CL (`23,8 %`), `digits` decimales fijos. */
 export function formatPercent(
   x: number | null | undefined,
   digits = 1,
 ): string {
-  if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  return `${(x * 100).toFixed(digits)}%`
+  return porcentaje(x, digits)
 }
 
-/**
- * Formatea un conteo entero con separador de miles "," INEQUÍVOCO (convención anglo:
- * coma = miles, punto = decimal), sin depender de `toLocaleString`/ICU para ser
- * determinista. Así "3,961" (conteo) no se confunde con "0.71" (métrica decimal).
- * Ausente/no finito → `EMPTY`.
- */
+/** Un conteo entero con punto de miles (`3.961`). Ausente/no finito → `EMPTY`. */
 export function formatCount(x: number | null | undefined): string {
   if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  return Math.trunc(x)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  return conteo(Math.trunc(x))
 }
 
 /** Booleano legible en español; `null`/`undefined` → `EMPTY`. */
@@ -95,116 +95,58 @@ export function formatBool(x: boolean | null | undefined): string {
 }
 
 /**
- * Formatea un número que YA es un porcentaje (0–100, p. ej. `weighted_pe_percent` que el motor
- * CMF emite en puntos porcentuales) como `"8.63%"`. A diferencia de `formatPercent` (que espera
- * una PROPORCIÓN [0,1] y multiplica por 100), aquí NO se reescala: presentación pura. Ausente/no
- * finito → `EMPTY`.
+ * Un número que YA es un porcentaje (0–100, p. ej. `weighted_pe_percent`, que el motor CMF emite
+ * en puntos porcentuales) como `8,63 %`. A diferencia de `formatPercent`, NO se reescala.
  */
 export function formatPercentValue(
   x: number | null | undefined,
   digits = 2,
 ): string {
-  if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  return `${x.toFixed(digits)}%`
+  return puntosPorcentuales(x, digits)
 }
 
-/**
- * Formatea un monto en pesos chilenos con separador de miles "." (convención CL: punto = miles),
- * SIN decimales — `$388.732.916`. Redondea a peso entero: en cifras de cientos de millones los
- * centavos son ruido, y el monto ya viene cuantizado por la política `rounding` del motor. No
- * depende de `toLocaleString`/ICU (determinista, igual espíritu que `formatCount`). Ausente/no
- * finito → `EMPTY`.
- */
+/** Un monto en pesos chilenos redondeado a la unidad: `$388.732.916`. */
 export function formatClp(x: number | null | undefined): string {
-  if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  const rounded = Math.round(x)
-  const sign = rounded < 0 ? "-" : ""
-  const digits = Math.abs(rounded)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-  return `${sign}$${digits}`
+  return monto(x, "$")
 }
 
-/**
- * Formatea un monto CLP COMPACTO en millones para labels/ejes de charts — `$697 M`, `$8.079 M`.
- * Redondea a millón entero (con separador de miles "."), que es suficiente para un label de barra;
- * la cifra exacta va en el tooltip vía `formatClp`. Ausente/no finito → `EMPTY`.
- */
+/** Un monto CLP compacto en millones enteros para labels de charts: `$697 M`, `$8.079 M`. */
 export function formatClpCompact(x: number | null | undefined): string {
   if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  const millions = Math.round(x / 1e6)
-  const sign = millions < 0 ? "-" : ""
-  const digits = Math.abs(millions)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-  return `${sign}$${digits} M`
+  return `${monto(x / 1e6, "$")} M`
 }
 
 // --- dinero AGNÓSTICO de moneda (dominio IFRS 9 / ECL, cartera genérica LatAm) --------------
 //
 // Los montos IFRS 9 vienen SIN moneda a propósito (no son CLP): la pantalla los formatea con un
-// símbolo PARAMETRIZABLE. `formatClp`/`formatClpCompact` (arriba) siguen siendo CLP-específicos
-// para el dominio CMF chileno; NO se reutilizan aquí para no casar IFRS 9 con pesos chilenos.
+// símbolo PARAMETRIZABLE. El separador de miles no es de la moneda sino del idioma (D-MON-5): es
+// el punto, como en el informe.
 
 /**
- * ÚNICO punto de configuración de la moneda de los montos agnósticos (IFRS 9 / ECL). Para una
- * entidad concreta, cambia SOLO `symbol` aquí (p. ej. `"CLP "`, `"S/ "`, `"US$ "`, `"$"`). El
- * default es un símbolo genérico/neutro: NO está casado con ningún país (los fixtures traen los
- * montos sin moneda). `thousands` es el separador de miles (convención anglo inequívoca, igual
- * que `formatCount`, para no confundirlo con el `.` de decimales).
+ * ÚNICO punto de configuración de la moneda de los montos agnósticos (IFRS 9 / ECL). El default es
+ * un símbolo genérico/neutro: NO está casado con ningún país (los fixtures traen los montos sin
+ * moneda).
  */
 export const MONEY = {
   symbol: "$",
-  thousands: ",",
 } as const
 
-/** Inserta el separador de miles de `MONEY` en la parte entera de un número ya en string. */
-function groupThousands(intDigits: string): string {
-  return intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, MONEY.thousands)
-}
-
-/** Formatea un monto cuyo payload no declara moneda, sin inventar símbolo ni jurisdicción. */
+/** Un monto cuyo payload no declara moneda, sin inventar símbolo ni jurisdicción: `3.514.282`. */
 export function formatAmount(x: number | null | undefined): string {
-  if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  const rounded = Math.round(x)
-  const sign = rounded < 0 ? "-" : ""
-  return `${sign}${groupThousands(Math.abs(rounded).toString())}`
+  return monto(x, "")
 }
 
-/**
- * Formatea un monto de moneda AGNÓSTICA (símbolo `MONEY.symbol`) con separador de miles y SIN
- * decimales — `$3,514,282`. Redondea al entero (los montos ya vienen cuantizados por el motor;
- * en cifras grandes los decimales son ruido). Determinista (no depende de `toLocaleString`/ICU),
- * mismo espíritu que `formatClp` pero desacoplado de CLP. Ausente/no finito → `EMPTY`.
- */
+/** Un monto de moneda agnóstica (`MONEY.symbol`) redondeado a la unidad: `$3.514.282`. */
 export function formatMoney(x: number | null | undefined): string {
-  if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  const rounded = Math.round(x)
-  const sign = rounded < 0 ? "-" : ""
-  return `${sign}${MONEY.symbol}${groupThousands(Math.abs(rounded).toString())}`
+  return monto(x, MONEY.symbol)
 }
 
 /**
- * Formatea un monto de moneda AGNÓSTICA COMPACTO para labels/ejes de charts, adaptando la unidad:
- * millones (`$114 M`, `$2.3 M`) para |x| ≥ 1e6, miles (`$80 k`) para |x| ≥ 1e3, y el entero para
- * el resto. Usa un decimal en millones bajo 10 M (para no aplastar curvas de ~1–7 M) y ninguno por
- * encima. La cifra exacta va en el tooltip vía `formatMoney`. Ausente/no finito → `EMPTY`.
+ * Un monto agnóstico compacto para labels/ejes: `$114 M`, `$2,3 M` (un decimal bajo 10 M),
+ * `$80 k` o la unidad. La cifra exacta va en el tooltip vía `formatMoney`.
  */
 export function formatMoneyCompact(x: number | null | undefined): string {
-  if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  const sign = x < 0 ? "-" : ""
-  const abs = Math.abs(x)
-  if (abs >= 1e6) {
-    const m = abs / 1e6
-    const digits = m < 10 ? 1 : 0
-    const [int, frac] = m.toFixed(digits).split(".")
-    const body = frac ? `${groupThousands(int)}.${frac}` : groupThousands(int)
-    return `${sign}${MONEY.symbol}${body} M`
-  }
-  if (abs >= 1e3) {
-    return `${sign}${MONEY.symbol}${groupThousands(Math.round(abs / 1e3).toString())} k`
-  }
-  return `${sign}${MONEY.symbol}${groupThousands(Math.round(abs).toString())}`
+  return montoCompacto(x, MONEY.symbol)
 }
 
 /** Fila de métricas de discriminación normalizada para la tabla (una por partición). */
@@ -318,8 +260,8 @@ export interface PsiBarRow {
 /** Rótulos de las dos fronteras semiabiertas ejecutadas por stability/selection/validation. */
 export function stabilityThresholdLabels(stable: number, review: number) {
   return {
-    review: `revisión ${stable.toFixed(2)} ≤ índice < ${review.toFixed(2)}`,
-    redevelop: `redesarrollo índice ≥ ${review.toFixed(2)}`,
+    review: `revisión ${corte(stable)} ≤ índice < ${corte(review)}`,
+    redevelop: `redesarrollo índice ≥ ${corte(review)}`,
   } as const
 }
 
@@ -1846,7 +1788,7 @@ export function selectionThresholdRows(
       return {
         key,
         label: SELECTION_THRESHOLD_LABELS[key],
-        value: typeof raw === "number" ? formatMetric(raw, 2) : String(raw),
+        value: typeof raw === "number" ? corte(raw) : String(raw),
       }
     })
 }
@@ -2175,29 +2117,7 @@ export function hlNotEvaluablePartitions(
  */
 export function formatCut(x: number | null | undefined): string {
   if (x === null || x === undefined || !Number.isFinite(x)) return EMPTY
-  const texto = String(x)
-  const posicional = texto.includes("e") ? expandirCientifica(texto) : texto
-  const [entero, decimales = ""] = posicional.split(".")
-  return `${entero}.${decimales.padEnd(2, "0")}`
-}
-
-/**
- * Pasa `1.5e-7` a `0.00000015` moviendo el punto sobre los dígitos de la mantisa, sin `toFixed`:
- * `toFixed` sólo admite hasta 100 decimales y un corte `1e-101` —válido para la config— lanzaba
- * `RangeError` en pleno render (pasada 2 de Codex sobre la capa A). Sólo dígitos: ningún redondeo.
- */
-function expandirCientifica(texto: string): string {
-  const [mantisa, exponente] = texto.split("e")
-  const negativo = mantisa.startsWith("-")
-  const sinSigno = negativo ? mantisa.slice(1) : mantisa
-  const [parteEntera, parteDecimal = ""] = sinSigno.split(".")
-  const digitos = parteEntera + parteDecimal
-  const punto = parteEntera.length + Number(exponente)
-  let resultado: string
-  if (punto <= 0) resultado = `0.${"0".repeat(-punto)}${digitos}`
-  else if (punto >= digitos.length) resultado = digitos + "0".repeat(punto - digitos.length)
-  else resultado = `${digitos.slice(0, punto)}.${digitos.slice(punto)}`
-  return (negativo ? "-" : "") + resultado
+  return corte(x)
 }
 
 /**

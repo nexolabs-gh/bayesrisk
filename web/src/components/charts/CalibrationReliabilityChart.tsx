@@ -58,7 +58,7 @@ function ReliabilityTooltip({ active, payload }: ReliabilityTooltipProps) {
           </span>
         </li>
         <li className="flex items-center gap-3 text-muted-foreground">
-          <span>IC Wilson 95%</span>
+          <span>IC Wilson 95 %</span>
           <span className="ml-auto font-mono tabular-nums text-foreground">
             [{formatPercent(d.ciLow, 2)}, {formatPercent(d.ciHigh, 2)}]
           </span>
@@ -79,7 +79,7 @@ function ReliabilityTooltip({ active, payload }: ReliabilityTooltipProps) {
  * (PD predicha, default observado), una serie por partición coloreada con `partitionColor`,
  * sobre la DIAGONAL y=x punteada ("calibración perfecta") que es la clave de lectura —
  * sobre la diagonal el modelo SUBESTIMA el riesgo; bajo ella lo SOBREESTIMA. Cada punto
- * lleva su banda de Wilson 95% como error bar vertical (`ci_low..ci_high`). Ambos ejes
+ * lleva su banda de Wilson 95 % como error bar vertical (`ci_low..ci_high`). Ambos ejes
  * comparten dominio `[0, niceBound(máx pred/obs/ci)]`. Solo grafica lo que `reliabilityCurve`
  * ya normalizó; CERO cálculo de dominio. Guard por presencia: sin puntos no renderiza.
  */
@@ -210,7 +210,7 @@ export function CalibrationReliabilityChart({
           diagonal = calibración perfecta
         </span>
         <span className="text-muted-foreground">
-          barra vertical = intervalo de Wilson 95%
+          barra vertical = intervalo de Wilson 95 %
         </span>
       </div>
     </div>

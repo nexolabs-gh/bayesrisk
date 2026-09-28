@@ -19,13 +19,14 @@ import {
   GRID_STROKE,
 } from "./chart-theme"
 import { ChartTooltip } from "./ChartTooltip"
+import { cifra, marca } from "@/lib/cifras"
 
 /** Tick de variable en monospace (calza con cómo se listan las features en la app). */
 const FEATURE_TICK = { ...AXIS_TICK, fontFamily: "var(--font-mono)" }
 
 /** Label al final de la barra (IV a 4 decimales, como la tabla original). */
 function ivLabelFmt(v: string | number | boolean | null | undefined) {
-  return typeof v === "number" ? v.toFixed(4) : ""
+  return typeof v === "number" ? cifra(v) : ""
 }
 
 /**
@@ -47,6 +48,7 @@ export function IvChart({ rows }: { rows: IvRow[] }) {
           <CartesianGrid horizontal={false} vertical stroke={GRID_STROKE} />
           <XAxis
             type="number"
+            tickFormatter={marca}
             tickLine={false}
             axisLine={false}
             tick={AXIS_TICK}
@@ -61,7 +63,7 @@ export function IvChart({ rows }: { rows: IvRow[] }) {
           />
           <Tooltip
             cursor={CURSOR_FILL}
-            content={<ChartTooltip formatValue={(v) => v.toFixed(4)} />}
+            content={<ChartTooltip formatValue={(v) => cifra(v)} />}
           />
           <Bar
             dataKey="iv"

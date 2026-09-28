@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 
 import { EMPTY } from "@/lib/results-format"
+import { cifra } from "@/lib/cifras"
 
 /** Ítem del payload que inyecta Recharts (subconjunto que consumimos). */
 interface TooltipItem {
@@ -22,7 +23,7 @@ interface ChartTooltipProps {
 }
 
 function defaultFormat(v: number): string {
-  return v.toFixed(4)
+  return cifra(v)
 }
 
 /**

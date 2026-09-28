@@ -9,8 +9,9 @@
  * recalcula, nada se interpreta, y lo que la ficha no trae no se fabrica.
  */
 
+import { corte } from "@/lib/cifras"
 import { esAvisoDeclarado } from "@/lib/markers"
-import { EMPTY, formatBool, formatCount, formatMetric } from "@/lib/results-format"
+import { EMPTY, formatBool, formatCount, formatMetric, formatPValue } from "@/lib/results-format"
 import type { ModelCard } from "@/lib/results-types"
 import { CONFIG_SECTIONS } from "@/lib/schema"
 
@@ -107,16 +108,39 @@ function splitMetricKey(key: string): { domain: string; name: string } {
 }
 
 /**
- * Un número de la ficha: los enteros como conteo, el resto a 4 decimales (como AUC/Gini/KS). Un
- * valor diminuto —una tolerancia de `1e-8`— va en notación exponencial, con el mismo criterio que
- * `formatPValue`: a 4 decimales colapsaría a «0.0000» y se leería como cero.
+ * Un número de la ficha con la regla del informe (D-PAN-1): los enteros como conteo, el resto con
+ * `cifra` —cuatro decimales, dos cifras significativas bajo 0,001 y científica bajo una
+ * millonésima, así que una tolerancia de `1e-8` no colapsa a cero—.
  */
 function formatNumber(value: number): string {
   if (Number.isInteger(value)) return formatCount(value)
-  if (Number.isFinite(value) && value !== 0 && Math.abs(value) < 1e-4) {
-    return value.toExponential(1)
-  }
   return formatMetric(value, 4)
+}
+
+/** Cómo se escribe cada número de un valor: una observación o un corte (la procedencia manda). */
+type Procedencia = "observacion" | "corte"
+
+function numeroSegun(value: number, procedencia: Procedencia, clave: string | null): string {
+  if (procedencia === "corte") {
+    // Un umbral entero (un máximo de bins, un mínimo de filas) se escribe como tal; uno real, exacto.
+    if (Number.isInteger(value)) return formatCount(value)
+    return Number.isFinite(value) ? corte(value) : formatMetric(value)
+  }
+  if (clave !== null && esClaveDePvalor(clave)) return formatPValue(value)
+  return formatNumber(value)
+}
+
+/**
+ * Si una clave es un p-valor **observado**: el espejo de `cifras.es_columna_de_pvalor`. Un corte
+ * de p-valor del config (`entry_p_value`, `max_pvalue`…) no es un resultado.
+ */
+export function esClaveDePvalor(nombre: string): boolean {
+  const clave = nombre.trim().toLowerCase()
+  if (!(clave.includes("p_value") || clave.includes("pvalue"))) return false
+  return !(
+    ["entry_", "exit_", "max_", "min_"].some((prefijo) => clave.startsWith(prefijo)) ||
+    ["threshold", "alpha", "cut", "corte"].some((marca) => clave.includes(marca))
+  )
 }
 
 const esEscalar = (v: unknown): boolean =>
@@ -130,23 +154,28 @@ const esEscalar = (v: unknown): boolean =>
  * `{}`) se marca ausente, no se omite: un mapa vacío de razones no evaluables es un hecho
  * («ninguna»), no ruido.
  */
-export function describeValue(value: unknown, depth = 0): string {
+export function describeValue(
+  value: unknown,
+  depth = 0,
+  procedencia: Procedencia = "observacion",
+  clave: string | null = null,
+): string {
   if (value === null || value === undefined) return EMPTY
   if (typeof value === "boolean") return formatBool(value)
-  if (typeof value === "number") return formatNumber(value)
+  if (typeof value === "number") return numeroSegun(value, procedencia, clave)
   if (typeof value === "string") return value === "" ? EMPTY : value
   if (Array.isArray(value)) {
     if (value.length === 0) return EMPTY
-    return depth === 0 || value.every(esEscalar)
-      ? value.map((item) => describeValue(item, depth + 1)).join(", ")
-      : JSON.stringify(value)
+    const items = value.map((item) => describeValue(item, depth + 1, procedencia, clave))
+    // Lo anidado más hondo se encierra para que se lea dónde empieza y termina: nunca en JSON,
+    // que escribiría sus números con punto decimal (D-PAN-2).
+    return depth === 0 || value.every(esEscalar) ? items.join(", ") : `[${items.join("; ")}]`
   }
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)
     if (entries.length === 0) return EMPTY
-    return depth === 0
-      ? entries.map(([k, v]) => `${k}: ${describeValue(v, depth + 1)}`).join(" · ")
-      : JSON.stringify(value)
+    const partes = entries.map(([k, v]) => `${k}: ${describeValue(v, depth + 1, procedencia, k)}`)
+    return depth === 0 ? partes.join(" · ") : `{${partes.join(", ")}}`
   }
   return String(value)
 }
@@ -234,8 +263,10 @@ export interface ModelCardDecisionRow {
  */
 export function modelCardDecisionRows(card: ModelCard): ModelCardDecisionRow[] {
   return card.decisions.map((d) => {
-    const umbral = describeValue(d.umbral)
-    const valor = describeValue(d.valor)
+    // El umbral es un corte: se escribe exacto (D-PAN-2; un 0.24994 no se lee «0,2499»). Si el
+    // backend publica la versión legible (D-PAN-4), ésa manda.
+    const umbral = d.umbral_legible ?? describeValue(d.umbral, 0, "corte")
+    const valor = d.valor_legible ?? describeValue(d.valor)
     return {
       ts: d.ts,
       step: d.step,

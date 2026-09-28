@@ -7,6 +7,7 @@
  */
 
 import type { DatasetInfo, UploadedDataset } from "./api"
+import { conteo } from "@/lib/cifras"
 
 /**
  * Dataset elegido, normalizado desde cualquiera de las dos rutas (catálogo o subida). `role`
@@ -135,7 +136,7 @@ function aportaValores(selected: SelectedDataset, info: DatasetInfo): boolean {
 
 /** Etiqueta de una opción del selector de catálogo, p.ej. `Consumo · 10.000 filas`. */
 export function datasetOptionLabel(info: DatasetInfo): string {
-  return `${info.name} · ${info.n_rows.toLocaleString("es-CL")} filas`
+  return `${info.name} · ${conteo(info.n_rows)} filas`
 }
 
 /** Una opción del selector de datasets de ejemplo: etiqueta visible + id que setea al elegirla. */

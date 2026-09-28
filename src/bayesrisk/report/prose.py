@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 from bayesrisk.core.markers import strip_declared_codes
 from bayesrisk.methodology import build_ifrs9_methodology_card, methodology_paragraphs
-from bayesrisk.report.cifras import cifra, corte
+from bayesrisk.report.cifras import cifra, corte, monto, porcentaje
 from bayesrisk.report.document import DOMAIN_TITLES, internal_grouping_label
 
 # Las cuatro palabras de las bandas del PSI y la identidad de la magnitud ganadora del resumen A1
@@ -3083,9 +3083,8 @@ def _pct(value: Any, *, decimals: int = 2) -> str:
     numeric = _float(value)
     if numeric is None:
         return _NOT_AVAILABLE
-    # Coma decimal (es-CL): el separador de miles ya es punto en `_clp`/`_miles`; un porcentaje
-    # con punto decimal (`2.99 %`) rompe la convención chilena del informe (`2,99 %`).
-    return f"{numeric * 100:.{decimals}f} %".replace(".", ",")
+    # La regla vive en `cifras.porcentaje`, la misma que usa la pantalla (D-PAN-1).
+    return porcentaje(numeric, decimales=decimals)
 
 
 def _money(value: Any, *, symbol: str) -> str:
@@ -3104,7 +3103,8 @@ def _money(value: Any, *, symbol: str) -> str:
     numeric = _float(value)
     if numeric is None:
         return _NOT_AVAILABLE
-    return symbol + f"{round(numeric):,}".replace(",", ".")
+    # La regla vive en `cifras.monto`, la misma que usa la pantalla (D-PAN-1).
+    return monto(numeric, simbolo=symbol)
 
 
 def _simbolo_monetario(bundle: ReportInputBundle) -> str:

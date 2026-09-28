@@ -92,7 +92,7 @@ describe("con card, el panel pinta «Ficha del modelo»", () => {
     expect(html).toContain("Métricas por dominio")
     expect(html).toContain("Performance")
     expect(html).toContain("auc_oot")
-    expect(html).toContain("0.6561")
+    expect(html).toContain("0,6561")
     expect(html).toContain("discrimination · effective_deciles_by_partition")
     expect(html).toContain("desarrollo: 10 · holdout: 10 · oot: 10")
   })
@@ -430,7 +430,7 @@ describe("resumen del peor PSI en «Estabilidad del score» (D-SC-12)", () => {
     const html = render(demo)
     expect(ocurrencias(html, "Peor PSI entre score y PD")).toBe(2)
     expect(html).toContain("PD calibrada")
-    expect(html).toContain("0.0132")
+    expect(html).toContain("0,0132")
   })
 
   it("con la PD ganando, la banda pintada es la de la PD y no la del score", () => {
@@ -474,7 +474,7 @@ describe("resumen del peor PSI en «Estabilidad del score» (D-SC-12)", () => {
     const inicio = html.indexOf("Peor PSI entre score y PD")
     const resumen = html.slice(inicio, html.indexOf("</dl>", inicio))
     expect(resumen).toContain("PD calibrada")
-    expect(resumen).toContain("0.1200")
+    expect(resumen).toContain("0,1200")
     expect(resumen).toContain("Revisar")
     expect(resumen).not.toContain("Estable")
   })
@@ -493,7 +493,7 @@ describe("resumen del peor PSI en «Estabilidad del score» (D-SC-12)", () => {
     const inicio = html.indexOf("Peor PSI entre score y PD")
     const resumen = html.slice(inicio, html.indexOf("</dl>", inicio))
     expect(resumen).toContain("score")
-    expect(resumen).toContain("0.3000")
+    expect(resumen).toContain("0,3000")
     expect(resumen).toContain("Redesarrollar")
     expect(ocurrencias(html, "Peor PSI entre score y PD")).toBe(1)
   })
@@ -514,7 +514,7 @@ describe("resumen del peor PSI en «Estabilidad del score» (D-SC-12)", () => {
       },
     })
     expect(ocurrencias(html, "Peor PSI entre score y PD")).toBe(0)
-    expect(html).not.toContain("0.1200")
+    expect(html).not.toContain("0,1200")
     expect(html).toContain("no se puede atribuir")
     expect(html).toContain("Dev vs Holdout")
     // La sección sigue existiendo con sus series: lo que se omite es el semáforo agregado.
@@ -789,33 +789,34 @@ describe("los cortes del semáforo por grado (D-VAL-15): la fila explica su prop
   it("con el contraste corrido publica los dos cortes de la card, no la significancia", () => {
     const html = render(conCortes({ green_alpha: 0.1, red_alpha: 0.02 }, [gradoAmbar]))
     expect(html).toContain("Cortes del semáforo")
-    expect(html).toContain("verde con p-valor ≥ 0.10")
-    expect(html).toContain("rojo por debajo de 0.02")
+    expect(html).toContain("verde con p-valor ≥ 0,10")
+    expect(html).toContain("rojo por debajo de 0,02")
     // El texto no atribuye la elección: el motor no sabe si el corte es declarado o default.
     expect(html).toContain("política de validación")
     expect(html).not.toContain("la institución fijó")
     // Y el color de la fila es el que esos cortes deciden.
     expect(html).toContain("Ámbar")
-    // Pasada 3 de Codex: el p-valor de la fila va a cuatro decimales y el color se decidió sobre
-    // el valor exacto; el límite se declara junto a los cortes.
-    expect(html).toContain("cuatro decimales")
+    // Pasada 3 de Codex: el p-valor de la fila se escribe redondeado y el color se decidió sobre
+    // el valor exacto; el límite se declara junto a los cortes, con la regla real (D-PAN-5).
+    expect(html).toContain("tres decimales")
+    expect(html).toContain("&lt; 0,001")
     expect(html).toContain("sobre el valor exacto")
   })
 
   it("un corte con más de cuatro decimales se escribe entero, no redondeado a otra política", () => {
     // Pasada 1 de Codex sobre la capa A: `formatPValue` redondeaba 0.05004 a «0.0500».
     const html = render(conCortes({ green_alpha: 0.05004, red_alpha: 0.01004 }, [gradoAmbar]))
-    expect(html).toContain("verde con p-valor ≥ 0.05004")
-    expect(html).toContain("rojo por debajo de 0.01004")
-    expect(html).not.toContain("0.0500 ")
+    expect(html).toContain("verde con p-valor ≥ 0,05004")
+    expect(html).toContain("rojo por debajo de 0,01004")
+    expect(html).not.toContain("0,0500 ")
   })
 
   it("un corte con exponente menor que −100 no derriba el panel: se expande sin `toFixed`", () => {
     // Pasada 2 de Codex sobre la capa A: `toFixed(101)` lanza `RangeError` y no hay error boundary.
     const html = render(conCortes({ green_alpha: 2e-101, red_alpha: 1e-101 }, [gradoAmbar]))
     expect(html).toContain("Cortes del semáforo")
-    expect(html).toContain(`verde con p-valor ≥ 0.${"0".repeat(100)}2`)
-    expect(html).toContain(`rojo por debajo de 0.${"0".repeat(100)}1`)
+    expect(html).toContain(`verde con p-valor ≥ 0,${"0".repeat(100)}2`)
+    expect(html).toContain(`rojo por debajo de 0,${"0".repeat(100)}1`)
   })
 
   it("sin contraste (`traffic_light_cuts: null`) no se pintan cortes", () => {
@@ -899,7 +900,7 @@ describe("un Hosmer-Lemeshow sin veredicto (D-VAL-17): la causa se traduce junto
     const html = render(conHl("group_below_min", [particionSinVeredicto]))
     expect(html).toContain("Hosmer-Lemeshow sin veredicto (1)")
     expect(html).toContain("OOT")
-    expect(html).toContain("1,008")
+    expect(html).toContain("1.008")
     expect(html).toContain("100")
     expect(html).toContain("200")
     // Y el conteo del motor no se recalcula por tener una prueba fuera: «0 de 2».
@@ -1220,8 +1221,9 @@ describe("«Análisis exploratorio» (D-SC-5): los tres casos de la card, con su
       }),
     )
     expect(html).toContain("Aviso de posible redesarrollo: peor desvío")
-    expect(html).toContain("0.4100")
-    expect(html).toContain("0.2500")
+    expect(html).toContain("0,4100")
+    // El umbral es un corte del config: exacto (D-PAN-2).
+    expect(html).toContain("0,25")
   })
 
   it("las marcas de calidad salen en palabras y las columnas descritas en su desplegable", () => {
@@ -1300,16 +1302,16 @@ describe("«Análisis exploratorio» (D-SC-5): los tres casos de la card, con su
       }),
     )
     // `formatCount` separa miles con coma: es la convención de toda la pantalla.
-    expect(html).toContain("Se muestran las primeras 1,000 de 1,234,567 cohortes")
+    expect(html).toContain("Se muestran las primeras 1.000 de 1.234.567 cohortes")
     // El gráfico cuenta contra el total del motor, no contra las filas publicadas, y ya no
     // promete que «la tabla de abajo trae todas».
-    expect(html).toContain("Se grafican las primeras 60 de 1,234,567 cohortes")
-    expect(html).toContain("la tabla de abajo trae las primeras 1,000.")
+    expect(html).toContain("Se grafican las primeras 60 de 1.234.567 cohortes")
+    expect(html).toContain("la tabla de abajo trae las primeras 1.000.")
     expect(html).not.toContain("la tabla de abajo trae todas")
     expect(html).toContain("Descargar la tabla completa (CSV)")
     expect(html).toContain(`/api/results/${minima(null).run_id}/eda-default-rate`)
     // La cifra del encabezado es la misma: el total que calculó el motor.
-    expect(html).toContain("1,234,567 cohortes")
+    expect(html).toContain("1.234.567 cohortes")
     expect(html).toContain("ID-00999")
   })
 

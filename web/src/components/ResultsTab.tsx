@@ -751,7 +751,7 @@ export function ResultsPanel({
                   </span>{" "}
                   frente al umbral{" "}
                   <span className="font-mono tabular-nums">
-                    {formatMetric(edaStability.threshold)}
+                    {formatCut(edaStability.threshold)}
                   </span>
                   . Es un umbral de exploración: la corrida sigue igual.
                 </p>
@@ -1247,7 +1247,8 @@ export function ResultsPanel({
                   {formatCut(valCuts.red_alpha)} · rojo por debajo de{" "}
                   {formatCut(valCuts.red_alpha)}. Son un parámetro de la política de validación
                   de tu institución, no un umbral fijado por norma. Los p-valores de la tabla se
-                  muestran con cuatro decimales; el color se decidió sobre el valor exacto.
+                  escriben con tres decimales, y bajo 0,001 como «&lt; 0,001»; el color se decidió
+                  sobre el valor exacto.
                 </p>
               ) : null}
               {valCalibration.porGrado.length > 0 ? (
@@ -1692,7 +1693,7 @@ export function ResultsPanel({
       {reliability ? (
         <ResultsSection
           title="Confiabilidad de calibración"
-          description="Cada punto compara la PD predicha (eje X) con la tasa de default observada (eje Y) por decil de riesgo. Sobre la diagonal = el modelo SUBESTIMA el riesgo; bajo la diagonal = lo SOBREESTIMA. La banda vertical es el intervalo de Wilson 95%."
+          description="Cada punto compara la PD predicha (eje X) con la tasa de default observada (eje Y) por decil de riesgo. Sobre la diagonal = el modelo SUBESTIMA el riesgo; bajo la diagonal = lo SOBREESTIMA. La banda vertical es el intervalo de Wilson 95 %."
         >
           <ReliabilityChips partitions={reliability.partitions} />
           <CalibrationReliabilityChart view={reliability} />
@@ -2357,7 +2358,7 @@ function ReliabilityDetail({
               <NumHead>n</NumHead>
               <NumHead>PD predicha</NumHead>
               <NumHead>Default observado</NumHead>
-              <NumHead>IC Wilson 95%</NumHead>
+              <NumHead>IC Wilson 95 %</NumHead>
             </tr>
           </thead>
           <tbody>

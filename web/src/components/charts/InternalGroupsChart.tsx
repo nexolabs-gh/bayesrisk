@@ -24,6 +24,7 @@ import {
   GRID_STROKE,
   PROVISIONING_COLORS,
 } from "./chart-theme"
+import { entero, porcentaje } from "@/lib/cifras"
 
 /** Ítem que Recharts inyecta al tooltip (ambas series comparten el mismo datum en `.payload`). */
 interface GroupTooltipProps {
@@ -129,7 +130,7 @@ export function InternalGroupsChart({
                 tickLine={false}
                 axisLine={false}
                 tick={AXIS_TICK}
-                tickFormatter={(v: number) => `${Math.round(v / 1e6)}`}
+                tickFormatter={(v: number) => entero(v / 1e6)}
               />
               <YAxis
                 yAxisId="pd"
@@ -139,7 +140,7 @@ export function InternalGroupsChart({
                 tickLine={false}
                 axisLine={false}
                 tick={AXIS_TICK}
-                tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                tickFormatter={(v: number) => porcentaje(v, 0)}
               />
               <Tooltip cursor={CURSOR_FILL} content={<GroupTooltip method={method} />} />
               <Bar

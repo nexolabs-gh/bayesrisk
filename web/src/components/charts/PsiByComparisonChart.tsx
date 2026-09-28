@@ -23,6 +23,7 @@ import {
   bandLabel,
   niceBound,
 } from "./chart-theme"
+import { cifra, marca } from "@/lib/cifras"
 
 /** Ítem que Recharts inyecta al tooltip (el datum vive en `.payload`). */
 interface PsiTooltipProps {
@@ -40,7 +41,7 @@ function PsiTooltip({ active, payload }: PsiTooltipProps) {
       <p className="text-muted-foreground">
         PSI{" "}
         <span className="ml-1 font-mono tabular-nums text-foreground">
-          {d.value === null ? "—" : d.value.toFixed(4)}
+          {d.value === null ? "—" : cifra(d.value)}
         </span>
       </p>
       <p className="mt-1 flex items-center gap-1.5 text-[0.7rem]">
@@ -57,7 +58,7 @@ function PsiTooltip({ active, payload }: PsiTooltipProps) {
 
 /** Label sobre la barra (3 decimales; el tooltip da los 4). Omite nulos. */
 function psiLabelFmt(v: string | number | boolean | null | undefined) {
-  return typeof v === "number" ? v.toFixed(3) : ""
+  return typeof v === "number" ? cifra(v, 3) : ""
 }
 
 /**
@@ -103,6 +104,7 @@ export function PsiByComparisonChart({
           />
           <YAxis
             domain={[0, domainTop]}
+            tickFormatter={marca}
             tickLine={false}
             axisLine={false}
             tick={AXIS_TICK}

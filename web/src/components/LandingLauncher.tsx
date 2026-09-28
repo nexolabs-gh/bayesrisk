@@ -215,7 +215,7 @@ function CurvaGains() {
               className="fill-muted-foreground font-mono"
               style={{ fontSize: "8px" }}
             >
-              {v}%
+              {v} %
             </text>
           </g>
         ))}

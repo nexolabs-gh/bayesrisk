@@ -24,6 +24,7 @@ import {
   bandLabel,
   niceBound,
 } from "./chart-theme"
+import { cifra, marca } from "@/lib/cifras"
 
 /** Tick de variable en monospace (como se listan las features en la app). */
 const FEATURE_TICK = { ...AXIS_TICK, fontFamily: "var(--font-mono)" }
@@ -46,7 +47,7 @@ function CsiTooltip({ active, payload }: CsiTooltipProps) {
       <p className="text-muted-foreground">
         CSI{" "}
         <span className="ml-1 font-mono tabular-nums text-foreground">
-          {d.value === null ? "—" : d.value.toFixed(4)}
+          {d.value === null ? "—" : cifra(d.value)}
         </span>
       </p>
       <p className="mt-1 flex items-center gap-1.5 text-[0.7rem]">
@@ -63,7 +64,7 @@ function CsiTooltip({ active, payload }: CsiTooltipProps) {
 
 /** Label al final de la barra (3 decimales; el tooltip da los 4). Omite nulos. */
 function csiLabelFmt(v: string | number | boolean | null | undefined) {
-  return typeof v === "number" ? v.toFixed(3) : ""
+  return typeof v === "number" ? cifra(v, 3) : ""
 }
 
 /**
@@ -107,6 +108,7 @@ export function StabilityCsiChart({
           <XAxis
             type="number"
             domain={[0, domainTop]}
+            tickFormatter={marca}
             tickLine={false}
             axisLine={false}
             tick={AXIS_TICK}

@@ -41,6 +41,7 @@ import { DEMO_MODE } from "@/lib/demo-runtime"
 import { artifactKey } from "@/lib/external-artifacts"
 import { describeApiError } from "@/lib/validation"
 import { useAppState } from "@/state/appStore"
+import { conteo } from "@/lib/cifras"
 
 interface DatosTabProps {
   /** Navega a otra sección del shell (la navegación vive en App, no en el store). */
@@ -487,7 +488,7 @@ function DatasetPreview({ dataset, onContinue }: DatasetPreviewProps) {
             </p>
           </div>
           <p className="font-mono text-xs text-muted-foreground">
-            {dataset.nRows.toLocaleString("es-CL")} filas ·{" "}
+            {conteo(dataset.nRows)} filas ·{" "}
             {dataset.columns.length} columnas
           </p>
         </div>

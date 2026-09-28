@@ -20,6 +20,7 @@ import {
   niceBound,
   partitionColor,
 } from "./chart-theme"
+import { cifra, conteo, marca, porcentaje } from "@/lib/cifras"
 
 /** Ítem que Recharts inyecta al tooltip (el datum vive en `.payload`). */
 interface LiftTooltipProps {
@@ -37,17 +38,17 @@ function LiftTooltip({ active, payload }: LiftTooltipProps) {
       <p className="text-muted-foreground">
         Lift{" "}
         <span className="ml-1 font-mono tabular-nums text-foreground">
-          {d.lift.toFixed(2)}×
+          {cifra(d.lift, 2)}×
         </span>
       </p>
       <p className="mt-0.5 text-muted-foreground">
         Tasa de malos{" "}
         <span className="ml-1 font-mono tabular-nums text-foreground">
-          {(d.bad_rate * 100).toFixed(1)}%
+          {porcentaje(d.bad_rate, 1)}
         </span>
       </p>
       <p className="mt-0.5 text-[0.7rem] text-muted-foreground">
-        n = {d.n_total.toLocaleString("es-CL")}
+        n = {conteo(d.n_total)}
       </p>
     </div>
   )
@@ -55,7 +56,7 @@ function LiftTooltip({ active, payload }: LiftTooltipProps) {
 
 /** Label sobre la barra (lift a 2 decimales con ×). */
 function liftLabelFmt(v: string | number | boolean | null | undefined) {
-  return typeof v === "number" ? `${v.toFixed(2)}×` : ""
+  return typeof v === "number" ? `${cifra(v, 2)}×` : ""
 }
 
 /**
@@ -91,6 +92,7 @@ export function LiftChart({
             tick={AXIS_TICK}
           />
           <YAxis
+            tickFormatter={marca}
             domain={[0, domainTop]}
             tickLine={false}
             axisLine={false}
@@ -102,7 +104,7 @@ export function LiftChart({
             stroke="var(--border)"
             strokeDasharray="5 4"
             label={{
-              value: "azar (1.0×)",
+              value: "azar (1,0×)",
               position: "insideTopRight",
               fill: AXIS_TICK.fill,
               fontSize: 9,

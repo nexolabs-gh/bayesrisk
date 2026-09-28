@@ -67,6 +67,7 @@ import {
   variantDefaults,
 } from "@/lib/form-engine"
 import { cn } from "@/lib/utils"
+import { marca } from "@/lib/cifras"
 
 export interface FieldRendererProps {
   name: string
@@ -379,9 +380,10 @@ function SliderField(props: FieldRendererProps) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{min}</span>
-        <span className="font-mono text-eyebrow">{num}</span>
-        <span>{max}</span>
+        {/* Lo que se LEE va en es-CL (D-PAN-5); el campo de entrada no cambia. */}
+        <span>{marca(min)}</span>
+        <span className="font-mono text-eyebrow">{marca(num)}</span>
+        <span>{marca(max)}</span>
       </div>
       <Slider
         value={[num]}

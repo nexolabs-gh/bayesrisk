@@ -20,6 +20,7 @@ import {
   METRIC_COLORS,
 } from "./chart-theme"
 import { ChartTooltip } from "./ChartTooltip"
+import { cifra, marca } from "@/lib/cifras"
 
 /** Series graficadas: MISMO color = MISMA métrica en toda la app (ver chart-theme). */
 const SERIES = [
@@ -30,7 +31,7 @@ const SERIES = [
 
 /** Label compacto sobre cada barra (2 decimales; el tooltip da los 4). */
 function labelFmt(v: string | number | boolean | null | undefined) {
-  return typeof v === "number" ? v.toFixed(2) : ""
+  return typeof v === "number" ? cifra(v, 2) : ""
 }
 
 /**
@@ -55,6 +56,7 @@ export function DiscriminationChart({ rows }: { rows: MetricRow[] }) {
             tick={AXIS_TICK}
           />
           <YAxis
+            tickFormatter={marca}
             domain={[0, 1]}
             ticks={[0, 0.25, 0.5, 0.75, 1]}
             tickLine={false}

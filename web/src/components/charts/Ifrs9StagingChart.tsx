@@ -25,6 +25,7 @@ import {
   IFRS9_COLORS,
   ifrs9StageColor,
 } from "./chart-theme"
+import { entero, porcentaje } from "@/lib/cifras"
 
 /** Ítem que Recharts inyecta al tooltip (ambas series comparten el datum en `.payload`). */
 interface StageTooltipProps {
@@ -103,7 +104,7 @@ export function Ifrs9StagingChart({ rows }: { rows: Ifrs9StageRow[] }) {
               tickLine={false}
               axisLine={false}
               tick={AXIS_TICK}
-              tickFormatter={(v: number) => `${Math.round(v / 1e6)}`}
+              tickFormatter={(v: number) => entero(v / 1e6)}
             />
             <YAxis
               yAxisId="cov"
@@ -113,7 +114,7 @@ export function Ifrs9StagingChart({ rows }: { rows: Ifrs9StageRow[] }) {
               tickLine={false}
               axisLine={false}
               tick={AXIS_TICK}
-              tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+              tickFormatter={(v: number) => porcentaje(v, 0)}
             />
             <Tooltip cursor={CURSOR_FILL} content={<StageTooltip />} />
             <Bar

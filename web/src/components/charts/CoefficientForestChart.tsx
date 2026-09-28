@@ -12,6 +12,7 @@ import {
 import type { Coefficient } from "@/lib/results-types"
 
 import { AXIS_LINE, AXIS_TICK, BRAND, coefColor, niceBound } from "./chart-theme"
+import { cifra, marca } from "@/lib/cifras"
 
 /** Punto del forest plot: β, su intervalo como error asimétrico y el flag de signo. */
 interface ForestDatum {
@@ -81,13 +82,13 @@ function ForestTooltip({ active, payload }: ForestTooltipProps) {
       <p className="text-muted-foreground">
         β{" "}
         <span className="ml-1 font-mono tabular-nums text-foreground">
-          {d.beta.toFixed(4)}
+          {cifra(d.beta)}
         </span>
       </p>
       <p className="text-muted-foreground">
         IC{" "}
         <span className="ml-1 font-mono tabular-nums text-foreground">
-          [{low.toFixed(4)}, {high.toFixed(4)}]
+          [{cifra(low)}; {cifra(high)}]
         </span>
       </p>
       <p className="mt-1 text-[0.7rem]">
@@ -135,6 +136,7 @@ export function CoefficientForestChart({
             <XAxis
               type="number"
               dataKey="beta"
+              tickFormatter={marca}
               domain={[-bound, bound]}
               tickLine={false}
               axisLine={false}

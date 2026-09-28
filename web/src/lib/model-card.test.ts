@@ -100,14 +100,14 @@ describe("describeValue: describe sin interpretar", () => {
   it("escalares", () => {
     expect(describeValue("cohort")).toBe("cohort")
     expect(describeValue(6)).toBe("6")
-    expect(describeValue(3961)).toBe("3,961")
-    expect(describeValue(0.02)).toBe("0.0200")
+    expect(describeValue(3961)).toBe("3.961")
+    expect(describeValue(0.02)).toBe("0,0200")
     expect(describeValue(true)).toBe("Sí")
     expect(describeValue(false)).toBe("No")
   })
 
   it("un número diminuto no colapsa a cero: una tolerancia de 1e-8 se lee como tal", () => {
-    expect(describeValue(1e-8)).toBe("1.0e-8")
+    expect(describeValue(1e-8)).toBe("1,0e-08")
     expect(describeValue(0)).toBe("0")
   })
 
@@ -119,22 +119,23 @@ describe("describeValue: describe sin interpretar", () => {
     expect(describeValue({})).toBe("—")
   })
 
-  it("listas y objetos en una línea; lo anidado más hondo en JSON", () => {
+  it("listas y objetos en una línea; lo anidado más hondo, encerrado y con las cifras en es-CL", () => {
     expect(describeValue(["binning", "selection"])).toBe("binning, selection")
     expect(describeValue({ n_bins: 5, variable: "utilizacion_linea" })).toBe(
       "n_bins: 5 · variable: utilizacion_linea",
     )
     expect(describeValue({ sizes: { desarrollo: 3961 }, ok: true })).toBe(
-      'sizes: {"desarrollo":3961} · ok: Sí',
+      "sizes: {desarrollo: 3.961} · ok: Sí",
     )
-    expect(describeValue([{ feature: "a", woe: 0 }])).toBe('{"feature":"a","woe":0}')
+    expect(describeValue([{ feature: "a", woe: 0 }])).toBe("{feature: a, woe: 0}")
   })
 
-  it("una lista de escalares dentro de un objeto se lee con comas, no como JSON", () => {
+  it("una lista de escalares dentro de un objeto se lee con comas", () => {
     // Es la forma de `internal_falta_dato.valor`: los códigos tienen que leerse tal cual.
     expect(describeValue({ falta_dato: ["A", "B"], n: 1 })).toBe("falta_dato: A, B · n: 1")
-    // …pero una lista de objetos dentro de un objeto sigue en JSON: no hay forma plana honesta.
-    expect(describeValue({ filas: [{ a: 1 }] })).toBe('filas: [{"a":1}]')
+    // …y una lista de objetos dentro de un objeto se encierra: no hay forma plana honesta, y el
+    // JSON escribiría sus números con punto decimal (D-PAN-2).
+    expect(describeValue({ filas: [{ a: 1 }] })).toBe("filas: [{a: 1}]")
   })
 })
 
@@ -211,13 +212,13 @@ describe("modelCardDomains: las métricas agrupadas por dominio, en el orden de 
   it("cada métrica pierde el prefijo y se formatea: conteos con miles, el resto a 4 decimales", () => {
     const data = dominios.find((d) => d.domain === "data")
     expect(data?.metrics).toEqual([
-      { name: "n_rows", value: "6,000" },
+      { name: "n_rows", value: "6.000" },
       { name: "n_features", value: "8" },
-      { name: "bad_rate", value: "0.2345" },
+      { name: "bad_rate", value: "0,2345" },
     ])
     const performance = dominios.find((d) => d.domain === "performance")
     expect(performance?.metrics).toHaveLength(9)
-    expect(performance?.metrics[0]).toEqual({ name: "auc_desarrollo", value: "0.7123" })
+    expect(performance?.metrics[0]).toEqual({ name: "auc_desarrollo", value: "0,7123" })
   })
 
   it("la evidencia estructurada (CT-2) cuelga de su dominio y los demás quedan sin ella", () => {
@@ -247,7 +248,7 @@ describe("modelCardDomains: las métricas agrupadas por dominio, en el orden de 
       {
         domain: "performance",
         label: "Performance",
-        metrics: [{ name: "auc_oot", value: "0.5000" }],
+        metrics: [{ name: "auc_oot", value: "0,5000" }],
         evidence: [],
       },
       {
@@ -299,8 +300,10 @@ describe("modelCardDecisionRows: una fila por evento del trail, sin agrupar", ()
     })
     expect(por("bins_colapsados")?.umbral).toBe("6")
     expect(por("bins_colapsados")?.valor).toBe("n_bins: 5 · variable: utilizacion_linea")
-    expect(por("iv_bajo")?.umbral).toBe("0.0200")
-    expect(por("statsmodels_convergence")?.umbral).toBe("fit_maxiter: 100 · tol: 1.0e-8")
+    // El umbral es un corte: exacto (D-PAN-2).
+    expect(por("iv_bajo")?.umbral).toBe("0,02")
+    // Un umbral se escribe exacto y en posicional, como un corte (D-PAN-2).
+    expect(por("statsmodels_convergence")?.umbral).toBe("fit_maxiter: 100 · tol: 0,00000001")
     expect(por("statsmodels_convergence")?.valor).toBe(
       "converged: Sí · n_iterations: 6 · optimizer: newton",
     )
@@ -308,7 +311,7 @@ describe("modelCardDecisionRows: una fila por evento del trail, sin agrupar", ()
       "binning, selection, model, scorecard, calibration, performance, stability",
     )
     expect(por("report_ai_disabled")?.umbral).toBe("No")
-    expect(por("woe_duplicado")?.valor).toContain('"feature":"antiguedad_meses"')
+    expect(por("woe_duplicado")?.valor).toContain("feature: antiguedad_meses")
   })
 
   it("el paso se conserva cuando el evento lo trae", () => {

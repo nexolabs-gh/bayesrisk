@@ -13,6 +13,13 @@
 *.cfg text eol=lf
 *.lock text eol=lf
 
+# Código del front: LF también. Los guardrails estáticos de vitest leen el fuente con `?raw` y
+# buscan saltos de línea LF: con core.autocrlf=true el checkout en Windows lo dejaba en CRLF y
+# leían vacío.
+*.ts text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+
 # Entradas y artefactos frontend firmados byte a byte: el build de paquete debe quedar limpio
 # también en Windows con core.autocrlf=true.
 /web/index.html text eol=lf

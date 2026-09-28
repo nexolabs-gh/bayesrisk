@@ -19,6 +19,7 @@ import {
   CURSOR_FILL,
   GRID_STROKE,
 } from "./chart-theme"
+import { conteo, entero, marca } from "@/lib/cifras"
 
 /** Ítem que Recharts inyecta al tooltip (el datum del bin vive en `.payload`). */
 interface HistTooltipProps {
@@ -28,7 +29,7 @@ interface HistTooltipProps {
 
 /** Entero con separador de miles es-CL, igual que el resto de la app (DatosTab, catálogo). */
 function count(n: number): string {
-  return n.toLocaleString("es-CL")
+  return conteo(n)
 }
 
 /** Tooltip dedicado: rango de score del bin + su frecuencia. */
@@ -38,7 +39,7 @@ function HistTooltip({ active, payload }: HistTooltipProps) {
   return (
     <div className="rounded-lg bg-secondary px-3 py-2 text-xs shadow-card ring-1 ring-foreground/10">
       <p className="mb-1 font-mono font-medium text-foreground">
-        {d.x0.toFixed(0)} – {d.x1.toFixed(0)}
+        {entero(d.x0)} – {entero(d.x1)}
       </p>
       <p className="text-muted-foreground">
         Frecuencia{" "}
@@ -73,12 +74,13 @@ export function ScoreHistogramChart({ histogram }: { histogram: ScoreHistogram }
             type="number"
             dataKey="center"
             domain={[min, max]}
-            tickFormatter={(v: number) => v.toFixed(0)}
+            tickFormatter={(v: number) => entero(v)}
             tickLine={false}
             axisLine={AXIS_LINE}
             tick={AXIS_TICK}
           />
           <YAxis
+            tickFormatter={marca}
             tickLine={false}
             axisLine={false}
             tick={AXIS_TICK}
@@ -99,7 +101,7 @@ export function ScoreHistogramChart({ histogram }: { histogram: ScoreHistogram }
             stroke={BRAND.placeholder}
             strokeDasharray="4 3"
             label={{
-              value: `mediana ${median.toFixed(0)}`,
+              value: `mediana ${entero(median)}`,
               position: "insideBottomRight",
               fill: AXIS_TICK.fill,
               fontSize: 9,
@@ -110,7 +112,7 @@ export function ScoreHistogramChart({ histogram }: { histogram: ScoreHistogram }
             stroke={BRAND.cyan}
             strokeDasharray="4 3"
             label={{
-              value: `media ${mean.toFixed(0)}`,
+              value: `media ${entero(mean)}`,
               position: "insideTopLeft",
               fill: BRAND.cyan,
               fontSize: 9,
