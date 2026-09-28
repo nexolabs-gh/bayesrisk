@@ -492,3 +492,34 @@ def test_la_corrida_lo_dice_en_trail_resumenes_y_tablas_de_puntos(
     assert informe["bin_label"] == "Categorías no vistas → como «C»"
     assert informe["feature"] == "segmento"
     assert vista["total_rows"] == vista["shown_rows"] == len(tarjeta.index) + 1
+
+
+def test_la_linea_del_informe_respeta_el_tope_de_filas(
+    _corrida: tuple[bayesrisk.Scorecard, pd.DataFrame],
+) -> None:
+    """🔴 Pasada 1 de Codex sobre el código: la línea entraba después de recortar, así que la tabla
+    mostraba más de ``max_rows`` y una variable cortada a medias igual ganaba su línea."""
+    sc, _ = _corrida
+    st = sc.study
+    tarjeta = st.artifacts.get("scorecard", "scorecard")
+    lineas = _referencias_no_vistas(st)
+    segmento = [i for i, v in enumerate(tarjeta["feature"].astype(str)) if v == "segmento"]
+
+    def vista(max_rows: int) -> dict[str, Any]:
+        return _table_view(
+            "scorecard.scorecard",
+            tarjeta,
+            max_rows=max_rows,
+            bin_labels=_rotulos_de_tramos(st),
+            lineas_no_vistas=lineas,
+        )
+
+    def con_linea(v: dict[str, Any]) -> bool:
+        return any("Categorías no vistas" in str(celda) for fila in v["rows"] for celda in fila)
+
+    completa = vista(len(tarjeta.index))
+    assert completa["shown_rows"] == len(tarjeta.index)
+    assert completa["total_rows"] == len(tarjeta.index) + 1 and completa["truncated"]
+    assert con_linea(completa) == (segmento[-1] < len(tarjeta.index) - 1)
+    cortada = vista(segmento[-1])
+    assert cortada["shown_rows"] == segmento[-1] and not con_linea(cortada)

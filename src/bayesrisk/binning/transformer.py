@@ -1489,6 +1489,11 @@ def _peor_tramo_regular(table: DataFrame) -> tuple[int, str, float] | None:
     entre las filas regulares con observaciones —ni ``Special``, ni ``Missing``, ni totales— la de
     menor WoE; ante un empate, la primera, que es la que devuelve la búsqueda de puntos del
     escalador. ``None`` si la tabla no tiene ninguna.
+
+    Con pesos, ``Count`` es la masa que OptBinning ya truncó a entero, y el WoE de la tabla sale
+    de esas mismas masas: un tramo con ``Count`` 0 tiene WoE 0 por construcción —no hay riesgo
+    observado que comparar— y el modelo lo puntúa así. Excluirlo no esconde un tramo más riesgoso
+    (revisión adversarial del código, pasada 1, medido).
     """
     is_totals = table.index.astype(str) == "Totals"
     labels = table["Bin"].tolist()

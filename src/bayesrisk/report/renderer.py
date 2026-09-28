@@ -1135,7 +1135,10 @@ def _table_view(
             umbrales_de_seleccion or {},
             eda_numericas,
         )
-    ]
+        # El tope se aplica a las filas ya con sus líneas de no vistas: el informe nunca muestra
+        # más de `max_rows`, y la línea de una variable cortada a medias —siempre la última de la
+        # vista— queda fuera con el resto de sus tramos (revisión adversarial del código, pasada 1).
+    ][:max_rows]
     visible_rows = [
         tuple(_display_scalar(celda[column], key_path=(key, str(column))) for column in columns)
         for celda in celdas
