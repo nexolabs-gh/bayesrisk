@@ -1124,6 +1124,16 @@ por módulo bajo SDD-31, la primera
 > tocarlo. Medido en la demo publicada: 565 cifras con punto decimal y 172 con coma de miles en el
 > scorecard, 144 y 97 en IFRS 9.
 
+> **Categorías que no existían en Desarrollo (2026-09-28; **aprobada por Cami** el mismo día, B2 (a)
+> de la FASE B; sin programar).**
+> [`_ENMIENDA-CATEGORIAS-NO-VISTAS.md`](_ENMIENDA-CATEGORIAS-NO-VISTAS.md), D-NOV-1…4, enmienda a
+> [`06-binning.md`](06-binning.md), [`09-scorecard.md`](09-scorecard.md) y al §7 de
+> [`_ENMIENDA-PUNTUAR-POBLACION-TTD.md`](_ENMIENDA-PUNTUAR-POBLACION-TTD.md): una sola regla —el
+> peor tramo, criterio de D-FAL-1— para la corrida y el bundle (esquema 2; los de esquema 1 no
+> cambian), `binning.cat_unknown` sólo vacío y una alerta de cambio de dominio desde el 10 %.
+> 🔴 **Medido** con el SBA: hoy la corrida da el promedio (65 puntos) y el bundle rechaza la fila;
+> `anio_fiscal` deja al 45,8 % de OOT fuera del dominio de Desarrollo.
+
 ## Tandas de producción
 
 | Tanda | SDDs | Foco | Pre-requisito |
