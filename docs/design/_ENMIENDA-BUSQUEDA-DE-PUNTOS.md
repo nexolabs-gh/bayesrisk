@@ -178,6 +178,10 @@ contractual no se programa: se eleva.
    publica los puntos del primero —como el bin asignado de D-FAL-1 los de su referencia— y corrida,
    tabla y bundle coinciden. Con WoE exactamente repetido los puntos ya eran iguales: nada cambia.
    En el preset y en el SBA no hay grupos (el par más cercano está a 0,005): nada cambia.
+   **Con una guarda** (pasada 2): se iguala sólo si los puntos crudos del grupo difieren a lo sumo
+   en 1e-6 puntos. Con un coeficiente real (|β| < 10) dos WoE a 1e-12 dan puntos a menos de 3e-10;
+   superar la guarda exige |β| > 3e4 —con β = 1e12, Codex midió 14 puntos—, un coeficiente fuera
+   de escala: el ajuste del escalador se rechaza con un diagnóstico en vez de mover el puntaje.
 6. **`woe_duplicado` se amplía sin cambiar de forma**: sigue registrando los WoE **exactamente**
    repetidos con el mismo payload (también el bin asignado de D-FAL-1, como antes) y suma cada
    tramo que el grupo igualó, con `points_usados` (los del primero, los que publica) y
@@ -217,9 +221,11 @@ nacía rojo es el SBA, medido arriba, y en unidad el WoE a 1e-13).
 **Controles negativos** (uno por regla, en paralelo, cada uno en su copia de `src/`; resultado
 literal en `privado/evidencia/s26/cn_bpt.txt`): tolerancia 0; «la primera dentro de la tolerancia»
 en vez de la más cercana; sin rechazo; el bin asignado contando para el grupo; `bin_no_visto` por
-cada fila; y sin igualar el grupo (pasada 1). Cada uno pone rojo al menos el test de su regla.
+cada fila; sin igualar el grupo (pasada 1); y sin la guarda de escala (pasada 2). Cada uno pone rojo al menos el test de su regla.
 
 **Revisión del código (Codex).** Tope tres pasadas; criterio de parada: una pasada sin hallazgo que
 tumbe la regla o su medición. Pasada 1 (`a4030d5`, needs-attention): un medium real —el del punto
 5—, corregido con test de regresión (tres métodos de redondeo, tramos no contiguos) y su control
-negativo.
+negativo. Pasada 2 (`15499e9`, needs-attention): un high real en la forma —igualar sin cota podía
+mover el puntaje con un coeficiente absurdo—, corregido con la guarda del punto 5, su test y su
+control negativo.

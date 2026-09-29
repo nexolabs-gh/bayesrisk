@@ -240,6 +240,21 @@ def test_dos_tramos_indistinguibles_junto_a_un_borde_publican_los_puntos_del_pri
     assert "woe_duplicado" in _reglas(audit)
 
 
+def test_un_grupo_con_un_coeficiente_fuera_de_escala_se_rechaza_sin_mover_el_puntaje() -> None:
+    """🔴 Revisión del código, pasada 2: con β = 1e12, dos tramos a 5e-13 de WoE dan puntos
+    crudos a ~14 puntos; igualarlos movería el puntaje del segundo sin ajuste ni borde de
+    redondeo. Se rechaza con un diagnóstico; con un coeficiente real la diferencia es ínfima y el
+    grupo se iguala."""
+    tablas = {"canal": pd.DataFrame({"Bin": ["web", "sucursal", "fono"], "WoE": [0.0, 0.4, 5e-13]})}
+
+    with pytest.raises(ScorecardFitError, match=r"«web» y «fono» de «canal».*fuera de escala"):
+        _ajustar(tablas, beta=1e12, alpha=0.0)
+    scaler = _ajustar(tablas, beta=-0.8)
+    tarjeta = scaler.scorecard_.set_index("bin_label")
+    assert tarjeta.loc["fono", "points"] == tarjeta.loc["web", "points"]
+    assert abs(tarjeta.loc["fono", "raw_points"] - tarjeta.loc["web", "raw_points"]) < 1e-9
+
+
 # ───────────────────────── D-BPT-1: el ajuste ambiguo se rechaza ─────────────────────────
 
 

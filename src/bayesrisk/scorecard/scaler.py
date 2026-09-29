@@ -60,6 +60,11 @@ _INTERCEPT_WOE_COLUMN = "const"
 # cuatro órdenes sobre el ruido medido entre la transformación y la tabla (2,2e-16) y nueve bajo el
 # par de tramos reales más cercano medido (0,0051 en el preset, 0,0059 en la muestra SBA).
 _TOLERANCIA_WOE = 1e-12
+# D-BPT-1 (revisión del código, pasada 2): los tramos de un grupo indistinguible publican los
+# puntos del primero sólo si sus puntos crudos difieren a lo sumo en una millonésima de punto. Con
+# un coeficiente real (|β| < 10) dos WoE a 1e-12 dan puntos a menos de 3e-10; superar 1e-6 exige
+# |β| > 3e4, un coeficiente fuera de escala: el ajuste se rechaza en vez de mover el puntaje.
+_TOLERANCIA_PUNTOS_DEL_GRUPO = 1e-6
 
 
 class PointsScaler(BayesRiskTransformer):
@@ -627,8 +632,18 @@ def _scorecard_rows(
                 # borde de redondeo publicaban enteros distintos y la corrida daba a las filas del
                 # segundo los del primero, y el bundle los suyos. Ningún ajuste manual llega aquí:
                 # se rechazó arriba.
+                referencia_del_grupo = por_posicion[primero]
+                distancia = abs(raw_points - float(cast(float, referencia_del_grupo["raw_points"])))
+                if distancia > _TOLERANCIA_PUNTOS_DEL_GRUPO:
+                    raise ScorecardFitError(
+                        f"Los tramos «{referencia_del_grupo['bin_label']}» y «{bin_label}» de "
+                        f"«{feature}» tienen el mismo WoE (a 1e-12 o menos) pero sus puntos "
+                        f"crudos difieren en {distancia:.6g}: el coeficiente de la variable "
+                        f"({beta!r}) está fuera de escala para una logística sobre WoE. Revisa el "
+                        "modelo antes de construir la tabla de puntos."
+                    )
                 igualados[(feature, int(bin_index))] = points
-                points = cast(float | int, por_posicion[primero]["points"])
+                points = cast(float | int, referencia_del_grupo["points"])
             rows.append(
                 {
                     "feature": feature,
