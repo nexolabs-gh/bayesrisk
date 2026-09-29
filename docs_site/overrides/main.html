@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 
+{% block htmltitle %}
+  {% if page and page.is_homepage %}
+    <title>bayesrisk — librería Python de riesgo de crédito</title>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
+
 {#
   Marca bayesrisk: metatags Open Graph / Twitter para que al compartir docs.bayesadvisory.cl
   se vea la tarjeta con el avatar navy, y color de tema navy en el navegador.
