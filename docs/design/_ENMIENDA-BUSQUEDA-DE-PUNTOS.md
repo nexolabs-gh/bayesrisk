@@ -170,9 +170,20 @@ contractual no se programa: se eleva.
 4. **El mensaje nombra los tramos con su rótulo legible** —el de las tablas del resumen y del
    informe («Faltantes», «Valores especiales», «≥ 50.450 y < 102.230,5»)— en el orden de la tabla,
    y el tramo ajustado; sugiere unir los tramos o quitar el ajuste.
-5. **`woe_duplicado` no cambia**: sigue registrando sólo los WoE **exactamente** repetidos (su
-   payload y su acción siguen siendo ciertos: a igual distancia gana la primera). Ningún evento
-   nuevo (§2).
+5. **Un grupo indistinguible publica los puntos de su primer tramo** (revisión del código,
+   pasada 1). Sin ajustes manuales, dos tramos a menos de 1e-12 con un borde de redondeo entre sus
+   puntajes crudos publicaban enteros distintos; la búsqueda daba a las operaciones del segundo
+   —más cerca del primero o a igual distancia— los puntos del primero, y el bundle, que lee la
+   tabla por tramo, los suyos. Ahora cada tramo del grupo (salvo el primero, el de menor posición)
+   publica los puntos del primero —como el bin asignado de D-FAL-1 los de su referencia— y corrida,
+   tabla y bundle coinciden. Con WoE exactamente repetido los puntos ya eran iguales: nada cambia.
+   En el preset y en el SBA no hay grupos (el par más cercano está a 0,005): nada cambia.
+6. **`woe_duplicado` se amplía sin cambiar de forma**: sigue registrando los WoE **exactamente**
+   repetidos con el mismo payload (también el bin asignado de D-FAL-1, como antes) y suma cada
+   tramo que el grupo igualó, con `points_usados` (los del primero, los que publica) y
+   `points_descartados` (los suyos por fórmula). Ningún evento nuevo (§2). Con esto «la exacta
+   gana» ya no se ve en los puntos de un grupo sin ajuste —todos publican los mismos—, sino en la
+   fila que se elige: la que rotula y congela el bundle como referencia de D-NOV-1 (`bin_index`).
 
 **Medido** (`privado/evidencia/s26/`, con PYTHONHASHSEED=0 y el código congelado en una copia):
 
@@ -203,7 +214,12 @@ sobre `1c8d436`** (la variante sin redondeo de punta a punta
 nace verde con la cartera sintética: allí la fórmula a un ulp daba el mismo float; el caso que
 nacía rojo es el SBA, medido arriba, y en unidad el WoE a 1e-13).
 
-**Controles negativos** (uno por regla, en paralelo, cada uno en su copia de `src/`): tolerancia 0
-→ 13 rojos; «la primera dentro de la tolerancia» en vez de la más cercana → rojo el de la exacta
-segunda; sin rechazo → 5 rojos (los tres de grupo y los dos de contrato cambiado); el bin asignado
-contando para el grupo → rojo el de D-FAL-1; `bin_no_visto` por cada fila → 6 rojos.
+**Controles negativos** (uno por regla, en paralelo, cada uno en su copia de `src/`; resultado
+literal en `privado/evidencia/s26/cn_bpt.txt`): tolerancia 0; «la primera dentro de la tolerancia»
+en vez de la más cercana; sin rechazo; el bin asignado contando para el grupo; `bin_no_visto` por
+cada fila; y sin igualar el grupo (pasada 1). Cada uno pone rojo al menos el test de su regla.
+
+**Revisión del código (Codex).** Tope tres pasadas; criterio de parada: una pasada sin hallazgo que
+tumbe la regla o su medición. Pasada 1 (`a4030d5`, needs-attention): un medium real —el del punto
+5—, corregido con test de regresión (tres métodos de redondeo, tramos no contiguos) y su control
+negativo.

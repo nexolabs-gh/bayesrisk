@@ -29,7 +29,9 @@ entradas anteriores conservan el nombre con el que se publicaron.
   pertenece cada operación: antes el ajuste llegaba a la tabla y al bundle y, en la corrida, a
   ninguno o a los dos. El mensaje nombra los tramos del grupo. El bin de faltantes que comparte los
   puntos de su tramo de referencia no cuenta para el grupo: el ajuste sobre la referencia sigue
-  permitido y lo hereda.
+  permitido y lo hereda. Sin ajuste, los tramos de un grupo así publican los puntos del primero
+  (antes, junto a un borde de redondeo, podían publicar enteros distintos que la corrida no sabía
+  separar); el trail lo declara en `woe_duplicado`.
 - **El trail deja de registrar falsas alarmas.** `bin_no_visto` («calcular por fórmula») se
   registra sólo para un WoE sin fila a 1e-12; antes lo registraba para casi toda operación
   observada y el aviso llegaba al libro «Decisiones» del Excel y al anexo del informe.

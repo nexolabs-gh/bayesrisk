@@ -5,8 +5,9 @@ de binning ya fiteadas. La transformación casa el WoE de cada fila con la fila 
 variable **más cercana a 1e-12 o menos** (D-BPT-1): la exacta siempre gana y, a igual distancia,
 la primera en el orden publicado por ``scorecard_``. El WoE que recalcula OptBinning al transformar
 difiere del de la tabla en el último bit; exigir igualdad exacta mandaba esas filas a la fórmula,
-donde un ajuste manual de puntos no llegaba. Un ajuste manual sobre un tramo que la búsqueda no
-distingue de otro —WoE a 1e-12 o menos entre sí— se rechaza al ajustar.
+donde un ajuste manual de puntos no llegaba. Los tramos que la búsqueda no distingue —WoE a 1e-12
+o menos entre sí— publican los puntos del primero, y un ajuste manual sobre cualquiera de ellos se
+rechaza al ajustar.
 
 **Estable (SemVer 2.x).**
 """
@@ -162,6 +163,7 @@ class PointsScaler(BayesRiskTransformer):
         overrides = _override_map(self.point_overrides)
         legibles = _rotulos_legibles(binning_tables, bin_edges, features=features)
         casados: set[tuple[str, str]] = set()
+        igualados: dict[tuple[str, int], float | int] = {}
         rows = _scorecard_rows(
             estimator=self,
             features=features,
@@ -175,6 +177,7 @@ class PointsScaler(BayesRiskTransformer):
             assigned_bins=assigned_bins or {},
             legibles=legibles,
             casados=casados,
+            igualados=igualados,
         )
         for clave, override in overrides.items():
             if clave in casados:
@@ -186,7 +189,7 @@ class PointsScaler(BayesRiskTransformer):
                 accion="no_aplicar",
             )
         scorecard = _normalize_float_frame(pd.DataFrame(rows), pd=pd)
-        _, duplicate_woe = _primeras_filas_por_woe(scorecard)
+        duplicate_woe = _filas_repetidas(scorecard, igualados)
         if duplicate_woe:
             self.log_decision(
                 regla="woe_duplicado",
@@ -505,16 +508,20 @@ def _scorecard_rows(
     assigned_bins: Mapping[str, Collection[str]],
     legibles: Mapping[str, list[str]] | None = None,
     casados: set[tuple[str, str]] | None = None,
+    igualados: dict[tuple[str, int], float | int] | None = None,
 ) -> list[dict[str, object]]:
     """Construye filas de puntos en orden estable feature/bin.
 
     Un ajuste manual casa con la etiqueta del motor o con el rótulo legible del tramo (D-CPY-3);
-    las claves que casaron se anotan en ``casados``.
+    las claves que casaron se anotan en ``casados``. Un tramo de un grupo indistinguible por WoE
+    publica los puntos del primero del grupo (D-BPT-1); los suyos por fórmula quedan en
+    ``igualados``, por ``(feature, bin_index)``.
     """
     from bayesrisk.core.tramos import filas_que_casan
 
     legibles = legibles or {}
     casados = casados if casados is not None else set()
+    igualados = igualados if igualados is not None else {}
     crudas = {
         feature: [str(valor) for valor in tables[feature]["Bin"]]
         for feature in features
@@ -545,7 +552,7 @@ def _scorecard_rows(
         beta = coefficients[feature].beta
         table = tables[feature]
         asignados = set(assigned_bins.get(feature, ()))
-        _rechazar_ajuste_indistinguible(
+        primero_de = _grupos_indistinguibles(
             feature=feature,
             table=table,
             asignados=asignados,
@@ -553,6 +560,7 @@ def _scorecard_rows(
             legibles=list(legibles.get(feature, [])),
         )
         filas_de_la_variable: list[dict[str, object]] = []
+        por_posicion: dict[int, dict[str, object]] = {}
         for bin_index, row in enumerate(table.to_dict(orient="records")):
             bin_label = str(row["Bin"])
             woe = _finite_float(row["WoE"], label="WoE", error_cls=ScorecardFitError)
@@ -611,6 +619,16 @@ def _scorecard_rows(
                     },
                     accion="aplicar_override",
                 )
+            primero = primero_de.get(bin_index)
+            if primero is not None:
+                # D-BPT-1 (revisión del código, pasada 1): la búsqueda no distingue los tramos de
+                # un grupo, así que todos publican los puntos del primero —como el bin asignado de
+                # D-FAL-1 comparte los de su referencia—. Sin esto, dos tramos a un ulp junto a un
+                # borde de redondeo publicaban enteros distintos y la corrida daba a las filas del
+                # segundo los del primero, y el bundle los suyos. Ningún ajuste manual llega aquí:
+                # se rechazó arriba.
+                igualados[(feature, int(bin_index))] = points
+                points = cast(float | int, por_posicion[primero]["points"])
             rows.append(
                 {
                     "feature": feature,
@@ -627,6 +645,7 @@ def _scorecard_rows(
                 }
             )
             filas_de_la_variable.append(rows[-1])
+            por_posicion[int(bin_index)] = rows[-1]
     return rows
 
 
@@ -635,25 +654,24 @@ def _reference_row(rows: list[dict[str, object]], woe: float) -> dict[str, objec
     return next((row for row in rows if row["woe"] == woe), None)
 
 
-def _rechazar_ajuste_indistinguible(
+def _grupos_indistinguibles(
     *,
     feature: str,
     table: DataFrame,
     asignados: Collection[str],
     con_ajuste: Collection[int],
     legibles: list[str],
-) -> None:
-    """Rechaza un ajuste manual sobre un tramo que la búsqueda por WoE no distingue (D-BPT-1).
+) -> dict[int, int]:
+    """Los tramos que la búsqueda por WoE no distingue (D-BPT-1): posición → primera de su grupo.
 
     Un grupo son dos o más tramos de la variable con WoE a 1e-12 o menos entre sí —encadenados, sea
     cual sea su posición—: la corrida casa cada operación con la fila más cercana y no sabe de qué
-    tramo vino, así que un ajuste sobre uno de ellos llegaría en la corrida al otro, o a ninguno, y
-    en el bundle —que puntúa por tramo— no. El bin asignado de D-FAL-1 no cuenta: comparte por
-    construcción el WoE exacto de su referencia (la misma prueba que ``_reference_row``) y hereda su
-    ajuste. Los tramos auxiliares vacíos (WoE 0) sí cuentan.
+    tramo vino. Un ajuste manual sobre cualquiera de ellos se rechaza: llegaría en la corrida al
+    otro, o a ninguno, y en el bundle —que puntúa por tramo— no. Sin ajuste, cada tramo del grupo
+    publica los puntos del primero (el de menor posición). El bin asignado de D-FAL-1 no cuenta:
+    comparte por construcción el WoE exacto de su referencia (la misma prueba que
+    ``_reference_row``) y hereda sus puntos. Los tramos auxiliares vacíos (WoE 0) sí cuentan.
     """
-    if not con_ajuste:
-        return
     miembros: list[tuple[float, int, str]] = []
     anteriores: list[float] = []
     for posicion, row in enumerate(table.to_dict(orient="records")):
@@ -666,11 +684,17 @@ def _rechazar_ajuste_indistinguible(
     def _rotulo(posicion: int, etiqueta: str) -> str:
         return legibles[posicion] if posicion < len(legibles) and legibles[posicion] else etiqueta
 
+    primero_de: dict[int, int] = {}
+
     def _revisar(grupo: list[tuple[float, int, str]]) -> None:
-        ajustados = [miembro for miembro in grupo if miembro[1] in con_ajuste]
-        if len(grupo) < 2 or not ajustados:
+        if len(grupo) < 2:
             return
         en_orden = sorted(grupo, key=lambda miembro: miembro[1])
+        for _, posicion, _ in en_orden:
+            primero_de[posicion] = en_orden[0][1]
+        ajustados = [miembro for miembro in grupo if miembro[1] in con_ajuste]
+        if not ajustados:
+            return
         nombres = ", ".join(f"«{_rotulo(pos, etiqueta)}»" for _, pos, etiqueta in en_orden)
         _, posicion, etiqueta = min(ajustados, key=lambda miembro: miembro[1])
         raise ScorecardFitError(
@@ -687,6 +711,7 @@ def _rechazar_ajuste_indistinguible(
             grupo = []
         grupo.append(miembro)
     _revisar(grupo)
+    return {posicion: primera for posicion, primera in primero_de.items() if posicion != primera}
 
 
 def _rotulos_legibles(
@@ -780,29 +805,40 @@ def _fila_mas_cercana(
     return mejor
 
 
-def _primeras_filas_por_woe(
-    scorecard: DataFrame,
-) -> tuple[dict[tuple[str, float], dict[str, object]], list[dict[str, object]]]:
-    """La primera fila de puntos por ``(feature, woe)`` en orden de tabla, y las repetidas."""
+def _filas_repetidas(
+    scorecard: DataFrame, igualados: Mapping[tuple[str, int], float | int]
+) -> list[dict[str, object]]:
+    """Las filas de puntos que no son la primera de su WoE, para el evento ``woe_duplicado``.
+
+    Un WoE **exactamente** repetido —también el del bin asignado de D-FAL-1— como siempre, y
+    además cada tramo de un grupo indistinguible a 1e-12 que publica los puntos del primero
+    (D-BPT-1): ``points_usados`` son los que publica, ``points_descartados`` los suyos por fórmula.
+    """
     primeras: dict[tuple[str, float], dict[str, object]] = {}
     duplicate_rows: list[dict[str, object]] = []
     for row in scorecard.to_dict(orient="records"):
         feature = str(row["feature"])
         woe = _normalize_float(float(row["woe"]))
         key = (feature, woe)
-        if key in primeras:
+        igualado = (feature, int(row["bin_index"])) in igualados
+        if key in primeras or igualado:
+            usados = primeras[key]["points"] if key in primeras else row["points"]
             duplicate_rows.append(
                 {
                     "feature": feature,
                     "woe": woe,
                     "bin_label": str(row["bin_label"]),
-                    "points_usados": primeras[key]["points"],
-                    "points_descartados": cast(float | int, row["points"]),
+                    "points_usados": usados,
+                    "points_descartados": cast(
+                        float | int,
+                        igualados.get((feature, int(row["bin_index"])), row["points"]),
+                    ),
                 }
             )
-            continue
-        primeras[key] = {str(campo): valor for campo, valor in row.items()}
-    return primeras, duplicate_rows
+            if key in primeras:
+                continue
+        primeras.setdefault(key, {str(campo): valor for campo, valor in row.items()})
+    return duplicate_rows
 
 
 def filas_de_referencia_no_vista(

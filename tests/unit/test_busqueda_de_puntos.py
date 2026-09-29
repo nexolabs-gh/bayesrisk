@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -30,7 +31,7 @@ from bayesrisk.core.audit import InMemoryAuditSink
 from bayesrisk.scorecard.bundle import FittedScorecardBundle
 from bayesrisk.scorecard.config import PointOverrideConfig, RoundingMethod
 from bayesrisk.scorecard.exceptions import ScorecardFitError
-from bayesrisk.scorecard.scaler import PointsScaler
+from bayesrisk.scorecard.scaler import PointsScaler, filas_de_referencia_no_vista
 
 _FRONTERA = "2021-07-01"
 
@@ -129,15 +130,26 @@ def test_el_bin_asignado_de_d_fal_1_hereda_el_ajuste_de_su_referencia_tambien_a_
 
 
 def test_la_exacta_gana_aunque_sea_la_segunda_y_a_igual_distancia_la_primera() -> None:
-    """🔴 Dos filas a menos de 1e-12 sin ajuste: cada WoE exacto da su propia fila (no «la primera
-    dentro de la tolerancia») y el punto medio, a igual distancia, la primera."""
+    """🔴 Dos filas a menos de 1e-12: cada WoE exacto da su propia fila —no «la primera dentro de
+    la tolerancia»— y el punto medio, a igual distancia, la primera. Sin ajuste las dos publican
+    los puntos de la primera (el grupo, revisión del código, pasada 1); lo que distingue la regla
+    es la fila: la que rotula y congela el bundle como referencia de una categoría no vista."""
     paso = 2.0**-41  # ≈ 4,5e-13: dentro de la tolerancia y representable exacto junto a 0,5
     tablas = {"canal": pd.DataFrame({"Bin": ["a", "b"], "WoE": [0.5, 0.5 + paso]})}
     scaler = _ajustar(tablas, redondeo="none")
-    puntos_a, puntos_b = _de_la_tabla(scaler, "a"), _de_la_tabla(scaler, "b")
-    assert puntos_a != puntos_b  # la condición de la prueba: sin redondeo, las dos filas difieren
 
-    assert _puntos(scaler, [0.5 + paso, 0.5, 0.5 + paso / 2]) == [puntos_b, puntos_a, puntos_a]
+    def _referencia(woe: float) -> object:
+        filas = filas_de_referencia_no_vista(scaler.scorecard_, {"canal": SimpleNamespace(woe=woe)})
+        return filas["canal"]["bin_label"]
+
+    assert [_referencia(0.5 + paso), _referencia(0.5), _referencia(0.5 + paso / 2)] == [
+        "b",
+        "a",
+        "a",
+    ]
+    puntos_a = _de_la_tabla(scaler, "a")
+    assert _de_la_tabla(scaler, "b") == puntos_a
+    assert _puntos(scaler, [0.5 + paso, 0.5, 0.5 + paso / 2]) == [puntos_a] * 3
     assert scaler.unseen_bins_ == {}
 
 
@@ -164,34 +176,68 @@ def test_un_woe_a_mas_de_1e_12_de_toda_fila_va_por_formula_y_se_registra(
         assert "bin_no_visto" not in _reglas(audit)
 
 
+def _en_el_borde(redondeo: RoundingMethod) -> float:
+    """El WoE cuyo puntaje crudo cae justo en un borde de redondeo, con beta = -1 y alfa = 0:
+    raw(w) = offset - factor·(beta·w + alpha)."""
+    factor = 20.0 / math.log(2.0)
+    offset = 600.0 - factor * math.log(50.0)
+    borde = 480.5 if redondeo == "nearest_integer" else 480.0
+    return (borde - offset) / factor
+
+
+def _formula(scaler: PointsScaler, woe: float, redondeo: RoundingMethod) -> float | int:
+    """Los puntos publicados que la fórmula da a un WoE (beta = -1), sin mirar la tabla."""
+    crudo = scaler_module._raw_points(
+        direction="higher_is_lower_risk",
+        factor=scaler.factor_,
+        offset_share=scaler.offset_,
+        beta=-1.0,
+        woe=woe,
+        intercept_share=scaler.intercept_share_,
+    )
+    return scaler_module._published_points(crudo, redondeo)
+
+
 @pytest.mark.parametrize("redondeo", ["nearest_integer", "floor_integer", "ceil_integer"])
 def test_un_puntaje_junto_a_un_borde_de_redondeo_da_el_entero_de_la_tabla(
     redondeo: RoundingMethod,
 ) -> None:
     """🔴 El límite declarado: un WoE a menos de 1e-12 del de su tramo que cruza el borde de
     redondeo daba, por la fórmula, otro entero que la tabla (y el bundle)."""
-    beta, alpha = -1.0, 0.0
-    factor = 20.0 / math.log(2.0)
-    offset = 600.0 - factor * math.log(50.0)
-    borde = 480.5 if redondeo == "nearest_integer" else 480.0
-    en_el_borde = (borde - offset) / factor  # raw(w) = offset - factor·(beta·w + alpha), beta = -1
-    tramo, fila = en_el_borde + 3e-13, en_el_borde - 3e-13
+    borde = _en_el_borde(redondeo)
+    tramo, fila = borde + 3e-13, borde - 3e-13
     tablas = {"canal": pd.DataFrame({"Bin": ["web", "sucursal"], "WoE": [tramo, 0.4]})}
-    scaler = _ajustar(tablas, redondeo=redondeo, beta=beta, alpha=alpha)
+    scaler = _ajustar(tablas, redondeo=redondeo, beta=-1.0, alpha=0.0)
 
-    def _formula(woe: float) -> float | int:
-        crudo = scaler_module._raw_points(
-            direction="higher_is_lower_risk",
-            factor=scaler.factor_,
-            offset_share=scaler.offset_,
-            beta=beta,
-            woe=woe,
-            intercept_share=scaler.intercept_share_,
-        )
-        return scaler_module._published_points(crudo, redondeo)
-
-    assert _formula(fila) != _formula(tramo)  # la condición de la prueba: cruza el borde
+    assert _formula(scaler, fila, redondeo) != _formula(scaler, tramo, redondeo)  # cruza el borde
     assert _puntos(scaler, [fila]) == [_de_la_tabla(scaler, "web")]
+
+
+@pytest.mark.parametrize("redondeo", ["nearest_integer", "floor_integer", "ceil_integer"])
+def test_dos_tramos_indistinguibles_junto_a_un_borde_publican_los_puntos_del_primero(
+    redondeo: RoundingMethod,
+) -> None:
+    """🔴 Revisión del código, pasada 1: dos tramos a menos de 1e-12 con un borde de redondeo
+    entre ellos publicaban enteros distintos; la corrida daba a las filas del segundo, más cerca
+    del primero o a igual distancia, los puntos del primero, y el bundle —que lee la tabla por
+    tramo— los suyos. Ahora el grupo publica los del primero y `woe_duplicado` lo declara."""
+    borde = _en_el_borde(redondeo)
+    primero, segundo = borde - 3e-13, borde + 3e-13
+    tablas = {
+        "canal": pd.DataFrame({"Bin": ["web", "sucursal", "fono"], "WoE": [primero, 0.4, segundo]})
+    }
+    audit = InMemoryAuditSink()
+    scaler = _ajustar(tablas, redondeo=redondeo, beta=-1.0, alpha=0.0, audit=audit)
+    propios = _formula(scaler, segundo, redondeo)
+    assert propios != _formula(scaler, primero, redondeo)  # la condición: el borde los separa
+
+    web = _de_la_tabla(scaler, "web")
+    assert _de_la_tabla(scaler, "fono") == web
+    assert _puntos(scaler, [primero, segundo, borde]) == [web, web, web]
+    (registro,) = scaler._duplicate_woe_keys_
+    assert (registro["bin_label"], registro["points_usados"]) == ("fono", web)
+    assert registro["points_descartados"] == propios
+    assert "woe_duplicado" in _reglas(audit)
 
 
 # ───────────────────────── D-BPT-1: el ajuste ambiguo se rechaza ─────────────────────────
