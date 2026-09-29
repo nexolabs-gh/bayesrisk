@@ -228,4 +228,8 @@ tumbe la regla o su medición. Pasada 1 (`a4030d5`, needs-attention): un medium 
 5—, corregido con test de regresión (tres métodos de redondeo, tramos no contiguos) y su control
 negativo. Pasada 2 (`15499e9`, needs-attention): un high real en la forma —igualar sin cota podía
 mover el puntaje con un coeficiente absurdo—, corregido con la guarda del punto 5, su test y su
-control negativo.
+control negativo. Pasada 3 (`f3e9122`, tope, needs-attention): un medium de **evidencia**, no de la
+regla —el archivo de controles guardó el primer intento del control de la guarda, que había caído
+por un error del arnés, en vez de su corrida—; se re-ejecutó y se guardó la salida real (rojo en el
+test de la guarda; verde en el árbol, que nunca se tocó). Ninguna de las tres pasadas tumbó la regla
+aprobada ni su medición: revisión cerrada en el tope, sin cuarta pasada.

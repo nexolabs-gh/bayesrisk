@@ -1135,12 +1135,21 @@ por módulo bajo SDD-31, la primera
 > `anio_fiscal` deja al 45,8 % de OOT fuera del dominio de Desarrollo.
 
 > **La búsqueda de puntos y los ajustes manuales (2026-09-28/29; **aprobada por Cami**, B2 (b) de la
-> FASE B; sin programar).**
+> FASE B; implementada en S26).**
 > [`_ENMIENDA-BUSQUEDA-DE-PUNTOS.md`](_ENMIENDA-BUSQUEDA-DE-PUNTOS.md), D-BPT-1…2, enmienda a
 > [`09-scorecard.md`](09-scorecard.md): el escalador casa el WoE de una fila con la fila más
 > cercana a 1e-12 en vez de exigirlo exacto, y un ajuste manual sobre tramos indistinguibles por WoE
 > se rechaza al ajustar. 🔴 **Medido** con el SBA: el 81,6 % de las celdas iba por fórmula por un ulp
 > y un ajuste manual de puntos no llegaba a la corrida (23.565 filas, 57 puntos frente al bundle).
+
+> **Hosmer-Lemeshow con muestras grandes y decisiones con motivo en el YAML (2026-09-29;
+> propuesta, FASE B (c)+(d); sin programar).**
+> [`_ENMIENDA-HL-Y-DECISIONES-EN-EL-YAML.md`](_ENMIENDA-HL-Y-DECISIONES-EN-EL-YAML.md), D-HLG-1…3 y
+> D-DEC-1…4, enmienda a [`22-validation.md`](22-validation.md) y a
+> [`31-simplicidad-y-flujo-guiado.md`](31-simplicidad-y-flujo-guiado.md): HL publica su tabla por
+> grupo y dice la mayor diferencia (veredicto intacto, recomendada), y las decisiones humanas viajan
+> en una sección INFRA `decisions` fuera del `config_hash`. 🔴 **Medido**: HL «Falla» con 1,1 pp de
+> brecha media en Desarrollo del SBA; una decisión con motivo se pierde al correr su YAML (1 → 0).
 
 ## Tandas de producción
 
