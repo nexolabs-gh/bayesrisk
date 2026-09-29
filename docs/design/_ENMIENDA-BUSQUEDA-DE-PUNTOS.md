@@ -6,7 +6,7 @@
 | **Decisiones** | **D-BPT-1** (cómo casa un WoE con su fila de puntos), **D-BPT-2** (qué dice el trail) |
 | **Módulos** | `bayesrisk.scorecard.scaler` |
 | **Fase** | F1 (pipeline estable, serie 2.x) |
-| **Estado** | **Propuesta** (S25, 2026-09-28). Tres pasadas de Codex (tope, §8), las tres con hallazgos reales incorporados; sin aprobar, sin programar |
+| **Estado** | **APROBADA por Cami el 2026-09-29** (S25, interactivo, con la recomendación de §5.1): opción **(a)**, la fila más cercana a 1e-12 con rechazo al ajustar de un ajuste manual sobre tramos indistinguibles por WoE. Tres pasadas de Codex (tope, §8), las tres con hallazgos reales incorporados. Sin programar (S26) |
 | **Depende de** | D-NOV-1 (la búsqueda es la que congela la referencia de una categoría no vista), D-FAL-1, D-CPY-3 |
 | **Release** | **Cambia números** —y rechaza un caso de config que hoy corre— donde hay ajustes manuales de puntos (`point_overrides`): hoy no llegan a la corrida en los tramos cuyo WoE difiere un ulp de la tabla (medido: 23.565 de 23.565 filas en un tramo del SBA) y pasan a llegar, como ya llegan al bundle y a la tabla publicada. Sin ajustes manuales y con redondeo a entero —los presets y la demo— no cambia ningún número (medido). Con `rounding_method="none"` los puntos de una fila observada pasan a ser exactamente los de su tramo (hoy ~1e-14). El trail deja de registrar falsas alarmas: cambia el trail de toda corrida ⇒ minor con cambio declarado y OK de Cami |
 | **Autor / Fecha** | Claude Code (writer) / 2026-09-28 |
