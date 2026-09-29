@@ -6,7 +6,7 @@
 | **Decisiones** | **D-BPT-1** (cómo casa un WoE con su fila de puntos), **D-BPT-2** (qué dice el trail) |
 | **Módulos** | `bayesrisk.scorecard.scaler` |
 | **Fase** | F1 (pipeline estable, serie 2.x) |
-| **Estado** | **Propuesta** (S25, 2026-09-28). Revisión de Codex pendiente; sin aprobar, sin programar |
+| **Estado** | **Propuesta** (S25, 2026-09-28). Tres pasadas de Codex (tope, §8), las tres con hallazgos reales incorporados; sin aprobar, sin programar |
 | **Depende de** | D-NOV-1 (la búsqueda es la que congela la referencia de una categoría no vista), D-FAL-1, D-CPY-3 |
 | **Release** | **Cambia números** —y rechaza un caso de config que hoy corre— donde hay ajustes manuales de puntos (`point_overrides`): hoy no llegan a la corrida en los tramos cuyo WoE difiere un ulp de la tabla (medido: 23.565 de 23.565 filas en un tramo del SBA) y pasan a llegar, como ya llegan al bundle y a la tabla publicada. Sin ajustes manuales y con redondeo a entero —los presets y la demo— no cambia ningún número (medido). Con `rounding_method="none"` los puntos de una fila observada pasan a ser exactamente los de su tramo (hoy ~1e-14). El trail deja de registrar falsas alarmas: cambia el trail de toda corrida ⇒ minor con cambio declarado y OK de Cami |
 | **Autor / Fecha** | Claude Code (writer) / 2026-09-28 |
@@ -52,12 +52,15 @@ Tres lecturas:
   en el orden de la tabla —la regla que hoy resuelve los WoE duplicados y la referencia de
   D-NOV-1— (pasada 1 de Codex: «la primera dentro de la tolerancia» podía desplazar una exacta). La
   fila recibe sus puntos publicados, con su ajuste manual y su redondeo. Sólo un WoE sin ninguna
-  fila a 1e-12 va por fórmula y se registra. **Un ajuste manual sobre un tramo que la búsqueda no
-  puede distinguir** —su WoE está a 1e-12 o menos del de una fila anterior de la misma variable—
-  **se rechaza al ajustar**, con un mensaje que nombra los dos tramos (pasada 2 de Codex): hoy ese
-  ajuste llega a la tabla y al bundle, que puntúa por tramo, pero nunca a la corrida. El bin
-  asignado de D-FAL-1 no cambia: ya comparte el WoE de su referencia, hereda su ajuste y rechaza uno
-  propio. 1e-12
+  fila a 1e-12 va por fórmula y se registra. **Un ajuste manual sobre cualquier tramo de un grupo
+  que la búsqueda no puede distinguir** —dos o más tramos de la misma variable con WoE a 1e-12 o
+  menos entre sí, **sea cual sea su posición**— **se rechaza al ajustar**, con un mensaje que nombra
+  los tramos del grupo (pasadas 2 y 3 de Codex): sobre el segundo, hoy el ajuste llega a la tabla y
+  al bundle pero nunca a la corrida; sobre el primero, la corrida se lo daría también a las filas del
+  segundo y el bundle no. El bin asignado de D-FAL-1 no cuenta para el grupo: comparte el WoE de su
+  referencia **por construcción**, hereda su ajuste y rechaza uno propio, y corrida y bundle ya le
+  dan lo mismo. Los tramos auxiliares vacíos (WoE 0 sin filas) sí cuentan: un regular con WoE
+  exactamente 0 y un `Missing` vacío también forman grupo —conservador, declarado—. 1e-12
   está cuatro órdenes por encima del ruido medido (2,2e-16) y nueve por debajo de la distancia entre
   dos tramos reales: el par de WoE distintos más cercano mide 0,0059 en el SBA (`empleos_apoyados`)
   y 0,0051 en el preset (`antiguedad_meses`).
@@ -112,8 +115,10 @@ la corrida, pasa a rechazarse al ajustar.
   SBA); también en el bin asignado de D-FAL-1 que lo hereda y en el tramo de referencia de D-NOV-1;
 - un WoE a más de 1e-12 de toda fila sigue yendo por fórmula y se registra;
 - dos filas dentro de la tolerancia sin ajuste: gana la más cercana —la exacta aunque sea la
-  segunda—, a igual distancia la primera; un ajuste manual sobre la segunda se rechaza al ajustar
-  con un mensaje que nombra los dos tramos (hoy corre y la corrida lo ignora);
+  segunda—, a igual distancia la primera; un ajuste manual sobre la segunda **o sobre la primera**
+  se rechaza al ajustar con un mensaje que nombra los tramos del grupo (hoy corre y corrida y
+  bundle divergen), y un ajuste sobre la referencia de un bin asignado de D-FAL-1 sigue permitido y
+  heredado, con corrida, tabla y bundle iguales;
 - un puntaje crudo a un ulp de un borde de redondeo, con cada método: la corrida da el entero de la
   tabla y coincide con el bundle;
 - con `rounding_method="none"`, corrida y bundle dan puntos idénticos en las filas observadas del
@@ -140,3 +145,4 @@ contractual no se programa: se eleva.
 |---|---|---|
 | 1 | (high) «la primera dentro de 1e-12» podía desplazar una coincidencia exacta posterior; (high) la ruta por fórmula ignora los ajustes manuales: la regla cambia puntajes enteros donde hay overrides y la cabecera decía «ningún número» | La más cercana gana, la exacta siempre (§1); medido el defecto de los overrides —23.565 filas, 57 puntos— y declarado como cambio de números y como motivo principal (§0, Release, §1); tests nuevos (§6) |
 | 2 | (high) con dos tramos del mismo WoE y un ajuste en el segundo, la búsqueda por WoE nunca lo alcanza y el bundle sí; (medium) sin ajustes, un ulp puede cambiar un entero junto a un borde de redondeo | El ajuste ambiguo se rechaza al ajustar (§1 a) y se añade (c) por identidad de tramo como alternativa; el borde de redondeo queda como límite declarado y en la Release; tests (§6) |
+| 3 (tope) | (high) el rechazo sólo miraba «una fila anterior»: un ajuste sobre el **primero** de dos tramos indistinguibles también llegaba, en la corrida, a las filas del segundo, y el bundle no | Se rechaza el ajuste sobre cualquier miembro del grupo, sea cual sea su posición; el bin asignado de D-FAL-1 queda fuera del grupo por construcción (§1 a); test con el ajuste en el primero (§6). La premisa —casar a 1e-12 y que el ajuste llegue a la corrida— no cayó. Revisión cerrada en el tope, sin cuarta pasada |
