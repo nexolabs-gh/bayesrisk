@@ -176,7 +176,10 @@ auditoría).
     (variable, bin, puntos, justificación) y es la única forma de romper la derivación por
     fórmula. El `bin_label` de un override casa con la etiqueta del motor o con el rótulo que
     muestran las tablas («≥ 50.450 y < 102.230,5», «2001, 2000», «Faltantes»); uno que no calza con
-    ningún tramo no se aplica, y el resumen de la tarjeta lo avisa.
+    ningún tramo no se aplica, y el resumen de la tarjeta lo avisa. Un override llega a todas las
+    operaciones de su tramo, en la corrida y en el bundle. Si el tramo comparte su WoE con otro
+    tramo de la misma variable, el override se rechaza al ajustar: la corrida no puede distinguir a
+    cuál de los dos pertenece cada operación. En ese caso se unen los tramos o se quita el ajuste.
 
 !!! note "Las operaciones fuera del ajuste también reciben puntaje"
     Las filas que no entran al ajuste —indeterminadas, excluidas o con desenlace fuera de las

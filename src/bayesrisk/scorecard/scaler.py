@@ -1,11 +1,12 @@
 """Escalamiento log-odds a puntos de scorecard (SDD-09 §4/§7).
 
 ``PointsScaler`` deriva una tabla de puntos auditable desde coeficientes logísticos WoE y tablas
-de binning ya fiteadas. La transformación usa una clave determinista ``(feature, woe)``: si dos
-bins de la misma variable comparten exactamente el mismo WoE, el primer bin en el orden publicado
-por ``scorecard_`` define el punto usado en ``transform``. Sin overrides, esos puntos son idénticos
-por fórmula; con overrides, esta regla evita ambigüedad silenciosa y queda trazada por orden
-estable de feature/bin.
+de binning ya fiteadas. La transformación casa el WoE de cada fila con la fila de puntos de su
+variable **más cercana a 1e-12 o menos** (D-BPT-1): la exacta siempre gana y, a igual distancia,
+la primera en el orden publicado por ``scorecard_``. El WoE que recalcula OptBinning al transformar
+difiere del de la tabla en el último bit; exigir igualdad exacta mandaba esas filas a la fórmula,
+donde un ajuste manual de puntos no llegaba. Un ajuste manual sobre un tramo que la búsqueda no
+distingue de otro —WoE a 1e-12 o menos entre sí— se rechaza al ajustar.
 
 **Estable (SemVer 2.x).**
 """
@@ -54,6 +55,10 @@ _REQUIRED_COEFFICIENT_COLUMNS = frozenset({"feature", "woe_column", "beta"})
 _REQUIRED_BINNING_COLUMNS = frozenset({"Bin", "WoE"})
 _INTERCEPT_FEATURE = "intercept"
 _INTERCEPT_WOE_COLUMN = "const"
+# D-BPT-1: distancia máxima para que un WoE case con una fila de puntos. Constante, no perilla: está
+# cuatro órdenes sobre el ruido medido entre la transformación y la tabla (2,2e-16) y nueve bajo el
+# par de tramos reales más cercano medido (0,0051 en el preset, 0,0059 en la muestra SBA).
+_TOLERANCIA_WOE = 1e-12
 
 
 class PointsScaler(BayesRiskTransformer):
@@ -181,7 +186,7 @@ class PointsScaler(BayesRiskTransformer):
                 accion="no_aplicar",
             )
         scorecard = _normalize_float_frame(pd.DataFrame(rows), pd=pd)
-        point_lookup, duplicate_woe = _point_lookup(scorecard)
+        _, duplicate_woe = _primeras_filas_por_woe(scorecard)
         if duplicate_woe:
             self.log_decision(
                 regla="woe_duplicado",
@@ -223,7 +228,6 @@ class PointsScaler(BayesRiskTransformer):
         self.intercept_ = alpha
         self.intercept_share_ = intercept_share
         self.beta_by_feature_ = {feature: coefficient_specs[feature].beta for feature in features}
-        self._point_lookup_ = point_lookup
         self._duplicate_woe_keys_ = tuple(duplicate_woe)
         return self
 
@@ -242,6 +246,7 @@ class PointsScaler(BayesRiskTransformer):
 
         result = frame.copy(deep=True)
         unseen_counts: dict[str, int] = {}
+        filas_por_variable = _filas_por_variable(self.scorecard_)
         for feature, woe_column, points_column in zip(
             self.final_features_,
             self.final_woe_columns_,
@@ -256,7 +261,7 @@ class PointsScaler(BayesRiskTransformer):
             )
             points, unseen_count = _points_for_values(
                 estimator=self,
-                feature=feature,
+                filas=filas_por_variable.get(feature, ()),
                 values=values,
                 beta=self.beta_by_feature_[feature],
             )
@@ -540,6 +545,13 @@ def _scorecard_rows(
         beta = coefficients[feature].beta
         table = tables[feature]
         asignados = set(assigned_bins.get(feature, ()))
+        _rechazar_ajuste_indistinguible(
+            feature=feature,
+            table=table,
+            asignados=asignados,
+            con_ajuste={posicion for variable, posicion in destino if variable == feature},
+            legibles=list(legibles.get(feature, [])),
+        )
         filas_de_la_variable: list[dict[str, object]] = []
         for bin_index, row in enumerate(table.to_dict(orient="records")):
             bin_label = str(row["Bin"])
@@ -623,6 +635,60 @@ def _reference_row(rows: list[dict[str, object]], woe: float) -> dict[str, objec
     return next((row for row in rows if row["woe"] == woe), None)
 
 
+def _rechazar_ajuste_indistinguible(
+    *,
+    feature: str,
+    table: DataFrame,
+    asignados: Collection[str],
+    con_ajuste: Collection[int],
+    legibles: list[str],
+) -> None:
+    """Rechaza un ajuste manual sobre un tramo que la búsqueda por WoE no distingue (D-BPT-1).
+
+    Un grupo son dos o más tramos de la variable con WoE a 1e-12 o menos entre sí —encadenados, sea
+    cual sea su posición—: la corrida casa cada operación con la fila más cercana y no sabe de qué
+    tramo vino, así que un ajuste sobre uno de ellos llegaría en la corrida al otro, o a ninguno, y
+    en el bundle —que puntúa por tramo— no. El bin asignado de D-FAL-1 no cuenta: comparte por
+    construcción el WoE exacto de su referencia (la misma prueba que ``_reference_row``) y hereda su
+    ajuste. Los tramos auxiliares vacíos (WoE 0) sí cuentan.
+    """
+    if not con_ajuste:
+        return
+    miembros: list[tuple[float, int, str]] = []
+    anteriores: list[float] = []
+    for posicion, row in enumerate(table.to_dict(orient="records")):
+        woe = _finite_float(row["WoE"], label="WoE", error_cls=ScorecardFitError)
+        etiqueta = str(row["Bin"])
+        if not (etiqueta in asignados and woe in anteriores):
+            miembros.append((woe, posicion, etiqueta))
+        anteriores.append(woe)
+
+    def _rotulo(posicion: int, etiqueta: str) -> str:
+        return legibles[posicion] if posicion < len(legibles) and legibles[posicion] else etiqueta
+
+    def _revisar(grupo: list[tuple[float, int, str]]) -> None:
+        ajustados = [miembro for miembro in grupo if miembro[1] in con_ajuste]
+        if len(grupo) < 2 or not ajustados:
+            return
+        en_orden = sorted(grupo, key=lambda miembro: miembro[1])
+        nombres = ", ".join(f"«{_rotulo(pos, etiqueta)}»" for _, pos, etiqueta in en_orden)
+        _, posicion, etiqueta = min(ajustados, key=lambda miembro: miembro[1])
+        raise ScorecardFitError(
+            f"El ajuste manual de puntos sobre «{_rotulo(posicion, etiqueta)}» de «{feature}» no "
+            f"se puede aplicar: los tramos {nombres} tienen el mismo WoE (a 1e-12 o menos) y la "
+            "corrida no distingue a qué tramo pertenece cada operación, así que el ajuste no "
+            "llegaría igual a la corrida y al bundle. Une esos tramos o quita el ajuste."
+        )
+
+    grupo: list[tuple[float, int, str]] = []
+    for miembro in sorted(miembros):
+        if grupo and miembro[0] - grupo[-1][0] > _TOLERANCIA_WOE:
+            _revisar(grupo)
+            grupo = []
+        grupo.append(miembro)
+    _revisar(grupo)
+
+
 def _rotulos_legibles(
     binning_tables: Mapping[str, DataFrame],
     bin_edges: DataFrame | None,
@@ -684,13 +750,34 @@ def _published_points(raw_points: float, method: RoundingMethod) -> float | int:
     return math.ceil(raw_points)
 
 
-def _point_lookup(
+def _filas_por_variable(
     scorecard: DataFrame,
-) -> tuple[dict[tuple[str, float], float | int], list[dict[str, object]]]:
-    """Construye lookup determinista ``(feature, woe) -> points`` con primer bin ganador."""
-    primeras, duplicate_rows = _primeras_filas_por_woe(scorecard)
-    lookup = {clave: cast(float | int, row["points"]) for clave, row in primeras.items()}
-    return lookup, duplicate_rows
+) -> dict[str, tuple[tuple[float, dict[str, object]], ...]]:
+    """Por variable, sus filas de puntos ``(woe, fila)`` en el orden de la tabla."""
+    salida: dict[str, list[tuple[float, dict[str, object]]]] = {}
+    for row in scorecard.to_dict(orient="records"):
+        fila = {str(campo): valor for campo, valor in row.items()}
+        woe = _normalize_float(float(cast(float, fila["woe"])))
+        salida.setdefault(str(fila["feature"]), []).append((woe, fila))
+    return {feature: tuple(filas) for feature, filas in salida.items()}
+
+
+def _fila_mas_cercana(
+    filas: tuple[tuple[float, dict[str, object]], ...], woe: float
+) -> dict[str, object] | None:
+    """La fila de puntos de un WoE (D-BPT-1): la más cercana a 1e-12 o menos, o ninguna.
+
+    La exacta siempre gana (distancia 0) y, a igual distancia, la primera en el orden de la tabla
+    —la regla que ya resolvía los WoE duplicados—. Es la única búsqueda: la usan la corrida y la
+    referencia de las categorías no vistas que congela el bundle.
+    """
+    mejor: dict[str, object] | None = None
+    distancia_mejor = math.inf
+    for woe_fila, fila in filas:
+        distancia = abs(woe - woe_fila)
+        if distancia <= _TOLERANCIA_WOE and distancia < distancia_mejor:
+            mejor, distancia_mejor = fila, distancia
+    return mejor
 
 
 def _primeras_filas_por_woe(
@@ -725,17 +812,17 @@ def filas_de_referencia_no_vista(
 
     ``referencias`` es ``unseen_reference_`` del binner: por variable categórica, su tramo de
     referencia con el WoE exacto de la tabla. La fila es la que devuelve para ese WoE la búsqueda
-    de :meth:`PointsScaler.transform` —la primera con ese ``(feature, woe)``, con su ajuste manual
-    y su redondeo—: con ella el bundle congela la referencia y el resumen y el informe escriben su
-    línea, así que la corrida, el bundle y los documentos dan los mismos puntos (§1.1).
+    de :meth:`PointsScaler.transform` (``_fila_mas_cercana``, D-BPT-1: con el WoE exacto, la
+    primera con ese WoE), con su ajuste manual y su redondeo: con ella el bundle congela la
+    referencia y el resumen y el informe escriben su línea, así que la corrida, el bundle y los
+    documentos dan los mismos puntos (§1.1).
     """
-    primeras, _ = _primeras_filas_por_woe(scorecard)
     salida: dict[str, dict[str, object]] = {}
-    for feature in dict.fromkeys(str(valor) for valor in scorecard["feature"].tolist()):
+    for feature, filas in _filas_por_variable(scorecard).items():
         referencia = referencias.get(feature)
         if referencia is None:
             continue
-        fila = primeras.get((feature, _normalize_float(float(referencia.woe))))
+        fila = _fila_mas_cercana(filas, _normalize_float(float(referencia.woe)))
         if fila is not None:
             salida[feature] = fila
     return salida
@@ -782,30 +869,36 @@ def _finite_woe_array(
 def _points_for_values(
     *,
     estimator: PointsScaler,
-    feature: str,
+    filas: tuple[tuple[float, dict[str, object]], ...],
     values: NDArrayFloat,
     beta: float,
 ) -> tuple[list[float | int], int]:
-    """Mapea WoE a puntos tabulares o por fórmula directa para bins no vistos."""
+    """Mapea WoE a los puntos de su fila (D-BPT-1) o, sin fila a 1e-12, por fórmula directa."""
     points: list[float | int] = []
     unseen_count = 0
-    lookup = estimator._point_lookup_
+    resueltos: dict[float, tuple[float | int, bool]] = {}
     for value in values.tolist():
         woe = _normalize_float(float(value))
-        key = (feature, woe)
-        if key in lookup:
-            points.append(lookup[key])
-            continue
-        unseen_count += 1
-        raw_points = _raw_points(
-            direction=estimator.score_direction_,
-            factor=estimator.factor_,
-            offset_share=_normalize_float(estimator.offset_ / len(estimator.final_features_)),
-            beta=beta,
-            woe=woe,
-            intercept_share=estimator.intercept_share_,
-        )
-        points.append(_published_points(raw_points, estimator.rounding_method_))
+        resuelto = resueltos.get(woe)
+        if resuelto is None:
+            fila = _fila_mas_cercana(filas, woe)
+            if fila is not None:
+                resuelto = (cast(float | int, fila["points"]), False)
+            else:
+                raw_points = _raw_points(
+                    direction=estimator.score_direction_,
+                    factor=estimator.factor_,
+                    offset_share=_normalize_float(
+                        estimator.offset_ / len(estimator.final_features_)
+                    ),
+                    beta=beta,
+                    woe=woe,
+                    intercept_share=estimator.intercept_share_,
+                )
+                resuelto = (_published_points(raw_points, estimator.rounding_method_), True)
+            resueltos[woe] = resuelto
+        points.append(resuelto[0])
+        unseen_count += int(resuelto[1])
     return points, unseen_count
 
 

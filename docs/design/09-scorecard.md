@@ -413,6 +413,7 @@ Desde `binning`:
    - aplicar redondeo configurado;
    - aplicar override manual si existe, con `log_decision`.
 9. **Transformar registros.** Tomar `binning.woe_frame[final_woe_columns]`; por cada feature, calcular puntos desde el WoE observado. Si el WoE coincide con un bin conocido, usar el punto de tabla; si no coincide pero es finito, calcular por fórmula y registrar `bin_no_visto`/`woe_no_tabular`.
+   > **Enmendado (2026-09-29, D-BPT-1…2):** «coincide» es **la fila más cercana a 1e-12 o menos** (la exacta siempre gana; a igual distancia, la primera), no la igualdad exacta: el WoE que recalcula OptBinning difiere del de la tabla en el último bit y mandaba a la fórmula —donde un ajuste manual no llegaba— el 81,6 % de las celdas de una cartera real. `bin_no_visto` sólo para un WoE sin fila a esa distancia. Un ajuste manual sobre un tramo indistinguible por WoE de otro se rechaza al ajustar. Ver [`_ENMIENDA-BUSQUEDA-DE-PUNTOS.md`](_ENMIENDA-BUSQUEDA-DE-PUNTOS.md).
 10. **Sumar score.** `score = Σ points_columns`; si `clip=True`, recortar a `min_score`/`max_score` y registrar cada clipping agregado por conteo.
 11. **Alinear con PD cruda.** Unir columnas disponibles de `model.raw_pd_frame` por índice (`partition`, `target`, `linear_predictor`, `pd_raw`) sin recalcular PD.
 12. **Construir DTOs.** `ScorecardResult` y `ScorecardCardSection` con versions y parámetros.

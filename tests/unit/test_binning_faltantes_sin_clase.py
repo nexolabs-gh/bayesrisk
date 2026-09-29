@@ -22,6 +22,7 @@ Contrato: `docs/design/_ENMIENDA-FALTANTES-SIN-CLASE-Y-EXCLUSION.md`.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -337,8 +338,18 @@ def _tablas_con_empate() -> dict[str, pd.DataFrame]:
     }
 
 
+def _tablas_sin_empate() -> dict[str, pd.DataFrame]:
+    """La misma tabla con el tercer tramo en otro WoE: la referencia no tiene gemelo."""
+    tablas = _tablas_con_empate()
+    tablas["x"].loc[2, "WoE"] = -0.2
+    return tablas
+
+
 def _escalar(
-    overrides: tuple[PointOverrideConfig, ...], audit: InMemoryAuditSink | None = None
+    overrides: tuple[PointOverrideConfig, ...],
+    audit: InMemoryAuditSink | None = None,
+    *,
+    tablas: dict[str, pd.DataFrame] | None = None,
 ) -> PointsScaler:
     coeficientes = pd.DataFrame(
         [
@@ -350,7 +361,7 @@ def _escalar(
         coefficients=coeficientes,
         final_features=("x",),
         final_woe_columns=("x__woe",),
-        binning_tables=_tablas_con_empate(),
+        binning_tables=_tablas_con_empate() if tablas is None else tablas,
         woe_column_map={"x": "x__woe"},
         audit=audit,
         assigned_bins={"x": {"Missing"}},
@@ -358,17 +369,20 @@ def _escalar(
 
 
 def test_el_override_del_tramo_de_referencia_se_hereda_y_se_declara() -> None:
-    """🔴 Test 8b/8f: el override de la PRIMERA fila con el WoE mínimo llega a la fila `Missing`
-    de la tabla de puntos —la que congela el bundle— y a la búsqueda de la corrida."""
+    """🔴 Test 8b/8f: el override del tramo de referencia llega a la fila `Missing` de la tabla
+    de puntos —la que congela el bundle— y a la búsqueda de la corrida. Si otro tramo regular
+    comparte su WoE, el override se rechaza (D-BPT-1): la corrida se lo daría también a las filas
+    de ese otro tramo y el bundle no; el `Missing` asignado no cuenta para el grupo."""
     ajuste = PointOverrideConfig(feature="x", bin_label="(-inf, 1)", points=7, reason="comité")
+    with pytest.raises(ScorecardFitError, match=re.escape("«(-inf, 1)», «[2, inf)» tienen")):
+        _escalar((ajuste,))
     audit = InMemoryAuditSink()
-    scaler = _escalar((ajuste,), audit)
+    scaler = _escalar((ajuste,), audit, tablas=_tablas_sin_empate())
 
     tabla = scaler.scorecard_.set_index("bin_label")
     assert tabla.loc["Missing", "points"] == 7
     assert tabla.loc["Missing", "source"] == "override"
     assert tabla.loc["Missing", "bin_index"] == 4
-    # El segundo tramo con el mismo WoE no hereda: no es la referencia.
     assert tabla.loc["[2, inf)", "points"] != 7
     assert scaler.transform(pd.DataFrame({"x__woe": [-0.5]})).loc[0, "x__points"] == 7
     heredados = _decisiones(audit, "point_override_heredado")

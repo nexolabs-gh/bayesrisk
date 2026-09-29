@@ -7,6 +7,33 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [Sin publicar]
+
+### Cambiado
+
+- **Un ajuste manual de puntos llega a la corrida.** El escalador buscaba el WoE de cada operación
+  en la tabla de puntos con igualdad exacta; el WoE que recalcula OptBinning al transformar difiere
+  del de la tabla en el último bit, así que la mayoría de las operaciones —en la muestra SBA de la
+  prueba real, el 81,6 % de las celdas— se puntuaba por fórmula, que no conoce los ajustes
+  manuales: un ajuste de 7 puntos en un tramo dejaba sus 23.565 operaciones con 64 puntos en la
+  corrida y 7 en la tabla y el bundle. Ahora cada operación recibe los puntos de la fila de su
+  variable más cercana a 1e-12 o menos (la exacta siempre gana; a igual distancia, la primera),
+  con su ajuste manual y su redondeo, igual que el bundle. **Cambia números** sólo donde hay
+  ajustes manuales —hacia lo que declara la tabla— y, en el límite declarado, en un puntaje a
+  menos de 1e-12 de un borde de redondeo, que pasa a dar el entero de la tabla. Sin ajustes
+  manuales y con redondeo a entero —el preset y la demo— ningún número cambia (medido). Con
+  `rounding_method="none"` los puntos de la corrida pasan a ser exactamente los del bundle (antes
+  diferían en ~1e-14).
+- **Un ajuste manual sobre un tramo que comparte su WoE con otro se rechaza al ajustar.** Con dos o
+  más tramos de la misma variable a 1e-12 o menos entre sí, la corrida no puede distinguir a cuál
+  pertenece cada operación: antes el ajuste llegaba a la tabla y al bundle y, en la corrida, a
+  ninguno o a los dos. El mensaje nombra los tramos del grupo. El bin de faltantes que comparte los
+  puntos de su tramo de referencia no cuenta para el grupo: el ajuste sobre la referencia sigue
+  permitido y lo hereda.
+- **El trail deja de registrar falsas alarmas.** `bin_no_visto` («calcular por fórmula») se
+  registra sólo para un WoE sin fila a 1e-12; antes lo registraba para casi toda operación
+  observada y el aviso llegaba al libro «Decisiones» del Excel y al anexo del informe.
+
 ## [2.2.0] — 2026-09-28
 
 ### Cambiado

@@ -39,7 +39,7 @@ from bayesrisk.report.builder import _referencias_no_vistas, _rotulos_de_tramos
 from bayesrisk.report.renderer import _table_view
 from bayesrisk.scorecard.bundle import FittedScorecardBundle, _bundle_hash
 from bayesrisk.scorecard.config import PointOverrideConfig
-from bayesrisk.scorecard.exceptions import ScorecardBundleError
+from bayesrisk.scorecard.exceptions import ScorecardBundleError, ScorecardFitError
 from bayesrisk.scorecard.scaler import PointsScaler, filas_de_referencia_no_vista
 
 pytest.importorskip("optbinning")
@@ -242,8 +242,10 @@ def test_con_override_sobre_la_referencia_o_sin_redondeo_corrida_y_bundle_coinci
     )
 
 
-def test_con_dos_filas_del_mismo_woe_y_un_override_en_la_segunda_manda_la_primera() -> None:
-    """🔴 La corrida (búsqueda del escalador) y el bundle (la misma función) dan la primera."""
+def test_con_dos_filas_del_mismo_woe_manda_la_primera_y_un_override_se_rechaza() -> None:
+    """🔴 La corrida (búsqueda del escalador) y el bundle (la misma función) dan la primera; un
+    ajuste manual sobre una de las dos se rechaza al ajustar (D-BPT-1: antes llegaba a la tabla y
+    al bundle, nunca a la corrida)."""
     tablas = {
         "canal": pd.DataFrame({"Bin": ["web", "sucursal", "fono"], "WoE": [0.4, -0.5, -0.5]}),
     }
@@ -253,21 +255,26 @@ def test_con_dos_filas_del_mismo_woe_y_un_override_en_la_segunda_manda_la_primer
             {"feature": "canal", "woe_column": "canal__woe", "beta": -0.8},
         ]
     )
-    ajuste = PointOverrideConfig(feature="canal", bin_label="fono", points=1, reason="prueba")
-    scaler = PointsScaler(point_overrides=(ajuste,)).fit(
-        coefficients=coeficientes,
-        final_features=("canal",),
-        final_woe_columns=("canal__woe",),
-        binning_tables=tablas,
-        woe_column_map={"canal": "canal__woe"},
-        audit=InMemoryAuditSink(),
-    )
+
+    def _ajustar(ajustes: tuple[PointOverrideConfig, ...]) -> PointsScaler:
+        return PointsScaler(point_overrides=ajustes).fit(
+            coefficients=coeficientes,
+            final_features=("canal",),
+            final_woe_columns=("canal__woe",),
+            binning_tables=tablas,
+            woe_column_map={"canal": "canal__woe"},
+            audit=InMemoryAuditSink(),
+        )
+
+    scaler = _ajustar(())
     referencia = SimpleNamespace(woe=-0.5)
     fila = filas_de_referencia_no_vista(scaler.scorecard_, {"canal": referencia})["canal"]
     assert (fila["bin_label"], fila["source"]) == ("sucursal", "binning_table")
     puntos = scaler.transform(pd.DataFrame({"canal__woe": [-0.5]}))["canal__points"]
     assert puntos.tolist() == [fila["points"]]
-    assert fila["points"] != 1
+    ajuste = PointOverrideConfig(feature="canal", bin_label="fono", points=1, reason="prueba")
+    with pytest.raises(ScorecardFitError, match="«sucursal», «fono»"):
+        _ajustar((ajuste,))
 
 
 def test_con_el_signo_invertido_la_fila_sigue_a_su_tramo() -> None:

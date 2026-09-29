@@ -149,52 +149,45 @@ def test_bin_no_visto_calcula_formula_y_audita() -> None:
     assert [event.payload["regla"] for event in audit.events][-1] == "bin_no_visto"
 
 
-def test_woe_duplicado_usa_primera_clave_feature_woe_y_override_auditado() -> None:
-    audit = InMemoryAuditSink()
-    override = PointOverrideConfig(
-        feature="saldo",
-        bin_label="segundo",
-        points=999,
-        reason="homologacion manual",
-    )
-    scaler = PointsScaler(
-        rounding_method="nearest_integer",
-        point_overrides=(override,),
-    )
+def test_woe_duplicado_usa_la_primera_fila_y_un_override_sobre_el_grupo_se_rechaza() -> None:
+    """D-BPT-1: dos tramos del mismo WoE puntúan con el primero; un ajuste manual sobre uno de
+    ellos se rechaza al ajustar (antes llegaba a la tabla y al bundle, nunca a la corrida)."""
     coefficients = pd.DataFrame(
         [
             {"feature": "intercept", "woe_column": "const", "beta": 0.0},
             {"feature": "saldo", "woe_column": "saldo__woe", "beta": -1.0},
         ]
     )
-    tables = {
-        "saldo": pd.DataFrame(
-            {
-                "Bin": ["primero", "segundo"],
-                "WoE": [0.1, 0.1],
-            }
+    tables = {"saldo": pd.DataFrame({"Bin": ["primero", "segundo"], "WoE": [0.1, 0.1]})}
+
+    def _ajustar(scaler: PointsScaler, audit: InMemoryAuditSink) -> PointsScaler:
+        return scaler.fit(
+            coefficients=coefficients,
+            final_features=("saldo",),
+            final_woe_columns=("saldo__woe",),
+            binning_tables=tables,
+            woe_column_map={"saldo": "saldo__woe"},
+            audit=audit,
         )
-    }
-    scaler.fit(
-        coefficients=coefficients,
-        final_features=("saldo",),
-        final_woe_columns=("saldo__woe",),
-        binning_tables=tables,
-        woe_column_map={"saldo": "saldo__woe"},
-        audit=audit,
-    )
+
+    audit = InMemoryAuditSink()
+    scaler = _ajustar(PointsScaler(rounding_method="nearest_integer"), audit)
     transformed = scaler.transform(pd.DataFrame({"saldo__woe": [0.1]}))
     first_points = int(scaler.scorecard_.loc[0, "points"])
 
-    assert first_points != 999
     assert transformed.loc[0, "saldo__points"] == first_points
     assert transformed.loc[0, "score"] == first_points
     assert scaler._duplicate_woe_keys_[0]["bin_label"] == "segundo"
     assert [event.payload["regla"] for event in audit.events] == [
-        "point_override",
         "woe_duplicado",
         "scorecard_rounding",
     ]
+
+    override = PointOverrideConfig(
+        feature="saldo", bin_label="segundo", points=999, reason="homologacion manual"
+    )
+    with pytest.raises(ScorecardFitError, match="«primero», «segundo»"):
+        _ajustar(PointsScaler(point_overrides=(override,)), InMemoryAuditSink())
 
 
 def test_clipping_opt_in_y_fuera_de_rango_sin_recorte() -> None:
