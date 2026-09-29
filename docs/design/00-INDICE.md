@@ -1143,7 +1143,7 @@ por módulo bajo SDD-31, la primera
 > y un ajuste manual de puntos no llegaba a la corrida (23.565 filas, 57 puntos frente al bundle).
 
 > **Hosmer-Lemeshow con muestras grandes y decisiones con motivo en el YAML (2026-09-29;
-> propuesta, FASE B (c)+(d); sin programar).**
+> **aprobada por Cami**, FASE B (c)+(d); sin programar).**
 > [`_ENMIENDA-HL-Y-DECISIONES-EN-EL-YAML.md`](_ENMIENDA-HL-Y-DECISIONES-EN-EL-YAML.md), D-HLG-1…3 y
 > D-DEC-1…4, enmienda a [`22-validation.md`](22-validation.md) y a
 > [`31-simplicidad-y-flujo-guiado.md`](31-simplicidad-y-flujo-guiado.md): HL publica su tabla por
