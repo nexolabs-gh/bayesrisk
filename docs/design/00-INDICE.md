@@ -1125,7 +1125,7 @@ por módulo bajo SDD-31, la primera
 > scorecard, 144 y 97 en IFRS 9.
 
 > **Categorías que no existían en Desarrollo (2026-09-28; **aprobada por Cami** el mismo día, B2 (a)
-> de la FASE B; sin programar).**
+> de la FASE B; implementada en S25 y publicada en 2.2.0).**
 > [`_ENMIENDA-CATEGORIAS-NO-VISTAS.md`](_ENMIENDA-CATEGORIAS-NO-VISTAS.md), D-NOV-1…4, enmienda a
 > [`06-binning.md`](06-binning.md), [`09-scorecard.md`](09-scorecard.md) y al §7 de
 > [`_ENMIENDA-PUNTUAR-POBLACION-TTD.md`](_ENMIENDA-PUNTUAR-POBLACION-TTD.md): una sola regla —el
@@ -1133,6 +1133,14 @@ por módulo bajo SDD-31, la primera
 > cambian), `binning.cat_unknown` sólo vacío y una alerta de cambio de dominio desde el 10 %.
 > 🔴 **Medido** con el SBA: hoy la corrida da el promedio (65 puntos) y el bundle rechaza la fila;
 > `anio_fiscal` deja al 45,8 % de OOT fuera del dominio de Desarrollo.
+
+> **La búsqueda de puntos y los ajustes manuales (2026-09-28/29; **aprobada por Cami**, B2 (b) de la
+> FASE B; sin programar).**
+> [`_ENMIENDA-BUSQUEDA-DE-PUNTOS.md`](_ENMIENDA-BUSQUEDA-DE-PUNTOS.md), D-BPT-1…2, enmienda a
+> [`09-scorecard.md`](09-scorecard.md): el escalador casa el WoE de una fila con la fila más
+> cercana a 1e-12 en vez de exigirlo exacto, y un ajuste manual sobre tramos indistinguibles por WoE
+> se rechaza al ajustar. 🔴 **Medido** con el SBA: el 81,6 % de las celdas iba por fórmula por un ulp
+> y un ajuste manual de puntos no llegaba a la corrida (23.565 filas, 57 puntos frente al bundle).
 
 ## Tandas de producción
 
