@@ -141,7 +141,13 @@ aunque llegara un preámbulo, `ui/summaries.serialize_summaries` no pasa `decisi
   registro, en el orden del config, con **el mismo payload de hoy** (`regla`, `umbral` vacío, `valor`
   = el `value` guardado, `accion`, `autor`, `motivo`, `variables`), y lo persiste en
   `run_context.preamble`. Así la corrida guiada, `bayesrisk.run(loads_config(yaml))` y la pantalla
-  dan el **mismo trail** y la misma ficha, Excel, página ejecutiva e informe.
+  dan **las mismas decisiones humanas** —mismos eventos `decision_del_usuario`, mismo orden y
+  payload— y lo que ellas alimentan: las filas humanas de la ficha, la hoja «Decisiones humanas» del
+  Excel, las líneas de decisión de la página ejecutiva y del resumen final. **No** el mismo trail
+  entero (pasada 2 de Codex): la puerta guiada declara además su entrada y sus inferencias
+  (`puerta_de_entrada`, autor `puerta_guiada`), que una corrida desde el YAML no tiene; es la
+  diferencia de procedencia que D-SIM-1 ya declara, y llega a la ficha y a la hoja «Inferencias de
+  la puerta» del Excel sólo en la corrida guiada.
 - **D-DEC-3 · Un registro cuyo efecto ya no está en el config (Cami decide, §3).** Antes de emitir,
   cada registro se coteja con el config, **variable por variable**, contra su huella: se mira sólo
   el **último** registro de cada variable en su familia (`exclude`/`keep`; `merge_bins`/`set_bins`);
@@ -150,7 +156,14 @@ aunque llegara un preámbulo, `ui/summaries.serialize_summaries` no pasa `decisi
   y fuera de las excluidas; los cortes de `variable_overrides` **idénticos** a los guardados);
   **en suspenso** (cortes fijados de una variable que después se excluyó: D-EXC-1 ya los declara;
   se emite como hoy); **sin efecto** (la hoja no está o cambió: un YAML editado a mano —cortes
-  `[10, 20]` reescritos a `[15, 25]`— o el formulario de la pantalla). Para el tercero:
+  `[10, 20]` reescritos a `[15, 25]`— o el formulario de la pantalla). Un registro de varias
+  variables puede quedar **aplicado en parte** (`exclude(["x", "y"])` y después alguien quita sólo
+  `x` de `binning.exclude_columns`): se emite como decisión humana **sólo para las variables
+  aplicadas o en suspenso** (`variables` las nombra; `valor` sigue siendo la huella original) y la
+  parte sin efecto sigue la regla de abajo; los dos eventos llevan la clave aditiva `registro` —la
+  posición en `config.decisions`— para no perder el vínculo con el acto original (pasada 2 de
+  Codex). Un registro aplicado entero se emite exactamente como hoy, sin `registro`. Para la parte
+  sin efecto:
   - **(a) Se declara y no se atribuye — recomendada.** No se emite como decisión humana; el motor
     registra `decision_sin_efecto` (con la acción, las variables, el motivo y qué hoja no coincide)
     y el resumen final lo dice como alerta: «La decisión «set_bins monto — motivo» ya no está
@@ -168,7 +181,7 @@ aunque llegara un preámbulo, `ui/summaries.serialize_summaries` no pasa `decisi
 
 **Qué no cambia (D-DEC)**: el `config_hash` de todo config (medido antes y después con los goldens
 de hash); el YAML de un config sin decisiones; `DecisionRecord` y la ficha (D-GOB-17); el Excel
-«11 Decisiones» (lee el trail); la regla `decision_del_usuario` y su payload, `valor` incluido; las
+«11 Decisiones» (lee el trail); la regla `decision_del_usuario` y su payload, `valor` incluido (salvo la clave aditiva `registro` de un registro aplicado en parte); las
 inferencias y la entrada de la puerta, que siguen en su preámbulo; que la puerta declare en cada
 corrida todas las decisiones acumuladas.
 
@@ -195,7 +208,12 @@ corrida todas las decisiones acumuladas.
   mueven; el YAML de un config sin decisiones no trae la clave y es idéntico al de la 2.2.0 (también
   por `/api/config/to-yaml`); `exclude` y luego `keep` sobre la misma variable antes de correr dejan
   los dos registros y los dos eventos (como hoy); con cortes reescritos a mano, `set_bins` no se
-  atribuye; `set_bins` y después `exclude` deja los cortes en suspenso, no «sin efecto»; un
+  atribuye; `set_bins` y después `exclude` deja los cortes en suspenso, no «sin efecto»;
+  `exclude(["x", "y"])` con sólo `x` retirada a mano da una decisión humana sobre `y` y una sin
+  efecto sobre `x`, las dos con el mismo `registro`; la paridad entre puertas se prueba sobre las
+  decisiones humanas del trail, las filas humanas de la ficha, la hoja «Decisiones humanas» del
+  Excel y las líneas de la página ejecutiva —y se prueba aparte que la procedencia de la puerta
+  (entrada e inferencias) sólo está en la corrida guiada—; un
   registro sin efecto no se atribuye, se declara y sale como alerta (o se rechaza, según 3.2); la
   pantalla muestra las decisiones del YAML en el resumen final y el formulario las conserva al
   editar otra sección; la sección no se pinta —los censos de campos visibles, perillas y
@@ -224,3 +242,4 @@ contractual no se programa: se eleva.
 | Pasada | Hallazgo | Qué cambió |
 |---|---|---|
 | 1 | (high) el registro «sólo vigente» perdía `exclude` si se revertía con `keep` antes de correr; (high) sin huella del efecto, un motivo se atribuía a cortes editados a mano, y un `set_bins` en suspenso pasaba por aplicado; (medium) «la mayor diferencia» nombraba el grupo de mayor contribución (g3, 1,7 pp) y no el de mayor brecha (g8, 3,4 pp); (medium) `decisions: []` rompía la carga del YAML en una librería anterior | Registro de solo agregar con `value` (la huella) y payload intacto (D-DEC-1/2); cotejo por variable del último registro, con aplicada / en suspenso / sin efecto (D-DEC-3); la frase dice la mayor diferencia absoluta y la tabla trae O/E y contribución (D-HLG-2); la sección vacía no se vuelca (D-DEC-1); tests (§6) |
+| 2 | (high) un registro de varias variables aplicado en parte no tenía regla: emitirlo atribuía la variable sin efecto y omitirlo perdía la vigente; (medium) «el mismo trail, ficha y Excel» entre puertas era falso: la puerta guiada suma su entrada y sus inferencias | El registro parcial se emite como decisión humana sólo para lo aplicado y el resto como sin efecto, los dos con la clave aditiva `registro` (D-DEC-3); la paridad se promete y se prueba sobre las decisiones humanas y lo que alimentan, con la procedencia de la puerta declarada aparte (D-DEC-2); tests (§6) |
