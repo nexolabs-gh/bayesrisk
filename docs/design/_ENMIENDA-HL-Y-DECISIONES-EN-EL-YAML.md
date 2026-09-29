@@ -6,7 +6,7 @@
 | **Decisiones** | **D-HLG-1…3** (Hosmer-Lemeshow con muestras grandes), **D-DEC-1…4** (decisiones con motivo en el YAML) |
 | **Módulos** | `bayesrisk.validation` (kernel, evaluador, resultados), `bayesrisk.guided`, `bayesrisk.core.config` (schema y hash), `bayesrisk.core.study`, `bayesrisk.ui` (resúmenes y formulario), `bayesrisk.report` |
 | **Fase** | F1 (FASE B del scorecard; serie 2.x). Nace de los hallazgos 5 y 7 de la prueba real de Cami, elevados en [`_ENMIENDA-COPY-PRUEBA-REAL-SBA.md`](_ENMIENDA-COPY-PRUEBA-REAL-SBA.md) §8.1 y §8.2 |
-| **Estado** | **Propuesta** (S26, 2026-09-29). Sin programar |
+| **Estado** | **Propuesta** (S26, 2026-09-29), revisada: tres pasadas de Codex (tope, §8), las tres con hallazgos reales incorporados. Sin programar; espera el OK de Cami (§3) |
 | **Depende de** | D-VAL-13…18 (puerta por grupo de HL, «No evaluable»), D-CPY-6 (brecha media agregada), D-FLU-1…12 y D-GOB-17 (decisiones con autor y motivo), D-EXC-1, D-HASH-* (qué entra al `config_hash`) |
 | **Release** | Junto con D-BPT-1…2 en la **2.3.0** (ritmo de Cami del 2026-09-29: cambios chicos juntos). Ningún `config_hash` se mueve. D-HLG: con la opción recomendada, **ningún veredicto cambia**; se suma una tabla y una frase. D-DEC: una sección INFRA nueva en el config, aditiva; el trail de una corrida desde un YAML con decisiones gana esos eventos. Un YAML con `decisions` no lo lee una librería anterior (`extra="forbid"`): declarado |
 | **Autor / Fecha** | Claude Code (writer) / 2026-09-29 |
@@ -159,10 +159,14 @@ aunque llegara un preámbulo, `ui/summaries.serialize_summaries` no pasa `decisi
   `[10, 20]` reescritos a `[15, 25]`— o el formulario de la pantalla). Un registro de varias
   variables puede quedar **aplicado en parte** (`exclude(["x", "y"])` y después alguien quita sólo
   `x` de `binning.exclude_columns`): se emite como decisión humana **sólo para las variables
-  aplicadas o en suspenso** (`variables` las nombra; `valor` sigue siendo la huella original) y la
-  parte sin efecto sigue la regla de abajo; los dos eventos llevan la clave aditiva `registro` —la
+  aplicadas o en suspenso** —`variables` las nombra y `valor` es la huella **restringida a ellas**
+  (la hoja filtrada a esas variables), porque `DecisionRecord` conserva `valor` y descarta
+  `variables`, y la ficha atribuiría si no la exclusión de `x` (pasada 3 de Codex)—; la huella
+  completa va en la clave aditiva `huella`, que la ficha no lee. La parte sin efecto sigue la regla
+  de abajo, con esas variables en su `valor`. Los dos eventos llevan la clave aditiva `registro` —la
   posición en `config.decisions`— para no perder el vínculo con el acto original (pasada 2 de
-  Codex). Un registro aplicado entero se emite exactamente como hoy, sin `registro`. Para la parte
+  Codex); en la ficha quedan como una fila humana con lo aplicado y una del motor con lo que no. Un
+  registro aplicado entero se emite exactamente como hoy, sin `registro` ni `huella`. Para la parte
   sin efecto:
   - **(a) Se declara y no se atribuye — recomendada.** No se emite como decisión humana; el motor
     registra `decision_sin_efecto` (con la acción, las variables, el motivo y qué hoja no coincide)
@@ -209,8 +213,9 @@ corrida todas las decisiones acumuladas.
   por `/api/config/to-yaml`); `exclude` y luego `keep` sobre la misma variable antes de correr dejan
   los dos registros y los dos eventos (como hoy); con cortes reescritos a mano, `set_bins` no se
   atribuye; `set_bins` y después `exclude` deja los cortes en suspenso, no «sin efecto»;
-  `exclude(["x", "y"])` con sólo `x` retirada a mano da una decisión humana sobre `y` y una sin
-  efecto sobre `x`, las dos con el mismo `registro`; la paridad entre puertas se prueba sobre las
+  `exclude(["x", "y"])` con sólo `x` retirada a mano da una decisión humana sobre `y` —con `valor`
+  sin `x`— y una sin efecto sobre `x`, las dos con el mismo `registro`, y la ficha y la hoja
+  «Decisiones humanas» del Excel no nombran `x` como decisión humana; la paridad entre puertas se prueba sobre las
   decisiones humanas del trail, las filas humanas de la ficha, la hoja «Decisiones humanas» del
   Excel y las líneas de la página ejecutiva —y se prueba aparte que la procedencia de la puerta
   (entrada e inferencias) sólo está en la corrida guiada—; un
@@ -243,3 +248,4 @@ contractual no se programa: se eleva.
 |---|---|---|
 | 1 | (high) el registro «sólo vigente» perdía `exclude` si se revertía con `keep` antes de correr; (high) sin huella del efecto, un motivo se atribuía a cortes editados a mano, y un `set_bins` en suspenso pasaba por aplicado; (medium) «la mayor diferencia» nombraba el grupo de mayor contribución (g3, 1,7 pp) y no el de mayor brecha (g8, 3,4 pp); (medium) `decisions: []` rompía la carga del YAML en una librería anterior | Registro de solo agregar con `value` (la huella) y payload intacto (D-DEC-1/2); cotejo por variable del último registro, con aplicada / en suspenso / sin efecto (D-DEC-3); la frase dice la mayor diferencia absoluta y la tabla trae O/E y contribución (D-HLG-2); la sección vacía no se vuelca (D-DEC-1); tests (§6) |
 | 2 | (high) un registro de varias variables aplicado en parte no tenía regla: emitirlo atribuía la variable sin efecto y omitirlo perdía la vigente; (medium) «el mismo trail, ficha y Excel» entre puertas era falso: la puerta guiada suma su entrada y sus inferencias | El registro parcial se emite como decisión humana sólo para lo aplicado y el resto como sin efecto, los dos con la clave aditiva `registro` (D-DEC-3); la paridad se promete y se prueba sobre las decisiones humanas y lo que alimentan, con la procedencia de la puerta declarada aparte (D-DEC-2); tests (§6) |
+| 3 (tope) | (high) en el registro aplicado en parte, el evento humano conservaba en `valor` la huella de la variable sin efecto, y `DecisionRecord` —que guarda `valor` y descarta `variables`— la atribuiría en la ficha | `valor` restringido a lo aplicado y la huella completa en la clave aditiva `huella`; ficha con una fila humana y una del motor; test (§6). La premisa —las decisiones viajan en el YAML y lo no aplicado no se atribuye— no cayó. Revisión cerrada en el tope, con el hallazgo incorporado y sin cuarta pasada |
