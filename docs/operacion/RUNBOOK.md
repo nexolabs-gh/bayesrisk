@@ -296,7 +296,16 @@ No commitear, pushear, recapturar ni regenerar desde el Mac.
 ## 4. Gates canónicos
 
 Lista literal completa. Ejecutar el conjunto proporcional al cambio; para un cierre integral,
-ejecutarlos todos:
+ejecutarlos todos.
+
+**Cuándo corre la suite local completa (Cami, 2026-09-29).** `pytest` entero corre en esta máquina
+**una sola vez por release, sobre el commit que se va a taggear** (el bump), con el árbol congelado.
+Entre capas y entre arreglos, el gate es: tests dirigidos al área tocada (la tabla de §5 dice
+cuáles) + mypy/ruff + el CI completo del push. No se repite la suite local por cada corrección: en
+S25, de ~10 h, ~2 h fueron tres suites locales y dos de ellas quedaron invalidadas por el entorno
+(editar durante la corrida, memoria de la máquina en H9R). Si un rojo del CI pide reproducir, se
+reproduce el archivo o el job, no la suite. Mientras corren CI o Codex, se adelanta lo siguiente sin
+tocar el árbol que están midiendo.
 
 ```powershell
 & $bayesriskPython -m pytest
@@ -598,6 +607,14 @@ confiar en un `git add` como copia de seguridad.
 
 Un gate estático debe probarse en ambos sentidos cuando afirma completitud: quitar un caso existente
 y añadir un caso nuevo no clasificado. Un conteo con holgura no sustituye ese par.
+
+**Uno por regla y en paralelo (Cami, 2026-09-29).** Cada regla nueva lleva **un** control negativo
+—el defecto mínimo que la rompe—, no uno por variante del mismo oráculo. Los controles de reglas
+distintas corren **en paralelo**, cada uno sobre su **propia copia** del árbol (worktree o copia de
+`src/` en `$bayesriskTempRoot`, con `PYTHONPATH` apuntando a ella), nunca inyectados a la vez en el
+árbol de trabajo: dos defectos simultáneos en el mismo archivo se enmascaran y la restauración deja
+de ser byte a byte. El protocolo rojo → restaurar → verde de arriba no cambia; se registra cada uno
+en la evidencia de la sesión.
 
 ## 7. Git público, repo privado y push
 
@@ -1340,9 +1357,14 @@ Reproduce el mismo falso rojo por el mismo mecanismo y hace perder la corrida en
 
 ### 12.3 Antes de cerrar
 
-12. Tests nacidos rojos por cada regla nueva; un control negativo por cada gate nuevo (§6); la suite
-    completa con el árbol congelado; Codex sobre el HEAD commiteado con tope y criterio de parada
-    declarados (§11.1); CHANGELOG «No publicado» con su «Sabido» si algo quedó declarado.
+12. Tests nacidos rojos por cada regla nueva; un control negativo por regla, en paralelo (§6); tests
+    dirigidos + CI completo entre capas y la suite local completa sólo sobre el commit del tag (§4);
+    Codex sobre el HEAD commiteado con tope y criterio de parada declarados (§11.1); CHANGELOG «No
+    publicado» con su «Sabido» si algo quedó declarado.
+    **Cambios chicos, juntos (Cami, 2026-09-29):** varias correcciones pequeñas del mismo módulo van
+    en **una** enmienda (una revisión de Codex, un OK) y en **una** release, no una por cambio.
+    Cada decisión conserva su propio identificador y sus tests; lo que se junta es la revisión, la
+    aprobación y la publicación.
 13. Las cinco cifras **después**, ancladas en su golden con la fecha y la razón; el notebook mínimo
     corriendo en CI.
 14. HANDOFF con la línea base y el después, y el prompt de la capa siguiente.
