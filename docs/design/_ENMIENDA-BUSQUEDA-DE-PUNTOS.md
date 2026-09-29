@@ -1,4 +1,4 @@
-# Enmienda — la búsqueda de puntos no confunde un redondeo de máquina con un tramo no visto
+# Enmienda — la búsqueda de puntos no confunde un redondeo de máquina con un tramo no visto, y los ajustes manuales llegan a la corrida
 
 | Campo | Valor |
 |---|---|
@@ -8,7 +8,7 @@
 | **Fase** | F1 (pipeline estable, serie 2.x) |
 | **Estado** | **Propuesta** (S25, 2026-09-28). Revisión de Codex pendiente; sin aprobar, sin programar |
 | **Depende de** | D-NOV-1 (la búsqueda es la que congela la referencia de una categoría no vista), D-FAL-1, D-CPY-3 |
-| **Release** | Con redondeo a entero —el default y el de todos los presets— **no cambia ningún número**, medido; con `rounding_method="none"` los puntos de una fila observada pasan a ser exactamente los de su tramo (hoy difieren en el orden de 1e-14). El trail deja de registrar falsas alarmas: cambia el trail de toda corrida |
+| **Release** | **Cambia números** donde hay ajustes manuales de puntos (`point_overrides`): hoy no llegan a la corrida en los tramos cuyo WoE difiere un ulp de la tabla (medido: 23.565 de 23.565 filas en un tramo del SBA) y pasan a llegar, como ya llegan al bundle y a la tabla publicada. Sin ajustes manuales y con redondeo a entero —los presets y la demo— no cambia ningún número (medido). Con `rounding_method="none"` los puntos de una fila observada pasan a ser exactamente los de su tramo (hoy ~1e-14). El trail deja de registrar falsas alarmas: cambia el trail de toda corrida ⇒ minor con cambio declarado y OK de Cami |
 | **Autor / Fecha** | Claude Code (writer) / 2026-09-28 |
 
 ---
@@ -26,8 +26,9 @@ Medido el 2026-09-28 con bayesrisk 2.2.0:
 |---|---|---|---|---|---|
 | SBA de Cami (YAML, 43.774 filas modelables, 8 variables) | 350.192 | **285.623 (81,6 %)** | 2,2e-16 | **0** | 0 filas distintas |
 | Preset F1 | — | 5 variables con evento, miles de filas cada una | — | 0 | — |
+| SBA con un ajuste manual de 7 puntos en «SBA Express» (pasada 1 de Codex) | 23.565 filas del tramo | 23.565 | — | **23.565** (la corrida da 64, la tabla y el bundle 7) | **23.565 filas, 57 puntos** |
 
-Dos lecturas:
+Tres lecturas:
 
 1. **Ningún número cambia hoy** con redondeo a entero: la fórmula con el WoE a un ulp da el mismo
    entero que la tabla. La paridad corrida–bundle (el bundle puntúa por tramo) se sostiene.
@@ -36,14 +37,21 @@ Dos lecturas:
    de decisiones del informe. Es exactamente el ruido que esconde la alarma verdadera —un WoE que
    de verdad no tiene fila—. Con `rounding_method="none"` además los puntos de la corrida y los del
    bundle difieren en ~1e-14.
+3. **Un ajuste manual de puntos no llega a la corrida** (pasada 1 de Codex, medido): la fórmula no
+   conoce el override. En el SBA sólo 3.582 de 43.774 filas casan exacto; en «SBA Express» ninguna.
+   La tabla de puntos, el informe y el bundle dicen 7; el puntaje de la corrida, sus métricas y su
+   calibración usan 64. Lo mismo alcanza al bin asignado de D-FAL-1 que hereda un override y a las
+   filas observadas del tramo de referencia de D-NOV-1 (las no vistas sí casan: llevan el WoE de la
+   tabla). Es un defecto de corrección, no de ruido.
 
 ## 1. D-BPT-1 — cómo casa un WoE con su fila de puntos (Cami decide, §5.1)
 
-- **(a) Tolerancia de máquina — recomendada.** Un WoE casa con la fila de su variable cuyo WoE
-  difiere en a lo sumo **1e-12** (absoluto; constante, no perilla); si más de una fila queda
-  dentro, gana la **primera** en el orden de la tabla —la misma regla que hoy resuelve los WoE
-  duplicados y la referencia de D-NOV-1—. La fila recibe sus puntos publicados, con su ajuste
-  manual y su redondeo. Sólo un WoE sin ninguna fila a 1e-12 va por fórmula y se registra. 1e-12
+- **(a) Tolerancia de máquina — recomendada.** Un WoE casa con la fila de su variable **más
+  cercana** cuyo WoE difiere en a lo sumo **1e-12** (absoluto; constante, no perilla): una
+  coincidencia exacta siempre gana (distancia 0), y sólo ante la misma distancia gana la **primera**
+  en el orden de la tabla —la regla que hoy resuelve los WoE duplicados y la referencia de
+  D-NOV-1— (pasada 1 de Codex: «la primera dentro de la tolerancia» podía desplazar una exacta). La
+  fila recibe sus puntos publicados, con su ajuste manual y su redondeo. Sólo un WoE sin ninguna fila a 1e-12 va por fórmula y se registra. 1e-12
   está cuatro órdenes por encima del ruido medido (2,2e-16) y nueve por debajo de la distancia entre
   dos tramos reales: el par de WoE distintos más cercano mide 0,0059 en el SBA (`empleos_apoyados`)
   y 0,0051 en el preset (`antiguedad_meses`).
@@ -53,8 +61,11 @@ Dos lecturas:
   preset y la demo dejan de ser bit a bit; exige declararlo y probablemente recapturar.
 - **(c) No hacer nada**: documentar que `bin_no_visto` cuenta también diferencias de un ulp.
 
-Por qué (a): corrige el trail sin mover ningún número por defecto, deja una sola regla de
-búsqueda para corrida, bundle y referencia de no vistas, y la alarma vuelve a significar algo.
+Por qué (a): hace que el ajuste manual que la institución declara llegue al puntaje de la corrida
+—hoy sólo llega a la tabla y al bundle—, corrige el trail, no mueve ningún número sin ajustes
+manuales ni el modelo (la PD no usa puntos), deja una sola regla de búsqueda para corrida, bundle y
+referencia de no vistas, y la alarma vuelve a significar algo. (b) también corrige los ajustes, pero
+mueve un ulp todos los WoE de toda corrida.
 
 ## 2. D-BPT-2 — qué dice el trail
 
@@ -76,8 +87,12 @@ ajustes manuales.
 
 - una fila con el WoE de su tramo más un ulp recibe los puntos del tramo y **no** registra
   `bin_no_visto` (nace rojo);
+- con un ajuste manual en un tramo cuyas filas difieren un ulp, redondeo a entero: la corrida da
+  los puntos del ajuste y coincide con el bundle (nace rojo: hoy 57 puntos de diferencia en el
+  SBA); también en el bin asignado de D-FAL-1 que lo hereda y en el tramo de referencia de D-NOV-1;
 - un WoE a más de 1e-12 de toda fila sigue yendo por fórmula y se registra;
-- dos filas dentro de la tolerancia: gana la primera, también con un override en la segunda;
+- dos filas dentro de la tolerancia: gana la más cercana —la exacta aunque sea la segunda, con un
+  override en ella—; a igual distancia, la primera; y la corrida coincide con el bundle;
 - con `rounding_method="none"`, corrida y bundle dan puntos idénticos en las filas observadas del
   SBA (nace rojo: hoy difieren en ~1e-14);
 - el SBA y el preset: 0 eventos `bin_no_visto`; `config_hash` y proyección canónica del preset sin
@@ -90,7 +105,8 @@ ajustes manuales.
 - **Qué NO se configura**: la tolerancia (constante con su razón en el código).
 - **Perillas**: 0.
 - **Resúmenes**: ninguno cambia; el libro «Decisiones» y el anexo pierden el ruido.
-- **Cinco cifras**: sin cambio (medido: 0 puntos distintos con redondeo a entero).
+- **Cinco cifras**: sin cambio sin ajustes manuales (medido: 0 puntos distintos con redondeo a
+  entero); con ajustes manuales cambian —hacia lo declarado—, y se miden al implementar.
 
 ## 8. Revisión adversarial de este documento
 
@@ -99,3 +115,4 @@ contractual no se programa: se eleva.
 
 | Pasada | Hallazgo | Qué cambió |
 |---|---|---|
+| 1 | (high) «la primera dentro de 1e-12» podía desplazar una coincidencia exacta posterior; (high) la ruta por fórmula ignora los ajustes manuales: la regla cambia puntajes enteros donde hay overrides y la cabecera decía «ningún número» | La más cercana gana, la exacta siempre (§1); medido el defecto de los overrides —23.565 filas, 57 puntos— y declarado como cambio de números y como motivo principal (§0, Release, §1); tests nuevos (§6) |
