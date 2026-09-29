@@ -93,12 +93,16 @@ aunque llegara un preámbulo, `ui/summaries.serialize_summaries` no pasa `decisi
     "hosmer_lemeshow_groups")` —muestra × grupo—, con los mismos grupos que usó el test (no los de
     la curva de confiabilidad, que usa `qcut` y puede diferir).
   - **D-HLG-2**: la línea de HL que falla —resumen de validación, página ejecutiva e informe— suma,
-    después del p-valor y de la PD media agregada de D-CPY-6, **el grupo de mayor contribución** al
-    estadístico con sus dos tasas: «Hosmer-Lemeshow en Desarrollo (p-valor < 0,001; PD media
-    agregada 23,8 % frente a 23,8 % observada; la mayor diferencia, en el grupo 3 de 10: 2,9 %
-    observado frente a 4,6 % predicho)». El informe gana la tabla por grupo en el
-    capítulo de validación (una por muestra, 10 filas) y la pantalla, un desplegable con la misma
-    tabla bajo «Calibración por muestra». Sin causa atribuida (D-CPY-6).
+    después del p-valor y de la PD media agregada de D-CPY-6, **el grupo de mayor diferencia
+    absoluta** entre tasa observada y PD media (en puntos porcentuales; a igual diferencia, el de
+    menor número) con sus dos tasas: «Hosmer-Lemeshow en Desarrollo (p-valor < 0,001; PD media
+    agregada 23,8 % frente a 23,8 % observada; la mayor diferencia, en el grupo 8 de 10: 45,6 %
+    observado frente a 42,1 % predicho)». No es el grupo de mayor contribución al estadístico —en el
+    SBA, el grupo 3, con 1,7 pp y O/E 0,64 (pasada 1 de Codex)—: la frase dice magnitud absoluta y
+    la tabla por grupo trae también la razón O/E y la contribución, para que la brecha relativa no se
+    esconda. El informe gana la tabla por grupo en el capítulo de validación (una por muestra, 10
+    filas) y la pantalla, un desplegable con la misma tabla bajo «Calibración por muestra». Sin causa
+    atribuida (D-CPY-6).
   - **D-HLG-3**: corrige una premisa escrita: D-VAL-4 dice «HL bilateral»; el kernel usa, como
     corresponde a un χ² de bondad de ajuste, la cola superior (`chi2.sf`). Se corrige el texto de
     SDD-22, no el código.
@@ -117,35 +121,41 @@ aunque llegara un preámbulo, `ui/summaries.serialize_summaries` no pasa `decisi
 ## 2. D-DEC — las decisiones con motivo viajan en el YAML
 
 - **D-DEC-1 · Dónde.** Una sección INFRA nueva de primer nivel, `decisions`, en `BayesRiskConfig`:
-  una lista de registros `{action, columns, reason, author}` —`action` ∈ `exclude`, `keep`,
-  `merge_bins`, `set_bins`; `columns` al menos una; `reason` no vacío; `author` = `"usuario"` por
-  defecto—. Entra a `INFRA_SECTIONS`: **fuera del `config_hash`**, porque el efecto de cada decisión
-  ya está escrito en las hojas computacionales (`binning.exclude_columns`, `force_include`,
-  `variable_overrides`), que sí entran. `to_yaml()` la vuelca y `loads_config` la lee; el round-trip
-  `load(dump(c)) == c` se conserva. Se descarta ponerla en `governance`: esa sección exige `purpose`
-  y obligaría a inventar uno para registrar una decisión.
-- **D-DEC-2 · Una sola fuente.** La puerta guiada escribe cada decisión en `config.decisions` —no en
-  una lista propia— y deja de llevarlas en su preámbulo. `Study.run` emite, después del preámbulo
-  que reciba (puerta e inferencias), un evento `decision_del_usuario` por registro vigente, con el
-  mismo payload de hoy (`regla`, `umbral` vacío, `valor`, `accion`, `autor`, `motivo`, `variables`),
-  en el orden del config, y lo persiste en `run_context.preamble`. Así la corrida guiada,
-  `bayesrisk.run(loads_config(yaml))` y la pantalla dan el **mismo trail** y la misma ficha, Excel,
-  página ejecutiva e informe. `valor` pasa a ser la hoja **como está en el config** al correr (hoy es
-  la hoja acumulada al momento de decidir): con una decisión por hoja, idéntico; declarado.
-  - El config guarda **decisiones vigentes, no historia**: una decisión nueva sobre la misma variable
-    y la misma familia (`exclude`/`keep`; `merge_bins`/`set_bins`) reemplaza a la anterior para esa
-    variable (un registro con varias variables pierde sólo esa; vacío, se quita). La historia queda
-    en el trail de cada corrida. Hoy la puerta vuelve a declarar en cada corrida todas las decisiones
-    acumuladas, también las revertidas.
-- **D-DEC-3 · Un registro sin efecto en el config (Cami decide, §3).** Un YAML editado a mano —o el
-  formulario de la pantalla— puede dejar un registro cuyo efecto ya no está: `exclude x` con `x`
-  fuera de `binning.exclude_columns`; `keep x` sin `x` en `selection.force_include`; `set_bins x`
-  sin `variable_overrides[x].user_splits`.
+  una lista **en orden** de registros `{action, columns, reason, author, value}` —`action` ∈
+  `exclude`, `keep`, `merge_bins`, `set_bins`; `columns` al menos una; `reason` no vacío; `author` =
+  `"usuario"` por defecto; `value`, la **huella exacta del efecto**: las hojas que la decisión dejó
+  escritas, tal como hoy van en el `valor` del evento (`binning.exclude_columns`,
+  `selection.force_include`/`model.force_include`, o la hoja de `binning.variable_overrides` de la
+  variable con sus cortes)—. Entra a `INFRA_SECTIONS`: **fuera del `config_hash`**, porque el efecto
+  ya está escrito en las hojas computacionales, que sí entran. `to_yaml()` la vuelca y `loads_config`
+  la lee; el round-trip `load(dump(c)) == c` se conserva. **Vacía, no se vuelca** —ni `decisions:
+  []` ni `null`— en `Scorecard.to_yaml()`, `dump_config` y `/api/config/to-yaml` (pasada 1 de
+  Codex): el YAML de un config sin decisiones queda byte a byte como el de la 2.2.0 y lo sigue
+  cargando una librería anterior; uno **con** decisiones no (`extra="forbid"`), declarado. Se
+  descarta ponerla en `governance`: esa sección exige `purpose` y obligaría a inventar uno.
+- **D-DEC-2 · Una sola fuente, con su historia.** La puerta guiada **agrega** cada decisión a
+  `config.decisions` —en vez de a una lista propia— y deja de llevarlas en su preámbulo. El registro
+  es **de solo agregar**, como la lista de hoy (pasada 1 de Codex): `exclude(x)` y luego `keep(x)`,
+  aun antes de la primera corrida, dejan los dos registros con sus motivos. `Study.run` emite,
+  después del preámbulo que reciba (puerta e inferencias), un evento `decision_del_usuario` por
+  registro, en el orden del config, con **el mismo payload de hoy** (`regla`, `umbral` vacío, `valor`
+  = el `value` guardado, `accion`, `autor`, `motivo`, `variables`), y lo persiste en
+  `run_context.preamble`. Así la corrida guiada, `bayesrisk.run(loads_config(yaml))` y la pantalla
+  dan el **mismo trail** y la misma ficha, Excel, página ejecutiva e informe.
+- **D-DEC-3 · Un registro cuyo efecto ya no está en el config (Cami decide, §3).** Antes de emitir,
+  cada registro se coteja con el config, **variable por variable**, contra su huella: se mira sólo
+  el **último** registro de cada variable en su familia (`exclude`/`keep`; `merge_bins`/`set_bins`);
+  los anteriores son historia y se emiten tal cual. Tres estados: **aplicada** (la hoja del config
+  coincide exactamente con la huella: la variable en `binning.exclude_columns`; en `force_include`
+  y fuera de las excluidas; los cortes de `variable_overrides` **idénticos** a los guardados);
+  **en suspenso** (cortes fijados de una variable que después se excluyó: D-EXC-1 ya los declara;
+  se emite como hoy); **sin efecto** (la hoja no está o cambió: un YAML editado a mano —cortes
+  `[10, 20]` reescritos a `[15, 25]`— o el formulario de la pantalla). Para el tercero:
   - **(a) Se declara y no se atribuye — recomendada.** No se emite como decisión humana; el motor
-    registra `decision_sin_efecto` (con la acción, las variables y el motivo) y el resumen final lo
-    dice como alerta: «La decisión «exclude ruido — motivo» ya no está aplicada en el config». Es el
-    precedente de `point_override_sin_casar` (D-CPY-3): lo que no se aplicó se declara, no se
-    atribuye ni detiene la corrida.
+    registra `decision_sin_efecto` (con la acción, las variables, el motivo y qué hoja no coincide)
+    y el resumen final lo dice como alerta: «La decisión «set_bins monto — motivo» ya no está
+    aplicada: sus cortes cambiaron en el config». Es el precedente de `point_override_sin_casar`
+    (D-CPY-3): lo que no se aplicó se declara, no se atribuye ni detiene la corrida.
   - **(b) Se rechaza al validar el config**, con un mensaje que nombra el registro. Más estricto,
     pero la pantalla no muestra `decisions` en el formulario (D-DEC-4): quien edite ahí una hoja que
     contradice una decisión quedaría sin forma de corregirlo.
@@ -157,9 +167,10 @@ aunque llegara un preámbulo, `ui/summaries.serialize_summaries` no pasa `decisi
   conserva en el round-trip `from-yaml`/`to-yaml` aunque se editen otras secciones.
 
 **Qué no cambia (D-DEC)**: el `config_hash` de todo config (medido antes y después con los goldens
-de hash); `DecisionRecord` y la ficha (D-GOB-17); el Excel «11 Decisiones» (lee el trail); la regla
-`decision_del_usuario` y su payload, salvo `valor` como se declara arriba; las inferencias y la
-entrada de la puerta, que siguen en su preámbulo.
+de hash); el YAML de un config sin decisiones; `DecisionRecord` y la ficha (D-GOB-17); el Excel
+«11 Decisiones» (lee el trail); la regla `decision_del_usuario` y su payload, `valor` incluido; las
+inferencias y la entrada de la puerta, que siguen en su preámbulo; que la puerta declare en cada
+corrida todas las decisiones acumuladas.
 
 ## 3. Lo que Cami decide
 
@@ -167,20 +178,24 @@ entrada de la puerta, que siguen en su preámbulo.
 |---|---|---|---|
 | 3.1 | Hosmer-Lemeshow con muestras grandes | (a) tabla por grupo y la mayor brecha en la frase, veredicto intacto; (b) (a) más un corte de materialidad configurable que degrada a «Revisar»; (c) nada | **(a)** |
 | 3.2 | Un registro de decisión sin efecto en el config | (a) se declara y no se atribuye; (b) se rechaza al validar; (c) se emite igual | **(a)** |
-| 3.3 | El resto de D-DEC (sección INFRA `decisions`, una sola fuente, decisiones vigentes y no historia, pantalla) | aprobar como está / pedir cambios | **aprobar** |
+| 3.3 | El resto de D-DEC (sección INFRA `decisions` en orden y con huella, omitida si vacía; una sola fuente; pantalla) | aprobar como está / pedir cambios | **aprobar** |
 
 ## 6. Estrategia de tests (borrador)
 
 - D-HLG: el kernel devuelve los grupos y su suma reproduce el estadístico (golden a mano, 10 grupos);
   la clave `hosmer_lemeshow_groups` trae muestra × grupo con los mismos grupos que el test (no
-  `qcut`); la frase dice el grupo de mayor contribución con sus dos tasas en es-CL, en resumen,
-  página ejecutiva, HTML y Word; la tabla aparece en el informe y en la pantalla (vitest); ningún
+  `qcut`); la frase dice el grupo de mayor diferencia absoluta con sus dos tasas en es-CL, en
+  resumen, página ejecutiva, HTML y Word, con un caso donde ese grupo y el de mayor contribución
+  difieren (el SBA: 8 y 3); la tabla aparece en el informe y en la pantalla (vitest); ningún
   veredicto ni `n_failed` cambia en el preset (proyección canónica: sólo la clave nueva); control
-  negativo: descartar los grupos o elegir el de menor contribución.
+  negativo: elegir el grupo de mayor contribución en vez del de mayor diferencia.
 - D-DEC: `to_yaml()` trae `decisions` con el motivo (nace rojo); `bayesrisk.run(loads_config(yaml))`
   emite las mismas decisiones humanas que la corrida guiada, en el mismo orden (nace rojo: hoy 0);
   el `config_hash` de un config con y sin `decisions` es el mismo, y los goldens de hash no se
-  mueven; `keep` después de `exclude` sobre la misma variable deja un solo registro vigente; un
+  mueven; el YAML de un config sin decisiones no trae la clave y es idéntico al de la 2.2.0 (también
+  por `/api/config/to-yaml`); `exclude` y luego `keep` sobre la misma variable antes de correr dejan
+  los dos registros y los dos eventos (como hoy); con cortes reescritos a mano, `set_bins` no se
+  atribuye; `set_bins` y después `exclude` deja los cortes en suspenso, no «sin efecto»; un
   registro sin efecto no se atribuye, se declara y sale como alerta (o se rechaza, según 3.2); la
   pantalla muestra las decisiones del YAML en el resumen final y el formulario las conserva al
   editar otra sección; la sección no se pinta —los censos de campos visibles, perillas y
@@ -208,3 +223,4 @@ contractual no se programa: se eleva.
 
 | Pasada | Hallazgo | Qué cambió |
 |---|---|---|
+| 1 | (high) el registro «sólo vigente» perdía `exclude` si se revertía con `keep` antes de correr; (high) sin huella del efecto, un motivo se atribuía a cortes editados a mano, y un `set_bins` en suspenso pasaba por aplicado; (medium) «la mayor diferencia» nombraba el grupo de mayor contribución (g3, 1,7 pp) y no el de mayor brecha (g8, 3,4 pp); (medium) `decisions: []` rompía la carga del YAML en una librería anterior | Registro de solo agregar con `value` (la huella) y payload intacto (D-DEC-1/2); cotejo por variable del último registro, con aplicada / en suspenso / sin efecto (D-DEC-3); la frase dice la mayor diferencia absoluta y la tabla trae O/E y contribución (D-HLG-2); la sección vacía no se vuelca (D-DEC-1); tests (§6) |
