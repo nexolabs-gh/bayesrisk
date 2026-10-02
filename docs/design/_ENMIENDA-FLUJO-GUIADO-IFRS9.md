@@ -8,7 +8,11 @@
 > contractual): D-ECL-0 mide la duración en `time_value_years` y no presume `period == time_value`
 > (la primera versión habría abortado curvas trimestrales correctas); la corrida de cartera define
 > `provides` dinámico y la `data_card` de «no aplica»; los supuestos del resumen se leen del config y
-> de los artefactos de cada corrida, no del preset F4.
+> de los artefactos de cada corrida, no del preset F4. **Pasada 2** (un high y un medium, reales,
+> ninguno contractual): la corrida de cartera fija también `columnas_que_produce()` y exige el censo
+> de las 37 lecturas de `data.target`/`data.partition` fuera de `data/`; el staging se describe por
+> los gatillos que dispararon (`sicr_triggers`) y la alerta «sólo por mora y marca» exige que ningún
+> gatillo alternativo estuviera disponible.
 >
 > **Base medida:** `main` = `3cc9654` (bayesrisk 2.3.0). Mediciones y scripts en el repo privado,
 > `evidencia/s28/ifrs9-mediciones.md` (sobre la línea base de sólo lectura
@@ -261,8 +265,22 @@ aplica», no inventa un criterio. Tres contratos lo hacen implementable:
   consumidores se ajustan: el informe (`report/builder.py:875-878` exige hoy esos mapeos) omite las
   tablas de estados y particiones y lo dice; la ficha (`governance/model_card.py`) describe la
   cartera sin tasa de malos; el serializer de la pantalla publica `null`.
-- **Gates:** corrida de cartera con `eda` o `binning` activos detenida antes de correr; F1 y F4 con
-  su `data_card` serializada byte a byte igual.
+- **`DataConfig.columnas_que_produce()`** (`data/config.py:1027`, hoy lee `self.target.target_col`
+  sin protección) devuelve el conjunto vacío en una corrida de cartera —no produce target, estado,
+  partición ni TTD— y la salida de hoy cuando target y partición traen valor. Lo consumen el
+  preflight (`core/dataset_check.py:544-546`, para `check_dataset` y
+  `columnas_producidas_por_seccion`) y la pantalla (`ui/routes.py:222-224`).
+- **Censo de los lectores, no parche a parche.** Fuera de `data/` hay **37** lecturas de
+  `data.target`/`data.partition` en 13 archivos (medido el 2026-10-02): las de `eda`, `binning`,
+  `selection` y `model` quedan inalcanzables porque el DAG las detiene antes; las demás
+  —`ui/option_surface.py` (9), `core/config/effective_defaults.py` (3), `ui/jobs.py` (2),
+  `guided/summaries.py`, `core/dataset_check.py`, `testing/strategies.py`, `survival/partition.py` y
+  los diagnósticos de `binning`/`selection`— se adaptan o se declaran inalcanzables una por una, y
+  el censo queda escrito en el commit de la capa 0.
+- **Gates:** una corrida de cartera recorre `check_dataset`, `columnas_producidas_por_seccion`,
+  `/api/validate`, el serializer de configuración de la pantalla, `check_pipeline` y `run` sin
+  errores de atributo; con `eda` o `binning` activos se detiene antes de correr con el mensaje de
+  negocio; F1 y F4 con su `data_card` y sus columnas producidas idénticas a hoy.
 
 - Ningún `config_hash` existente se mueve: todo YAML vigente declara las dos claves con valor.
 - `data` es estable (SemVer 2.x): relajar un campo obligatorio a anulable es aditivo; el tipo
@@ -368,7 +386,7 @@ pantalla (también la del preset F4, que conserva su target inerte):
 |---|---|---|---|
 | `data` | Cartera | operaciones, fecha de corte, exposición total, carteras; dónde queda la evidencia; qué se infirió. Sin «malos» ni muestras | operaciones y exposición por cartera |
 | `survival` | Curva de PD | operaciones e incumplimientos observados, períodos y unidad, covariables con su efecto en palabras («más mora, más riesgo»), PD a 12 meses y lifetime medias, **TTC declarado** (§3.6) | PD acumulada por período y cartera (promedio simple de las operaciones); coeficientes con signo, error estándar y p-valor |
-| `provisioning_ifrs9` | Provisión IFRS 9 | operaciones y exposición por etapa, ECL total y cobertura, qué gatilló cada etapa (mora, marca), EAD constante declarada (IFRS-4) | ECL por cartera y etapa (filas, EAD, ECL, cobertura): `provisioning_ifrs9.summary` |
+| `provisioning_ifrs9` | Provisión IFRS 9 | operaciones y exposición por etapa, ECL total y cobertura, qué gatilló cada etapa (de `sicr_triggers`), EAD constante declarada (IFRS-4) | ECL por cartera y etapa (filas, EAD, ECL, cobertura): `provisioning_ifrs9.summary` |
 | `report` | Informe y ficha | dónde quedó cada archivo | — |
 
 - **Un artefacto aditivo en `survival`:** `("survival", "coefficients")` con `term`, `coef`,
@@ -386,10 +404,17 @@ pantalla (también la del preset F4, que conserva su target inerte):
   `apply_vasicek`, escenarios de `forward` y PD de originación (`ifrs9/engine.py:322`, `:398-404`,
   `:636`, `:732`). La base PIT/TTC sale de `card.pit_mode` y de `pd_basis` del detalle (TTC sólo si
   la corrida es `ttc_only`); el escenario, de `card.scenarios` y sus pesos; la EAD constante, de
-  `FALTA-DATO-IFRS-4` en `card.falta_dato`; «sin PD de originación, el aumento significativo del
-  riesgo se detecta sólo por mora y marca», sólo si `staging.origination_pd_life_col` es nulo; «una
-  sola curva para toda la cartera», sólo si la curva viene de `survival` sin covariables. Gates: una
-  corrida `apply_vasicek`, una con escenarios ponderados y una con PD de originación no se describen
+  `FALTA-DATO-IFRS-4` en `card.falta_dato`; «una sola curva para toda la cartera», sólo si la curva
+  viene de `survival` sin covariables.
+- **El staging se describe por los gatillos que dispararon**, leídos de `staging.sicr_triggers` (por
+  operación, con los siete nombres canónicos de `ifrs9/staging.py:80-86`: ratio de PD lifetime,
+  backstop PIT, bajada de rating, override cualitativo, mora de 30 y de 90 días y marca): la tabla
+  de la provisión cuenta operaciones por etapa y gatillo. La alerta «el aumento significativo del
+  riesgo se detecta sólo por mora y marca» sale **sólo** si ningún gatillo alternativo estaba
+  disponible en esa corrida: `origination_pd_life_col` nulo, sin la columna de PD PIT de origen en el
+  frame (`staging.py:172-183`), sin umbral de bajada de rating (`:185-193`) y sin columna de override
+  (`:195-200`). Gates: corridas `apply_vasicek`, con escenarios ponderados, con PD de originación,
+  con bajada de rating, con override y con backstop PIT sin PD lifetime de origen no se describen
   como TTC, escenario único ni staging sólo por mora.
 - **Una sola fuente** (D-SIM-5): los constructores nuevos viven en `guided/summaries.py` y los
   consumen la puerta, la pantalla (`ui/summaries.py`), el informe (página ejecutiva) y el Excel. Cada
