@@ -1151,6 +1151,15 @@ por módulo bajo SDD-31, la primera
 > en una sección INFRA `decisions` fuera del `config_hash`. 🔴 **Medido**: HL «Falla» con 1,1 pp de
 > brecha media en Desarrollo del SBA; una decisión con motivo se pierde al correr su YAML (1 → 0).
 
+> **Flujo guiado de IFRS 9 (2026-10-02; propuesta, pendiente de revisión y de la aprobación de
+> Cami; hito H2).** [`_ENMIENDA-FLUJO-GUIADO-IFRS9.md`](_ENMIENDA-FLUJO-GUIADO-IFRS9.md), D-ECL-0…15,
+> segunda aplicación de [`31-simplicidad-y-flujo-guiado.md`](31-simplicidad-y-flujo-guiado.md) con el
+> molde del scorecard: `bayesrisk.Ecl` con la entrada mínima de cartera y la curva propia, resúmenes
+> de la familia IFRS 9, esenciales de `survival` y `provisioning_ifrs9`, y una corrección del motor
+> (IFRS-8). 🔴 **Medido**: target y partición son inertes para la ECL (bit a bit igual sin ellos);
+> los defaults de fábrica no corren; con curva anual y el horizonte de 12 meses de fábrica la ECL
+> sale el doble sin aviso (6,86 M frente a 3,42 M).
+
 ## Tandas de producción
 
 | Tanda | SDDs | Foco | Pre-requisito |
