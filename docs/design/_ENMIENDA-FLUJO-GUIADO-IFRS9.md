@@ -12,7 +12,11 @@
 > ninguno contractual): la corrida de cartera fija también `columnas_que_produce()` y exige el censo
 > de las 37 lecturas de `data.target`/`data.partition` fuera de `data/`; el staging se describe por
 > los gatillos que dispararon (`sicr_triggers`) y la alerta «sólo por mora y marca» exige que ningún
-> gatillo alternativo estuviera disponible.
+> gatillo alternativo estuviera disponible. **Pasada 3** (un high, real, no contractual): D-ECL-0 se
+> evalúa por curva `(row_id, scenario)`, como se calcula la PD a 12 meses. **Con esto se cierra la
+> revisión de diseño en el tope declarado de tres pasadas** —cada una encontró menos y más acotado
+> (3 → 2 → 1), y ninguno de los seis hallazgos fue contractual—; la siguiente revisión va sobre el
+> código de la capa 0.
 >
 > **Base medida:** `main` = `3cc9654` (bayesrisk 2.3.0). Mediciones y scripts en el repo privado,
 > `evidencia/s28/ifrs9-mediciones.md` (sobre la línea base de sólo lectura
@@ -186,7 +190,13 @@ horizonte `H` (el último que suma la ventana de 12 meses) y `d` su `time_value_
   meses igual a la lifetime es la contabilidad correcta y no dispara.
 - **`H` cae en un hueco dentro de la curva:** dispara si `|d − 1| > tol`.
 
-`tol` es la tolerancia vigente (`_HORIZONTE_ANIO_TOL`). Es la promesa de D-HOR-0 («doce años donde
+**Los tres casos se evalúan por curva**, con `sel` y `d` propios de cada grupo `(row_id, scenario)`
+—la misma agrupación con que `marginal_to_horizon` suma la PD a 12 meses
+(`ifrs9/pd_pit.py:113-158`)—, y basta una curva desajustada para disparar: hoy el chequeo busca `H`
+en el frame entero (`engine.py:904-914`), de modo que una operación con 1…12 períodos mensuales
+esconde a otra con 1…5 anuales que suma cinco años como «ECL a 12 meses» (unidades distintas por
+fila conviven, `tests/unit/test_ifrs9_time_unit.py:209-233`). `tol` es la tolerancia vigente
+(`_HORIZONTE_ANIO_TOL`). Es la promesa de D-HOR-0 («doce años donde
 debía haber uno»), no un contrato nuevo, y no toca el disyunto `H < T_min` ni la regla de la unidad
 no declarada (IFRS-7). **Efecto:** el caso de §1.4 (`H = 12`, último período 5 con 5 años) deja de
 terminar con una cifra falsa y aborta con `FALTA-DATO-IFRS-8` (gobernable: `fail_on_falta_dato=True`
@@ -560,7 +570,8 @@ y el resumen muestra la tasa media por cartera para que salte a la vista).
 1. D-ECL-0: el caso de §1.4 nace rojo (hoy `done` con 6.863.157) y pasa a abortar con
    `FALTA-DATO-IFRS-8`; siguen sin aviso la curva mensual de 12 períodos con `H = 12`, los cuatro
    cortes trimestrales en años con `H = 4` y la curva de seis meses con `H = 12`; sigue disparando
-   `H = 1` a doce años. CN: revertir la corrección y ver el primero en rojo.
+   `H = 1` a doce años; una curva anual de cinco períodos junto a una mensual de doce, con `H = 12`,
+   dispara por la anual. CN: revertir la corrección y ver el primero y el último en rojo.
 2. `data` nulo: corrida de cartera bit a bit igual a F4 en la provisión; un pipeline con `binning`
    y target nulo se detiene antes de correr con el mensaje de negocio; F1 y F4 con su proyección
    canónica y su `config_hash` intactos.
