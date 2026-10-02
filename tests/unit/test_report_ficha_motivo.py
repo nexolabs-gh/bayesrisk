@@ -87,12 +87,17 @@ def test_la_ficha_en_disco_materializa_autor_y_motivo(corrida: Scorecard) -> Non
         ("exclude", "usuario", MOTIVO)
     ]
     # Las reglas del motor no traen autor ni motivo; las declaraciones de la puerta guiada (la
-    # entrada y sus inferencias) firman como `puerta_guiada` con su motivo (D-FLU-1).
-    del_motor = [d for d in ficha["decisions"] if d["step"] != "scorecard_guided"]
+    # entrada y sus inferencias) firman como `puerta_guiada` con su motivo (D-FLU-1), y la
+    # decisión humana la declara el registro `decisions` del config (D-DEC-2), con el suyo.
+    del_motor = [
+        d for d in ficha["decisions"] if d["step"] not in {"scorecard_guided", "decisions"}
+    ]
     assert del_motor and all(d["autor"] is None and d["motivo"] is None for d in del_motor)
     de_la_puerta = [d for d in ficha["decisions"] if d["step"] == "scorecard_guided"]
-    assert {d["autor"] for d in de_la_puerta} == {"usuario", "puerta_guiada"}
+    assert {d["autor"] for d in de_la_puerta} == {"puerta_guiada"}
     assert all(d["motivo"] for d in de_la_puerta)
+    del_registro = [d for d in ficha["decisions"] if d["step"] == "decisions"]
+    assert [(d["autor"], d["motivo"]) for d in del_registro] == [("usuario", MOTIVO)]
     markdown = (run_dir / "model_card.md").read_text(encoding="utf-8")
     assert f"decision_del_usuario → exclude — «{MOTIVO}» (usuario)" in markdown
 

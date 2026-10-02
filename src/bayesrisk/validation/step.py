@@ -90,6 +90,8 @@ VALIDATION_ARTIFACTS: Final[tuple[str, ...]] = (
     "backtesting",
     "result",
     "card",
+    # D-HLG-1: los grupos del Hosmer-Lemeshow (muestra por grupo), aditiva; vacía si no corrió.
+    "hosmer_lemeshow_groups",
 )
 _SCORING_EXTRA_MESSAGE: Final = (
     "ValidationStep requiere pandas/numpy/scipy; instale bayesrisk[scoring]."
@@ -217,7 +219,8 @@ class ValidationStep(AuditableMixin):
         )
         ifrs9_detail, realised = self._read_backtesting_inputs(study, cfg, families, pd)
 
-        result = ValidationEvaluator.from_config(cfg).validate(
+        evaluator = ValidationEvaluator.from_config(cfg)
+        result = evaluator.validate(
             calibrated_pd=analytic,
             performance_metrics=performance_metrics,
             stability_metrics=stability_metrics,
@@ -229,6 +232,12 @@ class ValidationStep(AuditableMixin):
         )
         self._emit_decisions(result)
         self._publish_artifacts(study, result)
+        # D-HLG-1: clave aditiva fuera del DTO atómico, para que `validation.result` no cambie.
+        study.artifacts.set(
+            "validation",
+            "hosmer_lemeshow_groups",
+            evaluator.hosmer_lemeshow_groups(analytic, result.calibration_records),
+        )
         return result
 
     # --- lectura de artefactos por familia -----------------------------------------------------

@@ -99,6 +99,10 @@ carga/volcado YAML y migración de esquema.
     options:
       heading_level: 3
 
+::: bayesrisk.core.config.schema.DecisionEntry
+    options:
+      heading_level: 3
+
 ::: bayesrisk.core.config.hashing.config_hash
     options:
       heading_level: 3
@@ -457,6 +461,12 @@ observaciones o rechazar es una decisión de quien valida, y el informe lo decla
 | `calibration` | Calibración | Hosmer-Lemeshow y puntaje de Brier por partición, y el contraste por grado |
 | `stability` | Estabilidad | El PSI de cada magnitud y comparación, con su banda |
 | `backtesting` | Backtesting | Un contraste realizado-vs-estimado por parámetro y segmento |
+
+Los grupos de cada Hosmer-Lemeshow con veredicto se publican aparte, en
+`("validation", "hosmer_lemeshow_groups")`: una fila por muestra y grupo, con los mismos grupos de
+la prueba —operaciones, malos observados y esperados, tasa observada, PD media, la diferencia en
+puntos porcentuales (`gap_pp`), la razón O/E (`oe_ratio`) y su aporte al estadístico
+(`contribution`), que sumado por muestra lo reproduce—. Sin Hosmer-Lemeshow, la tabla sale vacía.
 
 Los grados sin potencia estadística **no** entran en la tabla de calibración ni en el conteo de
 pruebas: viajan aparte, en `card.metric_sections.validation.not_evaluable_grades`, con sus conteos

@@ -24,6 +24,7 @@ import numpy as np
 import pandas as pd
 
 from bayesrisk.binning.results import IV_BAND_LABELS
+from bayesrisk.core.decisions import REGLA_DECISION_HUMANA, REGLA_DECISION_SIN_EFECTO
 from bayesrisk.core.tramos import (
     es_fila_de_totales,
     filas_que_casan,
@@ -139,8 +140,12 @@ RESUMEN_FINAL_ROTULOS: Final[dict[str, str]] = {
     "decisions": "Decisiones humanas registradas",
     "files": "Dónde quedó cada archivo",
 }
-#: La regla con que la puerta guiada firma una decisión humana en el trail (D-FLU-3).
-_REGLA_DECISION_HUMANA: Final = "decision_del_usuario"
+#: La regla con que se firma una decisión humana en el trail (D-FLU-3), y la del registro que ya no
+#: está aplicado (D-DEC-3): una sola fuente, la del módulo que las emite.
+_REGLA_DECISION_HUMANA: Final = REGLA_DECISION_HUMANA
+_REGLA_DECISION_SIN_EFECTO: Final = REGLA_DECISION_SIN_EFECTO
+#: El rótulo de las alertas del registro de decisiones en «Qué revisar».
+_ROTULO_DECISIONES: Final = "Decisiones con motivo"
 
 _Kind = Literal["text", "int", "num", "num2", "num3", "pct", "bool", "pvalor"]
 
@@ -1950,6 +1955,7 @@ def _pruebas_decisivas(study: Study) -> tuple[str, ...]:
     """Las pruebas que fallaron o quedaron en revisión, en palabras, con su muestra."""
     decisivas: list[str] = []
     calibracion = _artifact(study, "validation", "calibration")
+    grupos_hl = _artifact(study, "validation", "hosmer_lemeshow_groups")
     if isinstance(calibracion, pd.DataFrame) and not calibracion.empty:
         for _, fila in calibracion.iterrows():
             if str(fila.get("decision")) == "fail":
@@ -1958,15 +1964,16 @@ def _pruebas_decisivas(study: Study) -> tuple[str, ...]:
                     _float(fila.get("expected_pd")),
                     _float(fila.get("observed_dr")),
                 )
+                es_hl = str(fila.get("test")) == "hosmer_lemeshow"
                 # D-CPY-6: la brecha MEDIA agregada, sin atribuirle una causa; Hosmer-Lemeshow mide
                 # por grupo y esta media no lo reemplaza. El veredicto no cambia.
                 brecha = (
                     f"; PD media agregada {_pct(esperada)} frente a {_pct(observada)} observada"
-                    if str(fila.get("test")) == "hosmer_lemeshow"
-                    and esperada is not None
-                    and observada is not None
+                    if es_hl and esperada is not None and observada is not None
                     else ""
                 )
+                if es_hl:
+                    brecha += _mayor_diferencia_hl(grupos_hl, str(fila.get("partition")))
                 decisivas.append(
                     f"{prueba} en {_partition_label(str(fila.get('partition')))} "
                     f"(p-valor {_pvalor(fila.get('p_value'))}{brecha})"
@@ -1984,6 +1991,32 @@ def _pruebas_decisivas(study: Study) -> tuple[str, ...]:
                     f"discriminación no evaluable en {_partition_label(str(fila.get('partition')))}"
                 )
     return tuple(decisivas)
+
+
+def _mayor_diferencia_hl(grupos: Any, partition: str) -> str:
+    """«; la mayor diferencia, en el grupo 8 de 10: 45,56 % observado frente a 42,14 % predicho».
+
+    D-HLG-2: el grupo de **mayor diferencia absoluta** entre la tasa observada y la PD media —a
+    igual diferencia, el de menor número—, no el de mayor contribución al estadístico (en el SBA,
+    el 3, con 1,7 pp y O/E 0,64): la frase dice magnitud absoluta y la tabla por grupo trae la
+    razón O/E y la contribución para que la diferencia relativa no se esconda. Sin la clave
+    —una corrida guardada con una versión anterior— o sin filas de esa muestra, no suma nada.
+    """
+    if not isinstance(grupos, pd.DataFrame) or grupos.empty:
+        return ""
+    muestra = grupos[grupos["partition"].astype(str) == partition]
+    if muestra.empty:
+        return ""
+    muestra = muestra.sort_values("group", kind="stable").reset_index(drop=True)
+    diferencia = muestra["gap_pp"].astype(float).abs()
+    # `idxmax` devuelve la primera aparición del máximo: con las filas en orden de grupo, el de
+    # menor número.
+    fila = muestra.loc[diferencia.idxmax()].to_dict()
+    return (
+        f"; la mayor diferencia, en el grupo {int(fila['group'])} de {len(muestra)}: "
+        f"{_pct(_float(fila['observed_dr']))} observado frente a "
+        f"{_pct(_float(fila['mean_pd']))} predicho"
+    )
 
 
 def _prueba_de_estabilidad(fila: Any) -> str:
@@ -2117,7 +2150,10 @@ def build_final_summary(
     execution = _estado_de_ejecucion(study, stages, context)
     validation = _estado_de_validacion(study, context)
     figures = _cinco_cifras(study) if study is not None else ()
-    review = tuple(f"{s.label}: {a}" for s in stages for a in s.alerts)
+    review = (
+        *(f"{s.label}: {a}" for s in stages for a in s.alerts),
+        *(f"{_ROTULO_DECISIONES}: {a}" for a in _decisiones_sin_efecto(study)),
+    )
     files = _archivos(study, context)
     return FinalSummary(
         execution=execution,
@@ -2128,6 +2164,42 @@ def build_final_summary(
         files=files,
         stages=tuple(stages),
     )
+
+
+def _decisiones_sin_efecto(study: Study | None) -> tuple[str, ...]:
+    """Las decisiones del registro que ya no están aplicadas en el config, como alertas (D-DEC-3).
+
+    Se leen del preámbulo que la corrida persistió (``decision_sin_efecto``, que el motor declara
+    en vez de atribuírselas a una persona): «La decisión «set_bins monto — motivo» ya no está
+    aplicada: sus cortes cambiaron en el config». Precedente: ``point_override_sin_casar``.
+    """
+    if study is None:
+        return ()
+    alertas: list[str] = []
+    for _paso, payload in getattr(study, "preamble", ()) or ():
+        if str(payload.get("regla", "")) != _REGLA_DECISION_SIN_EFECTO:
+            continue
+        variables = [str(v) for v in _sequence(payload.get("variables"))]
+        accion = str(payload.get("accion", ""))
+        motivo = str(payload.get("motivo", ""))
+        varias = len(variables) > 1
+        if accion in {"merge_bins", "set_bins"}:
+            razon = "sus cortes cambiaron en el config"
+        elif accion == "exclude":
+            razon = (
+                "las variables ya no están excluidas en el config"
+                if varias
+                else "la variable ya no está excluida en el config"
+            )
+        else:
+            razon = (
+                "las variables ya no están forzadas en el config"
+                if varias
+                else "la variable ya no está forzada en el config"
+            )
+        sujeto = f"{accion} {', '.join(variables)}" if variables else accion
+        alertas.append(f"La decisión «{sujeto} — {motivo}» ya no está aplicada: {razon}.")
+    return tuple(alertas)
 
 
 def _estado_de_ejecucion(

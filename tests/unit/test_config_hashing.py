@@ -37,8 +37,12 @@ def test_cambia_con_campo_computacional() -> None:
 
 
 def test_infra_sections_contenido_exacto() -> None:
-    """INFRA_SECTIONS contiene exactamente las cinco secciones de infraestructura."""
-    assert set(INFRA_SECTIONS) == {"name", "governance", "audit", "tracking", "report"}
+    """INFRA_SECTIONS contiene exactamente las seis secciones de infraestructura.
+
+    ``decisions`` entra con D-DEC-1 (2026-10-02): el registro de decisiones con motivo, cuyo
+    efecto ya está en las hojas computacionales que sí entran a la identidad.
+    """
+    assert set(INFRA_SECTIONS) == {"name", "governance", "audit", "tracking", "report", "decisions"}
 
 
 # --- D-HASH-1: la identidad no depende del orden de los imports -------------------------------

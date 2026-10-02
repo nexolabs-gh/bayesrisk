@@ -284,6 +284,7 @@ class ValidationStep(AuditableMixin):
         ("validation", "backtesting"),
         ("validation", "result"),
         ("validation", "card"),
+        ("validation", "hosmer_lemeshow_groups"),  # D-HLG-1 (2026-10-02), aditiva
     )
     @classmethod
     def from_config(cls, cfg: "ValidationConfig") -> "ValidationStep": ...
@@ -623,7 +624,7 @@ Lo que **no** se pudo verificar y se declara: el texto de Hosmer & Lemeshow (*Ap
 - **D-VAL-1 — Discriminación: reúso vs recálculo.** *Recomendación:* **consumir** `("performance","discriminant_metrics")` como resultado canónico y **reúsar** `PerformanceEvaluator` (SDD-11) sólo en el fallback para modelos sin `performance`. **Nunca reimplementar** AUC/KS/Gini. Evita divergencia numérica y cumple DRY.
 - **D-VAL-2 — Estabilidad: reúso vs recálculo.** *Recomendación:* **consumir** `("stability","stability_metrics")`/`psi_table`; fallback por reúso de `StabilityEvaluator`. No reimplementar PSI. **Cableado de verdad con D-VAL-16 (2026-09-15, capa C de VALIDACION-COTEJADA):** hasta entonces ningún camino del `Study` llegaba al fallback y `consume_stability=False` abortaba; ahora el recálculo corre `nikodym.stability.step.compute_stability` (el ensamblador y el evaluador públicos del paso de estabilidad), los `requires` se declaran por el patrón D-REQ y `consume_stability` dejó de estar oculto.
 - **D-VAL-3 — Nº de grupos Hosmer-Lemeshow.** *Recomendación:* `G=10` deciles (convención estándar) → `G−2=8` gl. Configurable `5..20`; agrupación alternativa por bandas fijas reservada.
-- **D-VAL-4 — Nivel de significancia.** *Recomendación:* `α=0.05` (HL bilateral; binomial/t-test unilateral hacia subestimación). Configurable.
+- **D-VAL-4 — Nivel de significancia.** *Recomendación:* `α=0.05` (HL de cola superior —es un χ² de bondad de ajuste y el kernel usa `chi2.sf`—; binomial/t-test unilateral hacia subestimación). Configurable. **Corregida por D-HLG-3 (2026-10-02):** decía que el HL era bilateral; el código siempre usó la cola superior y se corrige el texto, no el código ([`_ENMIENDA-HL-Y-DECISIONES-EN-EL-YAML.md`](_ENMIENDA-HL-Y-DECISIONES-EN-EL-YAML.md) §1.2).
 - **D-VAL-5 — Bandas del semáforo.** *Recomendación (default institucional):* verde `p ≥ 0.05`, ámbar `0.01 ≤ p < 0.05`, rojo `p < 0.01`, sobre el p-valor del test por grado. **Cerrada con D-VAL-15 (2026-09-14):** default institucional **persistido en el resultado**, sin marca; verificado que no existe corte regulatorio (F1, F3, F4 del cotejo de §12).
 - **D-VAL-6 — Test de PD (binomial vs Jeffreys).** *Recomendación:* **Jeffreys** por defecto (alineado con ECB feb 2019, robusto con `D=0`); `binomial` (BCBS WP14) como alternativa. El t-test se reserva a LGD/EAD (spec).
 - **D-VAL-7 — Convención del t-test LGD/EAD.** *Recomendación:* t-test pareado sobre `e_i = realizado − estimado`, unilateral (subestimación). **Confirmada con D-VAL-14 (2026-09-14):** pareado simple, sin ponderación por exposición, Student con `N − 1` gl; `one_sided=False` es la convención bilateral del ELBE, no una desviación.

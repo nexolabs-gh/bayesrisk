@@ -31,7 +31,11 @@ if TYPE_CHECKING:
 __all__ = ["INFRA_SECTIONS", "config_hash"]
 
 # Secciones de infraestructura excluidas del config_hash (no afectan la identidad de la corrida).
-INFRA_SECTIONS: frozenset[str] = frozenset({"name", "governance", "audit", "tracking", "report"})
+# `decisions` (D-DEC-1) es el registro de decisiones con motivo: su efecto ya está en las hojas
+# computacionales, que sí entran.
+INFRA_SECTIONS: frozenset[str] = frozenset(
+    {"name", "governance", "audit", "tracking", "report", "decisions"}
+)
 
 
 def _hash_exclude() -> dict[str, Any]:

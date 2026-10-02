@@ -11,6 +11,7 @@ from bayesrisk.core.config.migration import SCHEMA_VERSION, migrate, migration
 from bayesrisk.core.config.schema import (
     BayesRiskBaseConfig,
     BayesRiskConfig,
+    DecisionEntry,
     ReproConfig,
     RunConfig,
     declara_esenciales,
@@ -23,6 +24,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "BayesRiskBaseConfig",
     "BayesRiskConfig",
+    "DecisionEntry",
     "NikodymBaseConfig",
     "NikodymConfig",
     "ReproConfig",

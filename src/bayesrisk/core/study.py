@@ -39,6 +39,7 @@ from bayesrisk.core.artifacts import ArtifactStore
 from bayesrisk.core.audit import AuditEvent, AuditKind, AuditSink, NullAuditSink
 from bayesrisk.core.base import BaseBayesRiskEstimator
 from bayesrisk.core.config import BayesRiskConfig, config_hash, dump_config, load_config
+from bayesrisk.core.decisions import DECISIONS_STEP, eventos_de_decisiones
 from bayesrisk.core.exceptions import (
     ArtifactNotFoundError,
     BayesRiskError,
@@ -500,7 +501,14 @@ class Study:
             # el mismo prefijo, y el informe regenerado y la ficha no atribuyen decisiones
             # distintas a la misma corrida (pasada 5 de Codex sobre la capa C).
             declarados: list[tuple[str | None, dict[str, Any]]] = []
-            for paso_declarante, payload in preamble:
+            # D-DEC-2: después de lo que declare quien llama (la entrada y las inferencias de la
+            # puerta guiada), el registro de decisiones con motivo del PROPIO config, cotejado con
+            # sus hojas (D-DEC-3). Lo emite el estudio, no la puerta: así la corrida guiada y la
+            # de su YAML —o la pantalla— declaran las mismas decisiones humanas.
+            registro = tuple(
+                (DECISIONS_STEP, payload) for payload in eventos_de_decisiones(self.config)
+            )
+            for paso_declarante, payload in (*preamble, *registro):
                 snapshot = copy.deepcopy(dict(payload))
                 self._emit("decision", paso_declarante, copy.deepcopy(snapshot))
                 declarados.append((paso_declarante, snapshot))

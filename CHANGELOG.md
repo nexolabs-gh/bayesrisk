@@ -9,7 +9,38 @@ entradas anteriores conservan el nombre con el que se publicaron.
 
 ## [Sin publicar]
 
+### Añadido
+
+- **Hosmer-Lemeshow dice cuánto y dónde.** Cuando la prueba falla, la frase del resumen —y la
+  página ejecutiva del informe y la pantalla, que la toman de la misma fuente— suma la mayor
+  diferencia: el grupo cuya tasa observada más se aleja de su PD media, con las dos tasas
+  («la mayor diferencia, en el grupo 8 de 10: 45,56 % observado frente a 42,14 % predicho», en la
+  muestra SBA de la prueba real). El informe (HTML y Word) gana una tabla por muestra con los diez
+  grupos de la prueba —operaciones, malos observados y esperados, tasa observada, PD media,
+  diferencia en puntos porcentuales, razón O/E y aporte al estadístico—, y la pantalla la muestra
+  en un desplegable bajo «Calibración por muestra». Los grupos se publican en la clave nueva
+  `("validation", "hosmer_lemeshow_groups")` y son los mismos de la prueba: la suma de sus aportes
+  reproduce el estadístico. **Ningún veredicto cambia**: con la misma configuración, todos los
+  resultados de antes son idénticos (medido en el preset y en la muestra SBA).
+- **Las decisiones con motivo viajan en el YAML.** `sc.exclude(...)`, `sc.keep(...)`,
+  `sc.merge_bins(...)` y `sc.set_bins(...)` quedan registradas, en orden y con su motivo, en la
+  sección nueva `decisions` del config, y `to_yaml()` la vuelca. Quien corre ese YAML —otra
+  persona, `bayesrisk.run(...)` o la pantalla— ve las mismas decisiones humanas que la corrida
+  guiada en el registro de auditoría, la ficha del modelo, el libro «Decisiones» del Excel, la
+  página ejecutiva y el resumen final, donde antes decía «Ninguna decisión humana registrada». La
+  sección no entra al `config_hash` (su efecto ya está en las secciones que sí entran), el
+  formulario no la pinta y la conserva, y un config sin decisiones produce el mismo YAML que la
+  2.2.0. Si alguien cambia a mano lo que una decisión dejó escrito, la corrida no se la atribuye a
+  quien decidió: el registro de auditoría lo declara (`decision_sin_efecto`) y el resumen final lo
+  dice como alerta.
+
 ### Cambiado
+
+- **El paso con que se registran las decisiones humanas es `decisions`.** Las declara la corrida
+  desde el config, igual para la puerta guiada que para su YAML; antes las declaraba la puerta
+  guiada con el paso `scorecard_guided`, que sigue firmando su entrada y sus inferencias. El
+  payload del evento `decision_del_usuario` no cambia; la línea de la ficha y la columna «Etapa»
+  del libro «Decisiones» dicen `decisions`.
 
 - **Un ajuste manual de puntos llega a la corrida.** El escalador buscaba el WoE de cada operación
   en la tabla de puntos con igualdad exacta; el WoE que recalcula OptBinning al transformar difiere
@@ -35,6 +66,11 @@ entradas anteriores conservan el nombre con el que se publicaron.
 - **El trail deja de registrar falsas alarmas.** `bin_no_visto` («calcular por fórmula») se
   registra sólo para un WoE sin fila a 1e-12; antes lo registraba para casi toda operación
   observada y el aviso llegaba al libro «Decisiones» del Excel y al anexo del informe.
+
+### Sabido
+
+- Un YAML **con** decisiones no lo carga una librería anterior a esta versión, que rechaza las
+  secciones que no conoce; uno sin decisiones, sí.
 
 ## [2.2.0] — 2026-09-28
 

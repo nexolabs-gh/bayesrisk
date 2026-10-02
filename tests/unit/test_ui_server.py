@@ -252,7 +252,10 @@ def test_endpoint_config_from_yaml_valido(client: TestClient) -> None:
     assert respuesta.status_code == 200
     cuerpo = respuesta.json()
     assert cuerpo["config_hash"] == config_hash(cfg)
-    assert cuerpo["config"] == cfg.model_dump(mode="json", by_alias=True)
+    # D-DEC-1: el registro de decisiones vacío no viaja en el YAML ni vuelve en la respuesta.
+    esperado = cfg.model_dump(mode="json", by_alias=True)
+    assert esperado.pop("decisions") == []
+    assert cuerpo["config"] == esperado
 
 
 def test_endpoint_config_from_yaml_malformado_422(client: TestClient) -> None:

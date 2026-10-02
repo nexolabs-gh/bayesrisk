@@ -108,6 +108,7 @@ import {
   stabilityMetricLabel,
   temporalScore,
   gradeCoverage,
+  hlGroupsBySample,
   hlNotEvaluablePartitions,
   hlNotEvaluableReasonLabel,
   trafficLightCuts,
@@ -324,6 +325,7 @@ export function ResultsPanel({
   const valCoverage = gradeCoverage(val)
   const valCuts = trafficLightCuts(val)
   const valHlSinVeredicto = hlNotEvaluablePartitions(val)
+  const valHlGrupos = hlGroupsBySample(val)
   const valStabilityProvenance = stabilityProvenance(val)
   const valSinFilas = validationFamiliesWithoutRows(val)
   const valAvisos = val?.falta_dato ?? []
@@ -1188,6 +1190,68 @@ export function ResultsPanel({
                   </tbody>
                 </table>
               </div>
+
+              {/* D-HLG-2: dónde está la diferencia. Los grupos son los de la prueba y salen del
+                  motor tal cual (`validation.hosmer_lemeshow_groups`); el veredicto no cambia. La
+                  demo y las corridas anteriores no traen la clave: no se pinta nada. */}
+              {valHlGrupos.length > 0 ? (
+                <details className="group mt-3">
+                  <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-eyebrow">
+                    <span className="text-muted-foreground transition-transform group-open:rotate-90">
+                      ›
+                    </span>
+                    Hosmer-Lemeshow por grupo: dónde está la diferencia
+                  </summary>
+                  <div className="mt-2 space-y-4 pl-4">
+                    {valHlGrupos.map(({ partition, rows: grupos }) => (
+                      <div key={partition} className="space-y-1">
+                        <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">
+                          {partitionLabel(partition)}
+                        </p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-border text-left text-[0.68rem] uppercase tracking-wide text-muted-foreground">
+                                <NumHead>Grupo</NumHead>
+                                <NumHead>Operaciones</NumHead>
+                                <NumHead>Malos observados</NumHead>
+                                <NumHead>Malos esperados</NumHead>
+                                <NumHead>Tasa observada</NumHead>
+                                <NumHead>PD media</NumHead>
+                                <NumHead>Diferencia (pp)</NumHead>
+                                <NumHead>O/E</NumHead>
+                                <NumHead>Contribución</NumHead>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {grupos.map((fila) => (
+                                <tr key={fila.group} className="border-b border-border">
+                                  <NumCell>{formatCount(fila.group)}</NumCell>
+                                  <NumCell>{formatCount(fila.n)}</NumCell>
+                                  <NumCell>{formatCount(fila.observed_defaults)}</NumCell>
+                                  <NumCell>{formatMetric(fila.expected_defaults, 1)}</NumCell>
+                                  <NumCell>{formatPercent(fila.observed_dr, 2)}</NumCell>
+                                  <NumCell>{formatPercent(fila.mean_pd, 2)}</NumCell>
+                                  <NumCell>{formatMetric(fila.gap_pp, 2)}</NumCell>
+                                  <NumCell>{formatMetric(fila.oe_ratio, 3)}</NumCell>
+                                  <NumCell>{formatMetric(fila.contribution, 2)}</NumCell>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-xs text-muted-foreground">
+                      Son los grupos de la prueba: la muestra ordenada de menor a mayor PD y partida
+                      en partes iguales. La diferencia es la tasa observada menos la PD media; O/E,
+                      los malos observados sobre los esperados, muestra la diferencia relativa que
+                      una diferencia chica en puntos puede esconder. La contribución es lo que cada
+                      grupo suma al estadístico.
+                    </p>
+                  </div>
+                </details>
+              ) : null}
 
               {/* 🔴 Las muestras cuyo Hosmer-Lemeshow quedó sin veredicto NO cuentan en las
                   pruebas (sin potencia no hay prueba): sin esta enumeración, «Pasa · 0 de 1» podría

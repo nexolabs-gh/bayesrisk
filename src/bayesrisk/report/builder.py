@@ -21,6 +21,7 @@ from __future__ import annotations
 import copy
 import importlib
 import json
+import math
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, NoReturn, TypeAlias, cast
@@ -39,6 +40,7 @@ from bayesrisk.report.document import (
     CHAPTER_SPECS,
     CONTEXT_DOMAINS,
     EXECUTIVE_SUMMARY_ID,
+    HL_GROUP_TABLE_PREFIX,
     IFRS9_DOMAINS,
     METHODOLOGY_STEPS,
     PIPELINE_DOMAINS,
@@ -202,6 +204,7 @@ class ReportBuilder:
         tables = self._collect_tables(study)
         tables.update(_data_card_tables(cards))
         tables.update(_atomic_result_tables(results))
+        tables.update(_hl_group_tables(study, results))
         tables.update(_extract_card_dataframes(cards))
         figures = self._collect_figures(study)
         pipeline_params = _collect_pipeline_params(study)
@@ -919,6 +922,83 @@ def _atomic_result_tables(results: Mapping[str, Any]) -> dict[str, DataFrameLike
             )
         tables[f"validation.{family}"] = cast(DataFrameLike, _copy_value(frame))
     return tables
+
+
+#: Los encabezados de la tabla por grupo del Hosmer-Lemeshow en el informe (D-HLG-2). Las tasas van
+#: en porcentaje, como la frase del resumen que las cita («45,56 % observado frente a 42,14 %
+#: predicho»), y la diferencia en puntos porcentuales.
+_HL_GROUP_REPORT_COLUMNS: Final[tuple[str, ...]] = (
+    "Grupo",
+    "Observaciones",
+    "Malos observados",
+    "Malos esperados",
+    "Tasa observada (%)",
+    "PD media (%)",
+    "Diferencia (pp)",
+    "O/E",
+    "Contribución al estadístico",
+)
+
+
+def _hl_group_tables(study: Study, results: Mapping[str, Any]) -> dict[str, DataFrameLike]:
+    """Una tabla por muestra con los grupos del Hosmer-Lemeshow, para la subsección de calibración.
+
+    D-HLG-2: lee ``("validation", "hosmer_lemeshow_groups")`` —la publica el mismo paso que
+    ``validation.result``, fuera del DTO para que éste no cambie— y la coteja con el resultado
+    atómico: cada muestra tiene que tener su Hosmer-Lemeshow con estadístico en
+    ``validation.result.calibration`` y la suma de sus contribuciones tiene que reproducirlo. Si no,
+    el informe rechaza la lectura, como rechaza una card que no casa con su resultado. Una corrida
+    guardada antes de la clave, o sin ninguna muestra con veredicto, no suma tablas.
+    """
+    if not study.artifacts.has("validation", "hosmer_lemeshow_groups"):
+        return {}
+    grupos = study.artifacts.get("validation", "hosmer_lemeshow_groups")
+    if not _is_dataframe_like(grupos) or bool(getattr(grupos, "empty", True)):
+        return {}
+    result = results.get("validation")
+    calibracion = getattr(result, "calibration", None)
+    if not _is_dataframe_like(calibracion):
+        raise ReportInputError(
+            "validation.hosmer_lemeshow_groups exige su validation.result; el reporte rechaza una "
+            "lectura no atómica de la validación."
+        )
+    estadisticos: dict[str, float] = {}
+    for fila in cast(Any, calibracion).to_dict("records"):
+        valor = fila.get("statistic")
+        if (
+            fila.get("test") == "hosmer_lemeshow"
+            and isinstance(valor, int | float)
+            and math.isfinite(float(valor))
+        ):
+            estadisticos[str(fila.get("partition"))] = float(valor)
+    tablas: dict[str, DataFrameLike] = {}
+    for muestra, filas in grupos.groupby("partition", sort=False):
+        nombre = str(muestra)
+        suma = float(filas["contribution"].sum())
+        estadistico = estadisticos.get(nombre)
+        if estadistico is None or not math.isclose(suma, estadistico, rel_tol=1e-9, abs_tol=1e-12):
+            raise ReportInputError(
+                f"validation.hosmer_lemeshow_groups de «{nombre}» no reproduce el Hosmer-Lemeshow "
+                "de validation.result; el reporte rechaza una lectura no atómica de la validación."
+            )
+        registros = [
+            {
+                "Grupo": int(fila["group"]),
+                "Observaciones": int(fila["n"]),
+                "Malos observados": int(fila["observed_defaults"]),
+                "Malos esperados": round(float(fila["expected_defaults"]), 1),
+                "Tasa observada (%)": round(100.0 * float(fila["observed_dr"]), 2),
+                "PD media (%)": round(100.0 * float(fila["mean_pd"]), 2),
+                "Diferencia (pp)": round(float(fila["gap_pp"]), 2),
+                "O/E": round(float(fila["oe_ratio"]), 3),
+                "Contribución al estadístico": round(float(fila["contribution"]), 2),
+            }
+            for fila in filas.sort_values("group", kind="stable").to_dict("records")
+        ]
+        tablas[f"{HL_GROUP_TABLE_PREFIX}{nombre}"] = _frame_from_records(
+            registros, _HL_GROUP_REPORT_COLUMNS
+        )
+    return tablas
 
 
 def _required_mapping(

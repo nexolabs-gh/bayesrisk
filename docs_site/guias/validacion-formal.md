@@ -66,6 +66,16 @@ probabilidad.
 grupo, los incumplimientos esperados con los observados. Un p-valor bajo significa que la PD
 predicha y la observada no cuadran.
 
+El p-valor dice **si** la calibración falla, no **cuánto** ni **dónde**: con muestras grandes la
+prueba rechaza diferencias chicas. Por eso, cuando falla, la frase del resumen suma la **mayor
+diferencia** —el grupo cuya tasa observada más se aleja de su PD media, con las dos tasas—, y la
+**tabla por grupo** queda en el informe, junto a la de calibración, y en la pantalla, en el
+desplegable de «Calibración por muestra». Por grupo trae las operaciones, los malos observados y
+esperados, la tasa observada, la PD media, la diferencia en puntos porcentuales, la razón entre
+malos observados y esperados (O/E) y lo que cada grupo suma al estadístico. La razón O/E muestra
+una diferencia relativa grande que en puntos se ve chica, típica de los grupos de PD baja. Son
+los mismos grupos de la prueba, y el veredicto no cambia: lo decide el p-valor.
+
 El **mínimo de operaciones para evaluar** —30 de fábrica— protege la muestra entera **y cada grupo
 de PD**: si el grupo más chico queda bajo el mínimo, esa muestra no recibe veredicto. Sin esa
 población, un p-valor sería ruido. Con diez grupos y el mínimo de fábrica, una muestra necesita al

@@ -64,6 +64,7 @@ from bayesrisk.report.config import (
 )
 from bayesrisk.report.document import (
     APPENDIX_TABLES_ID,
+    HL_GROUP_TABLE_PREFIX,
     KEY_TABLES,
     PER_OBSERVATION_TABLES,
     max_visible_rows,
@@ -721,6 +722,13 @@ def _tables_for_section(
         )
     elif section.id.startswith("validation.") and section.status == "included":
         keys = (section.id,) if section.id in bundle.tables else ()
+        if section.id == "validation.calibration":
+            # D-HLG-2: los grupos del Hosmer-Lemeshow de cada muestra, junto a la tabla que da el
+            # veredicto y no en el anexo.
+            keys = (
+                *keys,
+                *(key for key in bundle.tables if str(key).startswith(HL_GROUP_TABLE_PREFIX)),
+            )
     elif section.kind == "data" and section.source_domain and section.status == "included":
         keys = tuple(
             key

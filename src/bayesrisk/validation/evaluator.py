@@ -57,6 +57,7 @@ from bayesrisk.validation.calibration_tests import (
     binomial_by_grade,
     brier_score,
     hosmer_lemeshow,
+    hosmer_lemeshow_groups,
     traffic_light,
 )
 from bayesrisk.validation.config import (
@@ -78,6 +79,7 @@ from bayesrisk.validation.results import (
     _CALIBRATION_COLUMNS,
     _DISCRIMINATION_COLUMNS,
     _STABILITY_COLUMNS,
+    HOSMER_LEMESHOW_GROUP_COLUMNS,
     POOLED_SENTINEL,
     BacktestRecord,
     CalibrationTestRecord,
@@ -402,6 +404,56 @@ class ValidationEvaluator:
             y_true, pd_pred, n_groups=calib.hl_n_groups, min_rows_per_group=self.min_rows
         )
         return _reseal_hosmer_lemeshow(record, partition=partition, alpha=calib.alpha)
+
+    def hosmer_lemeshow_groups(
+        self,
+        calibrated_pd: pd.DataFrame | None,
+        calibration_records: tuple[CalibrationTestRecord, ...],
+    ) -> pd.DataFrame:
+        """Grupos del Hosmer-Lemeshow de cada muestra con veredicto, una fila por grupo (D-HLG-1).
+
+        Recorre las muestras en el mismo orden y con el mismo subconjunto que
+        :meth:`_run_calibration` y llama a
+        :func:`~bayesrisk.validation.calibration_tests.hosmer_lemeshow_groups`, que comparte la
+        partición del test: los grupos son los que decidieron el veredicto. Sólo las muestras cuyo
+        Hosmer-Lemeshow tiene estadístico entran —una muestra sin veredicto (D-VAL-17) no tiene
+        grupos que mostrar—; sin calibración, sin Hosmer-Lemeshow o sin ninguna muestra con
+        veredicto, el frame sale vacío con sus columnas, y el paso lo publica igual.
+        """
+        calib = self.config.calibration
+        con_veredicto = {
+            record.partition
+            for record in calibration_records
+            if record.test == "hosmer_lemeshow" and record.statistic is not None
+        }
+        if (
+            "calibration" not in self.families
+            or not calib.hosmer_lemeshow
+            or calibrated_pd is None
+            or not con_veredicto
+        ):
+            return _empty_frame(HOSMER_LEMESHOW_GROUP_COLUMNS)
+        frame = _validate_calibration_frame(
+            calibrated_pd,
+            partition_column=calib.partition_column,
+            target_column=calib.target_column,
+            pd_column=calib.pd_column,
+        )
+        partes: list[pd.DataFrame] = []
+        for partition in _ordered_partitions(frame, calib.partition_column):
+            if partition not in con_veredicto:
+                continue
+            subset = frame[frame[calib.partition_column] == partition]
+            grupos = hosmer_lemeshow_groups(
+                subset[calib.target_column].to_numpy(),
+                subset[calib.pd_column].to_numpy(),
+                n_groups=calib.hl_n_groups,
+            )
+            grupos.insert(0, "partition", partition)
+            partes.append(grupos)
+        if not partes:
+            return _empty_frame(HOSMER_LEMESHOW_GROUP_COLUMNS)
+        return pd.concat(partes, ignore_index=True)[list(HOSMER_LEMESHOW_GROUP_COLUMNS)]
 
     def _grade_records(
         self, frame: pd.DataFrame

@@ -4,6 +4,7 @@
     "binning": null,
     "calibration": null,
     "data": null,
+    "decisions": [],
     "eda": null,
     "explain": null,
     "forward": null,
@@ -43,6 +44,24 @@
   },
   "effective_defaults": {
     "$defs": {
+      "DecisionEntry": {
+        "action": {
+          "has_default": false
+        },
+        "author": {
+          "has_default": true,
+          "value": "usuario"
+        },
+        "columns": {
+          "has_default": false
+        },
+        "reason": {
+          "has_default": false
+        },
+        "value": {
+          "has_default": false
+        }
+      },
       "ReproConfig": {
         "seed": {
           "has_default": true,
@@ -2679,6 +2698,10 @@
           "value": "standard"
         }
       },
+      "decisions": {
+        "has_default": true,
+        "value": []
+      },
       "eda": {
         "analysis_partition": {
           "has_default": true,
@@ -4978,6 +5001,57 @@
   },
   "json_schema": {
     "$defs": {
+      "DecisionEntry": {
+        "additionalProperties": false,
+        "description": "Una decisión humana con motivo, tal como se tomó.\n\nNo es una opción que se configure: es el registro de algo que una persona decidió. Su efecto ya\nestá escrito en las secciones del config que definen el modelo; la huella guarda cómo quedaron\nal decidir, para que cada corrida compruebe que la decisión sigue aplicada.",
+        "properties": {
+          "action": {
+            "description": "Qué se decidió: excluir o mantener variables, o fijar los tramos de una.",
+            "enum": [
+              "exclude",
+              "keep",
+              "merge_bins",
+              "set_bins"
+            ],
+            "title": "Acción",
+            "type": "string"
+          },
+          "author": {
+            "default": "usuario",
+            "description": "Quién decidió.",
+            "title": "Autor",
+            "type": "string"
+          },
+          "columns": {
+            "description": "Las variables sobre las que se decidió.",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Variables",
+            "type": "array"
+          },
+          "reason": {
+            "description": "Por qué se decidió, en palabras de quien decidió.",
+            "title": "Motivo",
+            "type": "string"
+          },
+          "value": {
+            "additionalProperties": true,
+            "description": "Las hojas del config que la decisión dejó escritas, tal como quedaron al decidir.",
+            "title": "Huella del efecto",
+            "type": "object"
+          }
+        },
+        "required": [
+          "action",
+          "columns",
+          "reason",
+          "value"
+        ],
+        "title": "DecisionEntry",
+        "type": "object"
+      },
       "ReproConfig": {
         "additionalProperties": false,
         "description": "Parámetros de reproducibilidad del experimento.",
@@ -12724,6 +12798,15 @@
         "description": "Define de dónde se cargan los datos, cómo se valida su calidad y cómo se construyen el target y las particiones.",
         "title": "Datos"
       },
+      "decisions": {
+        "default": [],
+        "description": "Registro, en orden, de las decisiones humanas con motivo: qué se decidió, sobre qué variables, por qué y qué dejó escrito en el config. Lo escribe la puerta guiada; cada corrida lo declara en su registro de auditoría.",
+        "items": {
+          "$ref": "#/$defs/DecisionEntry"
+        },
+        "title": "Decisiones con motivo",
+        "type": "array"
+      },
       "eda": {
         "anyOf": [
           {
@@ -15940,6 +16023,7 @@
     "report",
     "audit",
     "governance",
-    "tracking"
+    "tracking",
+    "decisions"
   ]
 }

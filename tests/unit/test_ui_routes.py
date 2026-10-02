@@ -635,7 +635,11 @@ def test_config_from_yaml_valido_devuelve_config_y_hash() -> None:
     cfg = full_f1_config("cartera.parquet")
     resultado = routes.config_from_yaml(dump_config(cfg))
     assert set(resultado) == {"config", "config_hash"}
-    assert resultado["config"] == cfg.model_dump(mode="json", by_alias=True)
+    # D-DEC-1: un registro de decisiones vacío no se vuelca al YAML, así que el archivo no
+    # lo trae y `from-yaml` (que proyecta lo que el archivo traía) tampoco.
+    esperado = cfg.model_dump(mode="json", by_alias=True)
+    assert esperado.pop("decisions") == []
+    assert resultado["config"] == esperado
     assert resultado["config_hash"] == config_hash(cfg)
 
 

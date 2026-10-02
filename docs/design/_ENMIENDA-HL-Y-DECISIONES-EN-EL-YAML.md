@@ -249,3 +249,89 @@ contractual no se programa: se eleva.
 | 1 | (high) el registro «sólo vigente» perdía `exclude` si se revertía con `keep` antes de correr; (high) sin huella del efecto, un motivo se atribuía a cortes editados a mano, y un `set_bins` en suspenso pasaba por aplicado; (medium) «la mayor diferencia» nombraba el grupo de mayor contribución (g3, 1,7 pp) y no el de mayor brecha (g8, 3,4 pp); (medium) `decisions: []` rompía la carga del YAML en una librería anterior | Registro de solo agregar con `value` (la huella) y payload intacto (D-DEC-1/2); cotejo por variable del último registro, con aplicada / en suspenso / sin efecto (D-DEC-3); la frase dice la mayor diferencia absoluta y la tabla trae O/E y contribución (D-HLG-2); la sección vacía no se vuelca (D-DEC-1); tests (§6) |
 | 2 | (high) un registro de varias variables aplicado en parte no tenía regla: emitirlo atribuía la variable sin efecto y omitirlo perdía la vigente; (medium) «el mismo trail, ficha y Excel» entre puertas era falso: la puerta guiada suma su entrada y sus inferencias | El registro parcial se emite como decisión humana sólo para lo aplicado y el resto como sin efecto, los dos con la clave aditiva `registro` (D-DEC-3); la paridad se promete y se prueba sobre las decisiones humanas y lo que alimentan, con la procedencia de la puerta declarada aparte (D-DEC-2); tests (§6) |
 | 3 (tope) | (high) en el registro aplicado en parte, el evento humano conservaba en `valor` la huella de la variable sin efecto, y `DecisionRecord` —que guarda `valor` y descarta `variables`— la atribuiría en la ficha | `valor` restringido a lo aplicado y la huella completa en la clave aditiva `huella`; ficha con una fila humana y una del motor; test (§6). La premisa —las decisiones viajan en el YAML y lo no aplicado no se atribuye— no cayó. Revisión cerrada en el tope, con el hallazgo incorporado y sin cuarta pasada |
+
+## 9. Implementación (S27, 2026-10-02)
+
+**Lo que el código precisó (D-HLG).**
+
+1. **Una sola partición.** `calibration_tests._hl_partition` (orden estable por PD y
+   `np.array_split`) es la única fuente de los grupos: la usan `hosmer_lemeshow` —con la misma
+   aritmética de antes, estadístico bit a bit igual— y la función nueva `hosmer_lemeshow_groups`,
+   que publica por grupo `group`, `n`, `observed_defaults`, `expected_defaults`, `observed_dr`,
+   `mean_pd`, `gap_pp` (tasa − PD media, en pp), `oe_ratio` y `contribution`. Sin grupos válidos
+   levanta `CalibrationTestError`; el evaluador sólo la llama para las muestras con estadístico.
+2. **La clave vive fuera del DTO atómico.** `ValidationEvaluator.hosmer_lemeshow_groups` recorre
+   las muestras con el mismo orden y subconjunto que la calibración y el paso la publica en
+   `("validation", "hosmer_lemeshow_groups")` (en `VALIDATION_ARTIFACTS`, siempre; vacía con sus
+   columnas sin Hosmer-Lemeshow). `ValidationResult` no gana campo: así `validation.result` no
+   cambia y la proyección canónica sólo ve la clave nueva.
+3. **El informe coteja antes de pintar.** `builder._hl_group_tables` exige que cada muestra tenga
+   su Hosmer-Lemeshow con estadístico en `validation.result.calibration` y que la suma de sus
+   contribuciones lo reproduzca (1e-9 relativo); si no, rechaza la lectura no atómica, como con la
+   card. Arma una tabla por muestra (`validation.hosmer_lemeshow_groups.<muestra>`, título
+   «Hosmer-Lemeshow por grupo · <muestra>») con encabezados en español, las tasas en porcentaje y
+   la diferencia en pp, y el renderer la pone en la subsección de calibración, tras la tabla del
+   veredicto (no en el anexo). «Malos observados» entra a los conteos de `cifras` (miles agrupados).
+4. **La frase sale de la fuente única.** `_pruebas_decisivas` suma, tras la PD media agregada de
+   D-CPY-6, «la mayor diferencia, en el grupo G de N: X observado frente a Y predicho» (máximo
+   `|gap_pp|`, a igual diferencia el de menor número; tasas con `_pct`, dos decimales como la media
+   agregada). La leen el resumen de validación, el resumen final, la página ejecutiva (HTML, Word,
+   Quarto) y la pantalla. Una corrida guardada antes de la clave conserva la frase de D-CPY-6.
+5. **La pantalla** recibe la clave en `payload["validation"]` y la pinta en un desplegable bajo
+   «Calibración por muestra» (orden canónico de muestras, grupos de menor a mayor). La demo no la
+   trae: no se pinta nada hasta su recaptura.
+
+**Lo que el código precisó (D-DEC).**
+
+6. **La sección.** `DecisionEntry` (`action` ∈ las cuatro acciones; `columns` ≥ 1 y sin repetir;
+   `reason` y `author` no en blanco; `merge_bins`/`set_bins` sobre una sola variable; `value`
+   obligatorio) y `BayesRiskConfig.decisions: tuple[DecisionEntry, ...] = ()`, último campo del
+   config. `INFRA_SECTIONS` gana `decisions`; `dump_config` la omite vacía aunque venga explícita
+   (la pantalla manda `decisions: []` por sus defaults). Su docstring es copy público (descripción
+   del schema): sin códigos internos.
+7. **El paso del evento.** `Study.run` declara el registro después del preámbulo que recibe, con
+   el paso `decisions` (`core.decisions.DECISIONS_STEP`), el mismo en la corrida guiada y en la del
+   YAML; antes la puerta lo declaraba con `scorecard_guided`, que sigue firmando su entrada y sus
+   inferencias. El payload no cambia. Visible en la línea de la ficha y en la columna «Etapa» del
+   libro «Decisiones»; declarado en el CHANGELOG.
+8. **La puerta.** `exclude`/`keep`/`merge_bins`/`set_bins` agregan un `DecisionEntry` al config
+   (`_registrar_decision`, sólo agregar); `_decisions` pasa a ser una vista derivada del config y
+   `_preamble` deja de llevar decisiones.
+9. **El cotejo** (`core.decisions.eventos_de_decisiones`): último registro por variable y familia;
+   `exclude` aplicada si la variable está en `binning.exclude_columns`; `keep`, si está en los dos
+   `force_include` y no excluida; tramos, si su hoja de `variable_overrides` tiene los mismos
+   `user_splits` y `user_splits_fixed` que la huella (excluida después: en suspenso, se emite como
+   hoy). `decision_sin_efecto` lleva en `umbral` las hojas que no coinciden, en `valor` la huella
+   restringida a sus variables, el motivo y `registro`, **sin** `autor` (va con las decisiones del
+   motor en la ficha y en el Excel). La alerta va a «Qué revisar» con el rótulo «Decisiones con
+   motivo».
+10. **La pantalla** pasa `decision_lines_from_preamble(study.preamble)` al resumen final; el
+    formulario no pinta la sección (no está en `CONFIG_SECTIONS`) y `applyYamlConfig` la conserva
+    entera.
+
+**Lo que la medición precisó.** El ledger de `option_surface` recorre sólo las secciones
+expandibles del formulario y no ve `decisions` (tampoco `name` ni `schema_version`): no se mueve,
+y la sección no es una opción. El catálogo de defaults efectivos gana 6 descriptores (1078 → 1084:
+`sections.decisions` y los cinco de `$defs.DecisionEntry`; 0 desapariciones, 0 valores alterados);
+el fixture del schema se regenera; hojas del formulario (574), perillas (411) y esenciales no se
+mueven.
+
+**Medido** (`privado/evidencia/s27/`). SBA de Cami en temporal: Desarrollo nombra el **grupo 8**
+(45,56 % observado frente a 42,14 % predicho; la mayor contribución sigue siendo el 3, O/E 0,64),
+Holdout el 7 y OOT el 10 (62,41 % frente a 80,48 %); el HTML real trae las tres tablas y la frase;
+calibración, discriminación, estabilidad, backtesting y card **idénticos** (`fail`, 3 de 3 → 3 de
+3). Preset F1: `config_hash` `1063d6cf…` intacto y proyección canónica con **una** diferencia,
+`validation.hosmer_lemeshow_groups` (sólo en la nueva). Decisiones: `medir_decisiones_yaml.py` da
+**1 → 1** (antes 1 → 0) con el mismo `config_hash` y el preámbulo persistido. YAML sin decisiones:
+el preset, el config de fábrica y un `to_yaml()` guiado tienen el **mismo sha256** con `8285a1f` y
+con el código nuevo.
+
+**Tests.** `test_hl_por_grupo.py` (15; 14 nacen rojos sobre `8285a1f` —el verde es el de una
+corrida sin la clave, que conserva la frase—) y `test_decisiones_en_el_yaml.py` (19; 16 de 18
+nacen rojos —los dos verdes: una acción inválida ya se rechazaba con la sección entera, y la
+procedencia de la puerta ya era sólo suya—, más el ida y vuelta de la pantalla); vitest en
+`ResultsTab`, `schema` y `config-store`. Contratos que cambian a propósito: el paso de la decisión
+humana en `test_guided_decisiones` y `test_report_ficha_motivo`, `INFRA_SECTIONS`, `from-yaml` sin
+el registro vacío (`test_ui_routes`, `test_ui_server`) y el golden de descriptores. **Controles
+negativos 14/14** (`cn_hlg_dec.txt`): doce en paralelo, cada uno en su copia de `src/`, y dos en el
+árbol (el desplegable de la pantalla y el texto de SDD-22) con restauración byte a byte.

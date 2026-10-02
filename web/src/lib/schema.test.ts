@@ -108,6 +108,13 @@ describe("CONFIG_SECTIONS (catálogo navegable)", () => {
     expect(CONFIG_SECTIONS.filter((s) => !orden.has(s.key)).map((s) => s.key)).toEqual([])
   })
 
+  it("D-DEC-4: el registro de decisiones no se pinta en el formulario aunque el schema lo traiga", () => {
+    // No es una perilla: es el registro de algo que se decidió en otra puerta. El backend lo
+    // declara (`section_order`) y el formulario lo conserva sin pintarlo.
+    expect(FIXTURE_SCHEMA.section_order).toContain("decisions")
+    expect(CONFIG_SECTIONS.map((s) => s.key)).not.toContain("decisions")
+  })
+
   it("cubre las cinco secciones que la paridad UI↔código exigía", () => {
     const claves = new Set(CONFIG_SECTIONS.map((s) => s.key))
     for (const nueva of [

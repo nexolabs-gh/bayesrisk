@@ -163,7 +163,12 @@ institución: las dos escriben `binning.variable_overrides` (`user_splits`, todo
 corrida siguiente el motor tramifica exactamente así y calcula el WoE de los tramos que resultan. La evidencia queda en `bayesrisk-runs/consumo_v01/`: una copia de los datos en `input/` (la que la corrida lee, con su huella en el nombre), el config completo en `config.yaml`, el
 registro de auditoría y el estudio en `run/`, y el informe en `reports/`. Ese `config.yaml` es un
 `BayesRiskConfig` entero: la puerta completa de abajo lo corre tal cual y produce los mismos
-resultados.
+resultados. Trae también las decisiones humanas con su motivo, en la sección `decisions`: quien
+corra ese YAML —otra persona, la pantalla, un validador— ve las mismas decisiones en el registro de
+auditoría, en la ficha del modelo y en el resumen final. Esa sección no cambia la identidad del
+modelo (`config_hash`), y un YAML sin decisiones no la trae. Si alguien cambia a mano lo que una
+decisión dejó escrito —quita una variable de las excluidas, reescribe unos cortes—, la corrida no
+se la atribuye a quien decidió: lo dice como alerta en «Qué revisar».
 
 Dos cosas que un validador pregunta primero salen ahora como artefactos aparte, sin tocar las
 tablas de siempre: el **IV por muestra** (`("selection", "iv_by_partition")`, en la tabla de

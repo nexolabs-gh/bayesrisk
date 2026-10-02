@@ -29,6 +29,7 @@ import type {
   StabilityResponse,
   StabilitySource,
   ValidationCalibrationRow,
+  ValidationHlGroupRow,
   ValidationNotEvaluablePartition,
   ValidationTrafficLightCuts,
   ValidationFamily,
@@ -2025,6 +2026,29 @@ export function calibrationRowsSplit(validation: ValidationResult | null | undef
       .sort((a, b) => partitionRank(a.partition) - partitionRank(b.partition)),
     porGrado: filas.filter((row) => row.traffic_light !== null),
   }
+}
+
+/**
+ * Los grupos del Hosmer-Lemeshow por muestra (D-HLG-2), en el orden canónico de muestras y de
+ * menor a mayor grupo. Sin la clave —la demo o una corrida anterior— devuelve `[]` y el panel no
+ * pinta nada. Presentación pura: ningún número se recalcula.
+ */
+export function hlGroupsBySample(
+  validation: ValidationResult | null | undefined,
+): { partition: string; rows: ValidationHlGroupRow[] }[] {
+  const filas = validation?.hosmer_lemeshow_groups ?? []
+  const porMuestra = new Map<string, ValidationHlGroupRow[]>()
+  for (const fila of filas) {
+    const lista = porMuestra.get(fila.partition) ?? []
+    lista.push(fila)
+    porMuestra.set(fila.partition, lista)
+  }
+  return [...porMuestra.entries()]
+    .sort(([a], [b]) => partitionRank(a) - partitionRank(b))
+    .map(([partition, rows]) => ({
+      partition,
+      rows: rows.slice().sort((a, b) => a.group - b.group),
+    }))
 }
 
 /** Espejo de `bayesrisk.stability.results.STABILITY_METRIC_LABELS`: qué mide cada fila del PSI. */

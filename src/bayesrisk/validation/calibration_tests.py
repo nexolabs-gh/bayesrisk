@@ -43,6 +43,7 @@ from bayesrisk.core.exceptions import MissingDependencyError
 from bayesrisk.validation.config import PdTest
 from bayesrisk.validation.exceptions import CalibrationTestError, ValidationDataError
 from bayesrisk.validation.results import (
+    HOSMER_LEMESHOW_GROUP_COLUMNS,
     CalibrationTestRecord,
     GradeBinomialRecord,
     HlNotEvaluableReason,
@@ -54,6 +55,7 @@ __all__ = [
     "binomial_by_grade",
     "brier_score",
     "hosmer_lemeshow",
+    "hosmer_lemeshow_groups",
     "traffic_light",
 ]
 
@@ -103,17 +105,12 @@ def hosmer_lemeshow(
     y, p = _validate_pair(y_true, pd_pred)
     degrees_of_freedom = n_groups - 2
 
-    order = np.argsort(p, kind="stable")
-    y_split = np.array_split(y[order], n_groups)
-    p_split = np.array_split(p[order], n_groups)
-    counts = np.array([group.shape[0] for group in p_split], dtype=np.float64)
+    counts, observed, mean_pd = _hl_partition(y, p, n_groups)
     if bool(np.any(counts == 0.0)):
         return _hl_not_evaluable(n_groups, degrees_of_freedom, reason="degenerate_group")
     if float(np.min(counts)) < min_rows_per_group:
         return _hl_not_evaluable(n_groups, degrees_of_freedom, reason="group_below_min")
 
-    observed = np.array([float(np.sum(group)) for group in y_split], dtype=np.float64)
-    mean_pd = np.array([float(np.mean(group)) for group in p_split], dtype=np.float64)
     denom = counts * mean_pd * (1.0 - mean_pd)
     if bool(np.any(denom <= 0.0)):
         return _hl_not_evaluable(n_groups, degrees_of_freedom, reason="degenerate_group")
@@ -136,6 +133,60 @@ def hosmer_lemeshow(
         alpha=_DEFAULT_ALPHA,
         decision=decision,
     )
+
+
+def hosmer_lemeshow_groups(
+    y_true: np.ndarray,
+    pd_pred: np.ndarray,
+    *,
+    n_groups: int = 10,
+) -> pd.DataFrame:
+    """Los grupos del Hosmer-Lemeshow, uno por fila: dónde está la diferencia (D-HLG-1).
+
+    Son **los mismos grupos que usa** :func:`hosmer_lemeshow` —la misma partición
+    (:func:`_hl_partition`: orden estable por PD y ``np.array_split``), no un ``qcut`` por
+    valor— y la suma de ``contribution`` reproduce su estadístico. Por grupo, numerado de 1 a ``G``
+    de menor a mayor PD: ``n``, malos observados, malos esperados (``Σ PD``), tasa observada, PD
+    media, la diferencia ``tasa - PD media`` en **puntos porcentuales**, la razón O/E y la
+    contribución al estadístico. Un p-valor dice si la calibración falla; esta tabla dice cuánto y
+    dónde, y trae la razón O/E para que una diferencia relativa grande no se esconda tras una
+    absoluta chica (enmienda HL-Y-DECISIONES-EN-EL-YAML §0.1).
+
+    Sin grupos válidos no hay tabla: un grupo vacío o con PD media en 0 o 1 levanta
+    :class:`~bayesrisk.validation.exceptions.CalibrationTestError`. El evaluador sólo la pide para
+    las muestras cuyo Hosmer-Lemeshow tuvo veredicto, donde eso no ocurre.
+    """
+    if n_groups < 3:
+        raise CalibrationTestError(
+            f"n_groups debe ser >= 3 para gl = G-2 >= 1; n_groups={n_groups}."
+        )
+    y, p = _validate_pair(y_true, pd_pred)
+    counts, observed, mean_pd = _hl_partition(y, p, n_groups)
+    denom = counts * mean_pd * (1.0 - mean_pd)
+    if bool(np.any(counts == 0.0)) or bool(np.any(denom <= 0.0)):
+        raise CalibrationTestError(
+            "Hosmer-Lemeshow sin grupos válidos: hay un grupo vacío o con PD media en 0 o 1; "
+            f"n={y.shape[0]}, n_groups={n_groups}."
+        )
+    expected = counts * mean_pd
+    observed_dr = observed / counts
+    with np.errstate(over="ignore", divide="ignore", invalid="ignore"):
+        contribution = (observed - expected) ** 2 / denom
+    filas = [
+        {
+            "group": index + 1,
+            "n": int(counts[index]),
+            "observed_defaults": round(float(observed[index])),
+            "expected_defaults": _normalize_float(float(expected[index])),
+            "observed_dr": _normalize_float(float(observed_dr[index])),
+            "mean_pd": _normalize_float(float(mean_pd[index])),
+            "gap_pp": _normalize_float(100.0 * float(observed_dr[index] - mean_pd[index])),
+            "oe_ratio": _normalize_float(float(observed[index] / expected[index])),
+            "contribution": _normalize_float(float(contribution[index])),
+        }
+        for index in range(n_groups)
+    ]
+    return pd.DataFrame(filas, columns=list(HOSMER_LEMESHOW_GROUP_COLUMNS[1:]))
 
 
 def binomial_by_grade(
@@ -248,6 +299,29 @@ def traffic_light(p_value: float, *, green_alpha: float, red_alpha: float) -> Tr
     if probability >= red:
         return "amber"
     return "red"
+
+
+def _hl_partition(
+    y: np.ndarray, p: np.ndarray, n_groups: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """La partición única del Hosmer-Lemeshow: ``(n, malos observados, PD media)`` por grupo.
+
+    Orden **estable** por PD y ``np.array_split`` en ``G`` grupos de tamaño casi igual. Es la única
+    fuente de los grupos: el test (:func:`hosmer_lemeshow`) y la tabla que se publica
+    (:func:`hosmer_lemeshow_groups`) la comparten, así que no pueden diferir (D-HLG-1). Un grupo
+    vacío deja su PD media en ``nan``; quien llama decide qué hacer con él.
+    """
+    order = np.argsort(p, kind="stable")
+    y_split = np.array_split(y[order], n_groups)
+    p_split = np.array_split(p[order], n_groups)
+    counts = np.array([group.shape[0] for group in p_split], dtype=np.float64)
+    observed = np.array([float(np.sum(group)) for group in y_split], dtype=np.float64)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        mean_pd = np.array(
+            [float(np.mean(group)) if group.shape[0] else math.nan for group in p_split],
+            dtype=np.float64,
+        )
+    return counts, observed, mean_pd
 
 
 def _hl_not_evaluable(

@@ -21,6 +21,7 @@ from _ui_f1 import write_stacked_behavior_parquet
 
 from bayesrisk.audit.exceptions import AuditError
 from bayesrisk.core.config import config_hash
+from bayesrisk.core.decisions import DECISIONS_STEP
 from bayesrisk.core.study import Study
 from bayesrisk.guided import Scorecard, ScorecardInputError
 from bayesrisk.guided import scorecard as scorecard_module
@@ -103,10 +104,12 @@ def test_la_decision_llega_una_vez_al_trail_con_autor_y_motivo_y_resume_la_aplic
     assert "score" not in sc.study.artifacts.get("selection", "selected_features")
     assert "score" not in sc.study.artifacts.get("model", "final_features")
     trail = tmp_path / "corridas" / "prueba" / "run" / "audit_trail.jsonl"
+    # D-DEC-2: la decisión vive en `config.decisions` y la declara `Study.run` con el paso
+    # `decisions`, el mismo para esta puerta y para su YAML; el payload es el de siempre.
     decisiones = [
         e
         for e in _eventos(trail)
-        if e["step"] == GUIDED_STEP and e["payload"]["regla"] == "decision_del_usuario"
+        if e["step"] == DECISIONS_STEP and e["payload"]["regla"] == "decision_del_usuario"
     ]
     assert len(decisiones) == 1
     payload = decisiones[0]["payload"]
@@ -145,7 +148,7 @@ def test_la_decision_del_usuario_llega_a_la_ficha_con_purpose(fuente: Path, tmp_
     assert usuario[0]["motivo"] == "dato que no estará en producción"
     # Las reglas del motor no traen autor ni motivo; las declaraciones de la puerta (entrada e
     # inferencias) firman como `puerta_guiada`.
-    del_motor = [d for d in card["decisions"] if d["step"] != GUIDED_STEP]
+    del_motor = [d for d in card["decisions"] if d["step"] not in {GUIDED_STEP, DECISIONS_STEP}]
     assert del_motor and all(d["autor"] is None and d["motivo"] is None for d in del_motor)
 
 
@@ -488,7 +491,7 @@ def test_set_bins_escribe_la_hoja_user_splits_y_la_corrida_siguiente_la_aplica(
     decisiones = [
         e["payload"]
         for e in _eventos(trail)
-        if e["step"] == GUIDED_STEP and e["payload"]["regla"] == "decision_del_usuario"
+        if e["step"] == DECISIONS_STEP and e["payload"]["regla"] == "decision_del_usuario"
     ]
     assert len(decisiones) == 1
     assert decisiones[0]["accion"] == "set_bins"

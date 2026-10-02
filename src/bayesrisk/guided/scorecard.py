@@ -213,7 +213,6 @@ class Scorecard:
         self._study: Any = None
         self._stage_summaries: dict[str, StageSummary] = {}
         self._final: FinalSummary | None = None
-        self._decisions: list[dict[str, Any]] = []
         self._pending_decisions = False
         self._echo: Callable[[str], None] = print
         # El snapshot de los datos, escrito en un temporal al cargar y publicado con su nombre
@@ -1141,17 +1140,7 @@ class Scorecard:
                 campos["force_include"] = (*campos["force_include"], *nombres)
                 hojas[f"{seccion}.force_include"] = list(campos["force_include"])
             self._actualizar_seccion(seccion, campos)
-        self._decisions.append(
-            {
-                "regla": "decision_del_usuario",
-                "umbral": None,
-                "valor": hojas,
-                "accion": accion,
-                "autor": "usuario",
-                "motivo": motivo,
-                "variables": nombres,
-            }
-        )
+        self._registrar_decision(accion, nombres, motivo, hojas)
         self._pending_decisions = True
         self._config, self._steps = self._resolver_pipeline(self._config)
         self._final = None
@@ -1291,17 +1280,7 @@ class Scorecard:
         hoja = next(
             o.model_dump(mode="python") for o in vigente.variable_overrides if o.name == column
         )
-        self._decisions.append(
-            {
-                "regla": "decision_del_usuario",
-                "umbral": None,
-                "valor": {"binning.variable_overrides": [hoja]},
-                "accion": accion,
-                "autor": "usuario",
-                "motivo": motivo,
-                "variables": [column],
-            }
-        )
+        self._registrar_decision(accion, [column], motivo, {"binning.variable_overrides": [hoja]})
         self._pending_decisions = True
         self._config, self._steps = self._resolver_pipeline(self._config)
         self._final = None
@@ -1310,6 +1289,37 @@ class Scorecard:
             "aplica en la corrida siguiente: resume()."
         )
         return self
+
+    def _registrar_decision(
+        self, accion: str, variables: Sequence[str], motivo: str, hojas: Mapping[str, Any]
+    ) -> None:
+        """Agrega la decisión al registro ``decisions`` del config (D-DEC-2): sólo agregar.
+
+        Es la única fuente: viaja en ``to_yaml()``, cada corrida la declara al trail desde el
+        config (``Study.run``) y una decisión posterior sobre la misma variable no borra la
+        anterior —``exclude`` y después ``keep`` dejan los dos registros con sus motivos—.
+        ``value`` es la huella de las hojas que la decisión dejó escritas, la misma que el evento
+        lleva en ``valor``.
+        """
+        from bayesrisk.core.config.schema import DecisionEntry
+
+        registro = DecisionEntry(
+            action=accion,  # type: ignore[arg-type]  # una de las cuatro acciones de la puerta
+            columns=tuple(variables),
+            reason=motivo,
+            author="usuario",
+            value=deepcopy(dict(hojas)),
+        )
+        self._config = self._config.model_copy(
+            update={"decisions": (*self._config.decisions, registro)}
+        )
+
+    @property
+    def _decisions(self) -> list[dict[str, Any]]:
+        """Las decisiones registradas, como el payload de su evento (lo que leen los resúmenes)."""
+        from bayesrisk.core.decisions import payload_de_decision
+
+        return [payload_de_decision(registro) for registro in self._config.decisions]
 
     def _motivo(self, reason: str, accion: str) -> str:
         motivo = str(reason).strip() if reason is not None else ""
@@ -1645,12 +1655,8 @@ class Scorecard:
         }
         eventos: list[tuple[str, dict[str, Any]]] = [(GUIDED_STEP, entrada)]
         eventos.extend((GUIDED_STEP, inferencia.payload()) for inferencia in self._inferences)
-        # El evento lleva también `variables` —el sujeto de la decisión— además de `valor` (la
-        # hoja que quedó escrita, acumulada): es lo que la línea «exclude score — «motivo»» del
-        # resumen final y de la página ejecutiva del informe necesitan para decirse igual desde
-        # el trail que desde la memoria (capa C). Clave aditiva del payload; `DecisionRecord` la
-        # ignora como ya ignora `autor` y `motivo`.
-        eventos.extend((GUIDED_STEP, dict(decision)) for decision in self._decisions)
+        # D-DEC-2: las decisiones humanas ya no van aquí. Viven en `config.decisions` y las
+        # declara `Study.run` después de este preámbulo, igual para esta puerta que para su YAML.
         return tuple(eventos)
 
     def _contar_etapa(self, stage: str, study: Any) -> None:

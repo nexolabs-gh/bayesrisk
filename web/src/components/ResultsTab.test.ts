@@ -559,6 +559,34 @@ describe("«Validación formal» (D-SC-9) sobre una corrida real", () => {
     expect(html).not.toContain("Falla técnica")
   })
 
+  it("D-HLG-2: la tabla por grupo del Hosmer-Lemeshow, plegada bajo la calibración por muestra", () => {
+    const grupo = (group: number, observed_dr: number, mean_pd: number) => ({
+      partition: "oot",
+      group,
+      n: 100,
+      observed_defaults: Math.round(100 * observed_dr),
+      expected_defaults: 100 * mean_pd,
+      observed_dr,
+      mean_pd,
+      gap_pp: 100 * (observed_dr - mean_pd),
+      oe_ratio: observed_dr / mean_pd,
+      contribution: 1.5,
+    })
+    const conGrupos = {
+      ...VALIDATION_F1,
+      hosmer_lemeshow_groups: [grupo(2, 0.4556, 0.4214), grupo(1, 0.05, 0.06)],
+    }
+    const html = render(conValidacion(conGrupos))
+    expect(html).toContain("Hosmer-Lemeshow por grupo: dónde está la diferencia")
+    expect(html).toContain("45,56 %")
+    expect(html).toContain("42,14 %")
+    expect(html).toContain("Diferencia (pp)")
+    // De menor a mayor grupo, aunque el motor los mande en otro orden.
+    expect(html.indexOf("5,00 %")).toBeLessThan(html.indexOf("45,56 %"))
+    // Sin la clave (la demo, o una corrida anterior a la 2.3.0) no se pinta nada.
+    expect(render(conValidacion(VALIDATION_F1))).not.toContain("Hosmer-Lemeshow por grupo")
+  })
+
   it("una sección por familia corrida, con su tabla y sin las que no corrieron", () => {
     const html = render(conValidacion(VALIDATION_F1))
     expect(html).toContain("Discriminación")

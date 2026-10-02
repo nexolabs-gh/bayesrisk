@@ -298,6 +298,12 @@ def _augment_with_rich_artifacts(study: Study, payload: dict[str, Any]) -> None:
         # de que el panel tenga que publicar la cobertura además de la tabla (§0-20).
         for clave in ("discrimination", "calibration", "stability", "backtesting"):
             payload["validation"][clave] = _domain_records(study, "validation", clave)
+        # D-HLG-2: los grupos del Hosmer-Lemeshow de cada muestra con veredicto (muestra por
+        # grupo), que el panel pinta bajo «Calibración por muestra». Una corrida guardada antes
+        # de la clave no la trae y el panel no pinta nada.
+        payload["validation"]["hosmer_lemeshow_groups"] = _domain_records(
+            study, "validation", "hosmer_lemeshow_groups"
+        )
     # Provisiones (SDD-28): solo frames AGREGADOS (graficables), nunca los ``detail`` por operación.
     if isinstance(payload["provisioning_cmf"], dict):
         # Desglose del método estándar por categoría CMF (~20 filas): dónde vive la provisión.

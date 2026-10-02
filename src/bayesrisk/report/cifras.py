@@ -62,7 +62,16 @@ _PEQUENO: Final = Decimal("0.001")
 _DIMINUTO: Final = Decimal("0.000001")
 #: Nombres (sin distinguir mayúsculas) de columnas que cuentan, además de los patrones de abajo.
 _CONTEOS: Final = frozenset(
-    {"event", "non-event", "observaciones", "filas", "cardinality", "observed_defaults"}
+    {
+        "event",
+        "non-event",
+        "observaciones",
+        "filas",
+        "cardinality",
+        "observed_defaults",
+        # D-HLG-2: la tabla por grupo del Hosmer-Lemeshow cuenta malos junto a observaciones.
+        "malos observados",
+    }
 )
 
 

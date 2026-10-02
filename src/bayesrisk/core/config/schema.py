@@ -30,7 +30,7 @@ import copy
 import importlib
 import json
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -62,8 +62,10 @@ if TYPE_CHECKING:
     from bayesrisk.validation.config import ValidationConfig
 
 __all__ = [
+    "DECISION_ACTIONS",
     "BayesRiskBaseConfig",
     "BayesRiskConfig",
+    "DecisionEntry",
     "NikodymBaseConfig",
     "NikodymConfig",
     "ReproConfig",
@@ -186,6 +188,81 @@ class RunConfig(BayesRiskBaseConfig):
             "ejecuta igual deteniéndose ante el primer error."
         ),
     )
+
+
+#: Las acciones que la puerta guiada registra con motivo (D-FLU-3 y §8-9): las dos de selección de
+#: variables y las dos de tramos. Cada una deja su efecto escrito en hojas computacionales.
+DECISION_ACTIONS: tuple[str, ...] = ("exclude", "keep", "merge_bins", "set_bins")
+#: Las acciones de tramos fijan los cortes de UNA variable numérica.
+_ACCIONES_DE_TRAMOS: frozenset[str] = frozenset({"merge_bins", "set_bins"})
+
+
+class DecisionEntry(BayesRiskBaseConfig):
+    """Una decisión humana con motivo, tal como se tomó.
+
+    No es una opción que se configure: es el registro de algo que una persona decidió. Su efecto ya
+    está escrito en las secciones del config que definen el modelo; la huella guarda cómo quedaron
+    al decidir, para que cada corrida compruebe que la decisión sigue aplicada.
+    """
+
+    # D-DEC-1 (sección `decisions`): el efecto vive en `binning.exclude_columns`,
+    # `selection.force_include`/`model.force_include` o la hoja de `binning.variable_overrides` de
+    # la variable —las hojas que sí entran al `config_hash`—; `value` es su huella exacta, que
+    # `bayesrisk.core.decisions` coteja (D-DEC-3) y emite como `valor` del evento.
+
+    action: Literal["exclude", "keep", "merge_bins", "set_bins"] = Field(
+        title="Acción",
+        description="Qué se decidió: excluir o mantener variables, o fijar los tramos de una.",
+    )
+    columns: tuple[str, ...] = Field(
+        min_length=1,
+        title="Variables",
+        description="Las variables sobre las que se decidió.",
+    )
+    reason: str = Field(
+        title="Motivo",
+        description="Por qué se decidió, en palabras de quien decidió.",
+    )
+    author: str = Field(
+        default="usuario",
+        title="Autor",
+        description="Quién decidió.",
+    )
+    value: dict[str, Any] = Field(
+        title="Huella del efecto",
+        description=(
+            "Las hojas del config que la decisión dejó escritas, tal como quedaron al decidir."
+        ),
+    )
+
+    @field_validator("columns")
+    @classmethod
+    def _valida_columns(cls, valor: tuple[str, ...]) -> tuple[str, ...]:
+        """Cada variable con nombre, sin repetir."""
+        nombres = tuple(str(v).strip() for v in valor)
+        if any(not nombre for nombre in nombres):
+            raise ValueError("columns no admite nombres vacíos.")
+        if len(set(nombres)) != len(nombres):
+            raise ValueError(f"columns repite una variable: {list(nombres)}.")
+        return nombres
+
+    @field_validator("reason", "author")
+    @classmethod
+    def _valida_texto(cls, valor: str) -> str:
+        """Un motivo o un autor en blanco no le sirven a quien valide."""
+        texto = str(valor).strip()
+        if not texto:
+            raise ValueError("reason y author no pueden quedar en blanco.")
+        return texto
+
+    @model_validator(mode="after")
+    def _check_tramos(self) -> Self:
+        """``merge_bins``/``set_bins`` fijan los cortes de una sola variable."""
+        if self.action in _ACCIONES_DE_TRAMOS and len(self.columns) != 1:
+            raise ValueError(
+                f"{self.action} se decide sobre una sola variable; columns={list(self.columns)}."
+            )
+        return self
 
 
 class BayesRiskConfig(BayesRiskBaseConfig):
@@ -536,6 +613,18 @@ class BayesRiskConfig(BayesRiskBaseConfig):
             title="Tracking",
             description="Registra la corrida en MLflow y publica el modelo en el Model Registry.",
         )
+    # D-DEC-1: el registro de las decisiones humanas con motivo, en orden y con su historia. Es
+    # INFRA —fuera del `config_hash`—, porque su efecto ya está en las hojas computacionales, que
+    # sí entran; vacío, `dump_config` no lo vuelca, así el YAML sin decisiones es el de la 2.2.0.
+    decisions: tuple[DecisionEntry, ...] = Field(
+        default=(),
+        title="Decisiones con motivo",
+        description=(
+            "Registro, en orden, de las decisiones humanas con motivo: qué se decidió, sobre qué "
+            "variables, por qué y qué dejó escrito en el config. Lo escribe la puerta guiada; "
+            "cada corrida lo declara en su registro de auditoría."
+        ),
+    )
 
     @field_validator("data", mode="before")
     @classmethod

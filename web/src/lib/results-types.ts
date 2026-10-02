@@ -554,6 +554,26 @@ export interface ValidationNotEvaluableGrade {
   status: string
 }
 
+/**
+ * Un grupo del Hosmer-Lemeshow de una muestra con veredicto (D-HLG-1,
+ * `validation.hosmer_lemeshow_groups`). Son los grupos de la prueba: la muestra ordenada de menor a
+ * mayor PD y partida en partes iguales. `gap_pp` es la tasa observada menos la PD media, en puntos
+ * porcentuales; `oe_ratio`, malos observados sobre esperados; `contribution`, su sumando del
+ * estadístico.
+ */
+export interface ValidationHlGroupRow {
+  partition: string
+  group: number
+  n: number
+  observed_defaults: number
+  expected_defaults: number
+  observed_dr: number
+  mean_pd: number
+  gap_pp: number
+  oe_ratio: number
+  contribution: number
+}
+
 /** Sección de validación formal (`ValidationCardSection` + sus cuatro tablas tidy). */
 export interface ValidationResult {
   model_ref: string
@@ -592,6 +612,8 @@ export interface ValidationResult {
   calibration?: ValidationCalibrationRow[] | null
   stability?: ValidationStabilityRow[] | null
   backtesting?: ValidationBacktestRow[] | null
+  /** D-HLG-1: opcional; la demo y las corridas anteriores a la 2.3.0 no la traen. */
+  hosmer_lemeshow_groups?: ValidationHlGroupRow[] | null
 }
 
 // --- model ------------------------------------------------------------------

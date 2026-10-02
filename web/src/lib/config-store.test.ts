@@ -111,3 +111,21 @@ describe("parseJsonInput (editor JSON fallback §5/§8)", () => {
     if (!result.ok) expect(result.error.length).toBeGreaterThan(0)
   })
 })
+
+describe("D-DEC-4: el registro de decisiones viaja intacto al editar otra sección", () => {
+  it("fijar una hoja de binning conserva `decisions` tal cual", () => {
+    const decisions = [
+      {
+        action: "exclude",
+        columns: ["segment"],
+        reason: "comité de riesgo",
+        author: "usuario",
+        value: { "binning.exclude_columns": ["segment"] },
+      },
+    ]
+    const config = { name: "x", binning: { min_iv: 0.02 }, decisions }
+    const next = setAtPath(config, ["binning", "min_iv"], 0.05)
+    expect(next.binning.min_iv).toBe(0.05)
+    expect(next.decisions).toBe(decisions)
+  })
+})

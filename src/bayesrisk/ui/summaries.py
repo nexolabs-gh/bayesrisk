@@ -45,6 +45,7 @@ def serialize_summaries(
         SummaryContext,
         build_final_summary,
         build_stage_summaries,
+        decision_lines_from_preamble,
         partition_label_from_config,
     )
 
@@ -56,6 +57,9 @@ def serialize_summaries(
             partition_label=partition_label_from_config(study.config),
             report_dir=run_dir,
             trail_path=trail_path,
+            # D-DEC-4: las decisiones humanas que declaró la corrida —las del YAML las declara
+            # `Study.run` desde `config.decisions`—, leídas del preámbulo como lo hace el informe.
+            decision_lines=decision_lines_from_preamble(getattr(study, "preamble", ())),
         )
         etapas: tuple[StageSummary, ...] = build_stage_summaries(study, contexto)
         final = build_final_summary(study, etapas, contexto)

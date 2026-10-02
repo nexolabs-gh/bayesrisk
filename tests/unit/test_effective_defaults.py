@@ -232,7 +232,15 @@ HOJAS_CON_DEFAULT_EFECTIVO = 458
 #: alterados** en los 1063 restantes. Nada en ``$defs``: ``GovernanceConfig`` no tiene submodelos,
 #: así que el schema compuesto no gana claves ``governance__*`` (104 antes y después). El golden del
 #: formulario (394 hojas) no se mueve: la sección no entra a ``CONFIG_SECTIONS`` hasta D-GOB-11.
-DESCRIPTORES_TOTALES = 1078
+#:
+#: 1078 → 1084 el 2026-10-02 con D-DEC-1: la sección INFRA ``decisions`` (el registro de
+#: decisiones con motivo). Medido con la baseline de ``git archive 8285a1f``: **6
+#: apariciones** —``sections.decisions`` (default ``[]``) y los cinco campos de
+#: ``$defs.DecisionEntry`` (``action``, ``columns``, ``reason``, ``author`` con default
+#: ``usuario``, ``value``)—, **0 desapariciones** y **0 valores alterados**. El formulario no
+#: la pinta (no está en ``CONFIG_SECTIONS``): sus censos de hojas, perillas y esenciales no se
+#: mueven.
+DESCRIPTORES_TOTALES = 1084
 
 
 #: Las 16 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de

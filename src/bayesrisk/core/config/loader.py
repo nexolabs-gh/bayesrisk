@@ -101,4 +101,9 @@ def dump_config(cfg: BayesRiskConfig, *, exclude_unset: bool = False) -> str:
         YAML con las claves en orden de declaración y las tildes sin escapar.
     """
     payload = cfg.model_dump(mode="json", by_alias=True, exclude_unset=exclude_unset)
+    # D-DEC-1: un registro de decisiones vacío no se vuelca —ni `decisions: []` ni `null`—, se haya
+    # dado explícito o no: el YAML de un config sin decisiones queda byte a byte como el de la
+    # 2.2.0, y lo sigue cargando una librería anterior (`extra="forbid"`).
+    if not payload.get("decisions"):
+        payload.pop("decisions", None)
     return yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)

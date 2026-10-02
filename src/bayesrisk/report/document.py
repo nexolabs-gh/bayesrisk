@@ -53,6 +53,7 @@ __all__ = [
     "DOMAIN_TITLES",
     "EDA_DEFAULT_RATE_TABLE",
     "EXECUTIVE_SUMMARY_ID",
+    "HL_GROUP_TABLE_PREFIX",
     "IFRS9_DOMAINS",
     "KEY_TABLES",
     "METHODOLOGY_STEPS",
@@ -323,6 +324,9 @@ _BINNING_TABLE_PREFIX: Final = "binning.tables."
 #: Prefijo de los perfiles por variable del análisis exploratorio (`UnivariateResult.profiles`,
 #: aplanado por el builder con el nombre de la columna descrita).
 _EDA_PROFILE_PREFIX: Final = "eda.univariate.profiles."
+#: D-HLG-2: una tabla por muestra con los grupos del Hosmer-Lemeshow, en la subsección de
+#: calibración (``validation.hosmer_lemeshow_groups.<muestra>``; la arma el builder).
+HL_GROUP_TABLE_PREFIX: Final = "validation.hosmer_lemeshow_groups."
 
 
 class ChapterSpec(BaseModel):
@@ -579,4 +583,10 @@ def table_title(key: str, *, internal_grouping: str | None = None) -> str:
     if key.startswith(_EDA_PROFILE_PREFIX):
         variable = key[len(_EDA_PROFILE_PREFIX) :]
         return f"Perfil frente al incumplimiento — variable «{variable}»"
+    if key.startswith(HL_GROUP_TABLE_PREFIX):
+        # Perezoso: la prosa importa este módulo.
+        from bayesrisk.report.prose import _PARTITION_LABELS
+
+        muestra = key[len(HL_GROUP_TABLE_PREFIX) :]
+        return f"Hosmer-Lemeshow por grupo · {_PARTITION_LABELS.get(muestra, muestra)}"
     return f"Tabla «{key}»"

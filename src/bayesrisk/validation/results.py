@@ -130,6 +130,23 @@ _CALIBRATION_COLUMNS: tuple[str, ...] = (
     # causa en palabras; el panel la traduce junto al «Sin veredicto» de la fila.
     "not_evaluable_reason",
 )
+#: D-HLG-1: los grupos del Hosmer-Lemeshow de cada muestra con veredicto, en la clave aditiva
+#: ``("validation", "hosmer_lemeshow_groups")``. ``gap_pp`` es la tasa observada menos la PD media,
+#: en puntos porcentuales; ``oe_ratio``, malos observados sobre esperados; ``contribution``, el
+#: sumando del estadístico (la suma por muestra lo reproduce). Los grupos son los del test, no los
+#: de la curva de confiabilidad.
+HOSMER_LEMESHOW_GROUP_COLUMNS: tuple[str, ...] = (
+    "partition",
+    "group",
+    "n",
+    "observed_defaults",
+    "expected_defaults",
+    "observed_dr",
+    "mean_pd",
+    "gap_pp",
+    "oe_ratio",
+    "contribution",
+)
 _STABILITY_COLUMNS: tuple[str, ...] = (
     "metric",
     "comparison",
@@ -268,6 +285,7 @@ __all__ = [
     "DISCRIMINATION_SOURCE_LABELS",
     "DISCRIMINATION_STATUS_LABELS",
     "HL_NOT_EVALUABLE_REASON_LABELS",
+    "HOSMER_LEMESHOW_GROUP_COLUMNS",
     "NOT_EVALUABLE_PARTITION_FIELDS",
     "PD_TEST_LABELS",
     "POOLED_SENTINEL",
