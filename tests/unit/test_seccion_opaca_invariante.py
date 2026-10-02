@@ -48,6 +48,7 @@ POLITICA: dict[str, str] = {
     "check_dataset": "comprobado",
     "check_pipeline": "comprobado",
     "columnas_producidas_por_seccion": "comprobado",
+    "eventos_de_decisiones": "comprobado",
     "dump_config": (
         "exento: produce YAML distinto según la opacidad, pero sin consecuencia — sus dos "
         "consumidores la neutralizan (`config_to_yaml` con exclude_unset, `Study.save` volcando "
@@ -204,6 +205,66 @@ def test_el_yaml_que_exporta_la_ui_no_depende_de_la_opacidad() -> None:
     # El YAML refleja lo que el usuario escribió, y lo hace igual con la capa importada y sin ella.
     assert "min_bin_n_event" not in con_default_omitido
     assert "min_bin_n_event" in completo
+
+
+def test_el_cotejo_de_decisiones_no_depende_de_la_opacidad() -> None:
+    """D-DEC-3: una decisión aplicada o sin efecto lo es con la capa importada y sin ella.
+
+    El cotejo lee hojas de ``binning`` (excluidas y cortes): con la sección opaca las lee del
+    ``dict``. El ancla exige una decisión aplicada de cada familia y una sin efecto, para que
+    «vacío == vacío» no pase con el defecto puesto.
+    """
+    from bayesrisk.core.config.schema import DecisionEntry
+    from bayesrisk.core.decisions import eventos_de_decisiones
+
+    cargar_configs_de_dominio()
+    crudo = get_preset("f1-estandar-consumo")["config"]
+    binning = dict(crudo["binning"])
+    binning["exclude_columns"] = ["segmento"]
+    binning["variable_overrides"] = [
+        {"name": "antiguedad_meses", "user_splits": [24.0, 60.0], "user_splits_fixed": [True, True]}
+    ]
+    tipado = BayesRiskConfig.model_validate({**crudo, "binning": binning})
+    hoja = next(
+        o.model_dump(mode="json")
+        for o in tipado.binning.variable_overrides
+        if o.name == "antiguedad_meses"
+    )
+    registros = (
+        DecisionEntry(
+            action="exclude",
+            columns=("segmento",),
+            reason="m",
+            value={"binning.exclude_columns": ["segmento"]},
+        ),
+        DecisionEntry(
+            action="set_bins",
+            columns=("antiguedad_meses",),
+            reason="m",
+            value={"binning.variable_overrides": [hoja]},
+        ),
+        DecisionEntry(
+            action="exclude",
+            columns=("deuda_ingreso",),
+            reason="m",
+            value={"binning.exclude_columns": ["segmento", "deuda_ingreso"]},
+        ),
+    )
+    tipado = tipado.model_copy(update={"decisions": registros})
+    seccion = dict(binning)
+    seccion.pop("min_bin_n_event", None)  # default omitido: sin esto el caso es trivial
+    opaco = tipado.model_copy(update={"binning": seccion})
+    assert isinstance(opaco.binning, dict), "precondición: la sección debe quedar opaca"
+
+    esperado = eventos_de_decisiones(tipado)
+    obtenido = eventos_de_decisiones(opaco)
+
+    assert [e["regla"] for e in esperado] == [
+        "decision_del_usuario",
+        "decision_del_usuario",
+        "decision_sin_efecto",
+    ]
+    assert obtenido == esperado
 
 
 def test_todo_consumidor_publico_declara_su_politica_ante_una_seccion_opaca() -> None:
