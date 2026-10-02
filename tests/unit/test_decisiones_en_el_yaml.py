@@ -248,6 +248,53 @@ def test_la_huella_acumulada_no_atribuye_otra_variable_sin_efecto(
     assert humana["registro"] == 1
 
 
+def test_la_huella_no_atribuye_una_variable_sin_registro_ni_efecto(
+    fuente: Path, tmp_path: Path
+) -> None:
+    """Pasada 2 de Codex sobre el código: alguien retira a mano la exclusión de ``score`` Y su
+    registro, pero la huella acumulada de ``exclude(segment)`` sigue nombrándola. Sin historia que
+    la justifique y sin efecto en el config, el ``valor`` humano no la nombra."""
+    base = _con(_puerta(fuente, tmp_path).config, binning__exclude_columns=["segment"])
+    editado = _con_registros(
+        base,
+        [
+            {
+                "action": "exclude",
+                "columns": ["segment"],
+                "reason": "después",
+                "value": {"binning.exclude_columns": ["score", "segment"]},
+            }
+        ],
+    )
+    (humana,) = _decisiones().eventos_de_decisiones(editado)
+    assert humana["regla"] == "decision_del_usuario"
+    assert humana["valor"] == {"binning.exclude_columns": ["segment"]}
+    assert humana["huella"] == {"binning.exclude_columns": ["score", "segment"]}
+    assert humana["registro"] == 0
+
+
+def test_los_nombres_de_columna_se_conservan_exactos() -> None:
+    """Pasada 2 de Codex sobre el código: una columna válida con espacios (`` monto ``) no se
+    recorta; el cotejo la encuentra en la hoja con su nombre exacto."""
+    from types import SimpleNamespace
+
+    from bayesrisk.core.config.schema import DecisionEntry
+
+    registro = DecisionEntry(
+        action="exclude",
+        columns=(" monto ",),
+        reason="m",
+        value={"binning.exclude_columns": [" monto "]},
+    )
+    assert registro.columns == (" monto ",)
+    config = SimpleNamespace(binning={"exclude_columns": [" monto "]}, decisions=(registro,))
+    (evento,) = _decisiones().eventos_de_decisiones(config)
+    assert evento["regla"] == "decision_del_usuario"
+    assert evento["variables"] == [" monto "]
+    with pytest.raises(ValueError, match="vac"):
+        DecisionEntry(action="exclude", columns=("  ",), reason="m", value={})
+
+
 def test_la_historia_con_una_decision_posterior_se_emite_como_hoy(
     fuente: Path, tmp_path: Path
 ) -> None:

@@ -238,9 +238,9 @@ class DecisionEntry(BayesRiskBaseConfig):
     @field_validator("columns")
     @classmethod
     def _valida_columns(cls, valor: tuple[str, ...]) -> tuple[str, ...]:
-        """Cada variable con nombre, sin repetir."""
-        nombres = tuple(str(v).strip() for v in valor)
-        if any(not nombre for nombre in nombres):
+        """Cada variable con nombre, sin repetir, **exacto**: una columna puede tener espacios."""
+        nombres = tuple(str(v) for v in valor)
+        if any(not nombre.strip() for nombre in nombres):
             raise ValueError("columns no admite nombres vacíos.")
         if len(set(nombres)) != len(nombres):
             raise ValueError(f"columns repite una variable: {list(nombres)}.")

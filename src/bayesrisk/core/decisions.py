@@ -97,7 +97,6 @@ def eventos_de_decisiones(config: BayesRiskConfig) -> list[dict[str, Any]]:
             ultimo[(_FAMILIA[registro.action], variable)] = posicion
     # Primera pasada: el estado de cada variable en el ÚLTIMO registro de su familia.
     cotejo: list[tuple[list[str], dict[str, tuple[str, ...]]]] = []
-    sin_efecto_por_familia: dict[str, set[str]] = {"variables": set(), "tramos": set()}
     for posicion, registro in enumerate(registros):
         aplicadas: list[str] = []
         sin_efecto: dict[str, tuple[str, ...]] = {}
@@ -109,7 +108,6 @@ def eventos_de_decisiones(config: BayesRiskConfig) -> list[dict[str, Any]]:
             hojas = _hojas_que_no_coinciden(config, registro, variable)
             if hojas:
                 sin_efecto[variable] = hojas
-                sin_efecto_por_familia[_FAMILIA[registro.action]].add(variable)
             else:
                 aplicadas.append(variable)
         cotejo.append((aplicadas, sin_efecto))
@@ -118,10 +116,11 @@ def eventos_de_decisiones(config: BayesRiskConfig) -> list[dict[str, Any]]:
         aplicadas, sin_efecto = cotejo[posicion]
         if not sin_efecto:
             # La huella es ACUMULADA (`exclude(x)` y luego `exclude(y)` guarda `[x, y]`): si nombra
-            # otra variable cuya decisión quedó sin efecto, el evento humano no la atribuye
-            # —`DecisionRecord` y el Excel conservan `valor`— y la huella completa queda como
-            # evidencia (pasada 1 de Codex sobre el código). Sin eso, exactamente el de hoy.
-            ajenas = _ajenas_sin_efecto(registro, sin_efecto_por_familia)
+            # otra variable cuyo efecto ya no está en el config y ninguna decisión posterior
+            # aplicada lo explica, el evento humano no la atribuye —`DecisionRecord` y el Excel
+            # conservan `valor`— y la huella completa queda como evidencia (pasadas 1 y 2 de Codex
+            # sobre el código). Sin eso, exactamente el de hoy.
+            ajenas = _ajenas_no_vigentes(config, registros, cotejo, ultimo, posicion)
             humana = payload_de_decision(registro)
             if ajenas:
                 humana["valor"] = _huella_sin(registro.value, ajenas)
@@ -152,20 +151,38 @@ def eventos_de_decisiones(config: BayesRiskConfig) -> list[dict[str, Any]]:
     return eventos
 
 
-def _ajenas_sin_efecto(
-    registro: DecisionEntry, sin_efecto_por_familia: Mapping[str, set[str]]
+def _ajenas_no_vigentes(
+    config: BayesRiskConfig,
+    registros: Sequence[DecisionEntry],
+    cotejo: Sequence[tuple[list[str], dict[str, tuple[str, ...]]]],
+    ultimo: Mapping[tuple[str, str], int],
+    posicion: int,
 ) -> set[str]:
-    """Las variables ajenas al registro que su huella acumulada nombra y quedaron sin efecto."""
+    """Las variables ajenas al registro que su huella acumulada nombra y ya no se sostienen.
+
+    Una variable ajena se conserva en el ``valor`` si su elemento sigue en la hoja vigente del
+    config, o si una decisión **posterior** y aplicada sobre ella en la misma familia lo explica
+    (historia: ``exclude(x)``, ``exclude(y)`` y luego ``keep(x)``). Si no —se retiró a mano, con o
+    sin su registro, o la decisión posterior quedó sin efecto—, no se le atribuye.
+    """
+    registro = registros[posicion]
     familia = _FAMILIA[registro.action]
     propias = set(registro.columns)
-    nombradas: set[str] = set()
-    for contenido in registro.value.values():
-        if isinstance(contenido, Sequence) and not isinstance(contenido, str | bytes):
-            for item in contenido:
-                nombre = item.get("name") if isinstance(item, Mapping) else item
-                if isinstance(nombre, str):
-                    nombradas.add(nombre)
-    return (nombradas - propias) & sin_efecto_por_familia[familia]
+    retiradas: set[str] = set()
+    for hoja, contenido in registro.value.items():
+        if not isinstance(contenido, Sequence) or isinstance(contenido, str | bytes):
+            continue
+        seccion, _, campo = hoja.partition(".")
+        vigente = _lista(config, seccion, campo)
+        for item in contenido:
+            nombre = item.get("name") if isinstance(item, Mapping) else item
+            if not isinstance(nombre, str) or nombre in propias or item in vigente:
+                continue
+            posterior = ultimo.get((familia, nombre), -1)
+            if posterior > posicion and nombre not in cotejo[posterior][1]:
+                continue
+            retiradas.add(nombre)
+    return retiradas
 
 
 def _huella_sin(valor: Mapping[str, Any], variables: set[str]) -> dict[str, Any]:
