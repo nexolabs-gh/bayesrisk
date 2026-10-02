@@ -4,6 +4,11 @@
 > (tope de tres pasadas) y de la aprobación de Cami, punto por punto en §8. Aprobarla **no programa
 > nada por sí sola**: la capa 0 y la A entran en la sesión siguiente, con tests nacidos rojos,
 > controles negativos y revisión del código; B y C después, cada una con el OK de su release.
+> **Corregida tras la pasada 1 de Codex** (un high y dos medium, los tres reales y ninguno
+> contractual): D-ECL-0 mide la duración en `time_value_years` y no presume `period == time_value`
+> (la primera versión habría abortado curvas trimestrales correctas); la corrida de cartera define
+> `provides` dinámico y la `data_card` de «no aplica»; los supuestos del resumen se leen del config y
+> de los artefactos de cada corrida, no del preset F4.
 >
 > **Base medida:** `main` = `3cc9654` (bayesrisk 2.3.0). Mediciones y scripts en el repo privado,
 > `evidencia/s28/ifrs9-mediciones.md` (sobre la línea base de sólo lectura
@@ -164,15 +169,27 @@ menor a 90 días vuelven a Stage 1/2) y la ECL baja 1,2 %.
 
 ### 3.1 D-ECL-0 — Corrección del motor: el horizonte de 12 meses se verifica contra su duración
 
-`_horizonte_no_dura_un_ano` deja de depender de que el período del horizonte exista en la curva:
-con una unidad convertible, el horizonte de 12 meses dura `horizon_12m_periods × year_fraction(unit)`
-años, y si eso se aleja de 1 más que la tolerancia vigente (`_HORIZONTE_ANIO_TOL`), dispara
-`FALTA-DATO-IFRS-8`. Es la promesa de D-HOR-0 («doce años donde debía haber uno»), no un contrato
-nuevo; el caso de una curva mensual de 12 períodos con horizonte 12 sigue sin disparar (12 × 1/12 =
-1). **Efecto:** el caso de §1.4 deja de terminar con una cifra falsa y aborta con el aviso (es
-gobernable: `fail_on_falta_dato=True` lo detiene). Ningún preset cambia: F4 declara 1. El
-recorrido de tests que hoy corren con un horizonte mayor a la curva y unidad convertible se mide al
-implementar y se declara.
+`time_unit` es la unidad de `time_value`, no del índice del período: una curva de cuatro cortes
+trimestrales expresados en años tiene `period` 1…4 y `time_value` 0,25…1, y ahí el horizonte
+correcto es 4 (`tests/unit/test_ifrs9_time_unit.py:321-339`). Por eso la corrección mide siempre la
+**duración real** en `time_value_years` (`ifrs9/engine.py:812-818`) y nunca presume `period ==
+time_value`. Con una unidad convertible, sea `sel` el mayor período de la curva que no supera el
+horizonte `H` (el último que suma la ventana de 12 meses) y `d` su `time_value_years`:
+
+- **`H` existe en la curva:** el chequeo vigente, sin cambios (`|d − 1| > tol` dispara).
+- **`H` es mayor que el último período:** la ventana suma la curva entera; dispara si `d > 1 + tol`
+  (la «ECL a 12 meses» cubre más de un año). Si la curva entera dura un año o menos, la ECL a 12
+  meses igual a la lifetime es la contabilidad correcta y no dispara.
+- **`H` cae en un hueco dentro de la curva:** dispara si `|d − 1| > tol`.
+
+`tol` es la tolerancia vigente (`_HORIZONTE_ANIO_TOL`). Es la promesa de D-HOR-0 («doce años donde
+debía haber uno»), no un contrato nuevo, y no toca el disyunto `H < T_min` ni la regla de la unidad
+no declarada (IFRS-7). **Efecto:** el caso de §1.4 (`H = 12`, último período 5 con 5 años) deja de
+terminar con una cifra falsa y aborta con `FALTA-DATO-IFRS-8` (gobernable: `fail_on_falta_dato=True`
+lo detiene). Siguen sin aviso la curva mensual de 12 períodos con `H = 12`, los cuatro cortes
+trimestrales en años con `H = 4` y una curva de seis meses con `H = 12`; sigue disparando `H = 1`
+situado a doce años. Ningún preset cambia: F4 declara 1. El recorrido de tests que hoy corren con un
+horizonte mayor a la curva y unidad convertible se mide al implementar y se declara.
 
 ### 3.2 D-ECL-1 — La puerta guiada `bayesrisk.Ecl` y su entrada mínima
 
@@ -207,7 +224,9 @@ ecl.summary()                         # ejecución, supuestos, cinco cifras y qu
 - **Lo que se infiere y se declara** (un evento `inferencia_*` al trail por cada uno):
   `inferencia_horizonte_12m` (`horizon_12m_periods = round(1 / year_fraction(period))`: año 1,
   semestre 2, trimestre 4, mes 12, semana 52, día 365; una unidad no reconocida detiene la puerta
-  antes de correr con las aceptadas); `inferencia_esquema` (tipos de las columnas **declaradas**,
+  antes de correr con las aceptadas). Vale porque en la curva que produce `survival` el período `k`
+  tiene `time_value = k` en la unidad declarada (medido sobre F4: `period == time_value`, 1…5); si
+  alguna vez no fuera así, la corrección de D-ECL-0 lo detecta; `inferencia_esquema` (tipos de las columnas **declaradas**,
   obligatorias, para que una columna ausente falle en `data` con nombre y no a mitad del motor);
   `inferencia_identificador` (sin `id`, el índice del archivo); `inferencia_corrida_de_cartera`
   (sin target ni partición, §3.3); `inferencia_sin_marca` cuando no se pasa `default` (Stage 3 sólo
@@ -226,10 +245,24 @@ ecl.summary()                         # ejecución, supuestos, cinco cifras y qu
 clave sigue siendo obligatoria, de modo que olvidarla sigue siendo un error—, los dos a la vez o
 ninguno. Con los dos en `null`, `DataStep` carga, valida el esquema, aplica la política de
 especiales, calcula `data_hash` y publica `("data", "frame")`, `data_hash`, `special` y `data_card`,
-pero no `labels` ni `splits`. Todo paso que los exige (`eda`, `binning`, `selection`, `model`) queda
-fuera del DAG con el mensaje de `check_pipeline`, y `DataConfig` gana un requisito por contexto en
-idioma de negocio («esta corrida modela un incumplimiento y no dijiste qué es un cliente malo»).
-**Nada se siembra** (D-OBL-5): la corrida de cartera dice «no aplica», no inventa un criterio.
+pero no `labels` ni `splits`. **Nada se siembra** (D-OBL-5): la corrida de cartera dice «no
+aplica», no inventa un criterio. Tres contratos lo hacen implementable:
+
+- **`DataStep.provides` depende del config**, con el patrón de los `requires` dinámicos de
+  `SurvivalStep` (`survival/step.py:123`): hoy es una tupla de clase con las seis claves
+  (`data/step.py:58`), y el DAG sólo ve la ausencia de `labels`/`splits` si el paso deja de
+  anunciarlas. Con eso, `eda`, `binning`, `selection` y `model` activos y target nulo se detienen en
+  `check_pipeline` antes de correr, y `DataConfig` gana un requisito por contexto con el mensaje de
+  negocio («esta corrida modela un incumplimiento y no dijiste qué es un cliente malo»).
+- **`DataCardSection` representa «no aplica»** (`data/card.py:26-30` exige hoy `target_col: str`,
+  `bad_rate: float` y los conteos por clase y partición): `target_col` y `bad_rate` pasan a
+  anulables y `class_counts`, `partition_sizes` y `partition_bad_rates` quedan vacíos en una corrida
+  de cartera. Las corridas actuales serializan exactamente igual (los campos traen valor). Sus tres
+  consumidores se ajustan: el informe (`report/builder.py:875-878` exige hoy esos mapeos) omite las
+  tablas de estados y particiones y lo dice; la ficha (`governance/model_card.py`) describe la
+  cartera sin tasa de malos; el serializer de la pantalla publica `null`.
+- **Gates:** corrida de cartera con `eda` o `binning` activos detenida antes de correr; F1 y F4 con
+  su `data_card` serializada byte a byte igual.
 
 - Ningún `config_hash` existente se mueve: todo YAML vigente declara las dos claves con valor.
 - `data` es estable (SemVer 2.x): relajar un campo obligatorio a anulable es aditivo; el tipo
@@ -344,12 +377,20 @@ pantalla (también la del preset F4, que conserva su target inerte):
   humana `exclude` (§3.9). Clave propia, golden propio; ningún artefacto existente cambia.
 - **Resumen final de la familia:** «Ejecución» (igual que el scorecard); **«Supuestos»** en lugar de
   «Validación técnica» —esta corrida no tiene veredicto técnico; en su lugar, lo que la cifra
-  supone: TTC, EAD constante, escenario único, gatillos de staging activos—; **cinco cifras**: ECL
-  total, cobertura (ECL / EAD), exposición en Stage 2 y 3 (%), ECL de Stage 2 y 3 (% del total) y PD a
-  12 meses media ponderada por exposición (de `detail`); «Qué revisar»: las alertas de las etapas
-  (incluye «sin PD de originación, el aumento significativo del riesgo se detecta sólo por mora y
-  marca» y, sin covariables, «una sola curva para toda la cartera»); decisiones con motivo; archivos.
-  El título del bloque deja de estar fijo en «Resumen del scorecard» (`summaries.py:325`, `:351`).
+  supone—; **cinco cifras**: ECL total, cobertura (ECL / EAD), exposición en Stage 2 y 3 (%), ECL de
+  Stage 2 y 3 (% del total) y PD a 12 meses media ponderada por exposición (de `detail`); «Qué
+  revisar»: las alertas de las etapas; decisiones con motivo; archivos. El título del bloque deja de
+  estar fijo en «Resumen del scorecard» (`summaries.py:325`, `:351`).
+- **Cada supuesto y cada alerta se lee del config y de los artefactos efectivos de ESA corrida**,
+  nunca del preset F4 ni de la puerta: la familia la eligen también YAML y pantalla, que admiten
+  `apply_vasicek`, escenarios de `forward` y PD de originación (`ifrs9/engine.py:322`, `:398-404`,
+  `:636`, `:732`). La base PIT/TTC sale de `card.pit_mode` y de `pd_basis` del detalle (TTC sólo si
+  la corrida es `ttc_only`); el escenario, de `card.scenarios` y sus pesos; la EAD constante, de
+  `FALTA-DATO-IFRS-4` en `card.falta_dato`; «sin PD de originación, el aumento significativo del
+  riesgo se detecta sólo por mora y marca», sólo si `staging.origination_pd_life_col` es nulo; «una
+  sola curva para toda la cartera», sólo si la curva viene de `survival` sin covariables. Gates: una
+  corrida `apply_vasicek`, una con escenarios ponderados y una con PD de originación no se describen
+  como TTC, escenario único ni staging sólo por mora.
 - **Una sola fuente** (D-SIM-5): los constructores nuevos viven en `guided/summaries.py` y los
   consumen la puerta, la pantalla (`ui/summaries.py`), el informe (página ejecutiva) y el Excel. Cada
   resumen usa sólo lo que publica su etapa o una anterior.
@@ -428,8 +469,12 @@ parcial). `ecl.export("corrida.zip")` empaqueta el `run_dir`.
   carteras públicas con historia de pagos, saldo, tasa y mora, **candidatas a verificar al
   obtenerlas**: el dataset de préstamos de Lending Club (cuotas a 36/60 meses: saldo pendiente,
   tasa, estado de mora y recuperos tras castigo) y la muestra de Freddie Mac Single-Family
-  Loan-Level (hipotecario: saldo vigente, mora mensual, tasa y pérdida al cierre). Su descarga exige
-  una cuenta (Kaggle o registro de Freddie Mac): es un paso de Cami o con su autorización. Cada uno
+  Loan-Level (hipotecario: saldo vigente, mora mensual, tasa y pérdida al cierre). Comprobado en
+  fuentes públicas el 2026-10-02 que traen esos campos (Lending Club: `out_prncp`, `int_rate`,
+  `loan_status`, `recoveries`, en Kaggle; Freddie Mac: `Current Actual UPB`, `Current Interest Rate`
+  y la mora mensual en su archivo de desempeño, según su guía de usuario); se verifican de nuevo al
+  obtenerlos. Su descarga exige una cuenta (Kaggle, o el registro de Freddie Mac en Clarity Data
+  Intelligence): es un paso de Cami o con su autorización. Cada uno
   mide además el costo de la EAD constante y de la curva sin PD de originación, que son la
   evidencia de las candidatas de abajo.
 - **Candidatas anotadas, no adoptadas** (D-SIM-3, cada una espera su evidencia): perfil de
@@ -488,8 +533,9 @@ y el resumen muestra la tasa media por cartera para que salte a la vista).
 ## 6. Gates y controles negativos de ESTA enmienda
 
 1. D-ECL-0: el caso de §1.4 nace rojo (hoy `done` con 6.863.157) y pasa a abortar con
-   `FALTA-DATO-IFRS-8`; la curva mensual de 12 períodos con horizonte 12 sigue sin aviso. CN: revertir
-   la corrección y ver el primero en rojo.
+   `FALTA-DATO-IFRS-8`; siguen sin aviso la curva mensual de 12 períodos con `H = 12`, los cuatro
+   cortes trimestrales en años con `H = 4` y la curva de seis meses con `H = 12`; sigue disparando
+   `H = 1` a doce años. CN: revertir la corrección y ver el primero en rojo.
 2. `data` nulo: corrida de cartera bit a bit igual a F4 en la provisión; un pipeline con `binning`
    y target nulo se detiene antes de correr con el mensaje de negocio; F1 y F4 con su proyección
    canónica y su `config_hash` intactos.
