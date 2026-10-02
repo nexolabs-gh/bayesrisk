@@ -224,6 +224,46 @@ def test_un_exclude_aplicado_en_parte_atribuye_solo_lo_aplicado(
     assert "autor" not in sin_efecto
 
 
+def test_la_huella_acumulada_no_atribuye_otra_variable_sin_efecto(
+    fuente: Path, tmp_path: Path
+) -> None:
+    """Pasada 1 de Codex sobre el código: ``exclude(score)`` y luego ``exclude(segment)`` guardan
+    la hoja acumulada ``[score, segment]``; si alguien retira ``score`` a mano, el segundo registro
+    sigue aplicado, pero su ``valor`` —lo que conservan la ficha y el Excel— no puede nombrar la
+    exclusión de ``score``."""
+    sc = _puerta(fuente, tmp_path)
+    sc.exclude("score", reason="primero")
+    sc.exclude("segment", reason="después")
+    assert sc.config.decisions[1].value == {"binning.exclude_columns": ["score", "segment"]}
+    # Con todo aplicado, el payload es exactamente el de siempre.
+    assert "huella" not in _decisiones().eventos_de_decisiones(sc.config)[1]
+    editado = _con(sc.config, binning__exclude_columns=["segment"])
+    sin_efecto, humana = _decisiones().eventos_de_decisiones(editado)
+    assert sin_efecto["regla"] == "decision_sin_efecto"
+    assert sin_efecto["variables"] == ["score"]
+    assert humana["regla"] == "decision_del_usuario"
+    assert humana["variables"] == ["segment"]
+    assert humana["valor"] == {"binning.exclude_columns": ["segment"]}
+    assert humana["huella"] == {"binning.exclude_columns": ["score", "segment"]}
+    assert humana["registro"] == 1
+
+
+def test_la_historia_con_una_decision_posterior_se_emite_como_hoy(
+    fuente: Path, tmp_path: Path
+) -> None:
+    """``exclude(score)``, ``exclude(segment)`` y ``keep(score)``: la huella de la segunda nombra
+    ``score``, que salió de las excluidas por OTRA decisión humana, no a mano. Es historia y se
+    emite tal cual, sin ``registro`` ni ``huella``."""
+    sc = _puerta(fuente, tmp_path)
+    sc.exclude("score", reason="primero")
+    sc.exclude("segment", reason="después")
+    sc.keep("score", reason="al final")
+    eventos = _decisiones().eventos_de_decisiones(sc.config)
+    assert [e["regla"] for e in eventos] == ["decision_del_usuario"] * 3
+    assert eventos[1]["valor"] == {"binning.exclude_columns": ["score", "segment"]}
+    assert all("huella" not in e and "registro" not in e for e in eventos)
+
+
 def test_un_keep_desforzado_a_mano_no_se_atribuye(fuente: Path, tmp_path: Path) -> None:
     sc = _puerta(fuente, tmp_path)
     sc.keep("segment", reason=MOTIVO)

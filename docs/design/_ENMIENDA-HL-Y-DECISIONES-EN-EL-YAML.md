@@ -335,3 +335,10 @@ humana en `test_guided_decisiones` y `test_report_ficha_motivo`, `INFRA_SECTIONS
 el registro vacío (`test_ui_routes`, `test_ui_server`) y el golden de descriptores. **Controles
 negativos 14/14** (`cn_hlg_dec.txt`): doce en paralelo, cada uno en su copia de `src/`, y dos en el
 árbol (el desplegable de la pantalla y el texto de SDD-22) con restauración byte a byte.
+
+**Revisión de Codex sobre el código** (tope declarado: tres pasadas; criterio de parada: la pasada
+no encuentra un defecto real).
+
+| Pasada | Hallazgo | Qué cambió |
+|---|---|---|
+| 1 (`3c77e88`) | (high, real) La huella es **acumulada**: tras `exclude(x)` y `exclude(y)` el segundo registro guarda `[x, y]`; si alguien retira `x` a mano, el primero queda sin efecto pero el segundo salía humano con `valor` completo, y la ficha y el Excel —que conservan `valor`— atribuían la exclusión de `x` | El cotejo corre en dos pasadas: si la huella de un registro aplicado nombra **otra** variable cuya decisión quedó sin efecto, el `valor` humano la omite, con `huella` y `registro`; la historia legítima (una decisión posterior sobre esa variable) se emite como hoy. Dos tests (el rojo de Codex y la guarda de la historia) y su control negativo |

@@ -25,7 +25,9 @@ Un registro de varias variables puede quedar aplicado en parte: se emite como de
 sólo para lo aplicado —``variables`` las nombra y ``valor`` es la huella **restringida a ellas**,
 porque ``DecisionRecord`` guarda ``valor`` y descarta ``variables``—, con la huella completa en la
 clave aditiva ``huella``; lo demás va como ``decision_sin_efecto``. Los dos eventos llevan la clave
-aditiva ``registro`` (la posición en ``config.decisions``). Un registro aplicado entero se emite
+aditiva ``registro`` (la posición en ``config.decisions``). La huella es acumulada: si la de un
+registro aplicado nombra **otra** variable cuya decisión quedó sin efecto, el ``valor`` humano la
+omite, con ``huella`` y ``registro``. Fuera de esos casos, un registro aplicado se emite
 exactamente como hoy, sin ``registro`` ni ``huella``.
 """
 
@@ -93,7 +95,9 @@ def eventos_de_decisiones(config: BayesRiskConfig) -> list[dict[str, Any]]:
     for posicion, registro in enumerate(registros):
         for variable in registro.columns:
             ultimo[(_FAMILIA[registro.action], variable)] = posicion
-    eventos: list[dict[str, Any]] = []
+    # Primera pasada: el estado de cada variable en el ÚLTIMO registro de su familia.
+    cotejo: list[tuple[list[str], dict[str, tuple[str, ...]]]] = []
+    sin_efecto_por_familia: dict[str, set[str]] = {"variables": set(), "tramos": set()}
     for posicion, registro in enumerate(registros):
         aplicadas: list[str] = []
         sin_efecto: dict[str, tuple[str, ...]] = {}
@@ -105,10 +109,25 @@ def eventos_de_decisiones(config: BayesRiskConfig) -> list[dict[str, Any]]:
             hojas = _hojas_que_no_coinciden(config, registro, variable)
             if hojas:
                 sin_efecto[variable] = hojas
+                sin_efecto_por_familia[_FAMILIA[registro.action]].add(variable)
             else:
                 aplicadas.append(variable)
+        cotejo.append((aplicadas, sin_efecto))
+    eventos: list[dict[str, Any]] = []
+    for posicion, registro in enumerate(registros):
+        aplicadas, sin_efecto = cotejo[posicion]
         if not sin_efecto:
-            eventos.append(payload_de_decision(registro))
+            # La huella es ACUMULADA (`exclude(x)` y luego `exclude(y)` guarda `[x, y]`): si nombra
+            # otra variable cuya decisión quedó sin efecto, el evento humano no la atribuye
+            # —`DecisionRecord` y el Excel conservan `valor`— y la huella completa queda como
+            # evidencia (pasada 1 de Codex sobre el código). Sin eso, exactamente el de hoy.
+            ajenas = _ajenas_sin_efecto(registro, sin_efecto_por_familia)
+            humana = payload_de_decision(registro)
+            if ajenas:
+                humana["valor"] = _huella_sin(registro.value, ajenas)
+                humana["registro"] = posicion
+                humana["huella"] = copy.deepcopy(dict(registro.value))
+            eventos.append(humana)
             continue
         if aplicadas:
             humana = payload_de_decision(registro)
@@ -131,6 +150,37 @@ def eventos_de_decisiones(config: BayesRiskConfig) -> list[dict[str, Any]]:
             }
         )
     return eventos
+
+
+def _ajenas_sin_efecto(
+    registro: DecisionEntry, sin_efecto_por_familia: Mapping[str, set[str]]
+) -> set[str]:
+    """Las variables ajenas al registro que su huella acumulada nombra y quedaron sin efecto."""
+    familia = _FAMILIA[registro.action]
+    propias = set(registro.columns)
+    nombradas: set[str] = set()
+    for contenido in registro.value.values():
+        if isinstance(contenido, Sequence) and not isinstance(contenido, str | bytes):
+            for item in contenido:
+                nombre = item.get("name") if isinstance(item, Mapping) else item
+                if isinstance(nombre, str):
+                    nombradas.add(nombre)
+    return (nombradas - propias) & sin_efecto_por_familia[familia]
+
+
+def _huella_sin(valor: Mapping[str, Any], variables: set[str]) -> dict[str, Any]:
+    """La huella sin los elementos que nombran ``variables``."""
+    salida: dict[str, Any] = {}
+    for hoja, contenido in valor.items():
+        if isinstance(contenido, Sequence) and not isinstance(contenido, str | bytes):
+            salida[hoja] = [
+                copy.deepcopy(item)
+                for item in contenido
+                if (item.get("name") if isinstance(item, Mapping) else item) not in variables
+            ]
+        else:
+            salida[hoja] = copy.deepcopy(contenido)
+    return salida
 
 
 def _hojas_que_no_coinciden(
