@@ -195,8 +195,10 @@ horizonte `H` (el último que suma la ventana de 12 meses) y `d` su `time_value_
 (`ifrs9/pd_pit.py:113-158`)—, y basta una curva desajustada para disparar: hoy el chequeo busca `H`
 en el frame entero (`engine.py:904-914`), de modo que una operación con 1…12 períodos mensuales
 esconde a otra con 1…5 anuales que suma cinco años como «ECL a 12 meses» (unidades distintas por
-fila conviven, `tests/unit/test_ifrs9_time_unit.py:209-233`). `tol` es la tolerancia vigente
-(`_HORIZONTE_ANIO_TOL`). Es la promesa de D-HOR-0 («doce años donde
+fila conviven, `tests/unit/test_ifrs9_time_unit.py:209-233`). Por la misma razón, una curva sin
+unidad convertible se salta sola —la cubre IFRS-7— y deja de apagar el chequeo de las demás, que
+hoy se apaga entero si cualquier fila no convierte (`engine.py:906-907`). `tol` es la tolerancia
+vigente (`_HORIZONTE_ANIO_TOL`). Es la promesa de D-HOR-0 («doce años donde
 debía haber uno»), no un contrato nuevo, y no toca el disyunto `H < T_min` ni la regla de la unidad
 no declarada (IFRS-7). **Efecto:** el caso de §1.4 (`H = 12`, último período 5 con 5 años) deja de
 terminar con una cifra falsa y aborta con `FALTA-DATO-IFRS-8` (gobernable: `fail_on_falta_dato=True`
