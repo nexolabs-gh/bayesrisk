@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Una sola URL, y es medido: la demo es una SPA de una única ruta. El preset, la pestaña y los
+  resultados viven en el estado de React y nunca llegan a la barra de direcciones (no hay router
+  ni navegación por `history` o hash), así que cualquier otra entrada aquí sería una URL que el
+  servidor no distingue de la raíz. Si algún día el estado se refleja en la URL, este archivo
+  crece con ella.
+
+  Sin `lastmod`: un literal de fecha aquí se pudre en el siguiente deploy y un rastreador que
+  lo encuentra desfasado deja de creerle al archivo entero.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://demo.bayesadvisory.cl/</loc>
+  </url>
+</urlset>

@@ -1,13 +1,5 @@
 {% extends "base.html" %}
 
-{% block htmltitle %}
-  {% if page and page.is_homepage %}
-    <title>bayesrisk — librería Python de riesgo de crédito</title>
-  {% else %}
-    {{ super() }}
-  {% endif %}
-{% endblock %}
-
 {#
   Marca bayesrisk: metatags Open Graph / Twitter para que al compartir docs.bayesadvisory.cl
   se vea la tarjeta con el avatar navy, y color de tema navy en el navegador.
@@ -26,4 +18,23 @@
   <meta name="twitter:title" content="{{ config.site_name }}">
   <meta name="twitter:description" content="{{ config.site_description }}">
   <meta name="twitter:image" content="{{ og_image }}">
+{% endblock %}
+
+{#
+  Título HTML de la PORTADA. `base.html` de Material emite ahí `{{ config.site_name }}` a secas, y
+  `site_name` es el nombre del paquete: en un resultado de búsqueda «bayesrisk» no dice qué es la
+  página, y era el mismo título que servía la demo, así que los dos sitios competían por el mismo
+  resultado sin distinguirse. Las páginas internas ya salen «Empezar - bayesrisk» y se dejan a
+  Material con `super()`: repetir su lógica aquí es la forma de que se desincronice en la próxima
+  versión del tema.
+
+  El titular no nombra ninguna jurisdicción (decisión de Cami, 2026-08-04), y no declara capacidad
+  ni cifras: `site_description`, que ya alimenta la meta descripción, se deja como está.
+#}
+{% block htmltitle %}
+  {%- if page and page.is_homepage -%}
+    <title>bayesrisk — librería Python de riesgo de crédito</title>
+  {%- else -%}
+    {{ super() }}
+  {%- endif -%}
 {% endblock %}

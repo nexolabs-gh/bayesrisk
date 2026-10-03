@@ -1,0 +1,12 @@
+# Demo pública de bayesrisk — https://demo.bayesadvisory.cl/
+#
+# La demo se indexa a propósito: su contenido principal es público y útil sin credenciales
+# (la landing, los presets y las corridas ya capturadas que publica el bundle). No hay área
+# privada que excluir, así que no se declara ningún `Disallow`: bloquear `/assets/` sólo le
+# impediría al rastreador renderizar la página que sí queremos que vea.
+#
+# La copia autorizada de cada URL la fija el `rel=canonical` del HTML, no este archivo.
+User-agent: *
+Allow: /
+
+Sitemap: https://demo.bayesadvisory.cl/sitemap.xml
