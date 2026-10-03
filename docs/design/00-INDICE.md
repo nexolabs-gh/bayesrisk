@@ -1151,8 +1151,8 @@ por módulo bajo SDD-31, la primera
 > en una sección INFRA `decisions` fuera del `config_hash`. 🔴 **Medido**: HL «Falla» con 1,1 pp de
 > brecha media en Desarrollo del SBA; una decisión con motivo se pierde al correr su YAML (1 → 0).
 
-> **Flujo guiado de IFRS 9 (2026-10-02; propuesta, pendiente de revisión y de la aprobación de
-> Cami; hito H2).** [`_ENMIENDA-FLUJO-GUIADO-IFRS9.md`](_ENMIENDA-FLUJO-GUIADO-IFRS9.md), D-ECL-0…15,
+> **Flujo guiado de IFRS 9 (2026-10-02; tres pasadas de Codex; **aprobada por Cami** el
+> 2026-10-03; hito H2; sin programar).** [`_ENMIENDA-FLUJO-GUIADO-IFRS9.md`](_ENMIENDA-FLUJO-GUIADO-IFRS9.md), D-ECL-0…15,
 > segunda aplicación de [`31-simplicidad-y-flujo-guiado.md`](31-simplicidad-y-flujo-guiado.md) con el
 > molde del scorecard: `bayesrisk.Ecl` con la entrada mínima de cartera y la curva propia, resúmenes
 > de la familia IFRS 9, esenciales de `survival` y `provisioning_ifrs9`, y una corrección del motor

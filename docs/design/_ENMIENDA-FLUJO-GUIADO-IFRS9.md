@@ -1,9 +1,12 @@
 # Enmienda SDD — Flujo guiado de IFRS 9 (segunda aplicación de SDD-31; hito H2)
 
-> **Estado: PROPUESTA (S28, 2026-10-02).** Diseño sin código, pendiente de la revisión adversarial
-> (tope de tres pasadas) y de la aprobación de Cami, punto por punto en §8. Aprobarla **no programa
-> nada por sí sola**: la capa 0 y la A entran en la sesión siguiente, con tests nacidos rojos,
-> controles negativos y revisión del código; B y C después, cada una con el OK de su release.
+> **Estado: APROBADA por Cami el 2026-10-03** (cierre de S28), de forma interactiva y con la
+> recomendación de cada uno de los seis puntos de §8: TTC declarado en H2 y PIT con H7; `data`
+> acepta `null` explícito en target y partición; siete esenciales en `provisioning_ifrs9`
+> (excepción al tope sólo aquí); curva propia en H2 y la PD del scorecard con H3; capa 0 + A en la
+> 2.4.0 (`Ecl` experimental) y B + C en la 2.5.0. Diseño sin código: **la capa 0 y la A se
+> programan en la sesión siguiente**, con tests nacidos rojos, controles negativos y revisión del
+> código; B y C después. Cada release y la recaptura piden su OK aparte.
 > **Corregida tras la pasada 1 de Codex** (un high y dos medium, los tres reales y ninguno
 > contractual): D-ECL-0 mide la duración en `time_value_years` y no presume `period == time_value`
 > (la primera versión habría abortado curvas trimestrales correctas); la corrida de cartera define
@@ -56,9 +59,8 @@ desaparece; los cinco defaults de fábrica que hoy no corren se fijan como const
 tomadas del preset F4, que sí corre; y el horizonte de 12 meses se **infiere** de la unidad, porque
 dejarlo en su default duplica la ECL en silencio (medido: 6,86 M frente a 3,42 M). Cada etapa habla
 en palabras de provisiones —«Cartera», «Curva de PD», «Provisión IFRS 9»—, no con el molde del
-scorecard que hoy pinta «578 malos» y muestras Desarrollo/Holdout en una corrida que no las usa. La
-decisión PIT/TTC sigue siendo de Cami (§3.6, §8-2); la recomendación es correr TTC **declarado** en
-H2 y traer el ajuste prospectivo con H7.
+scorecard que hoy pinta «578 malos» y muestras Desarrollo/Holdout en una corrida que no las usa. En PIT/TTC,
+Cami decidió correr TTC **declarado** en H2 y traer el ajuste prospectivo con H7 (§3.6, §8-2).
 
 ## 0. Qué corrige de lo ya escrito
 
@@ -255,7 +257,7 @@ ecl.summary()                         # ejecución, supuestos, cinco cifras y qu
 - **El paso de la puerta en el trail** es `ecl_guided` (el del scorecard es `scorecard_guided`); la
   procedencia se declara, los resultados son los del config (D-SIM-1).
 
-### 3.3 D-ECL-2 — Una corrida de cartera no declara target ni partición (decisión de Cami, §8-3)
+### 3.3 D-ECL-2 — Una corrida de cartera no declara target ni partición (Cami, 2026-10-03: (a))
 
 **Recomendación:** `DataConfig.target` y `DataConfig.partition` aceptan `null` **explícito** —la
 clave sigue siendo obligatoria, de modo que olvidarla sigue siendo un error—, los dos a la vez o
@@ -303,7 +305,7 @@ aplica», no inventa un criterio. Tres contratos lo hacen implementable:
   eventos caería por una partición que nadie usa) y deja al resumen hablando de muestras que no
   existen.
 
-### 3.4 D-ECL-3 — La curva de PD: curva propia en H2; la PD del scorecard con H3 (decisión de Cami, §8-5)
+### 3.4 D-ECL-3 — La curva de PD: curva propia en H2; la PD del scorecard con H3 (Cami, 2026-10-03: (a))
 
 «Curva propia» es la curva de supervivencia ajustada sobre la historia de incumplimientos de la
 propia cartera (discrete-time hazard con las covariables declaradas): es lo que F4 ya demuestra y lo
@@ -339,7 +341,7 @@ la puerta**, con su razón:
 | `ecl.discount_convention` / `rounding` | anual por fracción de año / ninguno | ídem | la tasa se pide anual; el valor económico exacto |
 | `fail_on_falta_dato` (las dos) | `True` | `True` | un aviso declarado detiene la corrida, como en el scorecard |
 
-### 3.6 D-ECL-5 — PIT/TTC (decisión de Cami pendiente desde 2026-07-26; §8-2)
+### 3.6 D-ECL-5 — PIT/TTC (pendiente desde 2026-07-26; decidida por Cami el 2026-10-03: (a))
 
 Hoy ninguna salida PIT es alcanzable sin datos nuevos: `consume_pit` exige una curva etiquetada
 `pd_basis='pit'` que sólo produce `forward`; `apply_vasicek` exige `rho` por cartera y un factor
@@ -369,7 +371,7 @@ macro que hoy no hay, y un PIT inventado sería peor que un TTC declarado. El pr
 | `provisioning_ifrs9.lgd.lgd_col` | `lgd` | `str` · obligatorio |
 | `provisioning_ifrs9.ecl.eir_col` | `rate` | `str` · obligatorio (anual) |
 | `provisioning_ifrs9.staging.days_past_due_col` | `days_past_due` | `str` · obligatorio |
-| `provisioning_ifrs9.staging.is_default_col` | `default` | `str \| None` · `None` (§8-4) |
+| `provisioning_ifrs9.staging.is_default_col` | `default` | `str \| None` · `None` (esencial por §8-4) |
 | `survival.input.duration_col` / `event_col` | `duration` / `event` | `str` · obligatorios |
 | `survival.time_grid.time_unit` | `period` | `str` · obligatorio |
 | `survival.time_grid.horizon_periods` | `horizon` | `int` · obligatorio (la puerta sugiere) |
@@ -377,8 +379,8 @@ macro que hoy no hay, y un PIT inventado sería peor que un TTC declarado. El pr
 | `governance.*`, `report.*`, `tracking` | `purpose`, `owner`, `review_every`, `document`, `formats`, `track` | como `Scorecard` |
 
 Esenciales por sección: `survival` **5** (`duration_col`, `event_col`, `time_unit`,
-`horizon_periods`, `covariate_cols`), `provisioning_ifrs9` **7** con la marca de incumplimiento o **6**
-sin ella (§8-4); `data`, `governance` y `report` conservan los suyos. Las dos secciones ganan
+`horizon_periods`, `covariate_cols`), `provisioning_ifrs9` **7** con la marca de incumplimiento
+(§8-4: excepción al tope de 6 aprobada por Cami el 2026-10-03, sólo para esta sección); `data`, `governance` y `report` conservan los suyos. Las dos secciones ganan
 `ui_essentials_declared`; el golden `test_esenciales_por_seccion.py` pasa de doce a catorce
 secciones (`:213-228` fija hoy «las doce y ninguna otra»). Todo lo demás se pliega en «Avanzado».
 
@@ -609,6 +611,14 @@ obligatorio; no programa nada.
 | 8-5 | «PD del scorecard o curva propia» (§3.4) | (a) **curva propia en H2; la PD del scorecard con H3**; (b) `Ecl(..., pd=sc)` en la capa C de H2 | **(a)**: exige un archivo con las variables del scorecard y la cartera, y es el trabajo combinado de H3 |
 | 8-6 | Releases | (a) **capa 0 + A en 2.4.0 (`Ecl` experimental); B + C en 2.5.0 con la recaptura**; (b) todo en una release | **(a)**: el molde del scorecard salió así; cada release con su OK |
 
+**Respuestas de Cami (2026-10-03, interactivas): (a) en los seis.** Vigente: H2 corre `ttc_only`
+y lo declara en cada salida, y la vía PIT la decide H7 con datos macro; `DataConfig.target` y
+`.partition` aceptan `null` explícito en una corrida de cartera (§3.3, con sus contratos de
+`provides`, `data_card`, `columnas_que_produce()` y el censo de lectores); `provisioning_ifrs9`
+declara **siete** esenciales —la única excepción al tope de 6 de SDD-31 §12.1—; la PD del scorecard
+entra con H3; la capa 0 + A sale en la 2.4.0 con `Ecl` experimental y B + C en la 2.5.0. Aprobar
+no publica: cada release y la recaptura piden su OK.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima (§3.2):** el archivo de cartera con fecha de corte, cartera, exposición, LGD,
@@ -619,7 +629,7 @@ obligatorio; no programa nada.
 - **Qué NO se configura (§3.16):** método y fuente de la curva, rol de la PD, modo PIT, escenarios,
   métodos de LGD y EAD, descuento, redondeo, la regla del horizonte de 12 meses, el promedio de la
   curva en el resumen, etapas, rótulos, Excel y tablas de decisión. Constantes con su razón.
-- **Campos esenciales (§3.7):** `survival` 5; `provisioning_ifrs9` 7 (u 6, §8-4); `data`,
+- **Campos esenciales (§3.7):** `survival` 5; `provisioning_ifrs9` 7 (§8-4, excepción aprobada); `data`,
   `governance` y `report` sin cambios; mapeo exhaustivo path → argumento de `Ecl`; el resto en
   «Avanzado» (capa B).
 - **Presupuesto de perillas:** **cero** hojas nuevas (§3.16); la excepción que se pide es al tope de
@@ -634,7 +644,7 @@ obligatorio; no programa nada.
 | Cifra | Hoy (`3cc9654`) | Objetivo |
 |---|---|---|
 | Líneas de usuario | sin notebook; ~8 líneas con el preset del paquete; con datos propios, un YAML de 268 líneas donde reescribir `data` y 12 rutas | ≤ 25 (~20) |
-| Esenciales por sección | 0 en `survival` y `provisioning_ifrs9` (se pintan enteras) | 5 y 7 (u 6) |
+| Esenciales por sección | 0 en `survival` y `provisioning_ifrs9` (se pintan enteras) | 5 y 7 |
 | Perillas de las tres secciones de cálculo | 230 (158 + 24 + 48) | sin crecer |
 | Segundos al primer resumen | no hay resumen de curva ni de ECL; primera cifra de ECL a los 4,8–6,4 s | ≤ 30 s (esperado ~5 s) |
 | Conceptos antes del primer resultado | ≥ 8 (`ifrs9_preset`, `materialize`, `BayesRiskConfig`, `model_validate`, `run`, `run_dir`, `artifacts.get`, dominio/clave) | ≤ 5 (`Ecl`, `materialize`, `run`, `exclude`, `resume`) |
@@ -646,8 +656,8 @@ obligatorio; no programa nada.
 | 1 | Entrada mínima frente a `data` | §3.3 y §8-3: `null` explícito, sin sembrar |
 | 2 | PD del scorecard o curva propia | §3.4 y §8-5: curva propia en H2; la PD del scorecard con H3 |
 | 3 | Defaults a constantes sin mover hashes | §3.5: constantes de la puerta desde F4; ningún default de fábrica cambia; D-ECL-0 corrige el motor |
-| 4 | PIT/TTC | §3.6 y §8-2: TTC declarado en cada salida; decide Cami |
-| 5 | Esenciales ≤ 6 | §3.7 y §8-4: 5 y 7 (u 6); golden a catorce secciones |
+| 4 | PIT/TTC | §3.6 y §8-2: TTC declarado en cada salida (Cami, 2026-10-03) |
+| 5 | Esenciales ≤ 6 | §3.7 y §8-4: 5 y 7 (excepción aprobada); golden a catorce secciones |
 | 6 | Resúmenes de la familia, pantalla y página ejecutiva | §3.8, §3.12, §3.13 |
 | 7 | Estabilidad | §3.10: experimental hasta B; después la firma estable y las cifras experimentales |
 | 8 | Decisiones humanas, `until`/`resume`, Excel y `export()` | §3.9 y §3.11 |
