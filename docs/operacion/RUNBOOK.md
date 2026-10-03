@@ -18,7 +18,7 @@ $OutputEncoding = $bayesriskUtf8
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
 
-$bayesriskRepo = 'C:\Users\camil\OneDrive\Documents\Proyectos\bayesrisk'
+$bayesriskRepo = 'E:\Proyectos\Nikodym RiskLib'
 Set-Location -LiteralPath $bayesriskRepo
 
 git status --short --branch
@@ -35,7 +35,13 @@ git -C privado rev-parse origin/main
 if ($LASTEXITCODE -ne 0) { throw 'origin/main privado no se pudo leer' }
 
 $bayesriskHandoff = Get-Item -Force -LiteralPath 'HANDOFF.md'
-$bayesriskHandoffTarget = [IO.Path]::GetFullPath([string]$bayesriskHandoff.Target)
+# El symlink es RELATIVO (`privado\HANDOFF.md`): sobrevive a mover la carpeta. Se resuelve contra
+# la raíz y no con GetFullPath a secas, que usa el directorio del proceso y no el de Set-Location.
+$bayesriskHandoffTarget = [string]$bayesriskHandoff.Target
+if (-not [IO.Path]::IsPathRooted($bayesriskHandoffTarget)) {
+    $bayesriskHandoffTarget = Join-Path $bayesriskRepo $bayesriskHandoffTarget
+}
+$bayesriskHandoffTarget = [IO.Path]::GetFullPath($bayesriskHandoffTarget)
 $bayesriskExpectedHandoff = [IO.Path]::GetFullPath(
     (Join-Path $bayesriskRepo 'privado\HANDOFF.md')
 )
@@ -50,8 +56,19 @@ $bayesriskHandoff | Select-Object FullName,LinkType,Target
 ```
 
 El resultado esperado es `main` limpio en ambos repos, cada `HEAD` igual a su `origin/main`, y
-`HANDOFF.md` con `LinkType=SymbolicLink` y un target absoluto terminado en
-`\privado\HANDOFF.md`. No asumir que un
+`HANDOFF.md` con `LinkType=SymbolicLink` y target `privado\HANDOFF.md`. Desde el 2026-10-02 el
+checkout vive en `E:\Proyectos\Nikodym RiskLib` (la carpeta de OneDrive ya no existe). Si
+`HANDOFF.md` aparece como archivo regular o hardlink —un hardlink se separa en silencio cuando git
+reescribe `privado/HANDOFF.md`—, recrearlo en una PowerShell **de administrador** (el modo
+desarrollador no está activo, y sin él Windows no crea symlinks):
+
+```powershell
+Set-Location -LiteralPath 'E:\Proyectos\Nikodym RiskLib'
+if ((Get-FileHash HANDOFF.md).Hash -ne (Get-FileHash privado\HANDOFF.md).Hash) { throw 'difieren: revisar antes' }
+Remove-Item -LiteralPath HANDOFF.md -Force
+New-Item -ItemType SymbolicLink -Path HANDOFF.md -Target 'privado\HANDOFF.md' | Out-Null
+Get-Item -Force HANDOFF.md | Select-Object FullName,LinkType,Target
+``` No asumir que un
 árbol está limpio porque el otro lo está. Si un OID no coincide con el `HANDOFF`, medir log, diff y
 ancestría antes de usar su estado.
 
@@ -1241,7 +1258,7 @@ el PATH ya esté bien (mismo `400 … requires a newer version`); apagarlo con e
 plugin antes de relanzar, desde PowerShell en la raíz del repo:
 
 ```powershell
-'{"hook_event_name":"SessionEnd","cwd":"C:\\Users\\camil\\OneDrive\\Documents\\Proyectos\\bayesrisk"}' |
+'{"hook_event_name":"SessionEnd","cwd":"E:\\Proyectos\\Nikodym RiskLib"}' |
     node "C:\Users\camil\.claude\plugins\cache\openai-codex\codex\<version>\scripts\session-lifecycle-hook.mjs" SessionEnd
 ``` Lanzar desde PowerShell sin `2>&1` (§2). Un job que quedó «running» con PID
 muerto en `status --all` es cosmético: no bloquea revisiones nuevas.
