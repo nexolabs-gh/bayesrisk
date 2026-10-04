@@ -251,7 +251,8 @@ def test_los_declarantes_del_protocolo_estan_inventariados() -> None:
     Sigue midiendo lo mismo que medía, con el inventario explícito en vez del conjunto vacío: una
     sección raíz que empiece a declararlo sin pasar por aquí pone el gate en rojo.
     """
-    esperados = {"performance", "stability"}
+    # D-ECL-2 (S29): `data` avisa de una corrida de cartera con una etapa que modela.
+    esperados = {"data", "performance", "stability"}
     for preset_id in _PRESETS:
         config = _config_de(preset_id)
         declarantes = {

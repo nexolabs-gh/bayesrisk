@@ -447,3 +447,149 @@ def test_el_audit_trail_registra_la_unidad_observada_y_el_soporte() -> None:
     assert _observed_time_units(con_unidad) == ("year",)
     assert _observed_time_units(sin_unidad) == ()
     assert _period_bounds(con_unidad) == {"min": 1, "max": 4}
+
+
+# ───────── D-ECL-0: la duración del horizonte, por curva y también más allá de la curva ─────────
+
+
+def _curva(
+    row_id: str, *, unidad: str | None, periodos: list[int], anios_por_periodo: float
+) -> pd.DataFrame:
+    """Curva de ``row_id`` con los ``periodos`` dados; cada período dura ``anios_por_periodo``.
+
+    ``unidad=None`` deja la columna ``time_unit`` en ``"period"``, que no es convertible: es la
+    curva que IFRS-7 declara y que el chequeo del horizonte debe saltarse sola.
+    """
+    n = len(periodos)
+    pdm = [0.01] * n
+    cum = np.cumsum(pdm).tolist()
+    fraccion = _FRACCION[unidad] if unidad is not None else 1.0
+    return pd.DataFrame(
+        {
+            "row_id": [row_id] * n,
+            "period": periodos,
+            "time_value": [(p * anios_por_periodo) / fraccion for p in periodos],
+            "time_unit": [unidad if unidad is not None else "period"] * n,
+            "pd_marginal": pdm,
+            "survival": [1.0 - c for c in cum],
+            "pd_cumulative": cum,
+            "scenario": [None] * n,
+            "warning_codes": [()] * n,
+        }
+    )
+
+
+def _dos_operaciones() -> pd.DataFrame:
+    return pd.concat([_frame(), _frame().rename(index={"op1": "op2"})])
+
+
+def test_curva_anual_mas_corta_que_el_horizonte_dispara() -> None:
+    """El caso medido en S28 (§1.4 de la enmienda FLUJO-GUIADO-IFRS9): nace rojo.
+
+    Curva anual de cinco períodos con el default ``horizon_12m_periods=12``: el período 12 no
+    existe, la ventana de «12 meses» suma la curva entera —cinco años— y la corrida terminaba
+    ``done`` con la ECL al doble. Ahora el horizonte mayor que la curva se mide por la duración del
+    último período: cinco años no son uno.
+    """
+    ts = _curva("op1", unidad="year", periodos=[1, 2, 3, 4, 5], anios_por_periodo=1.0)
+
+    result = _run(_cfg(horizon_12m_periods=12), _frame(), ts)
+
+    assert _AVISO_HORIZONTE in result.card.falta_dato
+
+
+def test_el_caso_medido_detiene_la_corrida_con_el_flag_encendido() -> None:
+    """Con ``fail_on_falta_dato=True`` (el default) la cifra falsa ya no se entrega: se detiene."""
+    cfg = _cfg(horizon_12m_periods=12).model_copy(update={"fail_on_falta_dato": True})
+    ts = _curva("op1", unidad="year", periodos=[1, 2, 3, 4, 5], anios_por_periodo=1.0)
+
+    with pytest.raises(IfrsFaltaDatoError, match=_AVISO_HORIZONTE):
+        _run(cfg, _frame(), ts)
+
+
+def test_una_curva_desajustada_basta_aunque_otra_este_bien() -> None:
+    """Por curva y no por frame: una mensual de 12 no esconde a una anual de 5 (nace rojo).
+
+    Hoy el chequeo busca el período 12 en el frame entero; lo encuentra en la mensual, ve que dura
+    un año y calla, mientras la anual suma cinco años como «ECL a 12 meses».
+    """
+    ts = pd.concat(
+        [
+            _curva("op1", unidad="year", periodos=[1, 2, 3, 4, 5], anios_por_periodo=1.0),
+            _curva("op2", unidad="month", periodos=list(range(1, 13)), anios_por_periodo=1 / 12),
+        ],
+        ignore_index=True,
+    )
+
+    result = _run(_cfg(horizon_12m_periods=12), _dos_operaciones(), ts)
+
+    assert _AVISO_HORIZONTE in result.card.falta_dato
+
+
+def test_una_curva_sin_unidad_no_apaga_el_chequeo_de_las_demas() -> None:
+    """La curva sin unidad se salta sola (la cubre IFRS-7); la anual de al lado se sigue midiendo.
+
+    Hoy basta una fila no convertible para que el chequeo entero devuelva ``False`` (nace rojo).
+    """
+    ts = pd.concat(
+        [
+            _curva("op1", unidad=None, periodos=[1, 2, 3, 4, 5], anios_por_periodo=1.0),
+            _curva("op2", unidad="year", periodos=[1, 2, 3, 4, 5], anios_por_periodo=1.0),
+        ],
+        ignore_index=True,
+    )
+
+    result = _run(_cfg(horizon_12m_periods=12), _dos_operaciones(), ts)
+
+    assert _AVISO_UNIDAD in result.card.falta_dato
+    assert _AVISO_HORIZONTE in result.card.falta_dato
+
+
+def test_la_curva_sin_unidad_sola_sigue_sin_opinar() -> None:
+    """Contracara: si la única curva no declara unidad, IFRS-8 no la acusa con una presunción."""
+    ts = _curva("op1", unidad=None, periodos=[1, 2, 3, 4, 5], anios_por_periodo=1.0)
+
+    result = _run(_cfg(horizon_12m_periods=12), _frame(), ts)
+
+    assert _AVISO_UNIDAD in result.card.falta_dato
+    assert _AVISO_HORIZONTE not in result.card.falta_dato
+
+
+def test_curva_de_seis_meses_con_horizonte_12_no_avisa() -> None:
+    """Una curva entera de seis meses: la ECL a 12 meses es la lifetime, y eso es correcto."""
+    ts = _curva("op1", unidad="month", periodos=list(range(1, 7)), anios_por_periodo=1 / 12)
+
+    result = _run(_cfg(horizon_12m_periods=12), _frame(), ts)
+
+    assert _AVISO_HORIZONTE not in result.card.falta_dato
+
+
+def test_horizonte_1_a_doce_anios_sigue_disparando() -> None:
+    """El caso original de D-HOR-0 no se pierde: el período 1 dura doce años."""
+    ts = _curva("op1", unidad="year", periodos=[1, 2, 3], anios_por_periodo=12.0)
+
+    result = _run(_cfg(horizon_12m_periods=1), _frame(), ts)
+
+    assert _AVISO_HORIZONTE in result.card.falta_dato
+
+
+def test_horizonte_en_un_hueco_se_mide_en_el_ultimo_periodo_que_suma() -> None:
+    """Con el horizonte en un hueco, la ventana termina en el último período anterior (nace rojo).
+
+    Cortes mensuales en los meses 6 y 18 con ``H=12``: la ventana suma sólo el mes 6 —medio año—, y
+    hoy el chequeo calla porque el período 12 no existe.
+    """
+    ts = _curva("op1", unidad="month", periodos=[6, 18], anios_por_periodo=1 / 12)
+
+    result = _run(_cfg(horizon_12m_periods=12), _frame(), ts)
+
+    assert _AVISO_HORIZONTE in result.card.falta_dato
+
+
+def test_horizonte_en_un_hueco_que_dura_un_ano_no_avisa() -> None:
+    """Contracara del hueco: cortes en los meses 3, 6, 9, 11 y 15 con ``H=12`` suman 11 meses."""
+    ts = _curva("op1", unidad="month", periodos=[3, 6, 9, 11, 15], anios_por_periodo=1 / 12)
+
+    result = _run(_cfg(horizon_12m_periods=12), _frame(), ts)
+
+    assert _AVISO_HORIZONTE not in result.card.falta_dato

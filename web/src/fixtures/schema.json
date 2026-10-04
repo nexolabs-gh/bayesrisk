@@ -12756,10 +12756,17 @@
                 "ui_help": "Política de valores especiales y nulos: qué centinelas normalizar y a partir de qué tasa de missing avisar."
               },
               "partition": {
-                "$ref": "#/$defs/data__PartitionConfig",
-                "description": "Estrategia de partición Dev/HO/OOT + rol TTD.",
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/data__PartitionConfig"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Estrategia de partición Dev/HO/OOT + rol TTD; vacía en una corrida de cartera, junto con el target.",
                 "title": "Particiones",
-                "ui_help": "Cómo se dividen las observaciones en Desarrollo, Holdout y OOT para entrenar y validar el modelo."
+                "ui_help": "Cómo se dividen las observaciones en Desarrollo, Holdout y OOT para entrenar y validar el modelo. Una corrida que sólo calcula la provisión de una cartera no separa muestras: ahí se deja vacía, junto con la definición de target."
               },
               "schema": {
                 "$ref": "#/$defs/data__SchemaConfig",
@@ -12768,10 +12775,17 @@
                 "ui_help": "Definición de las columnas esperadas, sus tipos y reglas de validación (esquema del dataset)."
               },
               "target": {
-                "$ref": "#/$defs/data__TargetConfig",
-                "description": "Reglas declarativas de bueno/malo/excluido.",
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/data__TargetConfig"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Reglas declarativas de bueno/malo/excluido; vacía en una corrida de cartera, junto con las particiones.",
                 "title": "Definición de target",
-                "ui_help": "Reglas que definen cómo se etiqueta cada observación como bueno, malo, indeterminado o excluido."
+                "ui_help": "Reglas que definen cómo se etiqueta cada observación como bueno, malo, indeterminado o excluido. Una corrida que sólo calcula la provisión de una cartera no modela un incumplimiento: ahí se deja vacía, junto con las particiones."
               },
               "type": {
                 "const": "standard",

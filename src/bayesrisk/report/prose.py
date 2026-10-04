@@ -396,7 +396,14 @@ def context_body(bundle: ReportInputBundle) -> tuple[str, ...]:
             facts.append(f"{_miles(n_features)} variables de entrada")
         if bad_rate is not None:
             facts.append(f"una tasa de incumplimiento de {_pct(bad_rate)}")
-        if facts:
+        if facts and target_col is None:
+            # D-ECL-2: corrida de cartera, sin target ni partición; no hay tablas que citar.
+            paragraphs.append(
+                f"La población procesada contiene {_enumerar(tuple(facts))}. Es una corrida de "
+                "cartera: no define qué es un cliente malo ni separa muestras para validar, así "
+                "que no hay conteos por estado ni por partición."
+            )
+        elif facts:
             paragraphs.append(
                 f"La población procesada contiene {_enumerar(tuple(facts))}. "
                 "Los conteos por estado, partición y motivo de exclusión se reproducen "
@@ -1020,7 +1027,10 @@ def results_body(bundle: ReportInputBundle, domain: str) -> tuple[str, ...]:
 
 def _results_data(bundle: ReportInputBundle) -> tuple[str, ...]:
     """Describe la proyección literal del ``DataCardSection`` sin derivar estadísticas."""
-    if _card(bundle, "data") is None:
+    card = _card(bundle, "data")
+    if card is None or card.get("target_col") is None:
+        # D-ECL-2: una corrida de cartera no publica tablas de estados ni de particiones, y el
+        # contexto ya dice por qué; anunciar «las tablas siguientes» sería falso.
         return ()
     return (
         "Las tablas siguientes reproducen lo que dejó la preparación de datos de esta corrida. "

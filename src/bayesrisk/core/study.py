@@ -808,9 +808,18 @@ class Study:
         hace el config inejecutable → :class:`~bayesrisk.core.exceptions.ConfigError`.
         """
         disponibles: set[ArtifactKey] = set(self.artifacts.keys())
+        anteriores: dict[str, Step] = {}
         for paso in pasos:
             for dominio, clave in paso.requires:
                 if (dominio, clave) not in disponibles:
+                    # El proveedor está activo y, con su config, no produce la clave (D-ECL-2: una
+                    # corrida de cartera no etiqueta ni particiona): «active 'data'» sería falso, y
+                    # sólo él sabe decir por qué. Método opcional, consultado con `getattr` como
+                    # `optional_requires`.
+                    motivo = getattr(anteriores.get(dominio), "motivo_sin_proveer", None)
+                    explicacion = motivo(paso.name, clave) if callable(motivo) else None
+                    if explicacion:
+                        raise ConfigError(explicacion)
                     # La clave se redacta, no se interpola cruda: este mensaje viaja al aviso del
                     # formulario, que es copy público, y ahí `('survival', 'term_structure')` es el
                     # `repr` de una tupla de Python. El hermano `_check_prerequisites` ya lo hacía
@@ -821,6 +830,7 @@ class Study:
                         f"'{paso.name}' o quite este paso."
                     )
             disponibles.update(paso.provides)
+            anteriores.setdefault(paso.name, paso)
 
     def _validate_injected_artifacts(
         self,

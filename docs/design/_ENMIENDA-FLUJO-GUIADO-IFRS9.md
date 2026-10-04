@@ -7,6 +7,7 @@
 > 2.4.0 (`Ecl` experimental) y B + C en la 2.5.0. Diseño sin código: **la capa 0 y la A se
 > programan en la sesión siguiente**, con tests nacidos rojos, controles negativos y revisión del
 > código; B y C después. Cada release y la recaptura piden su OK aparte.
+> **Capa 0 implementada en S29 (2026-10-04)**: D-ECL-0 y D-ECL-2, detalle y mediciones en §9.
 > **Corregida tras la pasada 1 de Codex** (un high y dos medium, los tres reales y ninguno
 > contractual): D-ECL-0 mide la duración en `time_value_years` y no presume `period == time_value`
 > (la primera versión habría abortado curvas trimestrales correctas); la corrida de cartera define
@@ -618,6 +619,60 @@ y lo declara en cada salida, y la vía PIT la decide H7 con datos macro; `DataCo
 declara **siete** esenciales —la única excepción al tope de 6 de SDD-31 §12.1—; la PD del scorecard
 entra con H3; la capa 0 + A sale en la 2.4.0 con `Ecl` experimental y B + C en la 2.5.0. Aprobar
 no publica: cada release y la recaptura piden su OK.
+
+## 9. Capa 0 implementada (S29, 2026-10-04)
+
+**D-ECL-0.** `_horizonte_no_dura_un_ano` (`ifrs9/engine.py`) agrupa por `(row_id, scenario)`, salta
+sola la curva sin unidad convertible y aplica los tres casos de §3.1 con `sel` y `d` de cada curva;
+la marca sigue en bloque para la corrida (basta una curva). Tests nacidos rojos (5): la anual de
+cinco con `H = 12`, la misma con `fail_on_falta_dato=True` (aborta con `FALTA-DATO-IFRS-8`), anual
+junto a mensual, curva sin unidad junto a una anual y horizonte en un hueco; contracaras verdes:
+mensual de 12, seis meses, hueco de once meses, curva sin unidad sola y `H = 1` a doce años.
+**Recorrido medido:** los 80 archivos de test que tocan IFRS 9, forward o stress, 2.329 passed y 5
+skipped con la corrección: ningún test existente cambia.
+
+**D-ECL-2.** `DataConfig.target`/`.partition` `X | None` obligatorios, validador «los dos o
+ninguno», `es_corrida_de_cartera`, `requisitos_incumplidos_por_contexto` anclado a `target` y
+`columnas_que_produce()` vacía; `DataStep.provides` por config, `execute` sin etiquetar ni
+particionar y `DataCardSection` con `target_col`/`bad_rate` `None` y mapeos vacíos. Tres decisiones
+de implementación, dentro de lo aprobado:
+
+- **El mensaje de negocio al detenerse** lo da el proveedor: `Study._validate_pipeline` consulta el
+  método opcional `motivo_sin_proveer(consumidor, clave)` del paso activo que no produce la clave
+  (sin él, el mensaje genérico decía «active 'data'», que ya lo está). La lista de etapas que modelan
+  el incumplimiento es la del DAG —`eda`, `binning`, `selection`, `model`, `ml`, `explain`, `tuning`
+  y `validation`; el gate que la ata al `requires` real de cada paso destapó `validation`—.
+- **Un submodelo obligatorio y anulable es una declaración, no un interruptor**: `effective_defaults`
+  sigue publicando sus hijos y el formulario no le pone el interruptor «Activar» de los campos
+  opcionales (`FieldRenderer`, la división esenciales/«Avanzado» y el ancla de errores de
+  `normalizarLoc`, que no bajaba por la rama `$ref` de un `X | None`). Sólo `data.target` y
+  `data.partition` lo son (medido sobre el schema). El formulario del scorecard queda idéntico
+  (verificado en la pantalla viva); cómo se pinta «no aplica» en el trabajo IFRS 9 es la capa B.
+- **El informe** omite las tablas de estados, particiones y exclusiones y la prosa lo dice («Es una
+  corrida de cartera: no define qué es un cliente malo…»); el resumen de datos deja de contar «0
+  malos». La familia «Cartera» completa es la capa A.
+
+**Gates medidos.** Corrida de cartera sobre el preset F4: `summary`, `detail`,
+`ecl_term_structure` y `staging` bit a bit iguales a F4; la curva igual salvo la etiqueta
+`partition` (vacía). `check_dataset`, `columnas_producidas_por_seccion`, `/api/validate` (antes, un
+500) y el serializer de la pantalla sin errores. F1 con `binning` y target nulo se detiene en
+`check_pipeline` con el mensaje de negocio. Proyección canónica de F1 y F4 con **0 diferencias** y
+`config_hash` intactos (`1063d6cf…`, `013e69dc…`); columnas producidas de F1 y F4 idénticas;
+`HOJAS_DEL_FORMULARIO` **no cambia (574)**. Tests de D-ECL-2: 9 de 15 nacen rojos (los otros fijan
+lo que no cambia). **Controles negativos: 13/13** (10 del motor, cada uno sobre su copia de `src/`, y
+3 del front), rojo → restaurado con el mismo sha256 → verde.
+
+**Censo de lectores fuera de `data/`** (las «37» de §3.3 eran coincidencias de texto): la única caída
+real era `columnas_que_produce()` vía `core/dataset_check.py` (preflight y `/api/validate`). Seguras
+sin cambio: `partition_label_from_config`, las tablas y filas TTD de los resúmenes, la ficha
+(`governance/model_card.py`), `ui/summaries.py`, `survival` (descarta o salta la columna de
+partición), `markov`, `ui/presets.py` y `scorecard/bundle.py`. Inalcanzables: las ocho etapas que el
+DAG detiene. Texto y no lectura: `option_surface.py` (claves del ledger), comentarios de
+`effective_defaults.py`, `dataset_check.py`, `testing/strategies.py` y los diagnósticos de `binning`
+y `selection`. **Declaradas:** `ui/jobs.py` sigue preguntando target y partición en el trabajo
+`provisiones_ifrs9` (es la capa B, §3.12); `provisioning_cmf` con `pd_mapping.method='pd_breaks'` lee
+etiquetas y muestras sin declararlas en `requires`, así que en una corrida de cartera con la PD
+inyectada fallaría en la corrida con su error nombrado, no antes (CMF congelado: no se toca).
 
 ## 13. Simplicidad (SDD-31)
 

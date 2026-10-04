@@ -262,7 +262,11 @@ def _mapa_de_modelo(cls: type[BaseModel], pila: tuple[str, ...]) -> dict[str, An
     for nombre, campo in cls.model_fields.items():
         clave = _clave_publica(nombre, campo)
         submodelo = _submodelo_directo(campo.annotation)
-        if submodelo is None or _submodelo_apagable(campo):
+        # Un submodelo OBLIGATORIO que admite `null` (D-ECL-2: `data.target` y `data.partition`) no
+        # es un interruptor apagado de fábrica: no tiene default, y quien modela lo declara entero.
+        # Sigue la rama de abajo, con sus hijos; el `null` de una corrida de cartera es una
+        # declaración, no el estado de un switch.
+        if submodelo is None or (_submodelo_apagable(campo) and not campo.is_required()):
             salida[clave] = _descriptor(campo, volcado, clave)
         elif campo.is_required():
             # Los hijos viajan igual —el formulario sigue necesitando sus defaults— pero colgando

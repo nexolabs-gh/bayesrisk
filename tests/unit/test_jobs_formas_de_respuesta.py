@@ -101,6 +101,20 @@ def _decisiones() -> dict[str, dict[str, Any]]:
     }
 
 
+def _submodelo_declarado(anotacion: Any) -> type[BaseModel] | None:
+    """La clase de un campo submodelo, también si es obligatorio y admite ``null`` (D-ECL-2).
+
+    ``data.target`` y ``data.partition`` son ``X | None`` obligatorios: el ``null`` declara una
+    corrida de cartera, y cuando se declaran sus hojas siguen respondiendo a sus plantillas.
+    """
+    if isinstance(anotacion, type) and issubclass(anotacion, BaseModel):
+        return anotacion
+    ramas = [rama for rama in get_args(anotacion) if rama is not type(None)]
+    if len(ramas) == 1 and isinstance(ramas[0], type) and issubclass(ramas[0], BaseModel):
+        return ramas[0]
+    return None
+
+
 def _modelo_del_path(path: str) -> tuple[type[BaseModel], str]:
     """Devuelve ``(clase que declara la hoja, nombre del campo)`` para un path del config.
 
@@ -111,9 +125,9 @@ def _modelo_del_path(path: str) -> tuple[type[BaseModel], str]:
     seccion, *resto = path.split(".")
     cls = cargar_configs_expandibles()[seccion]
     for nombre in resto[:-1]:
-        anotacion = cls.model_fields[nombre].annotation
-        assert isinstance(anotacion, type) and issubclass(anotacion, BaseModel), path
-        cls = anotacion
+        submodelo = _submodelo_declarado(cls.model_fields[nombre].annotation)
+        assert submodelo is not None, path
+        cls = submodelo
     return cls, resto[-1]
 
 

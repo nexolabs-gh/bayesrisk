@@ -872,6 +872,10 @@ def _data_card_tables(cards: Mapping[str, Mapping[str, Any]]) -> dict[str, DataF
     card = cards.get("data")
     if card is None:
         return {}
+    if card.get("target_col") is None:
+        # D-ECL-2: una corrida de cartera no etiqueta ni particiona. Tablas vacías dirían «cero
+        # malos» donde lo cierto es «no aplica»; la prosa de contexto lo declara.
+        return {}
     class_counts = _required_mapping(card, "class_counts", artifact="data.data_card")
     partition_sizes = _required_mapping(card, "partition_sizes", artifact="data.data_card")
     partition_rates = _required_mapping(card, "partition_bad_rates", artifact="data.data_card")

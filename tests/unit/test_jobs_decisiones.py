@@ -21,7 +21,7 @@ El oráculo se deriva de ``model_fields``, que es donde Pydantic guarda la oblig
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, get_args
 
 import pytest
 from pydantic import BaseModel
@@ -63,6 +63,20 @@ def test_el_espejo_de_secciones_es_el_mismo_que_el_del_gate_de_copy() -> None:
     assert SECCIONES_DEL_FORMULARIO == DEL_GATE_DE_COPY
 
 
+def _submodelo_declarado(anotacion: Any) -> type[BaseModel] | None:
+    """La clase de un campo submodelo, también si es obligatorio y admite ``null`` (D-ECL-2).
+
+    ``data.target`` y ``data.partition`` son ``X | None`` obligatorios: el ``null`` declara una
+    corrida de cartera, y cuando se declaran sus hojas obligatorias siguen siendo decisiones.
+    """
+    if isinstance(anotacion, type) and issubclass(anotacion, BaseModel):
+        return anotacion
+    ramas = [rama for rama in get_args(anotacion) if rama is not type(None)]
+    if len(ramas) == 1 and isinstance(ramas[0], type) and issubclass(ramas[0], BaseModel):
+        return ramas[0]
+    return None
+
+
 def _hojas_obligatorias(cls: type[BaseModel], prefijo: tuple[str, ...]) -> list[str]:
     """Paths de las HOJAS obligatorias sin default, bajando por los submodelos obligatorios.
 
@@ -75,9 +89,9 @@ def _hojas_obligatorias(cls: type[BaseModel], prefijo: tuple[str, ...]) -> list[
         if not campo.is_required():
             continue
         clave = campo.alias or nombre
-        anotacion = campo.annotation
-        if isinstance(anotacion, type) and issubclass(anotacion, BaseModel):
-            hijas = _hojas_obligatorias(anotacion, (*prefijo, clave))
+        submodelo = _submodelo_declarado(campo.annotation)
+        if submodelo is not None:
+            hijas = _hojas_obligatorias(submodelo, (*prefijo, clave))
             # Un submodelo obligatorio cuyos hijos tienen todos default es él mismo la decisión.
             encontradas.extend(hijas or [".".join((*prefijo, clave))])
         else:

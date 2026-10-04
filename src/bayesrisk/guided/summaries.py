@@ -518,7 +518,14 @@ def _resumen_data(study: Study, context: SummaryContext) -> StageSummary:
     lines: list[str] = [f"Archivo: {context.source_label}"]
     alerts: list[str] = []
     table: pd.DataFrame | None = None
-    if card is not None:
+    if card is not None and card.get("target_col") is None:
+        # D-ECL-2: corrida de cartera. Sin target ni partición no hay malos ni muestras que contar,
+        # y «0 malos» sería falso: no aplica.
+        lines.append(
+            f"{_miles(_int(card.get('n_rows')) or 0)} filas · "
+            f"{_miles(_int(card.get('n_features')) or 0)} columnas"
+        )
+    elif card is not None:
         n_rows = _int(card.get("n_rows")) or 0
         class_counts = _mapping(card.get("class_counts"))
         n_bad = _int(class_counts.get("malo")) or 0

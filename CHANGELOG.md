@@ -7,6 +7,36 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Corregido
+
+- **IFRS 9 ya no entrega una «ECL a 12 meses» que cubre varios años.** Con una curva de PD anual
+  más corta que el horizonte de 12 meses declarado —por ejemplo, cinco años con el valor de
+  fábrica `horizon_12m_periods=12`—, la ventana sumaba la curva entera y la corrida terminaba con
+  la provisión al doble y sin aviso. Ahora el motor mide cuánto dura de verdad esa ventana, curva
+  por curva, también cuando el horizonte supera la curva o cae entre dos cortes, y lo declara como
+  aviso; con `fail_on_falta_dato=True` (el valor de fábrica) la corrida se detiene en vez de
+  entregar la cifra. Una curva que entera dura un año o menos sigue sin aviso, y una curva sin
+  unidad declarada ya no apaga el chequeo de las demás. **Ninguna configuración correcta cambia de
+  cifra**: el preset IFRS 9 declara un horizonte de un período sobre su curva anual.
+
+### Añadido
+
+- **Una corrida de provisiones no tiene que inventar qué es un cliente malo.** En la sección de
+  datos, `target` y `partition` aceptan `null` explícito —los dos a la vez o ninguno; la clave
+  sigue siendo obligatoria, así que olvidarla sigue siendo un error—. Así se declara una corrida
+  de cartera, que no modela un incumplimiento ni separa muestras: los datos se cargan, se validan y
+  se publican sin etiquetas ni particiones, la ficha de datos dice «no aplica» (sin tasa de malos)
+  y el informe lo explica en vez de mostrar tablas vacías. Medido sobre el preset IFRS 9: la
+  provisión sale **idéntica** a la de hoy. Si la corrida incluye una etapa que sí modela el
+  incumplimiento (análisis exploratorio, binning, selección, modelo…), se detiene antes de correr
+  y lo dice en palabras de negocio. En Python, el tipo de `DataConfig.target` pasa a
+  `TargetConfig | None` y el de `DataConfig.partition` a `PartitionConfig | None`, y
+  `DataCardSection.target_col` y `.bad_rate` admiten `None` sólo en una corrida de cartera: es
+  aditivo, y ningún `config_hash` existente se mueve (todo YAML vigente declara las dos claves con
+  valor).
+
 ## [2.3.0] — 2026-10-02
 
 ### Añadido

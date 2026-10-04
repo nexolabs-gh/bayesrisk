@@ -208,8 +208,16 @@ export function FieldRenderer(props: FieldRendererProps) {
   // discriminada tiene su propio flujo (Select de variante) y no se trata como nullable. Tampoco
   // la lista «todas o una lista» (`multiselect_or_all`): ahí `null` no es «desactivado» sino
   // «todas las columnas», y el toggle genérico rotularía justo lo contrario (D-SC-1).
+  // Un campo OBLIGATORIO que admite `null` (`data.target` y `data.partition`, D-ECL-2) tampoco:
+  // no tiene default y quien modela lo declara entero; el `null` de una corrida de cartera es una
+  // declaración, no un interruptor apagado (misma regla que `effective_defaults` en el motor).
   const { schema: base, nullable } = unwrapNullable(resolveRef(schema, defs))
-  if (nullable && kind !== "discriminated" && kind !== "multiselect_or_all") {
+  if (
+    nullable &&
+    !props.required &&
+    kind !== "discriminated" &&
+    kind !== "multiselect_or_all"
+  ) {
     return <NullableField {...props} baseSchema={base} depth={depth} />
   }
 

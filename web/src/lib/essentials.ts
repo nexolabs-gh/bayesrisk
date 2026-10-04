@@ -269,6 +269,18 @@ export function pruneForView(
 export type SectionField = [string, JsonSchema]
 
 /**
+ * El campo de primer nivel tal como se poda: un campo OBLIGATORIO que admite `null`
+ * (`data.target`, `data.partition`, D-ECL-2) se poda como su rama no nula, porque el formulario no
+ * lo pinta con interruptor (`FieldRenderer`): su `null` es una declaración de la corrida de
+ * cartera, no un estado apagado. Sin esto, la vista lo envolvería en `anyOf: [T, null]` y cada una
+ * de las dos vistas pintaría su propio interruptor sobre el mismo objeto.
+ */
+function campoDeSeccion(sectionSchema: JsonSchema, name: string, schema: JsonSchema): JsonSchema {
+  if (!(sectionSchema.required ?? []).includes(name)) return schema
+  return unwrapNullable(schema).schema
+}
+
+/**
  * Los esenciales de la sección, planos y en el orden en que el formulario los pintaría (grupo de
  * declaración, luego `ui_order`), cada uno podado a sus hojas marcadas.
  */
@@ -276,7 +288,7 @@ export function essentialFields(sectionSchema: JsonSchema, defs: Defs): SectionF
   const out: SectionField[] = []
   for (const group of groupedFields(sectionSchema)) {
     for (const [name, schema] of group.fields) {
-      const part = pruneForView(schema, defs, "essential")
+      const part = pruneForView(campoDeSeccion(sectionSchema, name, schema), defs, "essential")
       if (part !== null) out.push([name, part])
     }
   }
@@ -290,7 +302,7 @@ export function essentialFields(sectionSchema: JsonSchema, defs: Defs): SectionF
 export function advancedSchema(sectionSchema: JsonSchema, defs: Defs): JsonSchema | null {
   const kept: Record<string, JsonSchema> = {}
   for (const [name, schema] of Object.entries(sectionSchema.properties ?? {})) {
-    const part = pruneForView(schema, defs, "advanced")
+    const part = pruneForView(campoDeSeccion(sectionSchema, name, schema), defs, "advanced")
     if (part !== null) kept[name] = part
   }
   if (Object.keys(kept).length === 0) return null

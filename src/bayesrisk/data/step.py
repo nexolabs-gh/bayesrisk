@@ -58,38 +58,64 @@ class DataStep(AuditableMixin):
     provides: tuple[ArtifactKey, ...] = tuple(("data", key) for key in DATA_ARTIFACTS)
 
     def __init__(self, config: DataConfig) -> None:
-        """Construye el paso desde la sección ``DataConfig`` ya validada."""
+        """Construye el paso desde la sección ``DataConfig`` ya validada y arma ``provides``."""
         self.config = config
+        self.provides = _provides_for(config)
 
     @classmethod
     def from_config(cls, cfg: DataConfig) -> DataStep:
         """Construye ``DataStep`` desde ``BayesRiskConfig.data``."""
         return cls(cfg)
 
-    def execute(self, study: Study, rng: np.random.Generator) -> PartitionResult:
-        """Ejecuta load → schema → special → target → partition → hash → artefactos."""
+    def motivo_sin_proveer(self, consumidor: str, clave: str) -> str | None:
+        """Por qué este paso, activo, no produce ``clave`` para ``consumidor`` (D-ECL-2).
+
+        Lo consulta la validación del pipeline antes de correr: sin esto, una etapa que modela el
+        incumplimiento en una corrida de cartera recibiría «active 'data'», que ya está activo.
+        """
+        if not self.config.es_corrida_de_cartera or clave not in _ARTEFACTOS_DE_ETIQUETADO:
+            return None
+        return (
+            f"El paso '{consumidor}' modela un incumplimiento, y esta corrida no dice qué es un "
+            "cliente malo ni cómo separar la muestra para validar: declara la definición de "
+            f"target y las particiones en los datos, o quita '{consumidor}'."
+        )
+
+    def execute(self, study: Study, rng: np.random.Generator) -> PartitionResult | MaskedFrame:
+        """Ejecuta load → schema → special → target → partition → hash → artefactos.
+
+        En una corrida de cartera (target y partición nulos, D-ECL-2) no etiqueta ni particiona:
+        publica el frame validado, ``special``, ``data_hash`` y una ``data_card`` de «no aplica», y
+        devuelve el ``MaskedFrame``.
+        """
         source = self._resolve_load_source(study)
         df = DataLoader.from_config(self.config.load).load(source, audit=self._audit)
         validated = SchemaValidator.from_config(self.config.schema_).validate(df, audit=self._audit)
         masked = SpecialValuePolicy.from_config(self.config.missing).apply(
             validated, audit=self._audit
         )
-        labeled = TargetDefinition.from_config(self.config.target).apply(
-            masked.frame, audit=self._audit
-        )
-        result = Partitioner.from_config(self.config.partition).split(
-            labeled,
-            root_seed=study.seed_manager.root_seed,
-            rng=rng,
-            audit=self._audit,
-        )
-        digest = data_hash(result.frame)
+        target_config, partition_config = self.config.target, self.config.partition
+        labeled: LabeledFrame | None = None
+        result: PartitionResult | None = None
+        if target_config is not None and partition_config is not None:
+            labeled = TargetDefinition.from_config(target_config).apply(
+                masked.frame, audit=self._audit
+            )
+            result = Partitioner.from_config(partition_config).split(
+                labeled,
+                root_seed=study.seed_manager.root_seed,
+                rng=rng,
+                audit=self._audit,
+            )
+        frame = masked.frame if result is None else result.frame
+        digest = data_hash(frame)
         data_card = self._build_data_card(
             masked=masked, labeled=labeled, result=result, digest=digest
         )
         try:
             self._publish_artifacts(
                 study=study,
+                frame=frame,
                 result=result,
                 labeled=labeled,
                 masked=masked,
@@ -107,7 +133,7 @@ class DataStep(AuditableMixin):
                 and study.artifacts.get("data", "data_hash") == digest
             ):
                 self._update_lineage(study, digest)
-        return result
+        return masked if result is None else result
 
     def _resolve_load_source(self, study: Study) -> DataSource | None:
         """Resuelve la fuente para ``DataLoader`` sin convertir rutas en dependencia del core."""
@@ -135,13 +161,32 @@ class DataStep(AuditableMixin):
         self,
         *,
         masked: MaskedFrame,
-        labeled: LabeledFrame,
-        result: PartitionResult,
+        labeled: LabeledFrame | None,
+        result: PartitionResult | None,
         digest: str,
     ) -> DataCardSection:
-        """Construye el resumen de datos con los campos exactos de SDD-02 §4."""
+        """Construye el resumen de datos con los campos exactos de SDD-02 §4.
+
+        En una corrida de cartera (D-ECL-2) la card dice «no aplica»: sin columna de target ni tasa
+        de malos, y con los conteos por clase, partición y exclusión vacíos. Nada se siembra.
+        """
+        if labeled is None or result is None:
+            return DataCardSection(
+                source=_source_label(self.config.load.source),
+                n_rows=len(masked.frame.index),
+                n_features=len(masked.frame.columns),
+                target_col=None,
+                bad_rate=None,
+                class_counts={},
+                partition_sizes={},
+                partition_bad_rates={},
+                performance_window_months=None,
+                exclusions_by_reason={},
+                data_hash=digest,
+            )
         summary = labeled.summary
-        window = self.config.target.window
+        target_config = self.config.target
+        window = target_config.window if target_config is not None else None
         return DataCardSection(
             source=_source_label(self.config.load.source),
             n_rows=len(result.frame.index),
@@ -174,19 +219,43 @@ class DataStep(AuditableMixin):
         self,
         *,
         study: Study,
-        result: PartitionResult,
-        labeled: LabeledFrame,
+        frame: pd.DataFrame,
+        result: PartitionResult | None,
+        labeled: LabeledFrame | None,
         masked: MaskedFrame,
         digest: str,
         data_card: DataCardSection,
     ) -> None:
-        """Publica los seis artefactos estables del dominio ``data``."""
-        study.artifacts.set("data", "frame", result.frame)
-        study.artifacts.set("data", "splits", result)
-        study.artifacts.set("data", "labels", labeled)
+        """Publica los artefactos estables del dominio ``data``: los seis, o cuatro sin etiquetas.
+
+        El orden es el de siempre; una corrida de cartera sólo omite ``splits`` y ``labels``, que
+        ``provides`` tampoco anuncia.
+        """
+        study.artifacts.set("data", "frame", frame)
+        if result is not None:
+            study.artifacts.set("data", "splits", result)
+        if labeled is not None:
+            study.artifacts.set("data", "labels", labeled)
         study.artifacts.set("data", "special", masked)
         study.artifacts.set("data", "data_hash", digest)
         study.artifacts.set("data", "data_card", data_card)
+
+
+#: Lo que una corrida de cartera no produce (D-ECL-2): sin target ni partición no hay etiquetas
+#: ni muestras.
+_ARTEFACTOS_DE_ETIQUETADO: Final = frozenset({"labels", "splits"})
+
+
+def _provides_for(config: DataConfig) -> tuple[ArtifactKey, ...]:
+    """Los artefactos que el paso escribe con ESTE config (patrón de ``SurvivalStep.requires``).
+
+    El DAG sólo ve que faltan las etiquetas y las muestras si el paso deja de anunciarlas: con
+    target y partición nulos, una etapa que modela el incumplimiento se detiene en
+    ``check_pipeline`` antes de correr, en vez de morir a mitad de la corrida.
+    """
+    if not config.es_corrida_de_cartera:
+        return tuple(("data", key) for key in DATA_ARTIFACTS)
+    return tuple(("data", key) for key in DATA_ARTIFACTS if key not in _ARTEFACTOS_DE_ETIQUETADO)
 
 
 def _source_label(source: str | None) -> str:

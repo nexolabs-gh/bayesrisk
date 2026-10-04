@@ -23,8 +23,11 @@ class DataCardSection(BaseModel):
     source: str
     n_rows: int
     n_features: int
-    target_col: str
-    bad_rate: float
+    # D-ECL-2: `None` sólo en una corrida de cartera (sin target ni partición), con los conteos por
+    # clase, partición y exclusión vacíos; toda corrida con target los trae con valor y serializa
+    # exactamente igual que antes.
+    target_col: str | None
+    bad_rate: float | None
     class_counts: dict[str, int]
     partition_sizes: dict[str, int]
     partition_bad_rates: dict[str, float]

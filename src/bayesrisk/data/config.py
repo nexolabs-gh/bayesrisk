@@ -23,10 +23,11 @@ from typing import Annotated, Final, Literal
 from pydantic import ConfigDict, Field, model_validator
 
 from bayesrisk.core.config import BayesRiskBaseConfig, declara_esenciales
-from bayesrisk.core.dataset_check import Requisito
+from bayesrisk.core.dataset_check import ContextoConfig, Requisito
 
 __all__ = [
     "EXCLUSION_WINDOW_REASON",
+    "SECCIONES_QUE_MODELAN_EL_INCUMPLIMIENTO",
     "CohortSplitConfig",
     "ColumnSpec",
     "ColumnSplitConfig",
@@ -48,6 +49,13 @@ __all__ = [
 ]
 
 EXCLUSION_WINDOW_REASON: Final = "ventana_incompleta"
+
+#: Secciones que leen las etiquetas o las muestras de ``data`` (``("data", "labels")`` o
+#: ``("data", "splits")``): sin target ni partición no tienen qué modelar. Un gate la ata al
+#: ``requires`` real de cada paso, para que esta lista y el DAG no se separen en silencio.
+SECCIONES_QUE_MODELAN_EL_INCUMPLIMIENTO: Final[frozenset[str]] = frozenset(
+    {"eda", "binning", "selection", "model", "ml", "explain", "tuning", "validation"}
+)
 
 
 # ── carga ─────────────────────────────────────────────────────────────────────
@@ -984,31 +992,91 @@ class DataConfig(BayesRiskBaseConfig):
             "partir de qué tasa de missing avisar.",
         },
     )
-    target: TargetConfig = Field(
+    # D-ECL-2: las dos claves siguen siendo OBLIGATORIAS —olvidarlas sigue siendo un error— y
+    # aceptan `null` explícito, los dos a la vez o ninguno: una corrida de cartera (provisiones)
+    # no modela un incumplimiento y no separa muestras, y el motor no siembra un criterio
+    # institucional para llenar el hueco (D-OBL-5).
+    target: TargetConfig | None = Field(
         ...,
         title="Definición de target",
-        description="Reglas declarativas de bueno/malo/excluido.",
+        description=(
+            "Reglas declarativas de bueno/malo/excluido; vacía en una corrida de cartera, junto "
+            "con las particiones."
+        ),
         json_schema_extra={
             "ui_help": "Reglas que definen cómo se etiqueta cada observación como bueno, malo, "
-            "indeterminado o excluido.",
+            "indeterminado o excluido. Una corrida que sólo calcula la provisión de una cartera "
+            "no modela un incumplimiento: ahí se deja vacía, junto con las particiones.",
         },
     )
-    partition: PartitionConfig = Field(
+    partition: PartitionConfig | None = Field(
         ...,
         title="Particiones",
-        description="Estrategia de partición Dev/HO/OOT + rol TTD.",
+        description=(
+            "Estrategia de partición Dev/HO/OOT + rol TTD; vacía en una corrida de cartera, junto "
+            "con el target."
+        ),
         json_schema_extra={
             "ui_help": "Cómo se dividen las observaciones en Desarrollo, Holdout y OOT para "
-            "entrenar y validar el modelo.",
+            "entrenar y validar el modelo. Una corrida que sólo calcula la provisión de una "
+            "cartera no separa muestras: ahí se deja vacía, junto con la definición de target.",
         },
     )
+
+    @model_validator(mode="after")
+    def _target_y_particion_juntos(self) -> DataConfig:
+        """Target y partición se declaran los dos o ninguno (D-ECL-2).
+
+        Uno sin el otro no describe ninguna corrida: etiquetar sin separar muestras no deja con qué
+        validar, y separar sin etiquetar no deja qué medir (la partición cuenta malos por muestra).
+        """
+        if (self.target is None) != (self.partition is None):
+            falta = "las particiones" if self.partition is None else "la definición de target"
+            raise ValueError(
+                "La definición de target y las particiones van juntas: una corrida que modela un "
+                "incumplimiento declara las dos, y una corrida de cartera ninguna. Falta "
+                f"{falta}."
+            )
+        return self
+
+    @property
+    def es_corrida_de_cartera(self) -> bool:
+        """``True`` si la sección no declara target ni partición: una corrida de cartera."""
+        return self.target is None
+
+    def requisitos_incumplidos_por_contexto(
+        self, contexto: ContextoConfig
+    ) -> tuple[Requisito, ...]:
+        """Una corrida de cartera con una etapa que modela el incumplimiento no se puede correr.
+
+        El DAG ya la detiene —``DataStep`` deja de anunciar las etiquetas y las muestras—; esto le
+        dice al formulario por qué, en palabras de negocio y anclado al campo que lo arregla, antes
+        de apretar Ejecutar (D-ECL-2).
+        """
+        if not self.es_corrida_de_cartera:
+            return ()
+        modelan = sorted(SECCIONES_QUE_MODELAN_EL_INCUMPLIMIENTO & contexto.secciones_activas)
+        if not modelan:
+            return ()
+        return (
+            Requisito(
+                path="target",
+                declared="(ninguna)",
+                message=(
+                    "Esta corrida modela un incumplimiento y no dijiste qué es un cliente malo ni "
+                    "cómo separar la muestra para validar. Decláralos en los datos, o deja sólo "
+                    "las etapas de una corrida de cartera."
+                ),
+            ),
+        )
 
     def columnas_que_produce(self) -> frozenset[str]:
         """Columnas que este paso **añade** al frame, y que las secciones de abajo pueden nombrar.
 
-        Las cuatro se escriben **sin condición** —``DataStep.execute`` llama a
-        ``TargetDefinition.apply`` y a ``Partitioner.split`` siempre (`data/step.py:77-80`)—, o sea
-        que no hay rama que consultar: si esta sección corre, están.
+        Con target y partición declarados, las cuatro se escriben **sin condición** —
+        ``DataStep.execute`` llama a ``TargetDefinition.apply`` y a ``Partitioner.split``
+        siempre—, o sea que no hay rama que consultar: si esta sección corre, están. En una corrida
+        de cartera (D-ECL-2) el paso no etiqueta ni particiona, y no produce ninguna.
 
         🔴 Existen aquí porque el preflight compara contra el ARCHIVO y las secciones de abajo
         consumen la SALIDA de este paso. Medido: ``survival.input.event_col = "target"`` llega a
@@ -1021,6 +1089,8 @@ class DataConfig(BayesRiskBaseConfig):
         se mueva por un lado deja el preflight mintiendo por el otro, y este repo ya pagó una
         triplicada.
         """
+        if self.target is None:
+            return frozenset()
         from bayesrisk.data.partition import PARTITION_COL, TTD_COL
         from bayesrisk.data.target import STATUS_COL
 

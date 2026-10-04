@@ -95,7 +95,9 @@ function bajarUnNivel(
 ): JsonSchema | undefined {
   // Una sección de dominio y todo campo opcional viajan como `anyOf: [<objeto>, {"type":"null"}]`;
   // sin desenvolverlo no hay `properties` por donde bajar (mismo motivo que `rama_objeto()`).
-  const base = unwrapNullable(resolveRef(nodo, defs)).schema
+  // La rama no nula puede ser a su vez un `$ref` (`data.target`, `data.partition`, `window`): se
+  // resuelve también, o un error bajo un submodelo opcional no encuentra su campo.
+  const base = resolveRef(unwrapNullable(resolveRef(nodo, defs)).schema, defs)
   if (typeof segmento === "number") {
     return base.items ? resolveRef(base.items, defs) : undefined
   }
