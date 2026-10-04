@@ -425,3 +425,56 @@ def test_los_artefactos_existentes_de_survival_no_se_mueven(corrida: Ecl, f4: An
 
     claves_f4 = [k for d, k in f4.artifacts.keys() if d == "survival"]  # noqa: SIM118
     assert claves_f4 == [*SURVIVAL_ARTIFACTS, "coefficients"]
+
+
+# ─────────────────────────── pasada 1 de Codex sobre la capa A ───────────────────────────
+
+
+def test_una_decision_que_no_se_puede_registrar_no_toca_el_config(
+    datos: Path, tmp_path: Path
+) -> None:
+    """El registro se valida antes de escribir el config: o quedan los dos, o ninguno."""
+    ecl = _ecl(datos, tmp_path)
+    antes = ecl.config_hash
+    with pytest.raises(EclInputError, match="repite"):
+        ecl.exclude(["deuda_ingreso", "deuda_ingreso"], reason="duplicada")
+    assert ecl.config_hash == antes
+    assert ecl.config.decisions == ()
+    assert "deuda_ingreso" in ecl.config.survival.input.covariate_cols
+
+
+def _con(cfg: Any, seccion: str, ruta: tuple[str, ...], valor: Any) -> Any:
+    """``cfg`` con una hoja anidada cambiada, sin validar (lo que deja un YAML editado a mano)."""
+    actual = getattr(cfg, seccion)
+    objetos = [actual]
+    for parte in ruta[:-1]:
+        objetos.append(getattr(objetos[-1], parte))
+    nuevo = objetos[-1].model_copy(update={ruta[-1]: valor})
+    for objeto, parte in zip(reversed(objetos[:-1]), reversed(ruta[:-1]), strict=True):
+        nuevo = objeto.model_copy(update={parte: nuevo})
+    return cfg.model_copy(update={seccion: nuevo})
+
+
+def test_el_cotejo_no_atribuye_un_efecto_que_no_existe(decidida: Ecl) -> None:
+    """Sección ausente, huella incompleta o columna de mora cambiada → sin efecto, no aplicada."""
+    from bayesrisk.core.decisions import eventos_de_decisiones
+
+    cfg = loads_config(decidida.to_yaml())
+
+    def reglas(config: Any) -> list[tuple[str, str]]:
+        return [(e["regla"], e["accion"]) for e in eventos_de_decisiones(config)]
+
+    sin_curva = cfg.model_copy(update={"survival": None})
+    assert ("decision_sin_efecto", "exclude") in reglas(sin_curva)
+
+    vacia = cfg.decisions[1].model_copy(update={"value": {}})
+    huella_vacia = cfg.model_copy(update={"decisions": (cfg.decisions[0], vacia)})
+    assert ("decision_sin_efecto", "rebut_backstops") in reglas(huella_vacia)
+
+    otra_columna = _con(
+        cfg, "provisioning_ifrs9", ("staging", "days_past_due_col"), "dias_mora_otra"
+    )
+    eventos = eventos_de_decisiones(otra_columna)
+    rebut = next(e for e in eventos if e["accion"] == "rebut_backstops")
+    assert rebut["regla"] == "decision_sin_efecto"
+    assert "provisioning_ifrs9.staging.days_past_due_col" in rebut["umbral"]

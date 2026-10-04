@@ -447,15 +447,36 @@ class _PuertaGuiada:
         ``value`` es la huella de las hojas que la decisión dejó escritas, la misma que el evento
         lleva en ``valor``.
         """
+        self._agregar_registro(self._nuevo_registro(accion, variables, motivo, hojas))
+
+    def _nuevo_registro(
+        self, accion: str, variables: Sequence[str], motivo: str, hojas: Mapping[str, Any]
+    ) -> Any:
+        """El ``DecisionEntry`` de una decisión, validado y **sin tocar el config**.
+
+        Una puerta que arma el registro antes de mutar el config no puede quedar con el efecto
+        escrito y sin su motivo si el registro no valida (pasada 1 de Codex sobre la capa A de
+        IFRS 9: ``exclude(["x", "x"])``).
+        """
         from bayesrisk.core.config.schema import DecisionEntry
 
-        registro = DecisionEntry(
-            action=accion,  # type: ignore[arg-type]  # una de las acciones de las puertas
-            columns=tuple(variables),
-            reason=motivo,
-            author="usuario",
-            value=deepcopy(dict(hojas)),
-        )
+        try:
+            return DecisionEntry(
+                action=accion,  # type: ignore[arg-type]  # una de las acciones de las puertas
+                columns=tuple(variables),
+                reason=motivo,
+                author="usuario",
+                value=deepcopy(dict(hojas)),
+            )
+        except ValidationError as exc:
+            from bayesrisk.api import _mensaje_de_validacion
+
+            raise self._InputError(
+                f"{accion}(): la decisión no se puede registrar: {_mensaje_de_validacion(exc)}"
+            ) from exc
+
+    def _agregar_registro(self, registro: Any) -> None:
+        """Agrega un registro ya validado al final de ``config.decisions`` (sólo agregar)."""
         self._config = self._config.model_copy(
             update={"decisions": (*self._config.decisions, registro)}
         )

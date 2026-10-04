@@ -765,6 +765,10 @@ class Scorecard(_PuertaGuiada):
         nombres = [columns] if isinstance(columns, str) else [str(c) for c in columns]
         if not nombres:
             raise ScorecardInputError(f"{accion}() necesita al menos una variable.")
+        if len(set(nombres)) != len(nombres):
+            # Antes de mutar: el registro rechaza variables repetidas y el config quedaba con el
+            # efecto escrito sin su motivo (pasada 1 de Codex sobre la capa A de IFRS 9).
+            raise ScorecardInputError(f"{accion}() repite una variable: {nombres}.")
         binning = self._config.binning
         predictoras = tuple(binning.feature_columns) if binning is not None else ()
         desconocidas = [c for c in nombres if c not in predictoras]

@@ -456,3 +456,40 @@ def test_sin_cambios_el_estudio_minimo_si_es_ttc_y_solo_por_mora() -> None:
     provision = _resumen_provision(study, contexto)
     todo = "\n".join((*final.assumptions, *provision.alerts))
     assert "TTC" in todo and "Un escenario único" in todo and "sólo por la mora" in todo
+
+
+def test_sin_marca_no_se_afirma_que_el_stage_3_sea_solo_por_mora_si_hay_override() -> None:
+    """Pasada 1 de Codex: el override cualitativo también lleva a Stage 3 sin la marca."""
+    from bayesrisk.guided.summaries import _resumen_provision
+
+    study = _estudio(
+        {
+            "provisioning_ifrs9.staging.is_default_col": None,
+            "provisioning_ifrs9.staging.stage_override_col": "override",
+        },
+        {},
+        _COLUMNAS_F4,
+    )
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="x", partition_label="")
+    texto = "\n".join(_resumen_provision(study, contexto).lines)
+    assert "sólo por mora" not in texto
+    assert "Sin marca de incumplimiento: al Stage 3 lo llevan la mora de 90 días o más" in texto
+    assert "decisión cualitativa" in texto
+
+
+def test_sin_covariables_no_se_afirma_que_solo_ordenen_la_mora_y_la_marca() -> None:
+    from bayesrisk.guided.summaries import _resumen_curva
+
+    study = _estudio(
+        {
+            "survival.input.covariate_cols": [],
+            "provisioning_ifrs9.staging.stage_override_col": "override",
+        },
+        {},
+        _COLUMNAS_F4,
+    )
+    study.artifacts._datos[("survival", "card")] = {"time_unit": "year", "n_periods": 5}
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="x", partition_label="")
+    resumen = _resumen_curva(study, contexto)
+    assert resumen.alerts
+    assert not any("sólo lo dan" in alerta for alerta in resumen.alerts)

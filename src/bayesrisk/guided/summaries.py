@@ -2448,7 +2448,7 @@ def _resumen_curva(study: Study, context: SummaryContext) -> StageSummary:
         lines.append("Sin covariables: una sola curva para toda la cartera")
         alerts.append(
             "La curva no usa covariables: todas las operaciones comparten la misma PD por "
-            "período, y el orden de riesgo entre ellas sólo lo dan la mora y la marca en el staging"
+            "período y la curva no ordena el riesgo entre ellas"
         )
     medias = _pd_medias(curva)
     if medias is not None:
@@ -2656,10 +2656,13 @@ def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
         lines.append(" · ".join(partes))
     lines.extend(_lineas_de_gatillos(staging, ifrs))
     if _hoja(ifrs, "staging", "is_default_col") is None:
-        lines.append(
-            "Sin marca de incumplimiento: el Stage 3 se asigna sólo por mora de "
-            f"{_hoja(ifrs, 'staging', 'dpd_default_backstop')} días o más"
-        )
+        # Lo que lleva a Stage 3 sin la marca, según los gatillos que ESTA corrida tiene: la mora
+        # siempre, y la decisión cualitativa si declara su columna (pasada 1 de Codex).
+        fuentes = [f"la {_rotulo_gatillo('dpd_default_backstop', ifrs)}"]
+        if _hoja(ifrs, "staging", "stage_override_col") is not None:
+            fuentes.append("la decisión cualitativa por operación (override)")
+        verbo = "lo lleva" if len(fuentes) == 1 else "lo llevan"
+        lines.append(f"Sin marca de incumplimiento: al Stage 3 {verbo} {_enumerar(fuentes)}")
     falta = tuple(str(c) for c in _sequence(card.get("falta_dato")))
     if "FALTA-DATO-IFRS-4" in falta:
         lines.append(_ead_constante())
@@ -2919,7 +2922,7 @@ def _decisiones_sin_efecto(study: Study | None) -> tuple[str, ...]:
         if accion in {"merge_bins", "set_bins"}:
             razon = "sus cortes cambiaron en el config"
         elif accion == "rebut_backstops":
-            razon = "los días de mora de Stage 2 o Stage 3 cambiaron en el config"
+            razon = "los días de mora de Stage 2 o Stage 3, o su columna, cambiaron en el config"
         elif accion == "exclude":
             razon = (
                 "las variables ya no están excluidas en el config"

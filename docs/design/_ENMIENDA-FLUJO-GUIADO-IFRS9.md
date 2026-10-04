@@ -731,6 +731,15 @@ pasa a depender de la config, como `requires`. Golden propio en
 **Estabilidad (§3.10).** `bayesrisk.testing.stability.EXPERIMENTAL_SYMBOLS` —excepción por símbolo
 dentro de un dominio estable— con `bayesrisk.guided.ecl.Ecl`; se retira al cerrar B.
 
+**Pasada 1 de Codex sobre el código** (tres medium, reales, ninguno contractual): (1) una decisión
+cuyo registro no valida —`exclude(["x", "x"])`— dejaba el config escrito sin su motivo: el registro
+se arma y valida **antes** de mutar (`_nuevo_registro`/`_agregar_registro` en la base), y las dos
+puertas rechazan una variable repetida de entrada; (2) «sin marca, Stage 3 sólo por mora» ignoraba
+la decisión cualitativa por operación, y la alerta «sin covariables» afirmaba que sólo ordenaban la
+mora y la marca: las frases salen de los gatillos que la corrida tiene, sin exclusividad; (3) el
+cotejo daba por aplicada una decisión con la sección ausente, la huella incompleta o la columna de
+mora cambiada: ahora las tres son «sin efecto». Siete controles negativos, uno por regla nueva.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima (§3.2):** el archivo de cartera con fecha de corte, cartera, exposición, LGD,

@@ -59,7 +59,8 @@
       "tests/*.py",
       "tests/**/*.py",
       "tests/fixtures/option_effect_oracles.txt",
-      "tests/fixtures/option_surface_ledger.json"
+      "tests/fixtures/option_surface_ledger.json",
+      "tests/fixtures/survival_coefficients_f4.json"
     ],
     "required": [
       "src/bayesrisk/_build_manifest.json",

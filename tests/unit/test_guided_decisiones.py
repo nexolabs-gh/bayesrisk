@@ -543,3 +543,14 @@ def test_los_cortes_solo_aplican_a_variables_numericas_y_exigen_motivo(
         sc.set_bins("no_existe", [0.5], reason="prueba")
     with pytest.raises(ScorecardInputError, match="no está entre las predictoras"):
         sc.bins("no_existe")
+
+
+def test_una_variable_repetida_se_rechaza_sin_tocar_el_config(fuente: Path, tmp_path: Path) -> None:
+    """Pasada 1 de Codex sobre la capa A de IFRS 9: el registro rechaza la repetida y el config
+    quedaba con el efecto escrito sin su motivo."""
+    sc = _puerta(fuente, tmp_path)
+    antes = sc.config_hash
+    with pytest.raises(ScorecardInputError, match="repite"):
+        sc.exclude(["score", "score"], reason="duplicada")
+    assert sc.config_hash == antes
+    assert sc.config.decisions == ()

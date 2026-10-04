@@ -274,8 +274,8 @@ class Ecl(_PuertaGuiada):
                     regla="inferencia_sin_marca",
                     valor={"provisioning_ifrs9.staging.is_default_col": None},
                     motivo=(
-                        "no se declaró default=: sin marca de incumplimiento, el Stage 3 lo asigna "
-                        "sólo la mora"
+                        "no se declaró default=: el staging no usa una marca de incumplimiento "
+                        "para el Stage 3"
                     ),
                 )
             )
@@ -404,7 +404,7 @@ class Ecl(_PuertaGuiada):
             "Corrida de cartera: no declara cliente malo ni muestras, que la provisión no usa",
         ]
         if sin_marca:
-            lineas.append("Sin marca de incumplimiento: el Stage 3 lo asigna sólo la mora")
+            lineas.append("Sin marca de incumplimiento: el Stage 3 no la usa")
         if sin_covariables:
             lineas.append("Sin covariables: una sola curva de PD para toda la cartera")
         return tuple(lineas)
@@ -422,6 +422,8 @@ class Ecl(_PuertaGuiada):
         nombres = [columns] if isinstance(columns, str) else [str(c) for c in columns]
         if not nombres:
             raise EclInputError("exclude() necesita al menos una covariable.")
+        if len(set(nombres)) != len(nombres):
+            raise EclInputError(f"exclude() repite una covariable: {nombres}.")
         survival = self._config.survival
         if survival is None:  # inalcanzable: la puerta siempre arma la sección
             raise EclInputError("La corrida no tiene curva de PD (sección survival).")
@@ -434,12 +436,14 @@ class Ecl(_PuertaGuiada):
                 f"curva de esta corrida ({', '.join(actuales) or 'no tiene ninguna'})."
             )
         restantes = [c for c in actuales if c not in nombres]
+        # El registro se arma y valida ANTES de escribir el config: o quedan los dos, o ninguno.
+        registro = self._nuevo_registro(
+            "exclude", nombres, motivo, {"survival.input.covariate_cols": list(restantes)}
+        )
         entrada = survival.input.model_dump(mode="python", by_alias=True)
         entrada["covariate_cols"] = tuple(restantes)
         self._actualizar_seccion("survival", {"input": entrada})
-        self._registrar_decision(
-            "exclude", nombres, motivo, {"survival.input.covariate_cols": list(restantes)}
-        )
+        self._agregar_registro(registro)
         return self._tras_decidir(f"exclude {', '.join(nombres)}", motivo)
 
     def rebut_backstops(
@@ -485,22 +489,21 @@ class Ecl(_PuertaGuiada):
                 "Un incumplimiento presume antes un aumento significativo del riesgo: sube "
                 "stage3_days o baja stage2_days."
             )
-        self._actualizar_seccion("provisioning_ifrs9", {"staging": staging})
-        actualizada = self._config.provisioning_ifrs9
-        assert actualizada is not None  # recién validada
-        vigente = actualizada.staging
-        self._registrar_decision(
+        # El registro se arma y valida ANTES de escribir el config: o quedan los dos, o ninguno.
+        registro = self._nuevo_registro(
             "rebut_backstops",
-            [vigente.days_past_due_col],
+            [ifrs.staging.days_past_due_col],
             motivo,
             {
-                "provisioning_ifrs9.staging.dpd_sicr_backstop": vigente.dpd_sicr_backstop,
-                "provisioning_ifrs9.staging.dpd_default_backstop": vigente.dpd_default_backstop,
+                "provisioning_ifrs9.staging.dpd_sicr_backstop": staging["dpd_sicr_backstop"],
+                "provisioning_ifrs9.staging.dpd_default_backstop": staging["dpd_default_backstop"],
             },
         )
+        self._actualizar_seccion("provisioning_ifrs9", {"staging": staging})
+        self._agregar_registro(registro)
         return self._tras_decidir(
-            f"rebut_backstops: Stage 2 desde {vigente.dpd_sicr_backstop} días de mora y Stage 3 "
-            f"desde {vigente.dpd_default_backstop}",
+            f"rebut_backstops: Stage 2 desde {staging['dpd_sicr_backstop']} días de mora y "
+            f"Stage 3 desde {staging['dpd_default_backstop']}",
             motivo,
         )
 

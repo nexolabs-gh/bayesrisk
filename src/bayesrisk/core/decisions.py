@@ -65,6 +65,12 @@ _HOJA_EXCLUIDAS: Final = "binning.exclude_columns"
 _HOJA_CORTES: Final = "binning.variable_overrides"
 #: La hoja que deja escrita ``exclude`` sobre la curva de PD: la lista de covariables que queda.
 _HOJA_COVARIABLES: Final = "survival.input.covariate_cols"
+#: Las dos hojas que deja escritas ``rebut_backstops`` y la columna de mora que es su sujeto.
+_HOJAS_PRESUNCIONES: Final = (
+    "provisioning_ifrs9.staging.dpd_sicr_backstop",
+    "provisioning_ifrs9.staging.dpd_default_backstop",
+)
+_HOJA_COLUMNA_MORA: Final = "provisioning_ifrs9.staging.days_past_due_col"
 _FAMILIA: Final[Mapping[str, str]] = {
     "exclude": "variables",
     "keep": "variables",
@@ -224,12 +230,22 @@ def _hojas_que_no_coinciden(
 ) -> tuple[str, ...]:
     """Las hojas que ya no reflejan la decisión sobre ``variable``; vacío si la aplica."""
     if registro.action == "rebut_backstops":
-        # Las presunciones de mora: cada hoja de la huella tiene que seguir con el mismo número.
-        return tuple(
+        # Las presunciones de mora: las dos hojas tienen que estar en la huella y seguir con el
+        # mismo número, y la columna de mora tiene que seguir siendo el sujeto registrado. Una
+        # huella incompleta, una sección ausente o una columna cambiada no se atribuyen a quien
+        # decidió (pasada 1 de Codex sobre la capa A de IFRS 9).
+        faltan = [hoja for hoja in _HOJAS_PRESUNCIONES if hoja not in registro.value]
+        distintas = [
             hoja for hoja, valor in registro.value.items() if _hoja_escalar(config, hoja) != valor
-        )
+        ]
+        if _hoja_escalar(config, _HOJA_COLUMNA_MORA) != variable:
+            distintas.append(_HOJA_COLUMNA_MORA)
+        return tuple(dict.fromkeys([*faltan, *distintas]))
     if registro.action == "exclude" and _HOJA_COVARIABLES in registro.value:
-        # Una covariable retirada de la curva: aplicada mientras no vuelva a la lista.
+        # Una covariable retirada de la curva: aplicada mientras no vuelva a la lista, y sólo si
+        # la curva sigue ahí (sin sección no hay efecto que atribuir).
+        if _hoja_escalar(config, _HOJA_COVARIABLES) is None:
+            return (_HOJA_COVARIABLES,)
         covariables = _lista(config, "survival", "input.covariate_cols")
         return () if variable not in covariables else (_HOJA_COVARIABLES,)
     excluidas = _lista(config, "binning", "exclude_columns")
