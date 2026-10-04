@@ -624,7 +624,10 @@ no publica: cada release y la recaptura piden su OK.
 
 **D-ECL-0.** `_horizonte_no_dura_un_ano` (`ifrs9/engine.py`) agrupa por `(row_id, scenario)`, salta
 sola la curva sin unidad convertible y aplica los tres casos de §3.1 con `sel` y `d` de cada curva;
-la marca sigue en bloque para la corrida (basta una curva). Tests nacidos rojos (5): la anual de
+la marca sigue en bloque para la corrida (basta una curva). **Pasada 1 de Codex sobre el código**
+(un high, real, no contractual): el disyunto `H < T_min` también se mide por curva —una curva
+que empieza en el mes 18 junto a otra que empieza en el 1 dejaba su Stage 1 en cero sin aviso—,
+con o sin unidad: es la misma regla de D-HOR-0, evaluada como los otros casos de §3.1. Tests nacidos rojos (5): la anual de
 cinco con `H = 12`, la misma con `fail_on_falta_dato=True` (aborta con `FALTA-DATO-IFRS-8`), anual
 junto a mensual, curva sin unidad junto a una anual y horizonte en un hueco; contracaras verdes:
 mensual de 12, seis meses, hueco de once meses, curva sin unidad sola y `H = 1` a doce años.
@@ -659,8 +662,8 @@ de implementación, dentro de lo aprobado:
 `check_pipeline` con el mensaje de negocio. Proyección canónica de F1 y F4 con **0 diferencias** y
 `config_hash` intactos (`1063d6cf…`, `013e69dc…`); columnas producidas de F1 y F4 idénticas;
 `HOJAS_DEL_FORMULARIO` **no cambia (574)**. Tests de D-ECL-2: 9 de 15 nacen rojos (los otros fijan
-lo que no cambia). **Controles negativos: 13/13** (10 del motor, cada uno sobre su copia de `src/`, y
-3 del front), rojo → restaurado con el mismo sha256 → verde.
+lo que no cambia). **Controles negativos: 14/14** (11 del motor —uno de la pasada 1—, cada uno
+sobre su copia de `src/`, y 3 del front), rojo → restaurado con el mismo sha256 → verde.
 
 **Censo de lectores fuera de `data/`** (las «37» de §3.3 eran coincidencias de texto): la única caída
 real era `columnas_que_produce()` vía `core/dataset_check.py` (preflight y `/api/validate`). Seguras

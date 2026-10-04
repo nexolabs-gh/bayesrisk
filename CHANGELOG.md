@@ -17,7 +17,8 @@ entradas anteriores conservan el nombre con el que se publicaron.
   la provisión al doble y sin aviso. Ahora el motor mide cuánto dura de verdad esa ventana, curva
   por curva, también cuando el horizonte supera la curva o cae entre dos cortes, y lo declara como
   aviso; con `fail_on_falta_dato=True` (el valor de fábrica) la corrida se detiene en vez de
-  entregar la cifra. Una curva que entera dura un año o menos sigue sin aviso, y una curva sin
+  entregar la cifra. Lo mismo cuando una curva empieza después del horizonte, aunque otras no:
+  su ECL a 12 meses salía en cero sin aviso. Una curva que entera dura un año o menos sigue sin aviso, y una curva sin
   unidad declarada ya no apaga el chequeo de las demás. **Ninguna configuración correcta cambia de
   cifra**: el preset IFRS 9 declara un horizonte de un período sobre su curva anual.
 

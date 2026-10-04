@@ -854,7 +854,7 @@ def _ts_row_ids_sin_unidad(ts: DataFrame) -> set[str]:
 
 
 def _horizonte_inconmensurable(ts: DataFrame, config: IfrsProvisioningConfig, numpy: Any) -> bool:
-    """Indica si ``horizon_12m_periods`` no es conmensurable con la curva recibida.
+    """Indica si ``horizon_12m_periods`` no es conmensurable con alguna curva recibida.
 
     Dos criterios, y **ninguno de los dos es «el horizonte alcanza el soporte»**. Ese era el modo A
     de la §1 de la enmienda, y programarlo demostró que es un gatillo **equivocado**: una curva
@@ -864,52 +864,27 @@ def _horizonte_inconmensurable(ts: DataFrame, config: IfrsProvisioningConfig, nu
     no un defecto. Un aviso que dispara ahí se aprende a ignorar, y como es gobernable, además
     abortaba la corrida.
 
-    Lo que el modo A intentaba aproximar sin poder medirlo era esto:
+    Los dos se miden **por curva** ``(row_id, scenario)`` —la misma agrupación con que
+    ``marginal_to_horizon`` suma la PD a 12 meses— y basta una curva desajustada (D-ECL-0): un frame
+    admite curvas de unidades y soportes distintos (``forward`` concatena fuentes), y mirar el frame
+    entero dejaba que una mensual de 12 períodos escondiera a una anual de 5, o a otra que empieza
+    en el mes 18 (pasada 1 de Codex sobre la capa 0).
 
-    - **El período del horizonte no dura un año.** Con la unidad declarada, ese período cae en
-      ``time_value_years`` y se **verifica** en vez de inferirse. Es el modo B de la §1, que la §2
-      daba por indetectable *porque la unidad no estaba fijada en ninguna parte* — al fijarla,
-      D-HOR-0 desbloqueó su propio gatillo. Medido: con el default ``horizon_12m_periods=12`` sobre
-      una curva **anual**, el «ECL a 12 meses» cubría doce años y sobrestimaba el Stage 1 unas 7,5
-      veces, en silencio y con la unidad correctamente declarada. Sólo corre si la unidad es
-      convertible: sobre una curva que no la declara, ``time_value_years`` es una presunción del
-      propio motor, y acusar al usuario con ella sería acusarlo de un supuesto ajeno — además de
-      duplicar lo que ``DATO-INSTITUCIONAL-IFRS-7`` ya dice.
-    - **El horizonte cae por debajo del primer período** (``H < T_min``): la máscara de 12 meses no
-      selecciona nada y Stage 1 provisiona **cero**, sin error. Éste no necesita unidad: es un
-      defecto cualquiera sea la periodicidad, y se resuelve sobre cotas enteras de un frame no
-      vacío —que ya garantizan ``_validate_term_structure`` y ``_prepare_term_structure``—, nunca
-      sobre un estadístico de una selección posiblemente vacía, que devolvería ``NaN`` y con él
-      ``False``, dejando el predicado mudo.
-    """
-    period = _ts_float(ts, "period", numpy)
-    horizonte = config.pd.horizon_12m_periods
-    bajo_el_soporte = horizonte < int(period.min())
-    return bajo_el_soporte or _horizonte_no_dura_un_ano(ts, horizonte, numpy)
-
-
-def _horizonte_no_dura_un_ano(ts: DataFrame, horizonte: int, numpy: Any) -> bool:
-    """Indica si la ventana de 12 meses de alguna curva no dura, de hecho, cerca de un año.
-
-    Se mide **por curva** ``(row_id, scenario)`` —la misma agrupación con que
-    ``marginal_to_horizon`` suma la PD a 12 meses— y basta una curva desajustada: un frame admite
-    curvas de unidades distintas (``forward`` concatena fuentes), y buscar el horizonte en el frame
-    entero dejaba que una mensual de 12 períodos escondiera a una anual de 5 (D-ECL-0).
-
-    La duración se lee en ``time_value_years`` —el instante ya convertido— y nunca se presume
-    ``period == time_value``: cuatro cortes trimestrales expresados en años tienen ``period`` 1…4 y
-    el horizonte correcto es 4. Sea ``sel`` el mayor período de la curva que no supera el horizonte
-    (el último que suma la ventana) y ``d`` su duración en años:
-
-    - **el horizonte existe en la curva o cae en un hueco:** dispara si ``|d - 1| > tol``;
-    - **el horizonte supera el último período:** la ventana suma la curva entera, y dispara sólo si
-      ``d > 1 + tol``. Una curva que entera dura un año o menos tiene la ECL a 12 meses igual a la
-      lifetime, y ésa es la contabilidad correcta.
-
-    Una curva sin unidad convertible se salta **sola**: ahí ``time_value_years`` es la presunción
-    del propio motor, acusar al usuario con ella sería acusarlo de un supuesto ajeno, y
-    ``DATO-INSTITUCIONAL-IFRS-7`` ya cubre ese caso. Las demás curvas se siguen midiendo. Una
-    curva sin período bajo el horizonte tampoco opina aquí: es el disyunto ``H < T_min``.
+    - **La ventana de 12 meses está vacía** (``H`` bajo el primer período de la curva): la máscara
+      no selecciona nada y Stage 1 provisiona **cero**, sin error. No necesita unidad: es un defecto
+      cualquiera sea la periodicidad, también en una curva que no la declara.
+    - **La ventana no dura un año.** Con la unidad declarada, el instante cae en
+      ``time_value_years`` y se **verifica** en vez de inferirse (D-HOR-0); nunca se presume
+      ``period == time_value``: cuatro cortes trimestrales expresados en años tienen ``period`` 1…4
+      y el horizonte correcto es 4. Sea ``sel`` el mayor período de la curva que no supera ``H`` (el
+      último que suma la ventana) y ``d`` su duración en años: con ``H`` en la curva o en un hueco,
+      dispara si ``|d - 1| > tol``; con ``H`` más allá del último período, la ventana suma la curva
+      entera y dispara sólo si ``d > 1 + tol`` —una curva que entera dura un año o menos tiene la
+      ECL a 12 meses igual a la lifetime, y ésa es la contabilidad correcta—. Medido: con el
+      default ``H = 12`` sobre una curva anual de cinco períodos, la corrida terminaba con la ECL al
+      doble. Una curva sin unidad convertible se salta **sola** en este criterio: ahí
+      ``time_value_years`` es una presunción del propio motor, acusar al usuario con ella sería
+      acusarlo de un supuesto ajeno, y ``DATO-INSTITUCIONAL-IFRS-7`` ya cubre ese caso.
 
     La tolerancia es ancha a propósito. Un año son 12 meses, 4 trimestres o 52 semanas, pero también
     365 días contra los 360 de alguna convención, o un `time_value` que arranca en 0 en vez de en el
@@ -917,27 +892,12 @@ def _horizonte_no_dura_un_ano(ts: DataFrame, horizonte: int, numpy: Any) -> bool
     haber uno—, no la discrepancia de calendario; un gatillo estrecho dispararía sobre curvas
     legítimas y se aprendería a ignorar.
     """
-    if _TS_TIME_UNIT_COLUMN not in ts.columns or _TS_YEARS_COLUMN not in ts.columns:
-        return False
-    convertible: dict[str | None, bool] = {}
-    curvas: dict[tuple[str, str], list[tuple[float, float]]] = {}
-    sin_unidad: set[tuple[str, str]] = set()
-    for row_id, escenario, periodo, anios, unidad in zip(
-        (str(value) for value in ts["row_id"].to_numpy()),
-        (str(value) for value in ts[_TS_SCENARIO_COLUMN].to_numpy()),
-        _ts_float(ts, "period", numpy).tolist(),
-        _ts_float(ts, _TS_YEARS_COLUMN, numpy).tolist(),
-        _time_unit_values(ts),
-        strict=True,
-    ):
-        if unidad not in convertible:
-            convertible[unidad] = year_fraction(unidad) is not None
-        if not convertible[unidad]:
-            sin_unidad.add((row_id, escenario))
-        curvas.setdefault((row_id, escenario), []).append((periodo, anios))
-    for clave, puntos in curvas.items():
+    horizonte = config.pd.horizon_12m_periods
+    for puntos, con_unidad in _curvas_por_operacion(ts, numpy).values():
         ventana = [punto for punto in puntos if punto[0] <= horizonte]
-        if clave in sin_unidad or not ventana:
+        if not ventana:
+            return True
+        if not con_unidad:
             continue
         _, duracion = max(ventana)
         if horizonte > max(periodo for periodo, _ in puntos):
@@ -946,6 +906,38 @@ def _horizonte_no_dura_un_ano(ts: DataFrame, horizonte: int, numpy: Any) -> bool
         elif abs(duracion - 1.0) > _HORIZONTE_ANIO_TOL:
             return True
     return False
+
+
+def _curvas_por_operacion(
+    ts: DataFrame, numpy: Any
+) -> dict[tuple[str, str], tuple[list[tuple[float, float]], bool]]:
+    """Agrupa la curva por ``(row_id, scenario)``: sus puntos y si su duración se puede medir.
+
+    Cada curva trae sus ``(period, time_value_years)`` y si declara una unidad convertible en todas
+    sus filas: una sola fila sin unidad basta para no medir su duración.
+    """
+    anios = (
+        _ts_float(ts, _TS_YEARS_COLUMN, numpy).tolist()
+        if _TS_YEARS_COLUMN in ts.columns
+        else [math.nan] * ts.shape[0]
+    )
+    convertible: dict[str | None, bool] = {}
+    curvas: dict[tuple[str, str], tuple[list[tuple[float, float]], bool]] = {}
+    for row_id, escenario, periodo, anio, unidad in zip(
+        (str(value) for value in ts["row_id"].to_numpy()),
+        (str(value) for value in ts[_TS_SCENARIO_COLUMN].to_numpy()),
+        _ts_float(ts, "period", numpy).tolist(),
+        anios,
+        _time_unit_values(ts),
+        strict=True,
+    ):
+        if unidad not in convertible:
+            convertible[unidad] = year_fraction(unidad) is not None
+        puntos, con_unidad = curvas.get((row_id, escenario), ([], True))
+        puntos.append((periodo, anio))
+        medible = convertible[unidad] and not math.isnan(anio)
+        curvas[(row_id, escenario)] = (puntos, con_unidad and medible)
+    return curvas
 
 
 def _ts_lgd_present(ts: DataFrame) -> bool:

@@ -593,3 +593,30 @@ def test_horizonte_en_un_hueco_que_dura_un_ano_no_avisa() -> None:
     result = _run(_cfg(horizon_12m_periods=12), _frame(), ts)
 
     assert _AVISO_HORIZONTE not in result.card.falta_dato
+
+
+@pytest.mark.parametrize("unidad", ["month", None])
+def test_una_curva_que_empieza_despues_del_horizonte_dispara_aunque_otra_no(
+    unidad: str | None,
+) -> None:
+    """La ventana vacía también se mide por curva (pasada 1 de Codex sobre la capa 0; nace rojo).
+
+    Una mensual de 1…12 junto a otra que empieza en el mes 18, con ``H = 12``: el primer período
+    del frame entero es 1 y el chequeo global callaba, pero la ventana de 12 meses de la segunda no
+    suma nada y su Stage 1 provisiona cero. No necesita unidad: es un defecto cualquiera sea la
+    periodicidad, también en una curva que no la declara.
+    """
+    ts = pd.concat(
+        [
+            _curva("op1", unidad="month", periodos=list(range(1, 13)), anios_por_periodo=1 / 12),
+            _curva("op2", unidad=unidad, periodos=list(range(18, 25)), anios_por_periodo=1 / 12),
+        ],
+        ignore_index=True,
+    )
+
+    result = _run(_cfg(horizon_12m_periods=12), _dos_operaciones(), ts)
+    assert _AVISO_HORIZONTE in result.card.falta_dato
+
+    cfg = _cfg(horizon_12m_periods=12).model_copy(update={"fail_on_falta_dato": True})
+    with pytest.raises(IfrsFaltaDatoError, match=_AVISO_HORIZONTE):
+        _run(cfg, _dos_operaciones(), ts)
