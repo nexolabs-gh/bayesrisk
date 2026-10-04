@@ -2431,13 +2431,18 @@ def _resumen_curva(study: Study, context: SummaryContext) -> StageSummary:
             f" · {_miles(n_censuradas)} sin incumplir al cierre de su observación (censuradas)"
         )
     lines.append(historia)
-    palabras = time_unit_words(unidad, n_periodos)
-    if palabras is not None:
-        lines.append(
-            f"La curva llega a {_miles(n_periodos)} {palabras}, un período por {_singular(unidad)}"
-        )
+    # El número de períodos no es una duración: cuatro cortes trimestrales expresados en años son
+    # cuatro períodos que llegan a un año (pasada 2 de Codex). La duración sale de la curva.
+    periodos = f"{_miles(n_periodos)} {_plural(n_periodos, 'período', 'períodos')}"
+    alcance = (
+        _duracion_legible(_anios_al_periodo(curva, "time_value", n_periodos))
+        if isinstance(curva, pd.DataFrame) and "time_value" in curva.columns
+        else None
+    )
+    if alcance is not None:
+        lines.append(f"La curva tiene {periodos} y llega a {alcance}")
     else:
-        lines.append(f"La curva tiene {_miles(n_periodos)} períodos (unidad «{unidad}»)")
+        lines.append(f"La curva tiene {periodos} (unidad «{unidad}»)")
     covariables = tuple(str(c) for c in _sequence(_hoja(survival, "input", "covariate_cols")))
     if covariables:
         efectos = _efectos_en_palabras(terminos, covariables)
@@ -2622,8 +2627,50 @@ def _plazo(tiempo: float | None, unidad: Any) -> str:
     return f"{numero} {palabras}" if palabras else f"{numero} ({unidad})"
 
 
-def _singular(unidad: Any) -> str:
-    return time_unit_words(unidad, 1) or str(unidad)
+def _anios_al_periodo(curva: pd.DataFrame, columna: str, periodo: int) -> float | None:
+    """Cuántos años dura la curva hasta ``periodo`` (o hasta su último período, si es más corta).
+
+    ``columna`` es ``time_value`` —con la unidad de cada fila en ``time_unit``— o
+    ``time_value_years``, ya en años. Se toma, por curva, el último período que no supera
+    ``periodo``; si las curvas no coinciden en esa duración, no se afirma ninguna.
+    """
+    if columna not in curva.columns or "period" not in curva.columns or curva.empty:
+        return None
+    if columna == "time_value_years":
+        anios = pd.to_numeric(curva[columna], errors="coerce")
+    else:
+        anios_por_fila = _en_anios(curva)
+        if anios_por_fila is None:
+            return None
+        anios = anios_por_fila
+    periodos = pd.to_numeric(curva["period"], errors="coerce")
+    dentro = curva.assign(_anios=anios, _periodo=periodos).loc[periodos.le(periodo)]
+    if dentro.empty:
+        return None
+    grupos = ["row_id", "scenario"] if "scenario" in dentro.columns else ["row_id"]
+    ultimos = (
+        dentro.sort_values("_periodo", kind="mergesort")
+        .groupby(grupos, sort=False, dropna=False)["_anios"]
+        .last()
+        .dropna()
+    )
+    if ultimos.empty or float(ultimos.max() - ultimos.min()) > _TOL_ANIO:
+        return None
+    return float(ultimos.iloc[0])
+
+
+def _duracion_legible(anios: float | None) -> str | None:
+    """«1 año», «5 años», «6 meses», «0,25 años»: una duración en años, como se lee."""
+    if anios is None or anios <= 0:
+        return None
+    if abs(anios - round(anios)) <= _TOL_ANIO:
+        n = round(anios)
+        return f"{_miles(n)} {_plural(n, 'año', 'años')}"
+    meses = anios * 12
+    if abs(meses - round(meses)) <= 1e-6:
+        n = round(meses)
+        return f"{_miles(n)} {_plural(n, 'mes', 'meses')}"
+    return f"{_cifra(anios, decimales=2)} años"
 
 
 def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
@@ -3160,13 +3207,21 @@ def _supuestos(study: Study) -> tuple[str, ...]:
         else:
             supuestos.append("Una sola curva de PD para toda la cartera, sin covariables")
     horizonte = _int(_hoja(ifrs, "pd", "horizon_12m_periods"))
-    unidad = _hoja(survival, "time_grid", "time_unit") if survival is not None else None
     if horizonte is not None:
-        palabras = time_unit_words(unidad, horizonte) if unidad is not None else None
+        # La duración de esos períodos sale de la curva que consumió la provisión, en años: el
+        # número de períodos no es una duración (pasada 2 de Codex).
+        cuantos = (
+            "el primer período" if horizonte == 1 else f"los primeros {_miles(horizonte)} períodos"
+        )
+        consumida = _artifact(study, "provisioning_ifrs9", "ecl_term_structure")
+        duracion = (
+            _duracion_legible(_anios_al_periodo(consumida, "time_value_years", horizonte))
+            if isinstance(consumida, pd.DataFrame)
+            else None
+        )
         supuestos.append(
-            f"Los 12 meses del Stage 1 son {_miles(horizonte)} "
-            + (palabras if palabras else _plural(horizonte, "período", "períodos"))
-            + " de la curva"
+            f"Los 12 meses del Stage 1 son {cuantos} de la curva"
+            + (f" ({duracion})" if duracion else "")
         )
     s2 = _int(_hoja(ifrs, "staging", "dpd_sicr_backstop"))
     s3 = _int(_hoja(ifrs, "staging", "dpd_default_backstop"))

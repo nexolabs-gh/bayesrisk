@@ -206,7 +206,7 @@ def test_la_curva_dice_su_historia_su_forma_y_el_efecto_de_cada_covariable(corri
     resumen = corrida.summary("survival")
     texto = "\n".join(resumen.lines)
     assert "1.502 incumplimientos" in texto
-    assert "La curva llega a 5 años" in texto
+    assert "La curva tiene 5 períodos y llega a 5 años" in texto
     assert "antiguedad_meses: más alto, menos riesgo" in texto
     assert "PD media de las operaciones: a 12 meses" in texto
     assert "a lo largo del ciclo (TTC)" in texto
@@ -271,7 +271,7 @@ def test_el_resumen_final_dice_supuestos_y_las_cinco_cifras(corrida: Ecl) -> Non
     supuestos = "\n".join(final.assumptions)
     assert "a lo largo del ciclo (TTC)" in supuestos
     assert "Un escenario único" in supuestos
-    assert "Los 12 meses del Stage 1 son 1 año de la curva" in supuestos
+    assert "Los 12 meses del Stage 1 son el primer período de la curva (1 año)" in supuestos
     assert "las presunciones de IFRS 9" in supuestos
     assert "si la cartera amortiza" in supuestos
     # «Qué revisar» repite el TTC (§3.6 (a): lo dice siempre).
@@ -493,3 +493,45 @@ def test_sin_covariables_no_se_afirma_que_solo_ordenen_la_mora_y_la_marca() -> N
     resumen = _resumen_curva(study, contexto)
     assert resumen.alerts
     assert not any("sólo lo dan" in alerta for alerta in resumen.alerts)
+
+
+def test_el_numero_de_periodos_no_se_describe_como_una_duracion() -> None:
+    """Pasada 2 de Codex: cuatro cortes trimestrales expresados en años llegan a un año, no a
+    cuatro (el caso válido de ``test_ifrs9_time_unit.py``)."""
+    from bayesrisk.guided.summaries import _resumen_curva
+
+    study = _estudio(
+        {
+            "provisioning_ifrs9.pd.horizon_12m_periods": 4,
+            "survival.time_grid.time_unit": "year",
+            "survival.time_grid.horizon_periods": 4,
+        },
+        {},
+        _COLUMNAS_F4,
+    )
+    filas = [
+        {
+            "row_id": op,
+            "period": k,
+            "time_value": 0.25 * k,
+            "time_unit": "year",
+            "pd_cumulative": 0.01 * k,
+        }
+        for op in ("a", "b")
+        for k in (1, 2, 3, 4)
+    ]
+    study.artifacts._datos[("survival", "term_structure")] = pd.DataFrame(filas)
+    study.artifacts._datos[("survival", "card")] = {"time_unit": "year", "n_periods": 4}
+    study.artifacts._datos[("provisioning_ifrs9", "ecl_term_structure")] = pd.DataFrame(
+        [
+            {"row_id": op, "scenario": "base", "period": k, "time_value_years": 0.25 * k}
+            for op in ("a", "b")
+            for k in (1, 2, 3, 4)
+        ]
+    )
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="x", partition_label="")
+    curva = "\n".join(_resumen_curva(study, contexto).lines)
+    supuestos = "\n".join(build_final_summary(study, (), contexto).assumptions)
+    assert "La curva tiene 4 períodos y llega a 1 año" in curva
+    assert "Los 12 meses del Stage 1 son los primeros 4 períodos de la curva (1 año)" in supuestos
+    assert "4 años" not in curva and "4 años" not in supuestos

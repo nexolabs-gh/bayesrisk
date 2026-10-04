@@ -739,6 +739,11 @@ la decisión cualitativa por operación, y la alerta «sin covariables» afirmab
 mora y la marca: las frases salen de los gatillos que la corrida tiene, sin exclusividad; (3) el
 cotejo daba por aplicada una decisión con la sección ausente, la huella incompleta o la columna de
 mora cambiada: ahora las tres son «sin efecto». Siete controles negativos, uno por regla nueva.
+**Pasada 2** (un medium, real, no contractual): los resúmenes describían el **número** de
+períodos como una duración —cuatro cortes trimestrales expresados en años decían «4 años»—; la
+curva dice ahora cuántos períodos tiene y hasta dónde llega, leído de su `time_value`, y el
+supuesto del horizonte de 12 meses lee la duración de la curva que consumió la provisión
+(`time_value_years`). Un control negativo.
 
 ## 13. Simplicidad (SDD-31)
 
