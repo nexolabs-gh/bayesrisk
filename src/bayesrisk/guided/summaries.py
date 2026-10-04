@@ -2435,7 +2435,7 @@ def _resumen_curva(study: Study, context: SummaryContext) -> StageSummary:
     # cuatro períodos que llegan a un año (pasada 2 de Codex). La duración sale de la curva.
     periodos = f"{_miles(n_periodos)} {_plural(n_periodos, 'período', 'períodos')}"
     alcance = (
-        _duracion_legible(_anios_al_periodo(curva, "time_value", n_periodos))
+        _duracion_legible(_anios_al_periodo(curva, "time_value", None))
         if isinstance(curva, pd.DataFrame) and "time_value" in curva.columns
         else None
     )
@@ -2627,8 +2627,12 @@ def _plazo(tiempo: float | None, unidad: Any) -> str:
     return f"{numero} {palabras}" if palabras else f"{numero} ({unidad})"
 
 
-def _anios_al_periodo(curva: pd.DataFrame, columna: str, periodo: int) -> float | None:
+def _anios_al_periodo(curva: pd.DataFrame, columna: str, periodo: int | None) -> float | None:
     """Cuántos años dura la curva hasta ``periodo`` (o hasta su último período, si es más corta).
+
+    Con ``periodo=None``, hasta el último período real de cada curva: el alcance completo no se
+    limita por el **conteo** de períodos, que no es un índice cuando la grilla no es consecutiva
+    (``evaluation_times=(1, 3, 5)``: tres períodos que llegan a cinco años; pasada 3 de Codex).
 
     ``columna`` es ``time_value`` —con la unidad de cada fila en ``time_unit``— o
     ``time_value_years``, ya en años. Se toma, por curva, el último período que no supera
@@ -2644,7 +2648,8 @@ def _anios_al_periodo(curva: pd.DataFrame, columna: str, periodo: int) -> float 
             return None
         anios = anios_por_fila
     periodos = pd.to_numeric(curva["period"], errors="coerce")
-    dentro = curva.assign(_anios=anios, _periodo=periodos).loc[periodos.le(periodo)]
+    con_anios = curva.assign(_anios=anios, _periodo=periodos)
+    dentro = con_anios if periodo is None else con_anios.loc[periodos.le(periodo)]
     if dentro.empty:
         return None
     grupos = ["row_id", "scenario"] if "scenario" in dentro.columns else ["row_id"]

@@ -743,7 +743,12 @@ mora cambiada: ahora las tres son «sin efecto». Siete controles negativos, uno
 períodos como una duración —cuatro cortes trimestrales expresados en años decían «4 años»—; la
 curva dice ahora cuántos períodos tiene y hasta dónde llega, leído de su `time_value`, y el
 supuesto del horizonte de 12 meses lee la duración de la curva que consumió la provisión
-(`time_value_years`). Un control negativo.
+(`time_value_years`). Un control negativo. **Pasada 3** (un medium, real, acotado, consecuencia
+del arreglo de la 2): el alcance de la curva se limitaba por el **conteo** de períodos, que no es
+un índice con una grilla no consecutiva (`evaluation_times=(1, 3, 5)` decía «llega a 3 años»); ahora
+toma el último período real de cada curva. Un control negativo. **Tope de tres pasadas cumplido**
+(1 → 3 medium, 2 → 1, 3 → 1, cada vez más acotados y ninguno contractual): no hay pasada 4; la
+siguiente revisión va sobre la capa B.
 
 ## 13. Simplicidad (SDD-31)
 

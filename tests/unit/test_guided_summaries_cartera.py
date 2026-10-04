@@ -535,3 +535,28 @@ def test_el_numero_de_periodos_no_se_describe_como_una_duracion() -> None:
     assert "La curva tiene 4 períodos y llega a 1 año" in curva
     assert "Los 12 meses del Stage 1 son los primeros 4 períodos de la curva (1 año)" in supuestos
     assert "4 años" not in curva and "4 años" not in supuestos
+
+
+def test_una_grilla_no_consecutiva_llega_a_su_ultimo_periodo_real() -> None:
+    """Pasada 3 de Codex: con ``evaluation_times=(1, 3, 5)`` la curva tiene tres períodos y llega
+    a cinco años; el conteo no es un índice de período."""
+    from bayesrisk.guided.summaries import _resumen_curva
+
+    study = _estudio({}, {}, _COLUMNAS_F4)
+    study.artifacts._datos[("survival", "term_structure")] = pd.DataFrame(
+        [
+            {
+                "row_id": op,
+                "period": k,
+                "time_value": float(k),
+                "time_unit": "year",
+                "pd_cumulative": 0.01 * k,
+            }
+            for op in ("a", "b")
+            for k in (1, 3, 5)
+        ]
+    )
+    study.artifacts._datos[("survival", "card")] = {"time_unit": "year", "n_periods": 3}
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="x", partition_label="")
+    curva = "\n".join(_resumen_curva(study, contexto).lines)
+    assert "La curva tiene 3 períodos y llega a 5 años" in curva
