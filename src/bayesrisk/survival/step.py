@@ -55,7 +55,7 @@ else:
     Sequence: TypeAlias = Any
     Study: TypeAlias = Any
 
-__all__ = ["SURVIVAL_ARTIFACTS", "SurvivalStep"]
+__all__ = ["SURVIVAL_ARTIFACTS", "SURVIVAL_COEFFICIENTS", "SurvivalStep"]
 
 SURVIVAL_ARTIFACTS: Final[tuple[str, ...]] = (
     "estimator",
@@ -66,6 +66,11 @@ SURVIVAL_ARTIFACTS: Final[tuple[str, ...]] = (
     "result",
     "card",
 )
+#: Artefacto aditivo de la familia IFRS 9 (FLUJO-GUIADO-IFRS9 §3.8): los coeficientes del ajuste
+#: con ``term``, ``coef``, ``std_error`` y ``p_value``. Se publica sólo con el método que los tiene
+#: —el discrete-time hazard, un GLM— y con clave propia: ninguno de los siete de arriba cambia.
+SURVIVAL_COEFFICIENTS: Final = "coefficients"
+_METODOS_CON_COEFICIENTES: Final = frozenset({"discrete_hazard"})
 _TERM_STRUCTURE_COLUMNS: Final[tuple[str, ...]] = (
     "row_id",
     "segment",
@@ -118,9 +123,13 @@ class SurvivalStep(AuditableMixin):
     provides: tuple[ArtifactKey, ...] = tuple(("survival", key) for key in SURVIVAL_ARTIFACTS)
 
     def __init__(self, config: SurvivalConfig) -> None:
-        """Construye el paso desde la sección ``SurvivalConfig`` ya validada y arma ``requires``."""
+        """Construye el paso desde la sección ``SurvivalConfig`` ya validada.
+
+        Arma ``requires`` y ``provides`` según la config.
+        """
         self.config = config
         self.requires = _requires_for(config)
+        self.provides = _provides_for(config)
 
     @classmethod
     def from_config(cls, cfg: SurvivalConfig) -> SurvivalStep:
@@ -234,6 +243,10 @@ class SurvivalStep(AuditableMixin):
         study.artifacts.set("survival", "diagnostics", result.diagnostics.model_copy(deep=True))
         study.artifacts.set("survival", "result", result.model_copy(deep=True))
         study.artifacts.set("survival", "card", result.card.model_copy(deep=True))
+        if ("survival", SURVIVAL_COEFFICIENTS) in self.provides:
+            # Sólo el discrete-time hazard la tiene (`_METODOS_CON_COEFICIENTES`).
+            tabla = cast("Any", result.estimator).coefficient_table()
+            study.artifacts.set("survival", SURVIVAL_COEFFICIENTS, tabla)
 
     def _log_survival_decisions(
         self,
@@ -325,6 +338,14 @@ class SurvivalStep(AuditableMixin):
             },
             accion="publicar_resultado_survival",
         )
+
+
+def _provides_for(config: SurvivalConfig) -> tuple[ArtifactKey, ...]:
+    """Los siete artefactos estables y, con un método que los tiene, sus coeficientes (aditivo)."""
+    claves = tuple(("survival", key) for key in SURVIVAL_ARTIFACTS)
+    if config.method in _METODOS_CON_COEFICIENTES:
+        return (*claves, ("survival", SURVIVAL_COEFFICIENTS))
+    return claves
 
 
 def _requires_for(config: SurvivalConfig) -> tuple[ArtifactKey, ...]:

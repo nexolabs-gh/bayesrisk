@@ -14,6 +14,7 @@ __version__ = "2.3.0"
 
 __all__ = [
     "DatasetCheck",
+    "Ecl",
     "FittedScorecardBundle",
     "PipelineCheck",
     "Scorecard",
@@ -38,9 +39,10 @@ _LAZY = frozenset(
 )
 
 _SCORECARD_LAZY = frozenset({"apply", "fit_scorecard_bundle", "FittedScorecardBundle"})
-# La puerta guiada (SDD-31, enmienda FLUJO-GUIADO-SCORECARD) se importa al acceder al atributo,
-# como `run`: arrastra pandas y los mapas de rótulos del informe, que el núcleo liviano no carga.
-_GUIDED_LAZY = frozenset({"Scorecard"})
+# Las puertas guiadas (SDD-31; enmiendas FLUJO-GUIADO-SCORECARD y FLUJO-GUIADO-IFRS9) se importan
+# al acceder al atributo, como `run`: arrastran pandas y los mapas de rótulos del informe, que el
+# núcleo liviano no carga. `Ecl` es experimental (D-ECL-9).
+_GUIDED_LAZY = frozenset({"Scorecard", "Ecl"})
 
 if TYPE_CHECKING:  # pragma: no cover - solo para el type-checker, no en runtime
     from bayesrisk.api import (
@@ -51,7 +53,7 @@ if TYPE_CHECKING:  # pragma: no cover - solo para el type-checker, no en runtime
         check_pipeline,
         run,
     )
-    from bayesrisk.guided import Scorecard
+    from bayesrisk.guided import Ecl, Scorecard
     from bayesrisk.scorecard.bundle import FittedScorecardBundle, apply, fit_scorecard_bundle
 
 

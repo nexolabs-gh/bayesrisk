@@ -1,0 +1,59 @@
+{
+  "_procedencia": "Preset F4 (f4-ifrs9-retail) sobre ifrs9_retail_latam, bayesrisk 2.3.0 en el árbol de S30 (2026-10-04): los coeficientes del discrete-time hazard que publica ('survival', 'coefficients'). Se comparan con tolerancia relativa 1e-6 (coef y error estándar) y por orden de magnitud (p-valor): el GLM converge con ruido de solver distinto por plataforma.",
+  "filas": [
+    {
+      "term": "period_1",
+      "coef": -3.45539257444826,
+      "std_error": 0.09907554958181952,
+      "p_value": 1.6983561117765827e-266
+    },
+    {
+      "term": "period_2",
+      "coef": -3.4517355074424882,
+      "std_error": 0.09962286937646299,
+      "p_value": 4.783890131965108e-263
+    },
+    {
+      "term": "period_3",
+      "coef": -3.5416132866580283,
+      "std_error": 0.102108031839466,
+      "p_value": 1.3279413589145868e-263
+    },
+    {
+      "term": "period_4",
+      "coef": -3.5136837646081123,
+      "std_error": 0.10263122019227772,
+      "p_value": 7.043907574070129e-257
+    },
+    {
+      "term": "period_5",
+      "coef": -3.5857701211941344,
+      "std_error": 0.10510354795916511,
+      "p_value": 4.192855601788391e-255
+    },
+    {
+      "term": "days_past_due",
+      "coef": 0.006251565530226292,
+      "std_error": 0.0007089678989485246,
+      "p_value": 1.166887862061322e-18
+    },
+    {
+      "term": "utilizacion_linea",
+      "coef": 0.9536065235546461,
+      "std_error": 0.13775385754931857,
+      "p_value": 4.4361796371733234e-12
+    },
+    {
+      "term": "deuda_ingreso",
+      "coef": 1.4019589396287533,
+      "std_error": 0.09872532126262513,
+      "p_value": 9.082950082923478e-46
+    },
+    {
+      "term": "antiguedad_meses",
+      "coef": -0.006110899564943915,
+      "std_error": 0.0007923680750832883,
+      "p_value": 1.2366896578293276e-14
+    }
+  ]
+}

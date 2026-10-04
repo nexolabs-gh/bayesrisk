@@ -188,6 +188,78 @@ tras la portada, con la página «Resumen de la corrida»: el mismo resumen fina
 estado técnico de la validación, las cifras clave, qué revisar, las decisiones humanas con su
 motivo y dónde queda cada archivo—, desde la misma fuente, para el comité que lo lee.
 
+## Tu primera provisión IFRS 9
+
+La puerta guiada de provisiones calcula la pérdida esperada IFRS 9 con lo que el área de riesgo ya
+tiene en su archivo de cartera —fecha de corte, cartera, exposición, LGD, tasa efectiva anual, días
+de mora y la marca de incumplimiento— y con la historia de incumplimientos de esa misma cartera,
+que alimenta la curva de PD: cuánto tiempo se observó cada operación, si incumplió, en qué unidad
+se mide ese tiempo y hasta dónde se proyecta la curva. No pide qué es un «cliente malo» ni cómo
+separar muestras: la provisión no los usa.
+
+!!! warning "Experimental"
+    `bayesrisk.Ecl` es un adelanto de la puerta guiada de IFRS 9: su firma y sus resúmenes pueden
+    cambiar hasta que la pantalla ofrezca lo mismo. Las cifras siguen la marca experimental de los
+    motores de supervivencia y de provisiones (fuera de la garantía SemVer 2.x). Necesita el
+    extra `scoring`, que trae el ajuste de la curva.
+
+!!! note "Si instalaste desde PyPI"
+    `bayesrisk.Ecl` llegó después de la 2.3.0 publicada: en esa versión `from bayesrisk import Ecl`
+    falla. Esta documentación describe el código del repositorio; lo que aún no está en PyPI lo
+    lista el [changelog](changelog.md#no-publicado).
+
+<!-- primera-provision-ifrs9:start -->
+```python
+from pathlib import Path
+
+from bayesrisk import Ecl
+from bayesrisk.ui.datasets import materialize
+
+# La cartera retail sintética del paquete: 6.000 operaciones al 30 de junio de 2025.
+datos = materialize("ifrs9_retail_latam", workdir=Path("bayesrisk-runs"))
+
+ecl = Ecl(
+    data=datos,
+    id="loan_id",
+    as_of="as_of_date",             # la fecha de corte
+    portfolio="portfolio",
+    exposure="ead",                 # la exposición al incumplimiento, ya calculada
+    lgd="lgd",
+    rate="eir",                     # la tasa efectiva ANUAL de cada operación
+    days_past_due="days_past_due",
+    default="is_default",           # la marca de incumplimiento (opcional)
+    duration="duration", event="event", period="year", horizon=5,
+    covariates=["days_past_due", "utilizacion_linea", "deuda_ingreso", "antiguedad_meses"],
+    name="cartera_2025_06",
+)
+ecl.run()                           # corre todo y cuenta cada etapa
+ecl.exclude("antiguedad_meses", reason="no viene en el archivo de cartera de los próximos cierres")
+ecl.resume()                        # corrida nueva y completa con la decisión
+```
+<!-- primera-provision-ifrs9:end -->
+
+`run()` cuenta cada etapa en palabras de provisiones —«Cartera», «Curva de PD», «Provisión IFRS
+9» e «Informe y ficha»—, cada una con su tabla de decisión (`ecl.results["survival"]`: los
+coeficientes de la curva con su signo, error estándar y p-valor; `ecl.summary("survival")` suma la
+PD acumulada por período y cartera). El resumen final no tiene «validación técnica», porque una
+provisión no tiene veredicto: en su lugar dice sus **supuestos** —la PD a lo largo del ciclo
+(TTC), sin ajuste a las condiciones actuales; el escenario único; la exposición constante en el
+tiempo; las presunciones de mora— y cinco cifras: la ECL total, la cobertura, la exposición y la
+ECL en Stage 2 y 3, y la PD a 12 meses ponderada por exposición. Lo que la puerta infiere lo
+declara en el registro de auditoría: cuántos períodos de la curva son 12 meses (uno con
+`period="year"`, doce con `"month"`), el esquema de las columnas que nombraste y que es una
+corrida de cartera, sin «cliente malo» ni muestras. Si falta `horizon=`, se detiene antes de
+correr y dice hasta dónde observan tus datos.
+
+Dos decisiones humanas, siempre con `reason=`: `ecl.exclude(...)` retira covariables de la curva y
+`ecl.rebut_backstops(stage2_days=60, reason=...)` rebate las presunciones de mora de IFRS 9 (30 y
+90 días), que la norma admite rebatir sólo con información razonable y sustentable. Las dos
+escriben el config, viajan en su sección `decisions` y quedan en el registro de auditoría y en el
+resumen final; `ecl.run(until="survival")` se detiene tras la curva para mirarla antes de decidir,
+y `ecl.resume()` es una corrida nueva y completa. Como en el scorecard, `ecl.config` es el
+`BayesRiskConfig` entero (`ecl.to_yaml()` lo exporta) y la evidencia queda en
+`bayesrisk-runs/cartera_2025_06/`.
+
 ## La puerta completa: correr el preset F1
 
 El experimento en bayesrisk *es* un `BayesRiskConfig` declarativo; `bayesrisk.run(config, run_dir=...)`

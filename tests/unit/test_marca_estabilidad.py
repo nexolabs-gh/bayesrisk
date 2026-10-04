@@ -23,6 +23,7 @@ import pytest
 from bayesrisk import __version__
 from bayesrisk.testing.stability import (
     EXPERIMENTAL_DOMAINS,
+    EXPERIMENTAL_SYMBOLS,
     STABLE_DOMAINS,
     UNMARKED_PACKAGES,
     declared_stability,
@@ -113,3 +114,30 @@ def test_la_referencia_publica_enumera_cada_dominio_estable(dominio: str) -> Non
     """Tercera fuente atada: lo que el visitante lee tiene que ser la misma lista que el código."""
     nota = _API_MD.read_text(encoding="utf-8").split("## ", 1)[0]
     assert f"`{dominio}`" in nota, f"api.md no enumera '{dominio}' entre los dominios estables"
+
+
+#: El literal exacto de la marca experimental, el mismo que lee :func:`declared_stability`.
+_MARCA_EXPERIMENTAL: Final = "**Experimental (fuera de la garantía SemVer 2.x).**"
+
+
+@pytest.mark.parametrize("simbolo", sorted(EXPERIMENTAL_SYMBOLS))
+def test_un_simbolo_experimental_vive_en_un_dominio_estable_y_lo_declara(simbolo: str) -> None:
+    """La excepción por símbolo (D-ECL-9): sólo tiene sentido dentro de un dominio estable, y el
+    símbolo y su módulo llevan la marca experimental literal en su docstring."""
+    import importlib
+
+    modulo, _, nombre = simbolo.rpartition(".")
+    paquete = modulo.split(".")[1]
+    assert paquete in STABLE_DOMAINS, f"{simbolo}: la excepción sobra fuera de un dominio estable"
+    objeto = getattr(importlib.import_module(modulo), nombre)
+    assert _MARCA_EXPERIMENTAL in (objeto.__doc__ or ""), simbolo
+    assert _MARCA_EXPERIMENTAL in (importlib.import_module(modulo).__doc__ or ""), modulo
+
+
+@_sin_docs
+@pytest.mark.parametrize("simbolo", sorted(EXPERIMENTAL_SYMBOLS))
+def test_la_referencia_publica_declara_experimental_cada_simbolo_exceptuado(simbolo: str) -> None:
+    nombre = simbolo.rpartition(".")[2]
+    texto = _API_MD.read_text(encoding="utf-8")
+    assert f"bayesrisk.{nombre}" in texto and "experimental" in texto.casefold(), simbolo
+    assert f"::: {simbolo}" in texto, f"api.md no publica la referencia de {simbolo}"

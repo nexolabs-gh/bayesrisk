@@ -25,6 +25,7 @@ import pandas as pd
 
 from bayesrisk.binning.results import IV_BAND_LABELS
 from bayesrisk.core.decisions import REGLA_DECISION_HUMANA, REGLA_DECISION_SIN_EFECTO
+from bayesrisk.core.time_units import year_fraction
 from bayesrisk.core.tramos import (
     es_fila_de_totales,
     filas_que_casan,
@@ -45,12 +46,15 @@ from bayesrisk.report.cifras import (
     frente_al_corte,
     pvalor,
 )
+from bayesrisk.report.document import RESULT_DOMAINS
 from bayesrisk.report.prose import (
     _ANCHOR_KINDS,
     _ANCHOR_SOURCES,
     _CALIBRATION_METHODS,
     _COMPARISON_LABELS,
+    _DECLARED_WARNING_PROSE,
     _DISCRIMINANT_BANDS,
+    _IFRS9_PIT_MODE_LABELS,
     _MONOTONIC_LABELS,
     _PARTITION_LABELS,
     _STEPWISE_DIRECTIONS,
@@ -85,6 +89,7 @@ __all__ = [
     "SIN_ALERTAS",
     "SIN_DECISIONES",
     "STAGE_LABELS",
+    "STAGE_LABELS_CARTERA",
     "STAGE_ORDER",
     "FinalSummary",
     "StageSummary",
@@ -95,9 +100,12 @@ __all__ = [
     "build_stage_summary",
     "decision_line",
     "decision_lines_from_preamble",
+    "family_of",
     "partition_label",
     "partition_label_from_config",
     "source_label_from_config",
+    "stage_labels",
+    "time_unit_words",
 ]
 
 #: Rótulo en español de cada etapa, en el orden del pipeline (D-FLU-2 §3.2). Los nombres son los
@@ -116,6 +124,74 @@ STAGE_LABELS: Final[dict[str, str]] = {
     "report": "Informe y ficha",
 }
 STAGE_ORDER: Final[tuple[str, ...]] = tuple(STAGE_LABELS)
+
+#: Rótulos de la familia de cartera (FLUJO-GUIADO-IFRS9 D-ECL-7): una corrida que provisiona IFRS 9
+#: sin dominios del scorecard habla con estas etapas, venga de ``bayesrisk.Ecl``, de un YAML o de la
+#: pantalla —también la del preset F4, que conserva su target inerte—. Sin «malos» ni muestras: la
+#: provisión no los usa.
+STAGE_LABELS_CARTERA: Final[dict[str, str]] = {
+    "data": "Cartera",
+    "survival": "Curva de PD",
+    "provisioning_ifrs9": "Provisión IFRS 9",
+    "report": "Informe y ficha",
+}
+_FAMILIAS: Final[dict[str, dict[str, str]]] = {
+    "scorecard": STAGE_LABELS,
+    "cartera": STAGE_LABELS_CARTERA,
+}
+#: El título del resumen final de cada familia (deja de estar fijo en «Resumen del scorecard»).
+_TITULOS: Final[dict[str, str]] = {
+    "scorecard": "Resumen del scorecard",
+    "cartera": "Resumen de la provisión IFRS 9",
+}
+#: Lo que dice el estado técnico de una provisión, que no tiene veredicto técnico: en su lugar, el
+#: resumen final lista lo que la cifra supone («Supuestos»). Viaja en ``FinalSummary.validation``
+#: para los consumidores que todavía leen ese campo (la pantalla, hasta la capa B).
+SIN_VEREDICTO_TECNICO: Final = (
+    "no aplica: una provisión no tiene veredicto técnico; lo que la cifra supone está en "
+    "«Supuestos»"
+)
+#: Nombre de cada unidad temporal de :mod:`bayesrisk.core.time_units`, por su fracción de año:
+#: singular y plural, para decir «5 años» o «12 meses» en vez del literal que trae el config.
+_UNIDADES_EN_PALABRAS: Final[dict[float, tuple[str, str]]] = {
+    1.0: ("año", "años"),
+    0.5: ("semestre", "semestres"),
+    0.25: ("trimestre", "trimestres"),
+    1.0 / 12.0: ("mes", "meses"),
+    1.0 / 52.0: ("semana", "semanas"),
+    1.0 / 365.0: ("día", "días"),
+}
+
+
+def stage_labels(family: str) -> Mapping[str, str]:
+    """Los rótulos de las etapas de una familia de resúmenes, en el orden del pipeline."""
+    return _FAMILIAS.get(family, STAGE_LABELS)
+
+
+def family_of(config: Any) -> str:
+    """La familia de resúmenes que decide el pipeline de la corrida (D-ECL-7).
+
+    ``"cartera"`` si provisiona IFRS 9 y no corre ningún dominio del scorecard
+    (``RESULT_DOMAINS``); si no, ``"scorecard"``. No la decide un argumento: la misma corrida
+    habla igual por la puerta guiada, por su YAML y por la pantalla.
+    """
+    if config is None or getattr(config, "provisioning_ifrs9", None) is None:
+        return "scorecard"
+    if any(getattr(config, dominio, None) is not None for dominio in RESULT_DOMAINS):
+        return "scorecard"
+    return "cartera"
+
+
+def time_unit_words(unit: Any, count: int) -> str | None:
+    """«año»/«años», «mes»/«meses»…: la unidad en palabras, o ``None`` si no es convertible."""
+    fraccion = year_fraction(str(unit)) if unit is not None else None
+    if fraccion is None:
+        return None
+    par = _UNIDADES_EN_PALABRAS.get(fraccion)
+    if par is None:
+        return None
+    return par[0] if count == 1 else par[1]
+
 
 #: Filas de una tabla de decisión que el texto de consola muestra antes de resumir el resto; el
 #: HTML del notebook y ``sc.results[<etapa>]`` llevan la tabla entera.
@@ -146,6 +222,10 @@ _REGLA_DECISION_HUMANA: Final = REGLA_DECISION_HUMANA
 _REGLA_DECISION_SIN_EFECTO: Final = REGLA_DECISION_SIN_EFECTO
 #: El rótulo de las alertas del registro de decisiones en «Qué revisar».
 _ROTULO_DECISIONES: Final = "Decisiones con motivo"
+#: El bloque que reemplaza a «Validación técnica» en el resumen final de una provisión (§3.8), y
+#: la primera de sus cinco cifras, la que la consola repite al cerrar la corrida.
+_ROTULO_SUPUESTOS: Final = "Supuestos"
+_ROTULO_ECL_TOTAL: Final = "ECL total"
 
 _Kind = Literal["text", "int", "num", "num2", "num3", "pct", "bool", "pvalor"]
 
@@ -197,6 +277,9 @@ class SummaryContext:
     #: de Codex sobre C1). Con ellas el resumen no afirma que el informe cierra la corrida ni que
     #: una validación que viene después «no está en el config».
     pending_stages: tuple[str, ...] = ()
+    #: La familia de resúmenes cuando todavía no hay ``Study`` del que leerla (un resumen pedido
+    #: antes de correr). Con corrida, la decide su config (:func:`family_of`).
+    family: str = "scorecard"
 
 
 class TablaDeEtapa(pd.DataFrame):
@@ -247,6 +330,13 @@ class StageSummary:
     alerts: tuple[str, ...] = ()
     table: pd.DataFrame | None = None
     formats: Mapping[str, _Kind] = field(default_factory=dict)
+    #: Tablas que acompañan a la de decisión, cada una con su título y su regla de formato. Son
+    #: aditivas (FLUJO-GUIADO-IFRS9 §3.8: la curva de PD se lee por cartera **y** por sus
+    #: coeficientes); una etapa del scorecard no trae ninguna y se serializa exactamente igual,
+    #: también en su ``repr`` (el cuaderno publicado lo muestra).
+    extra_tables: tuple[tuple[str, pd.DataFrame, Mapping[str, _Kind]], ...] = field(
+        default=(), repr=False
+    )
 
     def text(self, *, with_table: bool = True) -> str:
         """El resumen como texto para la consola."""
@@ -261,6 +351,12 @@ class StageSummary:
                     f"… y {_miles(resto)} {_plural(resto, 'fila más', 'filas más')} en "
                     f"sc.results[{self.stage!r}]"
                 )
+        if with_table:
+            for titulo, tabla, formatos in self.extra_tables:
+                if tabla.empty:
+                    continue
+                partes.append(f"{titulo}:")
+                partes.append(_formatear(tabla, formatos).to_string(index=False))
         return "\n".join(partes)
 
     def __str__(self) -> str:
@@ -278,6 +374,11 @@ class StageSummary:
             partes.append("</ul>")
         if self.table is not None and not self.table.empty:
             partes.append(_formatear(self.table, self.formats).to_html(index=False, border=0))
+        for titulo, tabla, formatos in self.extra_tables:
+            if tabla.empty:
+                continue
+            partes.append(f"<h4>{html.escape(titulo)}</h4>")
+            partes.append(_formatear(tabla, formatos).to_html(index=False, border=0))
         return f'<div class="bayesrisk-summary">{"".join(partes)}</div>'
 
     def to_dict(self) -> dict[str, Any]:
@@ -286,22 +387,25 @@ class StageSummary:
         Es lo que consume la pantalla (D-FLU-8: Resultados lee la misma fuente que
         ``summary()``): las celdas viajan formateadas por :func:`_formatear` —coma decimal,
         miles, «—» en las ausencias— para que el panel pinte exactamente lo que el notebook y la
-        consola muestran, sin una segunda regla de formato en el front.
+        consola muestran, sin una segunda regla de formato en el front. Las tablas adicionales
+        viajan en ``extra_tables`` sólo cuando la etapa las trae: un resumen sin ellas se
+        serializa exactamente igual que antes de que existieran.
         """
-        table: dict[str, Any] | None = None
-        if self.table is not None and not self.table.empty:
-            mostrada = _formatear(self.table, self.formats)
-            table = {
-                "columns": [str(c) for c in mostrada.columns],
-                "rows": [[str(v) for v in fila] for fila in mostrada.itertuples(index=False)],
-            }
-        return {
+        salida: dict[str, Any] = {
             "stage": self.stage,
             "label": self.label,
             "lines": list(self.lines),
             "alerts": list(self.alerts),
-            "table": table,
+            "table": _tabla_transportable(self.table, self.formats),
         }
+        extras = [
+            {"title": titulo, **tabla_dict}
+            for titulo, tabla, formatos in self.extra_tables
+            if (tabla_dict := _tabla_transportable(tabla, formatos)) is not None
+        ]
+        if extras:
+            salida["extra_tables"] = extras
+        return salida
 
 
 @dataclass(frozen=True, slots=True)
@@ -318,12 +422,43 @@ class FinalSummary:
     decisions: tuple[str, ...]
     files: tuple[tuple[str, str], ...]
     stages: tuple[StageSummary, ...] = ()
+    #: El título del bloque, que depende de la familia (FLUJO-GUIADO-IFRS9 D-ECL-7). Los tres
+    #: campos de la familia quedan fuera del ``repr``: el del scorecard es el de antes (el cuaderno
+    #: publicado lo muestra), y el texto y el HTML ya los dicen.
+    title: str = field(default=_TITULOS["scorecard"], repr=False)
+    #: Lo que la cifra supone, leído del config y de los artefactos de la corrida: en la familia
+    #: de cartera reemplaza a la validación técnica, que una provisión no tiene (§3.8).
+    assumptions: tuple[str, ...] = field(default=(), repr=False)
+    family: str = field(default="scorecard", repr=False)
+
+    @property
+    def _de_cartera(self) -> bool:
+        return self.family == "cartera"
+
+    def headline(self) -> tuple[str, ...]:
+        """Las dos líneas con que la puerta cierra una corrida en la consola.
+
+        El scorecard dice su ejecución y su validación técnica; una provisión, su ejecución y la
+        cifra (la primera de sus cinco, la ECL total) con su cobertura.
+        """
+        r = RESUMEN_FINAL_ROTULOS
+        if not self._de_cartera:
+            return (f"{r['execution']}: {self.execution}", f"{r['validation']}: {self.validation}")
+        cifras = dict(self.figures)
+        segunda = tuple(
+            f"{rotulo}: {cifras[rotulo]}" for rotulo in (_ROTULO_ECL_TOTAL,) if rotulo in cifras
+        )
+        return (f"{r['execution']}: {self.execution}", *segunda)
 
     def text(self) -> str:
         """El resumen final como texto para la consola."""
         r = RESUMEN_FINAL_ROTULOS
-        partes = ["══ Resumen del scorecard ══", f"{r['execution']}: {self.execution}"]
-        partes.append(f"{r['validation']}: {self.validation}")
+        partes = [f"══ {self.title} ══", f"{r['execution']}: {self.execution}"]
+        if self._de_cartera:
+            partes.append(f"{_ROTULO_SUPUESTOS}:")
+            partes.extend(f"  • {supuesto}" for supuesto in self.assumptions)
+        else:
+            partes.append(f"{r['validation']}: {self.validation}")
         if self.figures:
             partes.append(f"{r['figures']}:")
             partes.extend(f"  {rotulo}: {valor}" for rotulo, valor in self.figures)
@@ -348,9 +483,14 @@ class FinalSummary:
     def _repr_html_(self) -> str:
         """El mismo resumen final para el notebook."""
         r = RESUMEN_FINAL_ROTULOS
-        partes = ["<h2>Resumen del scorecard</h2>"]
+        partes = [f"<h2>{html.escape(self.title)}</h2>"]
         partes.append(f"<p><b>{r['execution']}:</b> {html.escape(self.execution)}</p>")
-        partes.append(f"<p><b>{r['validation']}:</b> {html.escape(self.validation)}</p>")
+        if self._de_cartera:
+            partes.append(f"<h4>{_ROTULO_SUPUESTOS}</h4><ul>")
+            partes.extend(f"<li>{html.escape(supuesto)}</li>" for supuesto in self.assumptions)
+            partes.append("</ul>")
+        else:
+            partes.append(f"<p><b>{r['validation']}:</b> {html.escape(self.validation)}</p>")
         if self.figures:
             partes.append("<table><tbody>")
             partes.extend(
@@ -380,8 +520,10 @@ class FinalSummary:
         """El resumen final como JSON transportable (los dos estados, cifras, alertas, archivos).
 
         Las etapas no viajan aquí: cada una se serializa con su propio :meth:`StageSummary.to_dict`.
+        La familia de cartera agrega su título, su familia y sus supuestos; el scorecard se
+        serializa exactamente igual que antes de que existieran.
         """
-        return {
+        salida: dict[str, Any] = {
             "execution": self.execution,
             "validation": self.validation,
             "figures": [[rotulo, valor] for rotulo, valor in self.figures],
@@ -389,6 +531,11 @@ class FinalSummary:
             "decisions": list(self.decisions),
             "files": [[rotulo, ruta] for rotulo, ruta in self.files],
         }
+        if self._de_cartera:
+            salida["title"] = self.title
+            salida["family"] = self.family
+            salida["assumptions"] = list(self.assumptions)
+        return salida
 
 
 def partition_label(strategy: Mapping[str, Any]) -> str:
@@ -469,7 +616,26 @@ def decision_line(payload: Mapping[str, Any]) -> str:
     accion = str(payload.get("accion", ""))
     motivo = str(payload.get("motivo", ""))
     sujeto = f"{accion} {variables}" if variables else accion
+    if accion == "rebut_backstops":
+        # El sujeto es la columna de mora; lo que se decidió son los días (FLUJO-GUIADO-IFRS9 §3.9).
+        dias = _dias_de_mora(payload.get("valor"))
+        if dias:
+            sujeto += f" ({dias})"
     return f"{sujeto} — «{motivo}»"
+
+
+def _dias_de_mora(valor: Any) -> str:
+    """«Stage 2 desde 60 días de mora y Stage 3 desde 90 días de mora», desde la huella."""
+    huella = _mapping(valor)
+    partes = [
+        f"{etapa} desde {huella[hoja]} días de mora"
+        for hoja, etapa in (
+            ("provisioning_ifrs9.staging.dpd_sicr_backstop", "Stage 2"),
+            ("provisioning_ifrs9.staging.dpd_default_backstop", "Stage 3"),
+        )
+        if hoja in huella
+    ]
+    return _enumerar(partes)
 
 
 def decision_lines_from_preamble(
@@ -499,15 +665,15 @@ def build_stage_summaries(study: Study, context: SummaryContext) -> tuple[StageS
     pantalla y el informe).
     """
     dominios = {dominio for dominio, _clave in study.artifacts.keys()}  # noqa: SIM118
-    return tuple(
-        build_stage_summary(stage, study, context) for stage in STAGE_ORDER if stage in dominios
-    )
+    orden = tuple(stage_labels(family_of(getattr(study, "config", None))))
+    return tuple(build_stage_summary(stage, study, context) for stage in orden if stage in dominios)
 
 
 def build_stage_summary(stage: str, study: Study, context: SummaryContext) -> StageSummary:
-    """Arma el resumen de ``stage`` con lo que el ``Study`` ya publicó."""
-    builder = _BUILDERS.get(stage)
-    label = STAGE_LABELS.get(stage, stage)
+    """Arma el resumen de ``stage`` con lo que el ``Study`` ya publicó, en la voz de su familia."""
+    familia = family_of(getattr(study, "config", None))
+    builder = (_BUILDERS_CARTERA if familia == "cartera" else _BUILDERS).get(stage)
+    label = stage_labels(familia).get(stage, stage)
     if builder is None:
         return StageSummary(stage=stage, label=label, lines=("Etapa sin resumen propio.",))
     return builder(study, context)
@@ -2130,6 +2296,553 @@ def _resumen_report(study: Study, context: SummaryContext) -> StageSummary:
     return StageSummary(stage="report", label=STAGE_LABELS["report"], lines=tuple(lines))
 
 
+# ─────────────────── familia de cartera: IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-7) ───────────────────
+#
+# Una corrida que provisiona IFRS 9 sin dominios del scorecard habla en palabras de provisiones:
+# «Cartera», «Curva de PD», «Provisión IFRS 9». Cada resumen lee sólo lo que publicó su etapa o una
+# anterior y el config de ESA corrida —nunca el preset F4 ni la puerta guiada—: la familia la eligen
+# también un YAML y la pantalla, que admiten Vasicek, escenarios de `forward` y PD de originación.
+
+#: La duración, en años, que se acepta como «un año» al leer la curva (la del motor, D-HOR-0).
+_TOL_ANIO: Final = 1e-9
+#: El p-valor sobre el que un coeficiente de la curva se describe «sin efecto distinguible de
+#: cero». Es la lectura del resumen, no una regla del motor: no excluye nada por sí sola.
+_P_SIN_EFECTO: Final = 0.05
+#: Los gatillos de staging en palabras (``provisioning/ifrs9/staging.py``, los siete nombres
+#: canónicos de ``sicr_triggers``). Los de mora llevan el umbral de ESA corrida.
+_GATILLOS_STAGE_2: Final[tuple[str, ...]] = (
+    "sicr_pd_ratio",
+    "sicr_pd_pit_backstop",
+    "notch_downgrade",
+    "stage_override",
+    "dpd_sicr_backstop",
+)
+_GATILLOS_STAGE_3: Final[tuple[str, ...]] = (
+    "dpd_default_backstop",
+    "is_default",
+    "stage_override",
+)
+_ROTULO_GATILLO: Final[dict[str, str]] = {
+    "sicr_pd_ratio": "aumento de la PD de por vida frente a la de origen",
+    "sicr_pd_pit_backstop": "aumento de la PD point-in-time frente a la de origen",
+    "notch_downgrade": "bajada de rating",
+    "stage_override": "decisión cualitativa (override por operación)",
+    "is_default": "la marca de incumplimiento",
+}
+#: La columna de nombre fijo con la PD PIT en origen que habilita el backstop PIT (``staging.py``).
+_COLUMNA_PD_PIT_ORIGEN: Final = "pd_pit_origination"
+#: Las presunciones de mora de IFRS 9 (5.5.11 y B5.5.37): lo que se rebate con motivo (§3.9).
+_PRESUNCION_STAGE_2: Final = 30
+_PRESUNCION_STAGE_3: Final = 90
+
+
+def _resumen_cartera(study: Study, context: SummaryContext) -> StageSummary:
+    """«Cartera»: operaciones, fecha de corte, exposición y carteras; sin malos ni muestras."""
+    frame = _artifact(study, "data", "frame")
+    card = _card(study, "data", "data_card")
+    ifrs = _seccion(study, "provisioning_ifrs9")
+    as_of_col = _hoja(ifrs, "as_of_date_col")
+    cartera_col = _hoja(ifrs, "portfolio_col")
+    ead_col = _hoja(ifrs, "ead", "ead_col") if _hoja(ifrs, "ead", "method") == "provided" else None
+    lines: list[str] = [f"Archivo: {context.source_label}"]
+    alerts: list[str] = []
+    table: pd.DataFrame | None = None
+    n_filas = (
+        len(frame.index)
+        if isinstance(frame, pd.DataFrame)
+        else (_int(card.get("n_rows")) if card is not None else None) or 0
+    )
+    partes = [f"{_miles(n_filas)} {_plural(n_filas, 'operación', 'operaciones')}"]
+    if isinstance(frame, pd.DataFrame):
+        if isinstance(as_of_col, str) and as_of_col in frame.columns:
+            fechas = sorted({_fecha_legible(v) for v in frame[as_of_col].dropna().unique()})
+            if len(fechas) == 1:
+                partes.append(f"fecha de corte {fechas[0]}")
+            elif fechas:
+                alerts.append(
+                    f"El archivo trae {_miles(len(fechas))} fechas de corte distintas en "
+                    f"«{as_of_col}» ({_enumerar(fechas[:3])}{'…' if len(fechas) > 3 else ''}): "
+                    "la provisión se calcula a una sola fecha de corte"
+                )
+        if isinstance(cartera_col, str) and cartera_col in frame.columns:
+            n_carteras = int(frame[cartera_col].nunique(dropna=True))
+            partes.append(f"{_miles(n_carteras)} {_plural(n_carteras, 'cartera', 'carteras')}")
+            table = _tabla_por_cartera(frame, cartera_col, ead_col)
+        if isinstance(ead_col, str) and ead_col in frame.columns:
+            total = _float(pd.to_numeric(frame[ead_col], errors="coerce").sum())
+            if total is not None:
+                partes.append(f"exposición total {_monto(total)}")
+    lines.append(" · ".join(partes))
+    lines.extend(context.inference_lines)
+    if context.run_dir is not None:
+        lines.append(f"Evidencia de la corrida: {context.run_dir}")
+    return StageSummary(
+        stage="data",
+        label=STAGE_LABELS_CARTERA["data"],
+        lines=tuple(lines),
+        alerts=tuple(alerts),
+        table=table,
+        formats={
+            "Operaciones": "int",
+            "Exposición": "int",
+            "Participación en la exposición": "pct",
+        },
+    )
+
+
+def _tabla_por_cartera(frame: pd.DataFrame, cartera_col: str, ead_col: str | None) -> pd.DataFrame:
+    """Operaciones y exposición por cartera (la tabla de decisión de «Cartera»)."""
+    grupos = frame.groupby(frame[cartera_col].astype("string"), dropna=False, sort=True)
+    filas: list[dict[str, Any]] = []
+    tiene_ead = isinstance(ead_col, str) and ead_col in frame.columns
+    total = float(pd.to_numeric(frame[ead_col], errors="coerce").sum()) if tiene_ead else 0.0
+    for cartera, grupo in grupos:
+        fila: dict[str, Any] = {
+            "Cartera": "—" if pd.isna(cartera) else str(cartera),
+            "Operaciones": len(grupo.index),
+        }
+        if tiene_ead:
+            exposicion = float(pd.to_numeric(grupo[ead_col], errors="coerce").sum())
+            fila["Exposición"] = round(exposicion)
+            fila["Participación en la exposición"] = exposicion / total if total else None
+        filas.append(fila)
+    return pd.DataFrame(filas)
+
+
+def _resumen_curva(study: Study, context: SummaryContext) -> StageSummary:
+    """«Curva de PD»: la historia observada, la forma de la curva y el efecto de las covariables."""
+    card = _card(study, "survival", "card") or {}
+    terminos = _artifact(study, "survival", "coefficients")
+    curva = _artifact(study, "survival", "term_structure")
+    survival = _seccion(study, "survival")
+    unidad = card.get("time_unit") or _hoja(survival, "time_grid", "time_unit")
+    n_filas = _int(card.get("n_rows")) or 0
+    n_eventos = _int(card.get("n_events")) or 0
+    n_censuradas = _int(_mapping(card.get("diagnostics")).get("n_censored"))
+    n_periodos = _int(card.get("n_periods")) or 0
+    lines: list[str] = []
+    alerts: list[str] = []
+    historia = (
+        f"{_miles(n_filas)} {_plural(n_filas, 'operación observada', 'operaciones observadas')} · "
+        f"{_miles(n_eventos)} {_plural(n_eventos, 'incumplimiento', 'incumplimientos')}"
+    )
+    if n_censuradas is not None:
+        historia += (
+            f" · {_miles(n_censuradas)} sin incumplir al cierre de su observación (censuradas)"
+        )
+    lines.append(historia)
+    palabras = time_unit_words(unidad, n_periodos)
+    if palabras is not None:
+        lines.append(
+            f"La curva llega a {_miles(n_periodos)} {palabras}, un período por {_singular(unidad)}"
+        )
+    else:
+        lines.append(f"La curva tiene {_miles(n_periodos)} períodos (unidad «{unidad}»)")
+    covariables = tuple(str(c) for c in _sequence(_hoja(survival, "input", "covariate_cols")))
+    if covariables:
+        efectos = _efectos_en_palabras(terminos, covariables)
+        lines.append(
+            f"Covariables: {efectos}" if efectos else f"Covariables: {', '.join(covariables)}"
+        )
+    else:
+        lines.append("Sin covariables: una sola curva para toda la cartera")
+        alerts.append(
+            "La curva no usa covariables: todas las operaciones comparten la misma PD por "
+            "período, y el orden de riesgo entre ellas sólo lo dan la mora y la marca en el staging"
+        )
+    medias = _pd_medias(curva)
+    if medias is not None:
+        un_anio, de_por_vida = medias
+        partes = []
+        if un_anio is not None:
+            partes.append(f"a 12 meses {_pct(un_anio)}")
+        partes.append(f"de por vida {_pct(de_por_vida)}")
+        lines.append(f"PD media de las operaciones: {_enumerar(partes)}")
+    if _hoja(_seccion(study, "provisioning_ifrs9"), "pd", "pit_mode") == "ttc_only":
+        lines.append(
+            "Es una curva a lo largo del ciclo (TTC): resume la historia observada, sin ajuste a "
+            "las condiciones actuales ni escenarios"
+        )
+    tabla = _tabla_de_coeficientes(terminos)
+    extra: list[tuple[str, pd.DataFrame, Mapping[str, _Kind]]] = []
+    por_cartera = _pd_por_periodo_y_cartera(study, curva, unidad)
+    if por_cartera is not None:
+        formatos: dict[str, _Kind] = {"Período": "int"}
+        formatos.update({str(c): "pct" for c in por_cartera.columns[2:]})
+        extra.append(
+            (
+                "PD acumulada por período y cartera (promedio de las operaciones)",
+                por_cartera,
+                formatos,
+            )
+        )
+    return StageSummary(
+        stage="survival",
+        label=STAGE_LABELS_CARTERA["survival"],
+        lines=tuple(lines),
+        alerts=tuple(alerts),
+        table=tabla,
+        formats={"Coeficiente": "num", "Error estándar": "num", "p-valor": "pvalor"},
+        extra_tables=tuple(extra),
+    )
+
+
+def _efectos_en_palabras(terminos: Any, covariables: Sequence[str]) -> str:
+    """«más days_past_due, más riesgo; …» desde el signo y el p-valor de cada coeficiente."""
+    if not isinstance(terminos, pd.DataFrame) or "term" not in terminos.columns:
+        return ""
+    por_termino = terminos.set_index("term")
+    frases: list[str] = []
+    for columna in covariables:
+        if columna not in por_termino.index:
+            continue
+        frases.append(f"{columna}: {_efecto(por_termino.loc[columna])}")
+    return "; ".join(frases)
+
+
+def _efecto(fila: Any) -> str:
+    coef = _float(fila.get("coef"))
+    p_valor = _float(fila.get("p_value"))
+    if coef is None:
+        return "sin coeficiente"
+    if p_valor is not None and p_valor > _P_SIN_EFECTO:
+        return f"sin efecto distinguible de cero (p-valor {_pvalor(p_valor)})"
+    return "más alto, más riesgo" if coef > 0 else "más alto, menos riesgo"
+
+
+def _tabla_de_coeficientes(terminos: Any) -> pd.DataFrame | None:
+    """Los coeficientes de la curva con signo, error estándar, p-valor y su efecto en palabras."""
+    if not isinstance(terminos, pd.DataFrame) or terminos.empty:
+        return None
+    filas: list[dict[str, Any]] = []
+    for _, fila in terminos.iterrows():
+        termino = str(fila.get("term"))
+        periodo = termino.removeprefix("period_")
+        if termino.startswith("period_") and periodo.isdigit():
+            nombre, efecto = f"Período {periodo}", "nivel base del período"
+        else:
+            nombre, efecto = termino, _efecto(fila)
+        filas.append(
+            {
+                "Término": nombre,
+                "Coeficiente": _float(fila.get("coef")),
+                "Error estándar": _float(fila.get("std_error")),
+                "p-valor": _float(fila.get("p_value")),
+                "Efecto": efecto,
+            }
+        )
+    return pd.DataFrame(filas)
+
+
+def _pd_medias(curva: Any) -> tuple[float | None, float] | None:
+    """PD acumulada media a un año y al final de la curva, sobre las operaciones (promedio simple).
+
+    La de un año es la del último período que no supera un año de duración (``time_value`` en la
+    unidad de la curva, convertida con :func:`year_fraction`); sin unidad convertible no se dice.
+    """
+    if not isinstance(curva, pd.DataFrame) or curva.empty:
+        return None
+    ordenada = curva.sort_values(["row_id", "period"], kind="mergesort")
+    de_por_vida = _float(ordenada.groupby("row_id", sort=False)["pd_cumulative"].last().mean())
+    if de_por_vida is None:
+        return None
+    anios = _en_anios(ordenada)
+    un_anio: float | None = None
+    if anios is not None:
+        dentro = ordenada.loc[anios.le(1.0 + _TOL_ANIO).fillna(False)]
+        if not dentro.empty:
+            un_anio = _float(dentro.groupby("row_id", sort=False)["pd_cumulative"].last().mean())
+    return un_anio, de_por_vida
+
+
+def _en_anios(curva: pd.DataFrame) -> pd.Series | None:
+    """``time_value`` en años, fila a fila; ``None`` si la curva no trae su unidad."""
+    if "time_value" not in curva.columns or "time_unit" not in curva.columns:
+        return None
+    fracciones = curva["time_unit"].map(
+        lambda u: year_fraction(str(u)) if u is not None and not pd.isna(u) else None
+    )
+    return pd.to_numeric(curva["time_value"], errors="coerce") * pd.to_numeric(
+        fracciones, errors="coerce"
+    )
+
+
+def _pd_por_periodo_y_cartera(study: Study, curva: Any, unidad: Any) -> pd.DataFrame | None:
+    """La PD acumulada media por período, por cartera y para toda la cartera.
+
+    La cartera de cada operación se lee del frame que publicó ``data`` con la columna de cartera
+    que declara la provisión de ESA corrida; sin ella, sólo «Toda la cartera».
+    """
+    if not isinstance(curva, pd.DataFrame) or curva.empty:
+        return None
+    base = curva[["row_id", "period", "pd_cumulative"]].copy()
+    if "time_value" in curva.columns:
+        base["time_value"] = curva["time_value"]
+    carteras = _cartera_por_operacion(study)
+    columnas: list[str] = []
+    if carteras is not None:
+        base["cartera"] = base["row_id"].astype(str).map(carteras)
+        columnas = sorted(str(c) for c in base["cartera"].dropna().unique())
+    filas: list[dict[str, Any]] = []
+    for periodo, grupo in base.groupby("period", sort=True):
+        tiempo = _float(grupo["time_value"].iloc[0]) if "time_value" in grupo.columns else None
+        fila: dict[str, Any] = {"Período": _int(periodo), "Plazo": _plazo(tiempo, unidad)}
+        for cartera in columnas:
+            fila[cartera] = _float(grupo.loc[grupo["cartera"] == cartera, "pd_cumulative"].mean())
+        fila["Toda la cartera"] = _float(grupo["pd_cumulative"].mean())
+        filas.append(fila)
+    return pd.DataFrame(filas)
+
+
+def _cartera_por_operacion(study: Study) -> dict[str, str] | None:
+    """``row_id`` → cartera, con el mismo identificador que usan la curva y la provisión."""
+    frame = _artifact(study, "data", "frame")
+    cartera_col = _hoja(_seccion(study, "provisioning_ifrs9"), "portfolio_col")
+    if not isinstance(frame, pd.DataFrame) or not isinstance(cartera_col, str):
+        return None
+    if cartera_col not in frame.columns:
+        return None
+    id_col = _hoja(_seccion(study, "survival"), "input", "id_col")
+    ids = (
+        frame[id_col].astype(str)
+        if isinstance(id_col, str) and id_col in frame.columns
+        else pd.Series(frame.index.astype(str), index=frame.index)
+    )
+    return dict(zip(ids.tolist(), frame[cartera_col].astype(str).tolist(), strict=True))
+
+
+def _plazo(tiempo: float | None, unidad: Any) -> str:
+    """«1 año», «18 meses», «0,25 años»: el plazo de un período en la unidad de la curva."""
+    if tiempo is None:
+        return "—"
+    entero = float(tiempo).is_integer()
+    cantidad = int(tiempo) if entero else 2
+    palabras = time_unit_words(unidad, cantidad)
+    numero = _miles(int(tiempo)) if entero else _cifra(tiempo, decimales=2)
+    return f"{numero} {palabras}" if palabras else f"{numero} ({unidad})"
+
+
+def _singular(unidad: Any) -> str:
+    return time_unit_words(unidad, 1) or str(unidad)
+
+
+def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
+    """«Provisión IFRS 9»: etapas, ECL y cobertura, qué gatilló cada etapa y la EAD declarada."""
+    card = _card(study, "provisioning_ifrs9", "card") or {}
+    detalle = _artifact(study, "provisioning_ifrs9", "detail")
+    staging = _artifact(study, "provisioning_ifrs9", "staging")
+    resumen = _artifact(study, "provisioning_ifrs9", "summary")
+    ifrs = _seccion(study, "provisioning_ifrs9")
+    lines: list[str] = []
+    alerts: list[str] = []
+    ecl = _float(card.get("total_ecl_reported"))
+    ead = _float(card.get("total_ead"))
+    n_filas = _int(card.get("n_rows")) or 0
+    cabecera = [f"{_miles(n_filas)} {_plural(n_filas, 'operación', 'operaciones')}"]
+    if card.get("as_of_date"):
+        cabecera.insert(0, f"Fecha de corte {card.get('as_of_date')}")
+    if ead is not None:
+        cabecera.append(f"exposición {_monto(ead)}")
+    lines.append(" · ".join(cabecera))
+    if ecl is not None:
+        cobertura = f" · cobertura {_pct(ecl / ead)}" if ead else ""
+        lines.append(f"ECL total {_monto(ecl)}{cobertura}")
+    por_etapa = _por_etapa(detalle)
+    if por_etapa:
+        partes = [
+            f"Stage {etapa}: {_miles(n)} ({_pct(exp / ead if ead else None)} de la exposición)"
+            for etapa, (n, exp, _ecl) in sorted(por_etapa.items())
+        ]
+        lines.append(" · ".join(partes))
+    lines.extend(_lineas_de_gatillos(staging, ifrs))
+    if _hoja(ifrs, "staging", "is_default_col") is None:
+        lines.append(
+            "Sin marca de incumplimiento: el Stage 3 se asigna sólo por mora de "
+            f"{_hoja(ifrs, 'staging', 'dpd_default_backstop')} días o más"
+        )
+    falta = tuple(str(c) for c in _sequence(card.get("falta_dato")))
+    if "FALTA-DATO-IFRS-4" in falta:
+        lines.append(_ead_constante())
+    if str(card.get("pit_mode") or "") == "ttc_only":
+        alerts.append(
+            "La provisión usa la PD a lo largo del ciclo (TTC), sin ajuste a las condiciones "
+            "actuales ni a escenarios macroeconómicos: IFRS 9 (5.5.17) pide considerar "
+            "información razonable sobre el presente y el futuro"
+        )
+    if _staging_solo_por_mora(study, ifrs):
+        con_marca = _hoja(ifrs, "staging", "is_default_col") is not None
+        alerts.append(
+            "El aumento significativo del riesgo se detecta sólo por la mora"
+            + (" y la marca de incumplimiento" if con_marca else "")
+            + ": la corrida no trae PD de origen, rating ni decisión cualitativa con que "
+            "compararlo"
+        )
+    otras = [c for c in falta if c != "FALTA-DATO-IFRS-4"]
+    alerts.extend(_capitalizar(d) for d in _declared_warning_descriptions(otras))
+    extra: list[tuple[str, pd.DataFrame, Mapping[str, _Kind]]] = []
+    gatillos = _tabla_de_gatillos(staging, ifrs)
+    if gatillos is not None:
+        extra.append(("Operaciones por etapa y gatillo", gatillos, {"Operaciones": "int"}))
+    return StageSummary(
+        stage="provisioning_ifrs9",
+        label=STAGE_LABELS_CARTERA["provisioning_ifrs9"],
+        lines=tuple(lines),
+        alerts=tuple(alerts),
+        table=_tabla_de_provision(resumen),
+        formats={
+            "Etapa": "int",
+            "Operaciones": "int",
+            "Exposición": "int",
+            "ECL": "int",
+            "Cobertura": "pct",
+        },
+        extra_tables=tuple(extra),
+    )
+
+
+def _por_etapa(detalle: Any) -> dict[int, tuple[int, float, float]]:
+    """Operaciones, exposición y ECL por etapa, leídas del detalle por operación."""
+    if not isinstance(detalle, pd.DataFrame) or "stage" not in detalle.columns:
+        return {}
+    salida: dict[int, tuple[int, float, float]] = {}
+    for etapa, grupo in detalle.groupby("stage", sort=True):
+        numero = _int(etapa)
+        if numero is None:
+            continue
+        salida[numero] = (
+            len(grupo.index),
+            _suma(grupo, "ead"),
+            _suma(grupo, "ecl_reported"),
+        )
+    return salida
+
+
+def _suma(frame: pd.DataFrame, columna: str) -> float:
+    """La suma numérica de una columna; cero si la columna no está."""
+    if columna not in frame.columns:
+        return 0.0
+    return float(pd.to_numeric(frame[columna], errors="coerce").sum())
+
+
+def _rotulo_gatillo(gatillo: str, ifrs: Any) -> str:
+    if gatillo == "dpd_sicr_backstop":
+        return f"mora de {_hoja(ifrs, 'staging', 'dpd_sicr_backstop')} días o más"
+    if gatillo == "dpd_default_backstop":
+        return f"mora de {_hoja(ifrs, 'staging', 'dpd_default_backstop')} días o más"
+    return _ROTULO_GATILLO.get(gatillo, gatillo)
+
+
+def _conteo_de_gatillos(staging: Any) -> dict[int, dict[str, int]]:
+    """Por etapa, cuántas operaciones dispararon cada gatillo de esa etapa (``sicr_triggers``)."""
+    if not isinstance(staging, pd.DataFrame) or "sicr_triggers" not in staging.columns:
+        return {}
+    conteo: dict[int, dict[str, int]] = {}
+    propios = {2: _GATILLOS_STAGE_2, 3: _GATILLOS_STAGE_3}
+    for etapa, gatillos in zip(staging["stage"], staging["sicr_triggers"], strict=True):
+        etapa_int = int(etapa)
+        if etapa_int not in propios:
+            continue
+        for gatillo in _sequence(gatillos):
+            if str(gatillo) in propios[etapa_int]:
+                por_gatillo = conteo.setdefault(etapa_int, {})
+                por_gatillo[str(gatillo)] = por_gatillo.get(str(gatillo), 0) + 1
+    return conteo
+
+
+def _lineas_de_gatillos(staging: Any, ifrs: Any) -> list[str]:
+    """Las líneas «Qué llevó a Stage 2/3: …» con los gatillos que dispararon en ESTA corrida."""
+    lineas: list[str] = []
+    conteo = _conteo_de_gatillos(staging)
+    for etapa in (2, 3):
+        por_gatillo = conteo.get(etapa)
+        if not por_gatillo:
+            continue
+        orden = _GATILLOS_STAGE_2 if etapa == 2 else _GATILLOS_STAGE_3
+        partes = [
+            f"{_rotulo_gatillo(g, ifrs)} ({_miles(por_gatillo[g])})"
+            for g in orden
+            if g in por_gatillo
+        ]
+        lineas.append(f"Qué llevó a Stage {etapa}: {_enumerar(partes)}")
+    if isinstance(staging, pd.DataFrame) and "low_credit_risk_exempt" in staging.columns:
+        exentas = int(staging["low_credit_risk_exempt"].astype("boolean").fillna(False).sum())
+        if exentas:
+            lineas.append(
+                f"{_miles(exentas)} {_plural(exentas, 'operación quedó', 'operaciones quedaron')} "
+                "en Stage 1 por la exención de bajo riesgo crediticio"
+            )
+    return lineas
+
+
+def _tabla_de_gatillos(staging: Any, ifrs: Any) -> pd.DataFrame | None:
+    """Operaciones por etapa y gatillo; una operación cuenta en cada gatillo que disparó."""
+    if not isinstance(staging, pd.DataFrame) or "stage" not in staging.columns:
+        return None
+    filas: list[dict[str, Any]] = []
+    sin_gatillo = 0
+    if "sicr_triggers" in staging.columns:
+        sin_gatillo = int(
+            sum(
+                1
+                for etapa, gatillos in zip(staging["stage"], staging["sicr_triggers"], strict=True)
+                if int(etapa) == 1 and not _sequence(gatillos)
+            )
+        )
+    if sin_gatillo:
+        filas.append({"Etapa": 1, "Gatillo": "ninguno", "Operaciones": sin_gatillo})
+    conteo = _conteo_de_gatillos(staging)
+    for etapa in (2, 3):
+        orden = _GATILLOS_STAGE_2 if etapa == 2 else _GATILLOS_STAGE_3
+        for gatillo in orden:
+            n = conteo.get(etapa, {}).get(gatillo)
+            if n:
+                filas.append(
+                    {"Etapa": etapa, "Gatillo": _rotulo_gatillo(gatillo, ifrs), "Operaciones": n}
+                )
+    return pd.DataFrame(filas) if filas else None
+
+
+def _tabla_de_provision(resumen: Any) -> pd.DataFrame | None:
+    """ECL por cartera y etapa (filas, exposición, ECL y cobertura), de la tabla de la provisión."""
+    if not isinstance(resumen, pd.DataFrame) or resumen.empty:
+        return None
+    tabla = resumen
+    if "scenario" in tabla.columns and tabla["scenario"].astype(str).eq("all").any():
+        tabla = tabla.loc[tabla["scenario"].astype(str).eq("all")]
+    return pd.DataFrame(
+        {
+            "Cartera": tabla["portfolio"].astype(str).to_numpy(),
+            "Etapa": pd.to_numeric(tabla["stage"], errors="coerce").to_numpy(),
+            "Operaciones": pd.to_numeric(tabla["n_rows"], errors="coerce").to_numpy(),
+            "Exposición": pd.to_numeric(tabla["total_ead"], errors="coerce").round().to_numpy(),
+            "ECL": pd.to_numeric(tabla["total_ecl_reported"], errors="coerce").round().to_numpy(),
+            "Cobertura": pd.to_numeric(tabla["coverage_ratio"], errors="coerce").to_numpy(),
+        }
+    )
+
+
+def _staging_solo_por_mora(study: Study, ifrs: Any) -> bool:
+    """Si ningún gatillo alternativo a la mora y la marca estaba disponible en ESTA corrida."""
+    if ifrs is None:
+        return False
+    frame = _artifact(study, "data", "frame")
+    columnas = set(frame.columns) if isinstance(frame, pd.DataFrame) else set()
+    return (
+        _hoja(ifrs, "staging", "origination_pd_life_col") is None
+        and _COLUMNA_PD_PIT_ORIGEN not in columnas
+        and _hoja(ifrs, "staging", "notch_downgrade_threshold") is None
+        and _hoja(ifrs, "staging", "stage_override_col") is None
+    )
+
+
+def _ead_constante() -> str:
+    """La EAD constante declarada (IFRS-4), en palabras y con su consecuencia (§3.14)."""
+    return (
+        f"{_capitalizar(_DECLARED_WARNING_PROSE['FALTA-DATO-IFRS-4'])}: si la cartera amortiza, la "
+        "ECL de por vida queda sobrestimada"
+    )
+
+
 _BUILDERS: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
     "data": _resumen_data,
     "eda": _resumen_eda,
@@ -2143,6 +2856,12 @@ _BUILDERS: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
     "validation": _resumen_validation,
     "report": _resumen_report,
 }
+_BUILDERS_CARTERA: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
+    "data": _resumen_cartera,
+    "survival": _resumen_curva,
+    "provisioning_ifrs9": _resumen_provision,
+    "report": _resumen_report,
+}
 
 
 # ────────────────────────────── resumen final ──────────────────────────────
@@ -2153,7 +2872,14 @@ def build_final_summary(
     stages: Sequence[StageSummary],
     context: SummaryContext,
 ) -> FinalSummary:
-    """Ejecución y validación técnica por separado, cinco cifras, alertas, decisiones y archivos."""
+    """Ejecución y validación técnica por separado, cinco cifras, alertas, decisiones y archivos.
+
+    Una provisión (familia de cartera) no tiene veredicto técnico: en su lugar dice sus
+    «Supuestos», y sus cinco cifras son las de la provisión (:func:`_resumen_final_cartera`).
+    """
+    familia = family_of(getattr(study, "config", None)) if study is not None else context.family
+    if familia == "cartera":
+        return _resumen_final_cartera(study, stages, context)
     execution = _estado_de_ejecucion(study, stages, context)
     validation = _estado_de_validacion(study, context)
     figures = _cinco_cifras(study) if study is not None else ()
@@ -2192,6 +2918,8 @@ def _decisiones_sin_efecto(study: Study | None) -> tuple[str, ...]:
         varias = len(variables) > 1
         if accion in {"merge_bins", "set_bins"}:
             razon = "sus cortes cambiaron en el config"
+        elif accion == "rebut_backstops":
+            razon = "los días de mora de Stage 2 o Stage 3 cambiaron en el config"
         elif accion == "exclude":
             razon = (
                 "las variables ya no están excluidas en el config"
@@ -2210,7 +2938,10 @@ def _decisiones_sin_efecto(study: Study | None) -> tuple[str, ...]:
 
 
 def _estado_de_ejecucion(
-    study: Study | None, stages: Sequence[StageSummary], context: SummaryContext
+    study: Study | None,
+    stages: Sequence[StageSummary],
+    context: SummaryContext,
+    rotulos: Mapping[str, str] = STAGE_LABELS,
 ) -> str:
     if study is None:
         return "sin correr todavía"
@@ -2230,7 +2961,7 @@ def _estado_de_ejecucion(
                 f"{_plural(caidos, 'pudo', 'pudieron')} calcular (ver «Qué revisar»)"
             )
             if context.pending_stages:
-                quedan = _enumerar([STAGE_LABELS.get(s, s) for s in context.pending_stages])
+                quedan = _enumerar([rotulos.get(s, s) for s in context.pending_stages])
                 return (
                     f"corrieron {corrieron} antes de este informe; {parcial}; después del informe "
                     f"quedan por correr {quedan}, y este documento no puede reflejarlas"
@@ -2239,7 +2970,7 @@ def _estado_de_ejecucion(
                 f"corrieron {corrieron}; {parcial}; este informe es la última etapa de la corrida"
             )
         if context.pending_stages:
-            quedan = _enumerar([STAGE_LABELS.get(s, s) for s in context.pending_stages])
+            quedan = _enumerar([rotulos.get(s, s) for s in context.pending_stages])
             return (
                 f"corrieron sin fallos {corrieron} antes de este informe; después de él quedan "
                 f"por correr {quedan}, y este documento no puede reflejarlas"
@@ -2248,14 +2979,12 @@ def _estado_de_ejecucion(
     if estado == "done":
         cola = " — con el análisis exploratorio parcial" if caidos else ""
         if context.until is not None:
-            hasta = STAGE_LABELS.get(context.until, context.until)
+            hasta = rotulos.get(context.until, context.until)
             return f"completada hasta «{hasta}» (corrida parcial){cola}"
         return f"completada{cola}"
     if estado == "failed":
         error = study.run_context.error
-        etapa = STAGE_LABELS.get(
-            str(getattr(error, "step", None)), str(getattr(error, "step", None))
-        )
+        etapa = rotulos.get(str(getattr(error, "step", None)), str(getattr(error, "step", None)))
         mensaje = getattr(error, "message", "") if error is not None else ""
         donde = f" en «{etapa}»" if getattr(error, "step", None) else " antes del primer paso"
         return f"fallida{donde}: {mensaje}"
@@ -2332,6 +3061,128 @@ def _cinco_cifras(study: Study) -> tuple[tuple[str, str], ...]:
                 )
             )
     return tuple(cifras)
+
+
+def _resumen_final_cartera(
+    study: Study | None, stages: Sequence[StageSummary], context: SummaryContext
+) -> FinalSummary:
+    """El resumen final de una provisión: ejecución, supuestos, cinco cifras, alertas y archivos."""
+    return FinalSummary(
+        execution=_estado_de_ejecucion(study, stages, context, STAGE_LABELS_CARTERA),
+        validation=SIN_VEREDICTO_TECNICO,
+        figures=_cinco_cifras_cartera(study) if study is not None else (),
+        review=(
+            *(f"{s.label}: {a}" for s in stages for a in s.alerts),
+            *(f"{_ROTULO_DECISIONES}: {a}" for a in _decisiones_sin_efecto(study)),
+        ),
+        decisions=tuple(context.decision_lines),
+        files=_archivos(study, context),
+        stages=tuple(stages),
+        title=_TITULOS["cartera"],
+        assumptions=_supuestos(study) if study is not None else (),
+        family="cartera",
+    )
+
+
+def _cinco_cifras_cartera(study: Study) -> tuple[tuple[str, str], ...]:
+    """ECL total, cobertura, exposición y ECL en Stage 2 y 3, y PD a 12 meses ponderada (§3.8)."""
+    card = _card(study, "provisioning_ifrs9", "card")
+    detalle = _artifact(study, "provisioning_ifrs9", "detail")
+    if card is None:
+        return ()
+    ecl = _float(card.get("total_ecl_reported"))
+    ead = _float(card.get("total_ead"))
+    cifras: list[tuple[str, str]] = []
+    if ecl is not None:
+        cifras.append((_ROTULO_ECL_TOTAL, _monto(ecl)))
+    if ecl is not None and ead:
+        cifras.append(("Cobertura (ECL sobre la exposición)", _pct(ecl / ead)))
+    por_etapa = _por_etapa(detalle)
+    if por_etapa:
+        exp_total = sum(exp for _n, exp, _e in por_etapa.values())
+        ecl_total = sum(e for _n, _exp, e in por_etapa.values())
+        exp_23 = sum(exp for etapa, (_n, exp, _e) in por_etapa.items() if etapa in (2, 3))
+        ecl_23 = sum(e for etapa, (_n, _exp, e) in por_etapa.items() if etapa in (2, 3))
+        cifras.append(
+            ("Exposición en Stage 2 y 3", _pct(exp_23 / exp_total if exp_total else None))
+        )
+        cifras.append(("ECL de Stage 2 y 3", _pct(ecl_23 / ecl_total if ecl_total else None)))
+    if isinstance(detalle, pd.DataFrame) and {"pd_12m", "ead"} <= set(detalle.columns):
+        pesos = pd.to_numeric(detalle["ead"], errors="coerce")
+        pds = pd.to_numeric(detalle["pd_12m"], errors="coerce")
+        suma = float(pesos.sum())
+        if suma:
+            cifras.append(
+                (
+                    "PD a 12 meses media, ponderada por la exposición",
+                    _pct(float((pds * pesos).sum()) / suma),
+                )
+            )
+    return tuple(cifras)
+
+
+def _supuestos(study: Study) -> tuple[str, ...]:
+    """Lo que la cifra supone, leído del config y de los artefactos de ESA corrida (§3.8).
+
+    Nunca del preset F4 ni de la puerta guiada: un YAML o la pantalla pueden correr Vasicek,
+    escenarios ponderados o PD de originación, y el resumen tiene que decir lo que corrió.
+    """
+    card = _card(study, "provisioning_ifrs9", "card") or {}
+    ifrs = _seccion(study, "provisioning_ifrs9")
+    survival = _seccion(study, "survival")
+    supuestos: list[str] = []
+    pit_mode = str(card.get("pit_mode") or _hoja(ifrs, "pd", "pit_mode") or "")
+    if pit_mode == "ttc_only":
+        supuestos.append(
+            "La PD es a lo largo del ciclo (TTC): no se ajusta a las condiciones actuales ni a "
+            "escenarios macroeconómicos"
+        )
+    elif pit_mode:
+        supuestos.append(f"La PD es {_IFRS9_PIT_MODE_LABELS.get(pit_mode, pit_mode)}")
+    escenarios = tuple(str(s) for s in _sequence(card.get("scenarios")))
+    pesos = _mapping(card.get("scenario_weights"))
+    if len(escenarios) > 1:
+        detalle = ", ".join(f"{s} ({_pct(pesos.get(s), decimals=0)})" for s in escenarios)
+        supuestos.append(f"Escenarios ponderados: {detalle}")
+    elif escenarios:
+        supuestos.append("Un escenario único, sin ponderación macroeconómica")
+    if str(card.get("term_structure_source") or "") == "survival" and survival is not None:
+        covariables = tuple(_sequence(_hoja(survival, "input", "covariate_cols")))
+        if covariables:
+            supuestos.append(
+                "La curva de PD se ajusta a la historia de incumplimientos de la propia cartera, "
+                f"con {_miles(len(covariables))} "
+                f"{_plural(len(covariables), 'covariable', 'covariables')}"
+            )
+        else:
+            supuestos.append("Una sola curva de PD para toda la cartera, sin covariables")
+    horizonte = _int(_hoja(ifrs, "pd", "horizon_12m_periods"))
+    unidad = _hoja(survival, "time_grid", "time_unit") if survival is not None else None
+    if horizonte is not None:
+        palabras = time_unit_words(unidad, horizonte) if unidad is not None else None
+        supuestos.append(
+            f"Los 12 meses del Stage 1 son {_miles(horizonte)} "
+            + (palabras if palabras else _plural(horizonte, "período", "períodos"))
+            + " de la curva"
+        )
+    s2 = _int(_hoja(ifrs, "staging", "dpd_sicr_backstop"))
+    s3 = _int(_hoja(ifrs, "staging", "dpd_default_backstop"))
+    if s2 is not None and s3 is not None:
+        if (s2, s3) == (_PRESUNCION_STAGE_2, _PRESUNCION_STAGE_3):
+            supuestos.append(
+                f"Stage 2 desde {s2} días de mora y Stage 3 desde {s3}: las presunciones de "
+                "IFRS 9 (5.5.11 y B5.5.37)"
+            )
+        else:
+            supuestos.append(
+                f"Stage 2 desde {s2} días de mora y Stage 3 desde {s3}, frente a las presunciones "
+                f"de IFRS 9 de {_PRESUNCION_STAGE_2} y {_PRESUNCION_STAGE_3}"
+            )
+    if "FALTA-DATO-IFRS-4" in tuple(str(c) for c in _sequence(card.get("falta_dato"))):
+        supuestos.append(_ead_constante())
+    if _hoja(ifrs, "lgd", "method") == "provided":
+        supuestos.append("La LGD es la del archivo de cartera, la misma en cada período")
+    return tuple(supuestos)
 
 
 def _archivos(study: Study | None, context: SummaryContext) -> tuple[tuple[str, str], ...]:
@@ -2499,6 +3350,49 @@ def _partition_label(partition: str) -> str:
 
 def _capitalizar(texto: str) -> str:
     return texto[:1].upper() + texto[1:] if texto else texto
+
+
+def _seccion(study: Study | None, nombre: str) -> Any:
+    """La sección ``nombre`` del config de la corrida, o ``None``."""
+    return getattr(getattr(study, "config", None), nombre, None)
+
+
+def _hoja(objeto: Any, *ruta: str) -> Any:
+    """Una hoja del config por su ruta, sea la sección un modelo o un ``dict`` opaco."""
+    actual = objeto
+    for parte in ruta:
+        if actual is None:
+            return None
+        actual = actual.get(parte) if isinstance(actual, Mapping) else getattr(actual, parte, None)
+    return actual
+
+
+def _monto(valor: float) -> str:
+    """Un monto redondeado a la unidad, con punto de miles y sin moneda (D-MON-5)."""
+    return _miles(round(valor))
+
+
+def _fecha_legible(valor: Any) -> str:
+    """Una fecha de corte como ``2025-06-30``, venga como texto, fecha o marca de tiempo."""
+    if isinstance(valor, str):
+        return valor
+    marca = pd.to_datetime(valor, errors="coerce")
+    if isinstance(marca, pd.Timestamp) and not pd.isna(marca):
+        return marca.date().isoformat()
+    return str(valor)
+
+
+def _tabla_transportable(
+    tabla: pd.DataFrame | None, formatos: Mapping[str, _Kind]
+) -> dict[str, Any] | None:
+    """Una tabla con las celdas ya escritas como las lee una persona (el JSON de la pantalla)."""
+    if tabla is None or tabla.empty:
+        return None
+    mostrada = _formatear(tabla, formatos)
+    return {
+        "columns": [str(c) for c in mostrada.columns],
+        "rows": [[str(v) for v in fila] for fila in mostrada.itertuples(index=False)],
+    }
 
 
 def _artifact(study: Study | None, domain: str, key: str) -> Any:

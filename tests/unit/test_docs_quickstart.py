@@ -169,6 +169,52 @@ def test_el_primer_scorecard_cabe_en_el_tope_de_lineas_y_corre_hasta_el_final(
     assert sc.summary().execution == "completada"
 
 
+#: El notebook mínimo de la puerta guiada de IFRS 9 (enmienda FLUJO-GUIADO-IFRS9 §13 y §3.2,
+#: capa A): «Tu primera provisión IFRS 9», con el mismo tope de líneas que el del scorecard.
+_PRIMERA_PROVISION = "primera-provision-ifrs9"
+#: La ECL del preset F4 sobre el dataset del paquete (S28, `ifrs9-mediciones.md` §1): la corrida
+#: de la puerta antes de la decisión humana del cuaderno es la misma provisión (§4 de la enmienda).
+_ECL_F4: float = 3_423_116.0
+
+
+def test_la_primera_provision_ifrs9_cabe_en_el_tope_y_corre_hasta_el_final(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """El notebook mínimo de IFRS 9 es la definición de «terminado» de la capa A (RUNBOOK §12.1-4).
+
+    Corre tal cual, deja la evidencia que anuncia y su corrida antes de la decisión es la provisión
+    de F4: la entrada mínima no cambia la cifra (S28 §2). La corrida final aplica la exclusión.
+    """
+    origen = _DOCS / "getting-started.md"
+    codigo = _bloque(origen.read_text(encoding="utf-8"), _PRIMERA_PROVISION, origen.name)
+    assert "Ecl(" in codigo and "ecl.run()" in codigo, "el bloque perdió la puerta"
+    lineas = _lineas_de_usuario(codigo)
+    assert len(lineas) <= _TOPE_LINEAS_NOTEBOOK_MINIMO, len(lineas)
+    # La corrida de antes de la decisión se mide con un gancho sobre `resume()`: es la que el
+    # cuaderno muestra primero, con la entrada mínima y sin nada decidido.
+    from bayesrisk.guided.ecl import Ecl
+
+    primeras: list[float] = []
+    original = Ecl.resume
+
+    def _resume_que_anota(self: Ecl) -> Ecl:
+        card = self.study.artifacts.get("provisioning_ifrs9", "card")
+        primeras.append(float(card.total_ecl_reported))
+        return original(self)
+
+    monkeypatch.setattr(Ecl, "resume", _resume_que_anota)
+    espacio = _ejecutar(codigo, origen, tmp_path, monkeypatch)
+    ecl = espacio["ecl"]
+    assert ecl.study.run_context.status == "done", ecl.study.run_context.error
+    assert primeras == [pytest.approx(_ECL_F4, abs=0.5)], primeras
+    proyecto = tmp_path / "bayesrisk-runs" / "cartera_2025_06"
+    assert (proyecto / "config.yaml").is_file()
+    assert (proyecto / "run" / "audit_trail.jsonl").is_file()
+    assert (proyecto / "reports" / "ifrs9_ecl_report.html").is_file()
+    assert ecl.summary().execution == "completada"
+    assert "antiguedad_meses" not in ecl.config.survival.input.covariate_cols
+
+
 def _fragmentos_con_preset() -> list[tuple[str, str]]:
     paginas = [*sorted(_DOCS.rglob("*.md")), _README]
     encontrados: list[tuple[str, str]] = []

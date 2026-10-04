@@ -190,9 +190,11 @@ class RunConfig(BayesRiskBaseConfig):
     )
 
 
-#: Las acciones que la puerta guiada registra con motivo (D-FLU-3 y §8-9): las dos de selección de
-#: variables y las dos de tramos. Cada una deja su efecto escrito en hojas computacionales.
-DECISION_ACTIONS: tuple[str, ...] = ("exclude", "keep", "merge_bins", "set_bins")
+#: Las acciones que las puertas guiadas registran con motivo (D-FLU-3, §8-9 y FLUJO-GUIADO-IFRS9
+#: §3.9): las dos de selección de variables, las dos de tramos y el rebatir de las presunciones de
+#: mora del staging IFRS 9. ``exclude`` también retira covariables de la curva de PD. Cada una deja
+#: su efecto escrito en hojas computacionales.
+DECISION_ACTIONS: tuple[str, ...] = ("exclude", "keep", "merge_bins", "set_bins", "rebut_backstops")
 #: Las acciones de tramos fijan los cortes de UNA variable numérica.
 _ACCIONES_DE_TRAMOS: frozenset[str] = frozenset({"merge_bins", "set_bins"})
 
@@ -208,11 +210,16 @@ class DecisionEntry(BayesRiskBaseConfig):
     # D-DEC-1 (sección `decisions`): el efecto vive en `binning.exclude_columns`,
     # `selection.force_include`/`model.force_include` o la hoja de `binning.variable_overrides` de
     # la variable —las hojas que sí entran al `config_hash`—; `value` es su huella exacta, que
-    # `bayesrisk.core.decisions` coteja (D-DEC-3) y emite como `valor` del evento.
+    # `bayesrisk.core.decisions` coteja (D-DEC-3) y emite como `valor` del evento. En una provisión
+    # IFRS 9 (D-ECL-8) el efecto vive en `survival.input.covariate_cols` (`exclude`) o en los dos
+    # días de mora de `provisioning_ifrs9.staging` (`rebut_backstops`).
 
-    action: Literal["exclude", "keep", "merge_bins", "set_bins"] = Field(
+    action: Literal["exclude", "keep", "merge_bins", "set_bins", "rebut_backstops"] = Field(
         title="Acción",
-        description="Qué se decidió: excluir o mantener variables, o fijar los tramos de una.",
+        description=(
+            "Qué se decidió: excluir o mantener variables, fijar los tramos de una o rebatir los "
+            "días de mora con que IFRS 9 presume el Stage 2 y el Stage 3."
+        ),
     )
     columns: tuple[str, ...] = Field(
         min_length=1,

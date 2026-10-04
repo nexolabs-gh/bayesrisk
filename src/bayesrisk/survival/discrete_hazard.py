@@ -285,6 +285,27 @@ class DiscreteTimeHazardModel(AuditableMixin):
         rows, index = _survival_rows(points)
         return _records_to_frame(rows, columns=_SURVIVAL_CURVE_COLUMNS, index=index, pd=pd)
 
+    def coefficient_table(self) -> DataFrame:
+        """Los coeficientes del ajuste con su error estándar y su p-valor (FLUJO-GUIADO-IFRS9 §3.8).
+
+        Una fila por columna de diseño —las dummies por período y las covariables, en el orden
+        del ajuste— con ``term``, ``coef``, ``std_error`` y ``p_value`` leídos del GLM ya ajustado:
+        no se reestima nada. Es lo primero que pregunta quien valida la curva y lo que sostiene la
+        decisión de retirar una covariable.
+        """
+        _check_fitted(self)
+        pd = _import_pandas()
+        columnas = self.design_columns_
+        tabla = pd.DataFrame(
+            {
+                "term": list(columnas),
+                "coef": _series_from_result(self.result_.params, columnas, pd).to_numpy(),
+                "std_error": _series_from_result(self.result_.bse, columnas, pd).to_numpy(),
+                "p_value": _series_from_result(self.result_.pvalues, columnas, pd).to_numpy(),
+            }
+        )
+        return cast("DataFrame", tabla)
+
     def predict_hazard(
         self,
         frame: DataFrame,

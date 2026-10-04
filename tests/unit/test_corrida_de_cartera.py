@@ -255,7 +255,9 @@ def test_corrida_de_cartera_bit_a_bit_igual_a_f4_en_la_provision(tmp_path: Path)
     assert contexto.partition_label == ""
     resumen = build_stage_summary("data", cartera, contexto)
     assert not any("malos" in linea or "Muestras" in linea for linea in resumen.lines)
-    assert any("6.000 filas" in linea for linea in resumen.lines)
+    # Desde la capa A (S30) la corrida de cartera habla con la familia IFRS 9: «Cartera».
+    assert resumen.label == "Cartera"
+    assert any("6.000 operaciones" in linea for linea in resumen.lines)
 
     # El serializer de resultados de la pantalla publica la ficha, con la card de datos en `null`.
     serializado = serialize_study(

@@ -2,19 +2,24 @@
 
 La sección INFRA ``decisions`` (:class:`~bayesrisk.core.config.schema.DecisionEntry`) es el
 registro, en orden y con su historia, de lo que una persona decidió con ``exclude``, ``keep``,
-``merge_bins`` o ``set_bins``. :class:`~bayesrisk.core.study.Study` la declara al trail en cada
-corrida, después del preámbulo que reciba (la entrada y las inferencias de la puerta guiada): así
-la corrida guiada, ``bayesrisk.run(loads_config(yaml))`` y la pantalla dan **las mismas**
-decisiones humanas, con el mismo payload que la puerta emitía antes de la 2.3.0.
+``merge_bins`` o ``set_bins`` —en el scorecard— o con ``exclude`` y ``rebut_backstops`` —en una
+provisión IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-8)—. :class:`~bayesrisk.core.study.Study` la declara
+al trail en cada corrida, después del preámbulo que reciba (la entrada y las inferencias de la
+puerta guiada): así la corrida guiada, ``bayesrisk.run(loads_config(yaml))`` y la pantalla dan
+**las mismas** decisiones humanas, con el mismo payload que la puerta emitía antes de la 2.3.0.
 
 Antes de emitir, cada registro se coteja con el config que va a correr, **variable por variable**
 y sólo en el **último** registro de cada variable dentro de su familia (``exclude``/``keep``;
-``merge_bins``/``set_bins``); los anteriores son historia y se emiten tal cual. Tres estados:
+``merge_bins``/``set_bins``; las covariables de la curva; las presunciones de mora); los
+anteriores son historia y se emiten tal cual. Tres estados:
 
 - **aplicada** — la hoja del config refleja la decisión: la variable está en
   ``binning.exclude_columns`` (``exclude``); está en ``selection.force_include`` y en
   ``model.force_include`` y no está excluida (``keep``); su hoja de
-  ``binning.variable_overrides`` tiene los mismos cortes fijados que la huella (tramos).
+  ``binning.variable_overrides`` tiene los mismos cortes fijados que la huella (tramos). En una
+  provisión: la covariable ya no está en ``survival.input.covariate_cols`` (``exclude`` con esa
+  hoja en su huella) y los días de mora de ``provisioning_ifrs9.staging`` son los de la huella
+  (``rebut_backstops``, cuyo sujeto es la columna de mora).
 - **en suspenso** — los cortes siguen ahí pero la variable se excluyó después: D-EXC-1 ya lo
   declara (``override_en_suspenso``) y la decisión se emite como hoy.
 - **sin efecto** — la hoja no está o cambió (un YAML editado a mano, el formulario de la
@@ -58,12 +63,26 @@ REGLA_DECISION_SIN_EFECTO: Final = "decision_sin_efecto"
 
 _HOJA_EXCLUIDAS: Final = "binning.exclude_columns"
 _HOJA_CORTES: Final = "binning.variable_overrides"
+#: La hoja que deja escrita ``exclude`` sobre la curva de PD: la lista de covariables que queda.
+_HOJA_COVARIABLES: Final = "survival.input.covariate_cols"
 _FAMILIA: Final[Mapping[str, str]] = {
     "exclude": "variables",
     "keep": "variables",
     "merge_bins": "tramos",
     "set_bins": "tramos",
+    "rebut_backstops": "presunciones",
 }
+
+
+def _familia(registro: DecisionEntry) -> str:
+    """La familia en que se coteja un registro: la última decisión de cada variable gana en ella.
+
+    ``exclude`` sobre la curva de PD es su propia familia: retirar una covariable no compite con
+    excluir una predictora del scorecard que se llame igual.
+    """
+    if registro.action == "exclude" and _HOJA_COVARIABLES in registro.value:
+        return "covariables"
+    return _FAMILIA[registro.action]
 
 
 def payload_de_decision(entry: DecisionEntry) -> dict[str, Any]:
@@ -94,14 +113,14 @@ def eventos_de_decisiones(config: BayesRiskConfig) -> list[dict[str, Any]]:
     ultimo: dict[tuple[str, str], int] = {}
     for posicion, registro in enumerate(registros):
         for variable in registro.columns:
-            ultimo[(_FAMILIA[registro.action], variable)] = posicion
+            ultimo[(_familia(registro), variable)] = posicion
     # Primera pasada: el estado de cada variable en el ÚLTIMO registro de su familia.
     cotejo: list[tuple[list[str], dict[str, tuple[str, ...]]]] = []
     for posicion, registro in enumerate(registros):
         aplicadas: list[str] = []
         sin_efecto: dict[str, tuple[str, ...]] = {}
         for variable in registro.columns:
-            if ultimo[(_FAMILIA[registro.action], variable)] != posicion:
+            if ultimo[(_familia(registro), variable)] != posicion:
                 # Historia: una decisión posterior sobre la misma variable la reemplazó.
                 aplicadas.append(variable)
                 continue
@@ -166,7 +185,7 @@ def _ajenas_no_vigentes(
     sin su registro, o la decisión posterior quedó sin efecto—, no se le atribuye.
     """
     registro = registros[posicion]
-    familia = _FAMILIA[registro.action]
+    familia = _familia(registro)
     propias = set(registro.columns)
     retiradas: set[str] = set()
     for hoja, contenido in registro.value.items():
@@ -204,6 +223,15 @@ def _hojas_que_no_coinciden(
     config: BayesRiskConfig, registro: DecisionEntry, variable: str
 ) -> tuple[str, ...]:
     """Las hojas que ya no reflejan la decisión sobre ``variable``; vacío si la aplica."""
+    if registro.action == "rebut_backstops":
+        # Las presunciones de mora: cada hoja de la huella tiene que seguir con el mismo número.
+        return tuple(
+            hoja for hoja, valor in registro.value.items() if _hoja_escalar(config, hoja) != valor
+        )
+    if registro.action == "exclude" and _HOJA_COVARIABLES in registro.value:
+        # Una covariable retirada de la curva: aplicada mientras no vuelva a la lista.
+        covariables = _lista(config, "survival", "input.covariate_cols")
+        return () if variable not in covariables else (_HOJA_COVARIABLES,)
     excluidas = _lista(config, "binning", "exclude_columns")
     if registro.action == "exclude":
         return () if variable in excluidas else (_HOJA_EXCLUIDAS,)
@@ -226,18 +254,30 @@ def _hojas_que_no_coinciden(
 
 
 def _lista(config: BayesRiskConfig, seccion: str, campo: str) -> tuple[Any, ...]:
-    """Una hoja lista del config; vacía si la sección no está (la decisión no vive ahí)."""
-    valor_seccion = getattr(config, seccion, None)
-    if valor_seccion is None:
-        return ()
-    valor = (
-        valor_seccion.get(campo)
-        if isinstance(valor_seccion, Mapping)
-        else getattr(valor_seccion, campo, None)
-    )
+    """Una hoja lista del config; vacía si la sección no está (la decisión no vive ahí).
+
+    ``campo`` admite una ruta con puntos dentro de la sección (``input.covariate_cols``).
+    """
+    valor = _valor_en(getattr(config, seccion, None), campo)
     if valor is None or isinstance(valor, str | bytes):
         return ()
     return tuple(valor) if isinstance(valor, Iterable) else ()
+
+
+def _hoja_escalar(config: BayesRiskConfig, hoja: str) -> Any:
+    """El valor de una hoja escalar del config por su ruta completa (``seccion.campo.subcampo``)."""
+    seccion, _, campo = hoja.partition(".")
+    return _valor_en(getattr(config, seccion, None), campo)
+
+
+def _valor_en(objeto: Any, ruta: str) -> Any:
+    """Baja por ``ruta`` (con puntos) en un modelo o un ``dict`` opaco; ``None`` si no existe."""
+    actual = objeto
+    for parte in ruta.split("."):
+        if actual is None:
+            return None
+        actual = actual.get(parte) if isinstance(actual, Mapping) else getattr(actual, parte, None)
+    return actual
 
 
 def _como_mapping(hoja: Any) -> Mapping[str, Any] | None:

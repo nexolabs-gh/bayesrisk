@@ -33,6 +33,15 @@ pantalla): su firma, sus resúmenes y sus decisiones (`exclude`, `keep`, `merge_
 
 ::: bayesrisk.guided.scorecard.Scorecard
 
+`bayesrisk.Ecl` calcula la provisión IFRS 9 de una cartera con la misma mecánica: el archivo de
+cartera y la historia de incumplimientos que alimenta la curva de PD, resúmenes por etapa en
+palabras de provisiones y dos decisiones con motivo (`exclude` sobre las covariables de la curva y
+`rebut_backstops` sobre las presunciones de mora). Es **experimental**: un adelanto declarado
+dentro de `guided`, fuera de la garantía SemVer 2.x hasta que la pantalla ofrezca lo mismo, y sus
+cifras siguen la marca experimental de `survival` y `provisioning`.
+
+::: bayesrisk.guided.ecl.Ecl
+
 ::: bayesrisk.guided.summaries.StageSummary
 
 ::: bayesrisk.guided.summaries.FinalSummary

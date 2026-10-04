@@ -11,13 +11,29 @@ El config sigue siendo la verdad y el ``config_hash``, la identidad de la corrid
 puertas —código, config completo y pantalla— cerraron con la capa B de la enmienda (S18,
 2026-09-21): la firma de :class:`Scorecard`, el contenido de los resúmenes y sus decisiones sólo
 crecen de forma aditiva.
+
+:class:`~bayesrisk.guided.ecl.Ecl`, la puerta guiada de la provisión IFRS 9 (enmienda
+FLUJO-GUIADO-IFRS9), es la excepción declarada por símbolo
+(:data:`bayesrisk.testing.stability.EXPERIMENTAL_SYMBOLS`): sale experimental hasta que cierre la
+capa B de su enmienda (D-ECL-9), y sus cifras siguen la marca experimental de ``survival`` y
+``provisioning``.
 """
 
+from bayesrisk.guided.ecl import Ecl, EclInputError, EclRunError
 from bayesrisk.guided.scorecard import Scorecard, ScorecardInputError, ScorecardRunError
-from bayesrisk.guided.summaries import STAGE_LABELS, FinalSummary, StageSummary
+from bayesrisk.guided.summaries import (
+    STAGE_LABELS,
+    STAGE_LABELS_CARTERA,
+    FinalSummary,
+    StageSummary,
+)
 
 __all__ = [
     "STAGE_LABELS",
+    "STAGE_LABELS_CARTERA",
+    "Ecl",
+    "EclInputError",
+    "EclRunError",
     "FinalSummary",
     "Scorecard",
     "ScorecardInputError",

@@ -23,6 +23,7 @@ from typing import Final
 
 __all__ = [
     "EXPERIMENTAL_DOMAINS",
+    "EXPERIMENTAL_SYMBOLS",
     "STABLE_DOMAINS",
     "UNMARKED_PACKAGES",
     "declared_stability",
@@ -69,6 +70,16 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
     "validation",
 )
 """Superficies que aún crecen: pueden cambiar de forma aditiva o romper dentro de 2.x."""
+
+EXPERIMENTAL_SYMBOLS: Final[dict[str, str]] = {
+    # FLUJO-GUIADO-IFRS9 D-ECL-9 (Cami, 2026-10-03): la puerta guiada de IFRS 9 vive en `guided`,
+    # que es estable, y sale como adelanto declarado (SDD-31 D-SIM-1) hasta que cierre la capa B
+    # de su enmienda —la pantalla—. Esta entrada se retira en ese cierre; desde entonces la
+    # garantía cubre la firma, los métodos y la forma de los resúmenes, y las cifras siguen la
+    # marca experimental de `survival` y `provisioning` (la lectura de D-EST-5).
+    "bayesrisk.guided.ecl.Ecl": "FLUJO-GUIADO-IFRS9 D-ECL-9: experimental hasta la capa B",
+}
+"""Símbolos experimentales dentro de un dominio estable, cada uno con su razón y su salida."""
 
 UNMARKED_PACKAGES: Final[tuple[str, ...]] = (
     # Infraestructura transversal, no un «dominio» con capítulo, preset y config propios. No llevan

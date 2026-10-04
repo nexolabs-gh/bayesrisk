@@ -24,7 +24,9 @@ from bayesrisk.core.config import config_hash
 from bayesrisk.core.decisions import DECISIONS_STEP
 from bayesrisk.core.study import Study
 from bayesrisk.guided import Scorecard, ScorecardInputError
-from bayesrisk.guided import scorecard as scorecard_module
+
+# El gancho que arma cada resumen vive en la base común de las puertas guiadas (S30).
+from bayesrisk.guided import _puerta as scorecard_module
 from bayesrisk.guided.scorecard import GUIDED_STEP
 
 

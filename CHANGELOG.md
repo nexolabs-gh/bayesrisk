@@ -37,6 +37,50 @@ entradas anteriores conservan el nombre con el que se publicaron.
   `DataCardSection.target_col` y `.bad_rate` admiten `None` sólo en una corrida de cartera: es
   aditivo, y ningún `config_hash` existente se mueve (todo YAML vigente declara las dos claves con
   valor).
+- **`bayesrisk.Ecl`: la provisión IFRS 9 en una puerta guiada (experimental).** Se construye con
+  lo que el área de riesgo ya tiene —el archivo de cartera a la fecha de corte (cartera,
+  exposición, LGD, tasa efectiva anual, días de mora y, si la tiene, la marca de incumplimiento) y
+  la historia de incumplimientos de esa misma cartera para la curva de PD (duración, evento, su
+  unidad y el horizonte)—; no pide qué es un cliente malo ni cómo separar muestras. Infiere y
+  declara en el registro de auditoría cuántos períodos de la curva son 12 meses (uno con años,
+  doce con meses), el esquema de las columnas nombradas y que es una corrida de cartera; sin
+  horizonte o con una unidad que no reconoce, se detiene antes de correr y dice qué falta. Cada
+  etapa cuenta lo que hizo en palabras de provisiones —«Cartera», «Curva de PD», «Provisión IFRS
+  9», «Informe y ficha»—, y el resumen final dice sus supuestos (la PD a lo largo del ciclo, sin
+  ajuste a las condiciones actuales; el escenario único; la exposición constante) y cinco cifras.
+  `run(until=)` y `resume()` como en el scorecard, y dos decisiones con motivo que viajan en el
+  YAML: `exclude` retira covariables de la curva y `rebut_backstops` rebate las presunciones de
+  mora de 30 y 90 días. Sobre el dataset del paquete y con la marca, la provisión es **idéntica**
+  a la del preset IFRS 9 (3.423.116). Es **experimental**: su firma y sus resúmenes pueden cambiar
+  hasta que la pantalla ofrezca lo mismo, y sus cifras siguen la marca experimental de los
+  motores de supervivencia y provisiones.
+- **Una corrida IFRS 9 habla en palabras de provisiones por las tres puertas.** El resumen por
+  etapa y el resumen final de una corrida que provisiona IFRS 9 sin dominios del scorecard —venga
+  de `Ecl`, de un YAML o de la pantalla, también la del preset— dejan de pintar el molde del
+  scorecard («578 malos», muestras de Desarrollo y Holdout, «la validación formal no está en el
+  config») y de decir «Etapa sin resumen propio»: cuentan la cartera, la curva con el efecto de
+  cada covariable y la PD acumulada por período y cartera, la provisión por etapa con lo que llevó
+  cada operación a Stage 2 y 3, y los supuestos leídos del config y los artefactos de esa corrida
+  (una corrida con Vasicek, escenarios ponderados o PD de origen no se describe como TTC,
+  escenario único ni staging sólo por mora). El scorecard dice exactamente lo mismo que antes.
+- **Los coeficientes de la curva de PD, con su error estándar y su p-valor.** La supervivencia
+  por tiempo discreto publica `("survival", "coefficients")` —`term`, `coef`, `std_error`,
+  `p_value`—, lo primero que pregunta quien valida la curva. Es una clave nueva: los siete
+  artefactos de siempre no cambian.
+- **El registro de decisiones acepta `rebut_backstops`.** `DecisionEntry.action` gana la acción
+  con que se rebaten las presunciones de mora, y el cotejo de cada corrida reconoce el efecto de
+  `exclude` sobre las covariables de la curva y el de `rebut_backstops` sobre los días de mora: si
+  alguien lo deshace a mano en el YAML, la corrida no se lo atribuye a quien decidió y lo dice como
+  alerta. La sección `decisions` sigue fuera del `config_hash`.
+
+### Sabido
+
+- La ficha del modelo registra la decisión `exclude` sobre la curva con la lista de covariables
+  que **quedan** (la hoja que la decisión deja escrita), no con la que se retiró; el registro de
+  auditoría y el resumen final sí la nombran.
+- En la pantalla, una corrida IFRS 9 ya muestra los resúmenes nuevos, pero el bloque del resumen
+  final sigue rotulando «Validación técnica» (dice «no aplica…») y todavía no pinta los supuestos
+  ni las tablas adicionales: llegan con la pantalla de la puerta guiada de IFRS 9.
 
 ## [2.3.0] — 2026-10-02
 

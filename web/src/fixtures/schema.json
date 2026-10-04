@@ -5006,12 +5006,13 @@
         "description": "Una decisión humana con motivo, tal como se tomó.\n\nNo es una opción que se configure: es el registro de algo que una persona decidió. Su efecto ya\nestá escrito en las secciones del config que definen el modelo; la huella guarda cómo quedaron\nal decidir, para que cada corrida compruebe que la decisión sigue aplicada.",
         "properties": {
           "action": {
-            "description": "Qué se decidió: excluir o mantener variables, o fijar los tramos de una.",
+            "description": "Qué se decidió: excluir o mantener variables, fijar los tramos de una o rebatir los días de mora con que IFRS 9 presume el Stage 2 y el Stage 3.",
             "enum": [
               "exclude",
               "keep",
               "merge_bins",
-              "set_bins"
+              "set_bins",
+              "rebut_backstops"
             ],
             "title": "Acción",
             "type": "string"

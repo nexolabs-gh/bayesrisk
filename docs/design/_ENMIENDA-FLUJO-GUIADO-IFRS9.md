@@ -8,6 +8,8 @@
 > programan en la sesión siguiente**, con tests nacidos rojos, controles negativos y revisión del
 > código; B y C después. Cada release y la recaptura piden su OK aparte.
 > **Capa 0 implementada en S29 (2026-10-04)**: D-ECL-0 y D-ECL-2, detalle y mediciones en §9.
+> **Capa A implementada en S30 (2026-10-04)**: `bayesrisk.Ecl` experimental, resúmenes de la
+> familia IFRS 9, `("survival", "coefficients")` y el cuaderno mínimo; detalle en §10.
 > **Corregida tras la pasada 1 de Codex** (un high y dos medium, los tres reales y ninguno
 > contractual): D-ECL-0 mide la duración en `time_value_years` y no presume `period == time_value`
 > (la primera versión habría abortado curvas trimestrales correctas); la corrida de cartera define
@@ -676,6 +678,58 @@ y `selection`. **Declaradas:** `ui/jobs.py` sigue preguntando target y partició
 `provisiones_ifrs9` (es la capa B, §3.12); `provisioning_cmf` con `pd_mapping.method='pd_breaks'` lee
 etiquetas y muestras sin declararlas en `requires`, así que en una corrida de cartera con la PD
 inyectada fallaría en la corrida con su error nombrado, no antes (CMF congelado: no se toca).
+
+## 10. Capa A implementada (S30, 2026-10-04)
+
+**La puerta.** `bayesrisk.Ecl` (`guided/ecl.py`) con la firma de §3.2/§3.7: `data`, `id`, las siete
+columnas de la provisión (la marca, opcional) y la historia de la curva (`duration`, `event`,
+`period`, `horizon`, `covariates`), más los argumentos de infraestructura del scorecard. Parte de
+las secciones `survival` y `provisioning_ifrs9` del preset F4 (§3.5) y escribe encima las
+columnas; `data.target`/`data.partition` en `null` (D-ECL-2). Infiere y declara al trail, con el
+paso `ecl_guided`: `inferencia_horizonte_12m` (`round(1 / year_fraction(period))`),
+`inferencia_esquema` (sólo las columnas declaradas, obligatorias), `inferencia_identificador`,
+`inferencia_corrida_de_cartera` e `inferencia_sin_marca`. Se detiene antes de correr, sin dejar
+nada escrito, sin `horizon` (con el máximo observado y el valor que usaría) y con una unidad que
+`core/time_units` no convierte. `run(until=)`/`resume()`, `summary()`, `results`, `to_yaml()`,
+`export()` y `_repr_html_` vienen de la base común.
+
+**Una decisión de implementación, dentro de lo aprobado: la maquinaria común.** §2 pedía que `Ecl`
+reutilizara la maquinaria del scorecard sin copiarla. Lo que no es del dominio —copia de los datos
+con huella, candado por carpeta, informe por identidad de intento, `run`/`resume`, registro de
+decisiones, `export`— se movió **tal cual** de `guided/scorecard.py` a `guided/_puerta.py`
+(`_PuertaGuiada`), parametrizado por nombre de la puerta, paso del trail, errores y familia de
+resúmenes; `Scorecard` y `Ecl` heredan de ella. Los mensajes del scorecard salen idénticos (el
+nombre de la puerta entra por atributo) y su suite dirigida pasa sin cambios salvo un test que
+parcheaba el gancho de resúmenes en su módulo de antes.
+
+**Decisiones (§3.9).** `exclude(cols, reason=)` escribe `survival.input.covariate_cols` y registra
+como huella la lista que queda; `rebut_backstops(stage2_days=, stage3_days=, reason=)` escribe los
+días de mora de `staging` y registra los dos como huella, con la columna de mora como sujeto.
+`DecisionEntry.action` gana `rebut_backstops` (cambia el schema de la pantalla: fixture regenerado y
+bundle reconstruido). El cotejo de `core/decisions.py` reconoce los dos efectos: `exclude` con la
+hoja de la curva es su propia familia (no compite con una predictora homónima del scorecard) y se
+aplica mientras la covariable no vuelva a la lista; `rebut_backstops` se aplica mientras cada día
+de la huella siga en el config. Medido: la huella de `exclude` sobre la curva nombra lo que
+**queda**, no lo excluido —es la hoja que la decisión deja escrita—, así que la ficha del modelo
+(`DecisionRecord`, que guarda `valor` y no `variables`) no nombra la covariable retirada; el trail y
+el resumen final sí. Declarado, no resuelto: nombrarla en la ficha cambia `DecisionRecord` (D-GOB).
+
+**Resúmenes (§3.8).** La familia la decide `family_of(config)` —`provisioning_ifrs9` sin
+`RESULT_DOMAINS`—, de modo que el preset F4 por la puerta completa y la pantalla hablan igual.
+`StageSummary` gana `extra_tables` (aditivo: la curva se lee por coeficientes y por PD acumulada
+por período y cartera; la provisión, por cartera y etapa y por etapa y gatillo); `FinalSummary`
+gana `title`, `assumptions` y `family`, y `headline()`. Las dos se serializan **exactamente igual**
+para el scorecard: las claves nuevas sólo viajan cuando hay algo que decir. En una provisión,
+`validation` dice «no aplica…» para la pantalla, que hasta la capa B rotula ese campo «Validación
+técnica».
+
+**Artefacto (§3.8).** `("survival", "coefficients")` lo publica sólo el discrete-time hazard
+(`DiscreteTimeHazardModel.coefficient_table()`, leído del GLM ya ajustado); `SurvivalStep.provides`
+pasa a depender de la config, como `requires`. Golden propio en
+`tests/fixtures/survival_coefficients_f4.json`.
+
+**Estabilidad (§3.10).** `bayesrisk.testing.stability.EXPERIMENTAL_SYMBOLS` —excepción por símbolo
+dentro de un dominio estable— con `bayesrisk.guided.ecl.Ecl`; se retira al cerrar B.
 
 ## 13. Simplicidad (SDD-31)
 

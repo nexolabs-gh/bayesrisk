@@ -31,7 +31,7 @@ from bayesrisk.survival.config import (
 )
 from bayesrisk.survival.exceptions import SurvivalConfigError, SurvivalInputError
 from bayesrisk.survival.results import SurvivalCard, SurvivalDiagnostics, SurvivalResult
-from bayesrisk.survival.step import SURVIVAL_ARTIFACTS, SurvivalStep
+from bayesrisk.survival.step import SURVIVAL_ARTIFACTS, SURVIVAL_COEFFICIENTS, SurvivalStep
 
 ROOT_SEED = 20_260_629
 
@@ -57,7 +57,12 @@ def test_from_config_registro_reexport_contrato_orden_e_import_liviano() -> None
         ("data", "frame"),
         ("model", "raw_pd_frame"),
     )
-    assert step.provides == tuple(("survival", key) for key in SURVIVAL_ARTIFACTS)
+    # Los siete artefactos estables y, con el discrete-time hazard, sus coeficientes (aditivo,
+    # FLUJO-GUIADO-IFRS9 §3.8): `provides` depende de la config, como `requires`.
+    assert step.provides == (
+        *(("survival", key) for key in SURVIVAL_ARTIFACTS),
+        ("survival", SURVIVAL_COEFFICIENTS),
+    )
     assert study_module._DEFAULT_DOMAIN_ORDER == (
         "data",
         "markov",
@@ -124,7 +129,10 @@ def test_run_default_discrete_publica_artifacts_invariantes_y_auditoria() -> Non
 
     assert isinstance(result, SurvivalResult)
     assert isinstance(term, pd.DataFrame)
-    assert study.artifacts.keys()[-7:] == [("survival", key) for key in SURVIVAL_ARTIFACTS]
+    assert study.artifacts.keys()[-8:] == [
+        *(("survival", key) for key in SURVIVAL_ARTIFACTS),
+        ("survival", SURVIVAL_COEFFICIENTS),
+    ]
     assert result.card.method == "discrete_hazard"
     assert result.card.metric_sections["person_period"]["n_rows"] == 228
     assert result.card.metric_sections["time_grid"]["warnings"] == ("DATO-INSTITUCIONAL-SUR-1",)
@@ -169,7 +177,10 @@ def test_standalone_pd_source_none_corre_sin_model_y_publica_artifacts() -> None
     term = study.artifacts.get("survival", "term_structure")
     assert isinstance(result, SurvivalResult)
     assert isinstance(term, pd.DataFrame)
-    assert study.artifacts.keys()[-7:] == [("survival", key) for key in SURVIVAL_ARTIFACTS]
+    assert study.artifacts.keys()[-8:] == [
+        *(("survival", key) for key in SURVIVAL_ARTIFACTS),
+        ("survival", SURVIVAL_COEFFICIENTS),
+    ]
     assert result.card.pd_source == "none"
     pd_context = result.card.metric_sections["pd_source"]
     assert pd_context["source_artifact"] is None
@@ -460,7 +471,8 @@ def test_dependencias_ramas_modelo_publicacion_y_versiones(monkeypatch: pytest.M
         dependency_versions={},
     )
     fake_result = SimpleNamespace(
-        estimator=object(),
+        # Un estimador del discrete-time hazard expone sus coeficientes (artefacto aditivo, S30).
+        estimator=SimpleNamespace(coefficient_table=pd.DataFrame),
         term_structure_frame=None,
         survival_curve_frame=pd.DataFrame(),
         hazard_frame=pd.DataFrame(),
