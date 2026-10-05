@@ -1,9 +1,13 @@
 # Enmienda SDD — El caso real de IFRS 9: lo que midieron las carteras reales (hito H2)
 
-> **Estado: PROPUESTA (S33, 2026-10-05).** Diseño sin código, pendiente de la revisión adversarial
-> (tope de tres pasadas) y de la aprobación de Cami, punto por punto en §8. Aprobarla **no programa
-> nada por sí sola**: la capa A entra en la sesión siguiente, con tests nacidos rojos, controles
-> negativos y revisión del código; la B después. Cada release y cada recaptura piden su OK aparte.
+> **Estado: APROBADA por Cami el 2026-10-05** (cierre de S33), de forma interactiva y con la
+> recomendación de cada uno de los seis puntos de §8: la enmienda entera; Stage 3 con PD = 1 en la
+> puerta, en F4 **y en el default de fábrica** (reabre D-ECL-4 sólo para `stage3_direct`); la cola
+> con la media de los tres últimos períodos con incumplimientos; esenciales de `provisioning_ifrs9`
+> 7 → 10; capa A en la 2.6.0 y B en la 2.7.0; la PD de origen diferida a H7 con su evidencia.
+> Diseño sin código: **la capa A se programa en la sesión siguiente**, con tests nacidos rojos,
+> controles negativos y revisión del código; la B después. Cada release y cada recaptura piden su OK
+> aparte.
 > **Corregida tras la pasada 1 de Codex** (tres high y un medium, los cuatro reales y ninguno
 > contractual): la lectura condicionada se limita a curvas de supervivencia, de las que se conoce la
 > historia (§3.2-7); la EAD amortiza con la **cuota del contrato** y no con una tabla deducida de la
@@ -592,6 +596,11 @@ del paquete; no programa nada.
 | 8-4 | Releases (D-CRE-7) | (a) **A en 2.6.0 y B en 2.7.0**; (b) A + B en 2.6.0 | **(a)**: Stage 3 es el mayor efecto y el cambio más chico |
 | 8-5 | La PD de origen (D-CRE-4) | (a) **diferir a H7 con la evidencia**; (b) conectar ya la columna de PD de origen en la puerta; (c) inferirla ya (capa C) | **(a)** |
 | 8-6 | La cola de la curva (D-CRE-2) | (a) **la media de los tres últimos períodos con incumplimientos** (Freddie Mac −21,1 %); (b) el último período con incumplimientos (−37,1 %) | **(a)**: el último período suele estar observado sólo en parte y su hazard sale bajo (§1.3); la media es la prudente |
+
+**Respuestas de Cami (2026-10-05, interactivas): (a) en 8-1, 8-3, 8-4, 8-5 y 8-6, y (b) en 8-2**
+—las seis, la recomendación—. La capa A (D-CRE-1 con el default de fábrica, D-CRE-5 y D-CRE-6) se
+programa en S34 y sale en la 2.6.0; la B (D-CRE-2 y D-CRE-3, esenciales a 10, la cola con la media
+de tres) en la 2.7.0. Cada release y cada recaptura piden su OK aparte.
 
 ## 13. Simplicidad (SDD-31)
 

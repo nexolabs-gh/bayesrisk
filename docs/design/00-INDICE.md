@@ -1160,7 +1160,8 @@ por módulo bajo SDD-31, la primera
 > los defaults de fábrica no corren; con curva anual y el horizonte de 12 meses de fábrica la ECL
 > sale el doble sin aviso (6,86 M frente a 3,42 M).
 
-> **El caso real de IFRS 9 (2026-10-05; propuesta, pendiente de Codex y de Cami; sin programar).**
+> **El caso real de IFRS 9 (2026-10-05; tres pasadas de Codex; **aprobada por Cami** el
+> 2026-10-05; capa A en la 2.6.0 y B en la 2.7.0; sin programar).**
 > [`_ENMIENDA-CASO-REAL-IFRS9.md`](_ENMIENDA-CASO-REAL-IFRS9.md), D-CRE-1…8, enmienda a SDD-16,
 > SDD-18 y [`_ENMIENDA-FLUJO-GUIADO-IFRS9.md`](_ENMIENDA-FLUJO-GUIADO-IFRS9.md) con lo que midieron
 > Lending Club y Freddie Mac: Stage 3 con PD = 1, vida contractual y antigüedad con dos fechas
