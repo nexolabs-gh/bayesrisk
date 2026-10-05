@@ -197,11 +197,11 @@ que alimenta la curva de PD: cuánto tiempo se observó cada operación, si incu
 se mide ese tiempo y hasta dónde se proyecta la curva. No pide qué es un «cliente malo» ni cómo
 separar muestras: la provisión no los usa.
 
-!!! warning "Experimental"
-    `bayesrisk.Ecl` es un adelanto de la puerta guiada de IFRS 9: su firma y sus resúmenes pueden
-    cambiar hasta que la pantalla ofrezca lo mismo. Las cifras siguen la marca experimental de los
-    motores de supervivencia y de provisiones (fuera de la garantía SemVer 2.x). Necesita el
-    extra `scoring`, que trae el ajuste de la curva.
+!!! note "Qué garantiza"
+    La firma de `bayesrisk.Ecl`, sus métodos y la forma de sus resúmenes son estables (SemVer
+    2.x). Las cifras siguen la marca experimental de los motores de supervivencia y de provisiones,
+    que pueden cambiar dentro de la 2.x. Necesita el extra `scoring`, que trae el ajuste de la
+    curva.
 
 <!-- primera-provision-ifrs9:start -->
 ```python
@@ -253,7 +253,12 @@ escriben el config, viajan en su sección `decisions` y quedan en el registro de
 resumen final; `ecl.run(until="survival")` se detiene tras la curva para mirarla antes de decidir,
 y `ecl.resume()` es una corrida nueva y completa. Como en el scorecard, `ecl.config` es el
 `BayesRiskConfig` entero (`ecl.to_yaml()` lo exporta) y la evidencia queda en
-`bayesrisk-runs/cartera_2025_06/`.
+`bayesrisk-runs/cartera_2025_06/`. `ecl.export_excel()` escribe en su carpeta `excel/` un libro por
+etapa —`01 Cartera.xlsx`, `02 Curva de PD.xlsx`, `03 Provisión IFRS 9.xlsx`— y `04 Decisiones.xlsx`,
+con el resumen, las tablas de cada etapa y las que el informe publica (exige el extra `excel`), y
+`ecl.export("corrida.zip")` empaqueta la carpeta entera. En la interfaz, el trabajo «Provisiones
+IFRS 9 / ECL» pregunta lo mismo que la puerta —sin «cliente malo» ni muestras— y Resultados pinta
+este mismo resumen, con sus supuestos y la curva de PD por cartera.
 
 ## La puerta completa: correr el preset F1
 

@@ -33,29 +33,35 @@ from bayesrisk.core.config.effective_defaults import (
 )
 from bayesrisk.ui.jobs import list_jobs
 
-#: Relleno de las cuatro decisiones obligatorias (D-EJE-6).
+#: La respuesta a cada decisión obligatoria que un trabajo pregunta (D-EJE-6), por su camino.
 #:
 #: Un esqueleto real llega con ellas **sin contestar** —son `DATO-INSTITUCIONAL` y eso es D-OBL-6—,
 #: así que preguntarle al motor sobre el esqueleto crudo mediría otra cosa. Lo que este gate mide es
 #: *«contestadas las obligatorias, ¿corre?»*, que es la pregunta de quien entra por el trabajo.
 #:
+#: Se contesta **sólo lo que el trabajo pregunta** (`required_decisions`): «Provisiones IFRS 9» no
+#: pregunta por target ni partición —los siembra en «no aplica», D-ECL-2— y rellenarlos aquí
+#: mediría un config que la pantalla nunca produce (FLUJO-GUIADO-IFRS9 §3.12). La unidad y el
+#: horizonte de la curva son decisiones de ese trabajo (`_DECISIONES_POR_TRABAJO`).
+#:
 #: ⚠️ Los valores son el **mínimo que construye**, no una recomendación metodológica: la partición
 #: aleatoria es la única forma sin huecos, y el resto son nombres de columna cualesquiera. Nada de
 #: esto viaja a ningún preset.
-_DECISIONES_CONTESTADAS: dict[str, dict[str, Any]] = {
-    "data": {
-        "target": {"bad_rule": {"all_of": [{"col": "dpd", "op": ">", "value": 90}], "any_of": []}},
-        "partition": {
-            "strategy": {
-                "type": "random",
-                "dev_fraction": 0.7,
-                "holdout_fraction": 0.15,
-                "oot_fraction": 0.15,
-                "stratify_by": None,
-            }
-        },
+_DECISIONES_CONTESTADAS: dict[str, Any] = {
+    "data.target.bad_rule": {"all_of": [{"col": "dpd", "op": ">", "value": 90}], "any_of": []},
+    "data.partition.strategy": {
+        "type": "random",
+        "dev_fraction": 0.7,
+        "holdout_fraction": 0.15,
+        "oot_fraction": 0.15,
+        "stratify_by": None,
     },
-    "survival": {"input": {"duration_col": "tiempo", "event_col": "evento"}},
+    "survival.input.duration_col": "tiempo",
+    "survival.input.event_col": "evento",
+    "survival.time_grid.time_unit": "year",
+    "survival.time_grid.horizon_periods": 5,
+    # D-GOB-12: sólo se contesta con la sección encendida; en el esqueleto es latente (`null`).
+    "governance.purpose": "Gate de ejecutabilidad",
 }
 
 
@@ -145,18 +151,20 @@ def _recortar_capitulos(esqueleto: dict[str, Any], job: dict[str, Any]) -> None:
     secciones["required_sections"] = [c for c in exigidos if c in suyas]
 
 
-def _con_decisiones_contestadas(esqueleto: dict[str, Any]) -> dict[str, Any]:
-    """Contesta las obligatorias de las secciones que el trabajo declara, y sólo ésas."""
+def _con_decisiones_contestadas(esqueleto: dict[str, Any], job: dict[str, Any]) -> dict[str, Any]:
+    """Contesta las decisiones que el trabajo pregunta, y sólo ésas, con su sección encendida."""
     completo = copy.deepcopy(esqueleto)
-    for seccion, bloques in _DECISIONES_CONTESTADAS.items():
-        if seccion not in completo:
-            continue
-        for clave, valor in bloques.items():
-            destino = completo[seccion].setdefault(clave, {})
-            if isinstance(destino, dict):
-                destino.update(copy.deepcopy(valor))
-            else:
-                completo[seccion][clave] = copy.deepcopy(valor)
+    for decision in job["required_decisions"]:
+        ruta = decision["path"]
+        tramos = ruta.split(".")
+        if not isinstance(completo.get(tramos[0]), dict):
+            continue  # sección latente o ausente: la decisión duerme (D-GOB-11)
+        nodo: dict[str, Any] = completo
+        for tramo in tramos[:-1]:
+            if not isinstance(nodo.get(tramo), dict):
+                nodo[tramo] = {}
+            nodo = nodo[tramo]
+        nodo[tramos[-1]] = copy.deepcopy(_DECISIONES_CONTESTADAS[ruta])
     return completo
 
 
@@ -222,7 +230,7 @@ def test_un_trabajo_disponible_produce_un_config_ejecutable(
     if job["status"] != "available":
         pytest.skip(f"«{job['label']}» no está disponible: {job['unavailable_reason']}")
 
-    crudo = _con_decisiones_contestadas(_esqueleto(job, catalogo))
+    crudo = _con_decisiones_contestadas(_esqueleto(job, catalogo), job)
     config = BayesRiskConfig.model_validate(crudo)
     veredicto = check_pipeline(config, artifacts=_claves_externas(job, crudo) or None)
 
@@ -231,6 +239,16 @@ def test_un_trabajo_disponible_produce_un_config_ejecutable(
         f"{veredicto.message}"
     )
     assert veredicto.steps, "un pipeline ejecutable resuelve al menos un paso"
+
+
+def test_cada_decision_que_un_trabajo_pregunta_tiene_su_respuesta_en_el_gate(
+    trabajos: list[dict[str, Any]],
+) -> None:
+    """Una decisión nueva sin respuesta aquí dejaría el gate midiendo un esqueleto incompleto."""
+    preguntadas = {d["path"] for job in trabajos for d in job["required_decisions"]}
+    assert preguntadas <= set(_DECISIONES_CONTESTADAS), sorted(
+        preguntadas - set(_DECISIONES_CONTESTADAS)
+    )
 
 
 def test_el_barrido_no_es_vacuo(trabajos: list[dict[str, Any]]) -> None:
@@ -290,6 +308,14 @@ def test_todo_override_apunta_a_un_campo_que_existe(
                 )
                 nodo = hijos[tramo]
             assert _es_descriptor(nodo), f"«{ruta}» no es una hoja: un override escribe un valor"
+            if not nodo[DISCRIMINADOR]:
+                # Un campo SIN default es una decisión de la institución (D-OBL-2): el trabajo sólo
+                # puede declararlo «no aplica» (`null`, D-ECL-2), nunca contestarlo por ella.
+                assert valor is None, (
+                    f"«{job['label']}» siembra «{ruta}», que no tiene default: contestar una "
+                    "decisión obligatoria por la institución es el falso «ya está» de D-OBL-5"
+                )
+                continue
             assert valor != nodo.get("value"), (
                 f"«{job['label']}» siembra «{ruta}» con el mismo valor que el default del motor: "
                 "un override que no cambia nada es ruido que alguien mantendrá para siempre"
@@ -303,10 +329,16 @@ def test_un_override_construye_el_config(
     for job in trabajos:
         if not job["overrides"]:
             continue
-        crudo = _con_decisiones_contestadas(_esqueleto(job, catalogo))
+        crudo = _con_decisiones_contestadas(_esqueleto(job, catalogo), job)
         config = BayesRiskConfig.model_validate(crudo)
         volcado = config.model_dump(mode="json")
+        preguntadas = {d["path"] for d in job["required_decisions"]}
         for ruta, valor in job["overrides"]:
+            if ruta in preguntadas:
+                # Sembrado en blanco para que la institución lo conteste (decisión del trabajo):
+                # lo que sobrevive es su respuesta, no la siembra.
+                assert _valor_en(volcado, ruta) == _DECISIONES_CONTESTADAS[ruta], ruta
+                continue
             assert _valor_en(volcado, ruta) == valor, (
                 f"«{job['label']}»: el valor sembrado en «{ruta}» no sobrevivió a la validación"
             )
@@ -414,7 +446,15 @@ def test_sembrar_governance_encendida_dejaria_los_diez_trabajos_sin_arrancar(
             _hijos_de(catalogo["sections"]["governance"])
         )
         assert "purpose" not in encendida["governance"], "la proyección no inventa el propósito"
-        crudo = _con_decisiones_contestadas(encendida)
+        crudo = _con_decisiones_contestadas(
+            encendida,
+            {
+                **job,
+                "required_decisions": [
+                    d for d in job["required_decisions"] if d["path"] != "governance.purpose"
+                ],
+            },
+        )
         with pytest.raises(ValidationError) as capturado:
             BayesRiskConfig.model_validate(crudo)
         assert any(

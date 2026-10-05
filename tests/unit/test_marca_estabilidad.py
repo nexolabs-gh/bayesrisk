@@ -120,6 +120,20 @@ def test_la_referencia_publica_enumera_cada_dominio_estable(dominio: str) -> Non
 _MARCA_EXPERIMENTAL: Final = "**Experimental (fuera de la garantía SemVer 2.x).**"
 
 
+def test_ecl_es_estable_desde_la_capa_b_de_su_enmienda() -> None:
+    """D-ECL-9: la excepción por símbolo de `Ecl` se retiró al cerrar la capa B (S31).
+
+    Su firma vive en `guided`, estable, y ya no lleva la marca experimental literal ni en la clase
+    ni en su módulo; la marca de sus cifras es la de `survival` y `provisioning`.
+    """
+    import bayesrisk.guided.ecl as modulo
+
+    assert "bayesrisk.guided.ecl.Ecl" not in EXPERIMENTAL_SYMBOLS
+    assert _MARCA_EXPERIMENTAL not in (modulo.Ecl.__doc__ or "")
+    assert _MARCA_EXPERIMENTAL not in (modulo.__doc__ or "")
+    assert {"survival", "provisioning"} <= set(EXPERIMENTAL_DOMAINS)
+
+
 @pytest.mark.parametrize("simbolo", sorted(EXPERIMENTAL_SYMBOLS))
 def test_un_simbolo_experimental_vive_en_un_dominio_estable_y_lo_declara(simbolo: str) -> None:
     """La excepción por símbolo (D-ECL-9): sólo tiene sentido dentro de un dominio estable, y el

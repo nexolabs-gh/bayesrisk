@@ -42,6 +42,7 @@ from bayesrisk.guided.summaries import (
     decision_line,
     stage_labels,
 )
+from bayesrisk.report.prose import _plural
 
 __all__: list[str] = []
 
@@ -513,6 +514,35 @@ class _PuertaGuiada:
         self._config = self._config.model_copy(update={seccion: nueva})
 
     # ── exportar ────────────────────────────────────────────────────────────────────────
+
+    def _exportar_excel(self) -> tuple[Path, ...]:
+        """Los libros Excel de la familia de esta puerta, uno por etapa y el de decisiones.
+
+        Bajo el candado y sobre la evidencia PROPIA: otra puerta con el mismo `run_dir/name` puede
+        haber consolidado su corrida en `run/` —el trail que el libro de decisiones leería—, y este
+        objeto escribiría sus tablas en memoria junto a decisiones ajenas (pasada 3 de Codex sobre
+        la capa B del scorecard).
+        """
+        from bayesrisk.guided.export import EXCEL_SUBDIR, write_stage_workbooks
+
+        candado = self._tomar_candado("exportar")
+        try:
+            self._exigir_evidencia_propia("export_excel")
+            escritos = write_stage_workbooks(
+                self._study,
+                self._stage_summaries,
+                directory=self._project_dir / EXCEL_SUBDIR,
+                report_config=self._config.report,
+                trail_path=self._context().trail_path,
+                family=self._FAMILIA,
+            )
+        finally:
+            _liberar_carpeta(candado)
+        self._echo(
+            f"Excel por etapa: {len(escritos)} "
+            f"{_plural(len(escritos), 'libro', 'libros')} en {self._project_dir / EXCEL_SUBDIR}"
+        )
+        return escritos
 
     def export(self, destination: str | Path) -> Path:
         """Empaqueta la carpeta del proyecto en un ``.zip`` (hallazgo #8 de INTEGRACION-EXTERNA).

@@ -229,7 +229,7 @@ def test_columnas_vacias_levantan_survivalconfigerror() -> None:
         SurvivalInputConfig(duration_col=" ", event_col="event")
     with pytest.raises(SurvivalConfigError, match="covariables"):
         SurvivalInputConfig(duration_col="duration", event_col="event", covariate_cols=(" ",))
-    with pytest.raises(SurvivalConfigError, match="time_unit"):
+    with pytest.raises(SurvivalConfigError, match="Declara en qué unidad"):
         SurvivalTimeGridConfig(time_unit=" ")
 
 

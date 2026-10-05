@@ -1587,6 +1587,77 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     expect(ocurrencias(html, "Resumen de la corrida")).toBe(1)
   })
 
+  // FLUJO-GUIADO-IFRS9 capa B (§3.12): una provisión habla con su familia —«Supuestos» en vez de
+  // «Validación técnica», las tablas adicionales de cada etapa y la curva de PD por cartera junto
+  // al bloque IFRS 9—, leída de la misma fuente que `Ecl.summary()`.
+  const deCartera: RunSummaries = {
+    stages: [
+      {
+        stage: "survival",
+        label: "Curva de PD",
+        lines: ["6.000 operaciones · 1.234 incumplimientos observados"],
+        alerts: [],
+        table: {
+          columns: ["Término", "Coeficiente", "Error estándar", "p-valor"],
+          rows: [["deuda_ingreso", "0,812", "0,101", "0,000"]],
+        },
+        extra_tables: [
+          {
+            title: "PD acumulada por período y cartera (promedio de las operaciones)",
+            columns: ["Período", "Plazo", "consumo", "tarjetas"],
+            rows: [["1", "1 año", "4,21 %", "6,37 %"]],
+          },
+        ],
+      },
+      {
+        stage: "provisioning_ifrs9",
+        label: "Provisión IFRS 9",
+        lines: ["ECL total 3.423.116"],
+        alerts: [],
+        table: null,
+        extra_tables: [
+          {
+            title: "Operaciones por etapa y gatillo",
+            columns: ["Etapa", "Gatillo", "Operaciones"],
+            rows: [["Stage 2", "Mora de 30 días", "477"]],
+          },
+        ],
+      },
+    ],
+    final: {
+      execution: "completada",
+      validation:
+        "no aplica: una provisión no tiene veredicto técnico; lo que la cifra supone está en «Supuestos»",
+      figures: [["ECL total", "3.423.116"]],
+      review: [],
+      decisions: [],
+      files: [["Evidencia de la corrida", "C:/corridas/ecl/run"]],
+      title: "Resumen de la provisión IFRS 9",
+      family: "cartera",
+      assumptions: ["PD a lo largo del ciclo (TTC), sin ajuste a las condiciones actuales"],
+    },
+    error: null,
+  }
+
+  it("una provisión dice sus supuestos, sus tablas adicionales y su curva de PD por cartera", () => {
+    const html = render({ ...(demoF4 as unknown as ResultsResponse), summaries: deCartera })
+    expect(html).toContain("Supuestos")
+    expect(html).toContain("PD a lo largo del ciclo (TTC), sin ajuste a las condiciones actuales")
+    expect(html).not.toContain("Validación técnica")
+    expect(html).not.toContain("no aplica: una provisión no tiene veredicto técnico")
+    // Las tablas adicionales de cada etapa, con su título y sus celdas tal cual.
+    expect(html).toContain("Operaciones por etapa y gatillo")
+    expect(html).toContain("Mora de 30 días")
+    // La curva de PD por cartera: plegada en su etapa Y junto al bloque IFRS 9.
+    expect(html).toContain("Curva de PD por cartera")
+    expect(ocurrencias(html, "PD acumulada por período y cartera (promedio de las operaciones)")).toBe(2)
+    expect(ocurrencias(html, "6,37 %")).toBe(2)
+    // El scorecard no cambia: sigue con su validación técnica y sin supuestos ni curva.
+    const sc = render({ ...minima(null), summaries: resumenes })
+    expect(sc).toContain("Validación técnica")
+    expect(sc).not.toContain("Curva de PD por cartera")
+  })
+
   it("guardrail estático: el bloque lee `summaries` y no calcula ni formatea nada", () => {
     const cuerpo = resultsTabSource.match(/function RunSummarySection\(([\s\S]*?)\n\}\n/)?.[0] ?? ""
     expect(cuerpo).not.toBe("")

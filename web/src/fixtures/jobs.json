@@ -3698,171 +3698,21 @@
         [
           "survival.input.pd_source",
           "none"
+        ],
+        [
+          "data.target",
+          null
+        ],
+        [
+          "data.partition",
+          null
+        ],
+        [
+          "survival.time_grid.time_unit",
+          ""
         ]
       ],
       "required_decisions": [
-        {
-          "answer_forms": [
-            {
-              "help": "Para la política clásica: «más de 90 días de mora», sola o junto con otra condición. Eliges la columna, la comparación y el corte.",
-              "id": "condiciones",
-              "label": "La escribo como condiciones sobre mis columnas",
-              "precargas": [],
-              "slots": [
-                "all_of.0.col",
-                "all_of.0.op",
-                {
-                  "path": "all_of.0.value",
-                  "salvo_si": {
-                    "path": "all_of.0.op",
-                    "vale": [
-                      "isna",
-                      "notna"
-                    ]
-                  }
-                }
-              ],
-              "template": {
-                "all_of": [
-                  {
-                    "col": "",
-                    "op": "",
-                    "value": null
-                  }
-                ],
-                "any_of": []
-              }
-            },
-            {
-              "help": "Tu archivo trae la marca de incumplimiento ya calculada por tu área. Dices qué columna la lleva y qué valor marca al malo; el motor no supone que sea un 1.",
-              "id": "columna_marcada",
-              "label": "Ya viene marcada en una columna de mi archivo",
-              "precargas": [
-                {
-                  "desde": "performance.target_column",
-                  "insumo": [
-                    "calibration",
-                    "calibrated_pd_frame"
-                  ],
-                  "nota": "es la columna que ya dijiste que marca si la operación terminó incumpliendo",
-                  "slot": "all_of.0.col"
-                }
-              ],
-              "slots": [
-                "all_of.0.col",
-                {
-                  "path": "all_of.0.value",
-                  "salvo_si": {
-                    "path": "all_of.0.op",
-                    "vale": [
-                      "isna",
-                      "notna"
-                    ]
-                  }
-                }
-              ],
-              "template": {
-                "all_of": [
-                  {
-                    "col": "",
-                    "op": "==",
-                    "value": ""
-                  }
-                ],
-                "any_of": []
-              }
-            }
-          ],
-          "help": "La condición con la que tu área marca el incumplimiento. Suele ser un corte de mora —«más de 90 días»—, a veces junto con otra condición. No hay un valor estándar: depende de tu política, y por eso lo eliges tú.",
-          "path": "data.target.bad_rule",
-          "question": "¿Qué define a un cliente malo en tu cartera?"
-        },
-        {
-          "answer_forms": [
-            {
-              "help": "La opción que mejor anticipa producción, porque valida contra un período que el modelo no vio. Necesita una columna de fecha y desde cuándo empieza el período reservado.",
-              "id": "temporal",
-              "label": "Por fecha: lo más reciente queda fuera de tiempo",
-              "precargas": [],
-              "slots": [
-                "date_col",
-                "oot_from"
-              ],
-              "template": {
-                "date_col": "",
-                "holdout_fraction": 0.2,
-                "oot_from": "",
-                "type": "temporal"
-              }
-            },
-            {
-              "help": "Cuando tu cartera se agrupa en camadas —trimestres de originación, campañas— y quieres reservar camadas completas en vez de cortar por una fecha.",
-              "id": "cohort",
-              "label": "Por cohortes, reservando algunas enteras",
-              "precargas": [],
-              "slots": [
-                "cohort_col",
-                "oot_cohorts"
-              ],
-              "template": {
-                "cohort_col": "",
-                "holdout_fraction": 0.2,
-                "oot_cohorts": [],
-                "type": "cohort"
-              }
-            },
-            {
-              "help": "Tu archivo ya trae la división que usa tu área. Dices qué columna la lleva y qué valores corresponden a cada muestra; nada se adivina por parecido de nombre ni por orden.",
-              "id": "columna",
-              "label": "Ya viene marcada en una columna de mi archivo",
-              "precargas": [
-                {
-                  "desde": "performance.partition_column",
-                  "insumo": [
-                    "calibration",
-                    "calibrated_pd_frame"
-                  ],
-                  "nota": "es la columna que ya dijiste que marca a qué muestra pertenece cada operación",
-                  "slot": "partition_col"
-                }
-              ],
-              "slots": [
-                "partition_col",
-                {
-                  "alguno_de": [
-                    "desarrollo",
-                    "holdout",
-                    "oot"
-                  ]
-                }
-              ],
-              "template": {
-                "desarrollo": [],
-                "holdout": [],
-                "oot": [],
-                "partition_col": "",
-                "type": "columna"
-              }
-            },
-            {
-              "help": "Reparte las filas al azar. ⚠️ El trozo «fuera de tiempo» que produce NO es posterior en el tiempo: sale del mismo período que el resto, así que mide menos de lo que su nombre promete. Úsala sólo si tus datos no tienen ninguna columna de fecha ni de camada.",
-              "id": "random",
-              "label": "Al azar, en tres trozos",
-              "precargas": [],
-              "slots": [],
-              "template": {
-                "dev_fraction": 0.7,
-                "holdout_fraction": 0.15,
-                "oot_fraction": 0.15,
-                "stratify_by": null,
-                "type": "random"
-              }
-            }
-          ],
-          "help": "Al azar, por fecha, por cohortes, o leyendo una separación que tu archivo ya trae marcada en una columna. Si tus datos tienen eje de tiempo, separar por fecha mide mejor lo que pasará en producción, porque valida contra un período que el modelo no vio.",
-          "path": "data.partition.strategy",
-          "question": "¿Cómo separas la muestra para validar?"
-        },
         {
           "answer_forms": [],
           "help": "Cuánto duró cada operación bajo observación: meses desde el desembolso hasta el incumplimiento, o hasta que dejaste de observarla.",
@@ -3874,6 +3724,18 @@
           "help": "Distingue a quien incumplió de quien seguía sano cuando terminó la observación. Sin ella las dos situaciones se confunden y las curvas salen sesgadas.",
           "path": "survival.input.event_col",
           "question": "¿Qué columna dice si el evento llegó a ocurrir?"
+        },
+        {
+          "answer_forms": [],
+          "help": "Año, semestre, trimestre, mes, semana o día. Con ella la provisión sabe cuántos períodos de la curva son 12 meses y cómo descontar la pérdida: declararla mal cambia la provisión, y un número solo no dice si son meses o años.",
+          "path": "survival.time_grid.time_unit",
+          "question": "¿En qué unidad está medido ese tiempo?"
+        },
+        {
+          "answer_forms": [],
+          "help": "El horizonte de la pérdida esperada de por vida, en la misma unidad que el tiempo. Es una decisión de tu institución: sin él la corrida se detiene antes de calcular, en vez de proyectar hasta donde llegan tus datos.",
+          "path": "survival.time_grid.horizon_periods",
+          "question": "¿Hasta cuántos períodos se proyecta la curva de PD?"
         },
         {
           "answer_forms": [],

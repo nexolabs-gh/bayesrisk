@@ -25,9 +25,9 @@ from __future__ import annotations
 import math
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
-from bayesrisk.core.config import BayesRiskBaseConfig
+from bayesrisk.core.config import BayesRiskBaseConfig, declara_esenciales
 from bayesrisk.core.dataset_check import Requisito
 from bayesrisk.provisioning.ifrs9.exceptions import IfrsConfigError
 from bayesrisk.provisioning.lgd import (
@@ -225,6 +225,7 @@ class IfrsLgdConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "LGD",
             "ui_order": 2,
+            "ui_essential": True,
         },
     )
     recovery_col: str | None = Field(
@@ -387,6 +388,7 @@ class IfrsEadConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "EAD",
             "ui_order": 2,
+            "ui_essential": True,
         },
     )
     drawn_col: str = Field(
@@ -555,6 +557,7 @@ class IfrsStagingConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "Staging",
             "ui_order": 5,
+            "ui_essential": True,
         },
     )
     is_default_col: str | None = Field(
@@ -566,6 +569,7 @@ class IfrsStagingConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "Staging",
             "ui_order": 6,
+            "ui_essential": True,
         },
     )
     origination_pd_life_col: str | None = Field(
@@ -791,6 +795,7 @@ class IfrsEclConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "ECL",
             "ui_order": 1,
+            "ui_essential": True,
         },
     )
     discount_convention: Literal["annual_eir_year_fraction", "period_eir"] = Field(
@@ -834,6 +839,11 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
     Motor experimental: fuera de la garantía SemVer 2.x.
     """
 
+    # Siete esenciales (FLUJO-GUIADO-IFRS9 D-ECL-6, §8-4: la única excepción al tope de 6): las
+    # columnas de la entrada mínima —fecha de corte, cartera, EAD, LGD, tasa, mora y la marca de
+    # incumplimiento—, que son dato institucional y no perillas; el resto, en «Avanzado».
+    model_config = ConfigDict(json_schema_extra=declara_esenciales)
+
     schema_version: str = Field(
         default="1.0.0",
         title="Versión del sub-schema provisioning_ifrs9",
@@ -855,6 +865,7 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "Columnas",
             "ui_order": 1,
+            "ui_essential": True,
         },
     )
     row_id_col: str | None = Field(
@@ -877,6 +888,7 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "Columnas",
             "ui_order": 3,
+            "ui_essential": True,
         },
     )
     portfolio_scheme: str | None = Field(

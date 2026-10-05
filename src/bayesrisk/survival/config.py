@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from typing import Any, Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
-from bayesrisk.core.config import BayesRiskBaseConfig
+from bayesrisk.core.config import BayesRiskBaseConfig, declara_esenciales
 from bayesrisk.core.dataset_check import ContextoConfig, Requisito
 from bayesrisk.survival.exceptions import SurvivalConfigError
 
@@ -68,6 +68,7 @@ class SurvivalInputConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "Entrada",
             "ui_order": 1,
+            "ui_essential": True,
         },
     )
     event_col: str = Field(
@@ -79,6 +80,7 @@ class SurvivalInputConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "Entrada",
             "ui_order": 2,
+            "ui_essential": True,
         },
     )
     id_col: str | None = Field(
@@ -146,6 +148,7 @@ class SurvivalInputConfig(BayesRiskBaseConfig):
             "ui_widget": "multiselect",
             "ui_group": "Covariables",
             "ui_order": 1,
+            "ui_essential": True,
         },
     )
 
@@ -221,6 +224,7 @@ class SurvivalTimeGridConfig(BayesRiskBaseConfig):
             "ui_widget": "text_input",
             "ui_group": "Horizonte",
             "ui_order": 1,
+            "ui_essential": True,
         },
     )
     horizon_periods: int | None = Field(
@@ -228,7 +232,12 @@ class SurvivalTimeGridConfig(BayesRiskBaseConfig):
         ge=1,
         title="Horizonte en períodos",
         description="Horizonte lifetime explícito; si falta, el motor usa la grilla observada.",
-        json_schema_extra={"ui_widget": "number_input", "ui_group": "Horizonte", "ui_order": 2},
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Horizonte",
+            "ui_order": 2,
+            "ui_essential": True,
+        },
     )
     evaluation_times: tuple[float, ...] = Field(
         default=(),
@@ -242,7 +251,8 @@ class SurvivalTimeGridConfig(BayesRiskBaseConfig):
         """Valida que la unidad temporal declarativa no esté vacía."""
         if not self.time_unit.strip():
             raise SurvivalConfigError(
-                "time_unit no puede estar vacío.",
+                "Declara en qué unidad está la duración de la curva: año, semestre, "
+                "trimestre, mes, semana o día.",
                 loc=(*_LOC_SECCION, "time_grid", "time_unit"),  # D-EXI-5
             )
         return self
@@ -340,6 +350,10 @@ class CoxAftConfig(BayesRiskBaseConfig):
 
 class SurvivalConfig(BayesRiskBaseConfig):
     """Modela el tiempo hasta el incumplimiento y obtiene de ahí la PD lifetime."""
+
+    # Cinco esenciales (FLUJO-GUIADO-IFRS9 D-ECL-6): duración, evento, unidad, horizonte y
+    # covariables —los argumentos de la curva en `bayesrisk.Ecl`—; el resto, en «Avanzado».
+    model_config = ConfigDict(json_schema_extra=declara_esenciales)
 
     schema_version: str = Field(
         default="1.0.0",

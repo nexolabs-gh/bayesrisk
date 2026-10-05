@@ -141,7 +141,8 @@ def declara_esenciales(schema: dict[str, Any]) -> None:
     todavía no pasó por su enmienda de simplicidad— se pinta entera, como siempre. La marca no se
     deduce contando campos marcados porque una sección puede declarar **cero** esenciales
     (``eda``: todo default, el resumen lo muestra). ``tests/unit/test_esenciales_por_seccion.py``
-    la ata en los dos sentidos: las doce secciones del scorecard la llevan y ninguna otra.
+    la ata en los dos sentidos: las doce secciones del scorecard y las dos de cálculo de IFRS 9
+    (``survival`` y ``provisioning_ifrs9``) la llevan, y ninguna otra.
     """
     schema["ui_essentials_declared"] = True
 

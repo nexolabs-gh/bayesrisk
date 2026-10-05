@@ -62,13 +62,13 @@ function hojas(schema: JsonSchema, prefijo: string): string[] {
 }
 
 describe("golden espejo: las marcas del schema son exactamente las del golden (D-FLU-7)", () => {
-  it("las doce secciones del scorecard declaran sus esenciales, y ninguna otra", () => {
+  it("las doce secciones del scorecard y las dos de cálculo de IFRS 9 declaran sus esenciales, y ninguna otra", () => {
     const declaradas = Object.keys(PAYLOAD.json_schema.properties ?? {}).filter((clave) => {
       const entrada = configSectionSchema(PAYLOAD, clave)
       return entrada !== null && declaresEssentials(resolveRef(entrada.schema, DEFS))
     })
     expect(new Set(declaradas)).toEqual(new Set(Object.keys(ESSENTIALS_BY_SECTION)))
-    expect(declaradas).toHaveLength(12)
+    expect(declaradas).toHaveLength(14)
   })
 
   it.each(Object.keys(ESSENTIALS_BY_SECTION))(
@@ -79,12 +79,12 @@ describe("golden espejo: las marcas del schema son exactamente las del golden (D
     },
   )
 
-  it("una sección fuera del scorecard no declara esenciales y no se divide", () => {
-    const survival = configSectionSchema(PAYLOAD, "survival")
-    expect(survival).not.toBeNull()
-    const schema = resolveRef(survival!.schema, DEFS)
+  it("una sección que no pasó por su enmienda de simplicidad no declara esenciales y no se divide", () => {
+    const interna = configSectionSchema(PAYLOAD, "provisioning_internal")
+    expect(interna).not.toBeNull()
+    const schema = resolveRef(interna!.schema, DEFS)
     expect(declaresEssentials(schema)).toBe(false)
-    expect(essentialPaths(schema, DEFS, "survival").size).toBe(0)
+    expect(essentialPaths(schema, DEFS, "provisioning_internal").size).toBe(0)
   })
 })
 

@@ -7,6 +7,45 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **La provisión IFRS 9 en la pantalla, como en el código.** El trabajo «Provisiones IFRS 9 / ECL»
+  ya no pregunta qué es un cliente malo ni cómo separar la muestra —siembra una corrida de
+  cartera, y el formulario dice que esos dos bloques no aplican en vez de mostrarlos vacíos— y
+  pregunta lo que la provisión sí necesita: la duración, el evento, la unidad en que se mide ese
+  tiempo y el horizonte de la curva. La unidad llega en blanco: el valor de fábrica nombra un
+  índice, no una duración, y con él la provisión no sabría cuántos períodos son 12 meses. Las
+  secciones de la curva y de la provisión abren sus campos esenciales —cinco y siete, los mismos
+  argumentos de `bayesrisk.Ecl`— y pliegan el resto en «Avanzado». Resultados pinta el resumen de
+  una provisión con sus **supuestos** en lugar de «Validación técnica», las tablas adicionales de
+  cada etapa y la curva de PD por cartera junto al bloque IFRS 9, desde la misma fuente que
+  `ecl.summary()`.
+- **`ecl.export_excel()`** escribe `01 Cartera.xlsx`, `02 Curva de PD.xlsx`,
+  `03 Provisión IFRS 9.xlsx` y `04 Decisiones.xlsx` con la mecánica del scorecard: el resumen de la
+  etapa, su tabla de decisión, sus tablas adicionales y las tablas que el informe publica para ese
+  dominio, celda a celda iguales, con la misma protección de celdas. El número de cada libro es la
+  posición de su etapa y no se mueve en una corrida parcial. `ecl.export("corrida.zip")` lo
+  empaqueta con la corrida. El Excel del scorecard no cambia.
+
+### Cambiado
+
+- **`bayesrisk.Ecl` es estable.** Con la pantalla, la puerta guiada de IFRS 9 cerró sus tres
+  puertas: su firma, sus métodos y la forma de sus resúmenes sólo crecen de forma aditiva bajo
+  SemVer 2.x. Sus **cifras** siguen la marca experimental de los motores que las calculan
+  —supervivencia y provisiones—, como siempre.
+- Una unidad vacía en la grilla de la curva se rechaza con un mensaje en palabras de negocio
+  («Declara en qué unidad está la duración de la curva…») en vez del nombre del campo.
+
+### Sabido
+
+- La ficha del modelo registra la decisión `exclude` sobre la curva con la lista de covariables
+  que **quedan**, no con la que se retiró; el registro de auditoría y el resumen final sí la
+  nombran.
+- El informe de una provisión todavía no abre con la página «Resumen de la corrida» ni publica la
+  curva de PD por cartera en su cuerpo: llegan con el informe de la puerta guiada de IFRS 9.
+
 ## [2.4.0] — 2026-10-05
 
 ### Corregido

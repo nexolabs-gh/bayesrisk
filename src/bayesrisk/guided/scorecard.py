@@ -1018,29 +1018,7 @@ class Scorecard(_PuertaGuiada):
         puerta y del motor). Opcional: nunca es la vía para ver un resultado. Exige el extra
         ``excel`` (``openpyxl``); sin él se detiene con el comando de instalación.
         """
-        from bayesrisk.guided.export import EXCEL_SUBDIR, write_stage_workbooks
-
-        # Bajo el candado y sobre la evidencia PROPIA: otro Scorecard con el mismo `run_dir/name`
-        # puede haber consolidado su corrida en `run/` —el trail que este libro leería—, y este
-        # objeto escribiría sus tablas en memoria junto a decisiones ajenas (pasada 3 de Codex
-        # sobre la capa B).
-        candado = self._tomar_candado("exportar")
-        try:
-            self._exigir_evidencia_propia("export_excel")
-            escritos = write_stage_workbooks(
-                self._study,
-                self._stage_summaries,
-                directory=self._project_dir / EXCEL_SUBDIR,
-                report_config=self._config.report,
-                trail_path=self._context().trail_path,
-            )
-        finally:
-            _liberar_carpeta(candado)
-        self._echo(
-            f"Excel por etapa: {len(escritos)} "
-            f"{_plural(len(escritos), 'libro', 'libros')} en {self._project_dir / EXCEL_SUBDIR}"
-        )
-        return escritos
+        return self._exportar_excel()
 
     # ── comparar (D-FLU-6) ──────────────────────────────────────────────────────────────
 

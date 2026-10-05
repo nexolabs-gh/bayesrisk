@@ -41,7 +41,7 @@ _LAZY = frozenset(
 _SCORECARD_LAZY = frozenset({"apply", "fit_scorecard_bundle", "FittedScorecardBundle"})
 # Las puertas guiadas (SDD-31; enmiendas FLUJO-GUIADO-SCORECARD y FLUJO-GUIADO-IFRS9) se importan
 # al acceder al atributo, como `run`: arrastran pandas y los mapas de rótulos del informe, que el
-# núcleo liviano no carga. `Ecl` es experimental (D-ECL-9).
+# núcleo liviano no carga.
 _GUIDED_LAZY = frozenset({"Scorecard", "Ecl"})
 
 if TYPE_CHECKING:  # pragma: no cover - solo para el type-checker, no en runtime

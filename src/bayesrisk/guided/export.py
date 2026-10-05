@@ -2,12 +2,16 @@
 
 ``export_excel()`` escribe en ``<run_dir>/<name>/excel/`` un libro por etapa, numerado en el orden
 de las etapas (§3.2 de la enmienda) y rotulado con el mismo nombre que el resumen, más un último
-libro con las decisiones. Cada libro lleva el resumen de la etapa, su **tabla de decisión** (la de
-``sc.results[<etapa>]``, con rótulos en español) y las **tablas completas** que el informe publica
-para ese dominio —las del anexo y las que el informe entrega por observación como exports—,
-escritas por :mod:`bayesrisk.report.exports` con la misma protección de celdas: una tabla escrita
-por las dos vías es la misma celda a celda (gate §6-9). Nunca es obligatorio ni la vía para ver un
-resultado (D-SIM-7): el resultado se ve en el notebook o en pantalla.
+libro con las decisiones. Cada familia de resúmenes numera sus propias etapas: el scorecard, de
+``01 Datos y muestras`` a ``11 Decisiones``; la provisión IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-10), de
+``01 Cartera`` a ``04 Decisiones``. Cada libro lleva el resumen de la etapa, su **tabla de
+decisión** (la de ``sc.results[<etapa>]``, con rótulos en español) y las **tablas completas** que el
+informe publica para ese dominio —las del anexo y las que el informe entrega por observación como
+exports—, escritas por :mod:`bayesrisk.report.exports` con la misma protección de celdas: una
+tabla escrita por las dos vías es la misma celda a celda (gate §6-9). Las tablas adicionales de una
+etapa (``StageSummary.extra_tables``: la curva por sus coeficientes y por cartera, la provisión por
+etapa y gatillo) van en hojas propias tras la de decisión, con su título. Nunca es obligatorio ni la
+vía para ver un resultado (D-SIM-7): el resultado se ve en el notebook o en pantalla.
 
 ``export(destino)`` empaqueta la carpeta del proyecto —config vigente, snapshot de datos, evidencia
 de la corrida, informe y el Excel si se pidió— en un ``.zip`` que viaja entero.
@@ -28,7 +32,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
 from bayesrisk.core.exceptions import MissingDependencyError
-from bayesrisk.guided.summaries import STAGE_LABELS, STAGE_ORDER, StageSummary
+from bayesrisk.guided.summaries import StageSummary, stage_labels
 from bayesrisk.report.document import table_title
 
 if TYPE_CHECKING:
@@ -41,7 +45,9 @@ __all__ = [
     "DECISIONS_BOOK",
     "EXCEL_SUBDIR",
     "STAGE_BOOKS",
+    "decisions_book",
     "pack_project",
+    "stage_books",
     "write_stage_workbooks",
 ]
 
@@ -49,19 +55,28 @@ __all__ = [
 #: ``bayesrisk.run`` sustituye entero al consolidar).
 EXCEL_SUBDIR: Final = "excel"
 
-#: Las etapas con libro, en el orden de §3.2: todas menos ``report``, que no publica tablas y cuyo
-#: entregable es el propio informe.
-_STAGES_WITH_BOOK: Final[tuple[str, ...]] = tuple(s for s in STAGE_ORDER if s != "report")
 
-#: Nombre de archivo de cada libro: ``01 Datos y muestras.xlsx`` … ``10 Validación formal.xlsx``.
-#: El número es la posición de la etapa en el pipeline, y por eso no depende de qué etapas
-#: corrieron: una corrida parcial deja los primeros libros y los números no se mueven.
-STAGE_BOOKS: Final[dict[str, str]] = {
-    stage: f"{numero:02d} {STAGE_LABELS[stage]}.xlsx"
-    for numero, stage in enumerate(_STAGES_WITH_BOOK, start=1)
-}
-#: El último libro: las decisiones registradas en el trail (humanas, de la puerta y del motor).
-DECISIONS_BOOK: Final = f"{len(_STAGES_WITH_BOOK) + 1:02d} Decisiones.xlsx"
+def stage_books(family: str = "scorecard") -> dict[str, str]:
+    """Nombre de archivo del libro de cada etapa de una familia, en el orden del pipeline.
+
+    Las etapas con libro son todas menos ``report``, que no publica tablas y cuyo entregable es el
+    propio informe. El número es la posición de la etapa en su familia, y por eso no depende de
+    qué etapas corrieron: una corrida parcial deja los primeros libros y los números no se mueven.
+    """
+    rotulos = stage_labels(family)
+    etapas = [stage for stage in rotulos if stage != "report"]
+    return {stage: f"{numero:02d} {rotulos[stage]}.xlsx" for numero, stage in enumerate(etapas, 1)}
+
+
+def decisions_book(family: str = "scorecard") -> str:
+    """El último libro de una familia: las decisiones del trail (humanas, puerta y motor)."""
+    return f"{len(stage_books(family)) + 1:02d} Decisiones.xlsx"
+
+
+#: Los libros del scorecard: ``01 Datos y muestras.xlsx`` … ``10 Validación formal.xlsx``.
+STAGE_BOOKS: Final[dict[str, str]] = stage_books("scorecard")
+#: El último libro del scorecard: ``11 Decisiones.xlsx``.
+DECISIONS_BOOK: Final = decisions_book("scorecard")
 
 _SHEET_SUMMARY: Final = "Resumen"
 _SHEET_DECISION: Final = "Decisión"
@@ -82,8 +97,12 @@ def write_stage_workbooks(
     directory: Path,
     report_config: ReportConfig | None,
     trail_path: Path | None,
+    family: str = "scorecard",
 ) -> tuple[Path, ...]:
     """Escribe los libros de las etapas que corrieron y el de decisiones; devuelve sus rutas.
+
+    ``family`` es la familia de resúmenes de la corrida (``"scorecard"`` o ``"cartera"``), que
+    decide qué etapas tienen libro y cómo se numeran.
 
     La carpeta se construye **entera y aparte** y sustituye a la anterior en un solo movimiento:
     una exportación de una corrida parcial no conserva los libros de la corrida completa previa
@@ -102,18 +121,19 @@ def write_stage_workbooks(
     temporal = directory.with_name(f".{directory.name}.{token}.tmp")
     temporal.mkdir()
     nombres: list[str] = []
+    libros = stage_books(family)
     try:
-        for stage in _STAGES_WITH_BOOK:
+        for stage, libro in libros.items():
             resumen = summaries.get(stage)
             if resumen is None:
                 continue
             hojas, con_indice = _hojas_de_la_etapa(stage, resumen, tablas)
-            write_workbook(hojas, temporal / STAGE_BOOKS[stage], index=con_indice)
-            nombres.append(STAGE_BOOKS[stage])
+            write_workbook(hojas, temporal / libro, index=con_indice)
+            nombres.append(libro)
         decisiones = _hojas_de_decisiones(trail_path)
         if decisiones:
-            write_workbook(decisiones, temporal / DECISIONS_BOOK, index=False)
-            nombres.append(DECISIONS_BOOK)
+            write_workbook(decisiones, temporal / decisions_book(family), index=False)
+            nombres.append(decisions_book(family))
     except BaseException:
         shutil.rmtree(temporal, ignore_errors=True)
         raise
@@ -181,7 +201,7 @@ def pack_project(project_dir: Path, destination: Path) -> Path:
 def _hojas_de_la_etapa(
     stage: str, resumen: StageSummary, tablas: Mapping[str, pd.DataFrame]
 ) -> tuple[dict[str, pd.DataFrame], dict[str, bool]]:
-    """Resumen, tabla de decisión, tablas del informe del dominio e índice, en ese orden."""
+    """Resumen, tabla de decisión, tablas adicionales, tablas del informe del dominio e índice."""
     import pandas as pd
 
     hojas: dict[str, pd.DataFrame] = {}
@@ -205,6 +225,13 @@ def _hojas_de_la_etapa(
                 "Filas": len(resumen.table.index),
             }
         )
+    for titulo, tabla, _formatos in resumen.extra_tables:
+        if tabla.empty:
+            continue
+        hoja = _nombre_de_hoja(titulo, hojas, titulo=titulo)
+        hojas[hoja] = tabla
+        con_indice[hoja] = False
+        indice.append({"Hoja": hoja, "Contenido": titulo, "Filas": len(tabla.index)})
     for clave in sorted(k for k in tablas if k.startswith(f"{stage}.")):
         tabla = tablas[clave]
         hoja = _nombre_de_hoja(clave, hojas)
@@ -217,14 +244,17 @@ def _hojas_de_la_etapa(
     return hojas, con_indice
 
 
-def _nombre_de_hoja(clave: str, existentes: Mapping[str, Any]) -> str:
+def _nombre_de_hoja(clave: str, existentes: Mapping[str, Any], *, titulo: str | None = None) -> str:
     """Nombre de hoja válido para Excel y único en el libro, legible por una persona.
 
-    Las claves dinámicas (una tabla por variable) nombran la variable; el resto usa el título del
-    informe. Se recorta a 31 caracteres y, si aun así colisiona, se numera.
+    Las claves dinámicas (una tabla por variable) nombran la variable; una tabla adicional del
+    resumen, su ``titulo``; el resto usa el título del informe. Se recorta a 31 caracteres y, si aun
+    así colisiona, se numera.
     """
     partes = clave.split(".")
-    if clave.startswith("binning.tables."):
+    if titulo is not None:
+        base = titulo
+    elif clave.startswith("binning.tables."):
         base = f"WoE — {'.'.join(partes[2:])}"
     elif clave.startswith("eda.univariate.profiles."):
         base = f"Perfil — {'.'.join(partes[3:])}"

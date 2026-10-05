@@ -8703,6 +8703,7 @@
             "description": "Columna con la EAD entregada por la institución cuando method='provided'.",
             "title": "Columna EAD (provided)",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "EAD",
             "ui_order": 2,
             "ui_widget": "text_input"
@@ -8774,6 +8775,7 @@
             "description": "Columna con la tasa efectiva (EIR) por instrumento para el descuento de la ECL.",
             "title": "Tasa efectiva por instrumento",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "ECL",
             "ui_order": 1,
             "ui_widget": "text_input"
@@ -8839,6 +8841,7 @@
             "description": "Columna con la LGD entregada por la institución cuando method='provided'.",
             "title": "Columna LGD (provided)",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 2,
             "ui_widget": "text_input"
@@ -9083,6 +9086,7 @@
             "description": "Columna con los días de mora usados por los backstops 30/90 dpd.",
             "title": "Días de mora",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "Staging",
             "ui_order": 5,
             "ui_widget": "text_input"
@@ -9120,6 +9124,7 @@
             "default": "is_default",
             "description": "Columna booleana de default que fuerza Stage 3 con independencia de la mora.",
             "title": "Columna que marca el incumplimiento",
+            "ui_essential": true,
             "ui_group": "Staging",
             "ui_order": 6,
             "ui_widget": "text_input"
@@ -11234,6 +11239,7 @@
             },
             "title": "Covariables adicionales",
             "type": "array",
+            "ui_essential": true,
             "ui_group": "Covariables",
             "ui_order": 1,
             "ui_widget": "multiselect"
@@ -11243,6 +11249,7 @@
             "description": "Columna con el tiempo hasta evento observado o censura derecha.",
             "title": "Columna de duración",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "Entrada",
             "ui_order": 1,
             "ui_widget": "text_input"
@@ -11252,6 +11259,7 @@
             "description": "Columna indicadora de evento/default observado; 1=evento y 0=censura.",
             "title": "Columna de evento",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "Entrada",
             "ui_order": 2,
             "ui_widget": "text_input"
@@ -11361,6 +11369,7 @@
             "default": null,
             "description": "Horizonte lifetime explícito; si falta, el motor usa la grilla observada.",
             "title": "Horizonte en períodos",
+            "ui_essential": true,
             "ui_group": "Horizonte",
             "ui_order": 2,
             "ui_widget": "number_input"
@@ -11370,6 +11379,7 @@
             "description": "Unidad de los tiempos de la curva; por ejemplo 'month' o 'year'.",
             "title": "Unidad temporal",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "Horizonte",
             "ui_help": "Unidad en que están expresados los tiempos de la curva: 'year', 'month', 'quarter', 'semester', 'week' o 'day' (también en español). Viaja con la curva y el motor IFRS 9 la usa para descontar la pérdida esperada, así que declararla mal —o dejarla en el valor por defecto 'period', que nombra un índice y no una duración— cambia la provisión. Si no la declara, IFRS 9 asume años y lo deja anotado en el resultado.",
             "ui_order": 1,
@@ -14388,6 +14398,7 @@
                 "description": "Columna con la fecha de cálculo o cierre contable de la provisión.",
                 "title": "Fecha de cálculo",
                 "type": "string",
+                "ui_essential": true,
                 "ui_group": "Columnas",
                 "ui_order": 1,
                 "ui_widget": "text_input"
@@ -14436,6 +14447,7 @@
                 "description": "Columna con la cartera para agregar y parametrizar umbrales SICR por cartera.",
                 "title": "Cartera",
                 "type": "string",
+                "ui_essential": true,
                 "ui_group": "Columnas",
                 "ui_order": 3,
                 "ui_widget": "text_input"
@@ -14510,7 +14522,8 @@
               }
             },
             "title": "IfrsProvisioningConfig",
-            "type": "object"
+            "type": "object",
+            "ui_essentials_declared": true
           },
           {
             "type": "null"
@@ -15791,7 +15804,8 @@
               "input"
             ],
             "title": "SurvivalConfig",
-            "type": "object"
+            "type": "object",
+            "ui_essentials_declared": true
           },
           {
             "type": "null"

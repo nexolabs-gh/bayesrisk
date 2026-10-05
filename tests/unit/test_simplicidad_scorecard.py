@@ -106,9 +106,14 @@ def test_cifra_5_conceptos_antes_del_primer_resultado() -> None:
 
 
 def test_cifra_2_esenciales_por_seccion_bajo_el_tope() -> None:
-    assert set(ESENCIALES_VISIBLES_A_LA_VEZ) == set(SECCIONES_DEL_SCORECARD)
-    assert sum(ESENCIALES_VISIBLES_A_LA_VEZ.values()) == 35
-    assert max(ESENCIALES_VISIBLES_A_LA_VEZ.values()) <= TOPE_ESENCIALES_POR_SECCION
+    # El golden también lleva las dos secciones de cálculo de IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-6);
+    # la cifra del scorecard son sus doce.
+    del_scorecard = {
+        s: n for s, n in ESENCIALES_VISIBLES_A_LA_VEZ.items() if s in SECCIONES_DEL_SCORECARD
+    }
+    assert set(del_scorecard) == set(SECCIONES_DEL_SCORECARD)
+    assert sum(del_scorecard.values()) == 35
+    assert max(del_scorecard.values()) <= TOPE_ESENCIALES_POR_SECCION
 
 
 def test_cifra_3_las_perillas_de_las_doce_secciones_no_crecen() -> None:

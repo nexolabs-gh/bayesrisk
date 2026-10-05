@@ -1,8 +1,10 @@
 """``bayesrisk.Ecl``: la puerta guiada de la provisión IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-1…D-ECL-9).
 
-**Experimental (fuera de la garantía SemVer 2.x).** Es un adelanto declarado (SDD-31 D-SIM-1,
-D-ECL-9): su firma y sus resúmenes pueden cambiar hasta que la pantalla ofrezca lo mismo (capa B
-de la enmienda); las cifras siguen la marca experimental de ``survival`` y ``provisioning``.
+Estable desde que cerraron sus tres puertas —código, config completo y pantalla— con la capa B de
+la enmienda (D-ECL-9): su firma, sus métodos y la forma de sus resúmenes sólo crecen de forma
+aditiva bajo SemVer 2.x. Sus **cifras** siguen la marca experimental de los motores que las
+calculan, ``survival`` y ``provisioning`` (la lectura de D-EST-5: el sobre es estable, el contenido
+sigue a quien lo calcula).
 
 Se construye con lo que el área de riesgo ya tiene en su archivo de cartera —fecha de corte,
 cartera, exposición, LGD, tasa efectiva anual, días de mora y, si la tiene, la marca de
@@ -64,7 +66,8 @@ class EclRunError(BayesRiskError):
 class Ecl(_PuertaGuiada):
     """La provisión IFRS 9 de una cartera, de punta a punta, con la entrada mínima (D-ECL-1).
 
-    **Experimental (fuera de la garantía SemVer 2.x).**
+    La firma, los métodos y la forma de los resúmenes son estables (SemVer 2.x); las cifras siguen
+    la marca experimental de ``survival`` y ``provisioning`` (D-ECL-9).
 
     Parameters
     ----------
@@ -506,6 +509,22 @@ class Ecl(_PuertaGuiada):
             f"Stage 3 desde {staging['dpd_default_backstop']}",
             motivo,
         )
+
+    # ── exportar (D-ECL-10) ─────────────────────────────────────────────────────────────
+
+    def export_excel(self) -> tuple[Path, ...]:
+        """Un libro Excel por etapa, numerado, en ``<run_dir>/<name>/excel/`` (D-ECL-10).
+
+        ``01 Cartera.xlsx``, ``02 Curva de PD.xlsx`` y ``03 Provisión IFRS 9.xlsx`` para las etapas
+        que corrieron —cada uno con el resumen, la tabla de decisión, las tablas adicionales de la
+        etapa y las tablas completas que el informe publica para ese dominio, con la misma
+        protección de celdas que los exports del informe— más ``04 Decisiones.xlsx`` con las
+        decisiones del registro de auditoría (humanas, de la puerta y del motor). El número es la
+        posición de la etapa y no se mueve en una corrida parcial. Opcional: nunca es la vía para
+        ver un resultado. Exige el extra ``excel`` (``openpyxl``); sin él se detiene con el comando
+        de instalación.
+        """
+        return self._exportar_excel()
 
     def _tras_decidir(self, que: str, motivo: str) -> Self:
         self._pending_decisions = True

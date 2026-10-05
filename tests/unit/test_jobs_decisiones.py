@@ -16,6 +16,13 @@ las dos direcciones:
   campo que el usuario no necesita tocar.
 
 El oráculo se deriva de ``model_fields``, que es donde Pydantic guarda la obligatoriedad de verdad.
+
+**Las decisiones de un trabajo** (FLUJO-GUIADO-IFRS9 §3.12, ``_DECISIONES_POR_TRABAJO``) son la
+misma clase en un contexto: un campo con valor de fábrica que ESE trabajo deja sin responder —la
+unidad y el horizonte de la curva que alimenta una provisión—. Su gate es el mismo par: la
+pregunta existe sólo si el esqueleto del trabajo deja el campo sin responder, y el trabajo la
+hace. Y lo que un trabajo declara «no aplica» (un override ``null``: la corrida de cartera no tiene
+target ni partición, D-ECL-2) no se pregunta.
 """
 
 from __future__ import annotations
@@ -30,7 +37,7 @@ from bayesrisk.core.config.schema import (
     cargar_configs_de_dominio,
     cargar_configs_expandibles,
 )
-from bayesrisk.ui.jobs import decisiones_de, list_jobs
+from bayesrisk.ui.jobs import _DECISIONES_POR_TRABAJO, decisiones_de, list_jobs
 
 #: Las 16 secciones que el formulario ofrece. Espejo del catálogo del front; el gate de deriva de
 #: esa lista vive en `test_column_roles.py`, y aquí sólo acota el barrido a lo navegable.
@@ -139,10 +146,23 @@ def test_el_barrido_no_es_vacuo() -> None:
     assert _decisiones_declaradas(), "el catálogo no declara ninguna decisión"
 
 
+def _paths_de_trabajo() -> set[str]:
+    return {d["path"] for decisiones in _DECISIONES_POR_TRABAJO.values() for d in decisiones}
+
+
+def _nulos(job: dict[str, Any]) -> list[str]:
+    """Los caminos que el trabajo declara «no aplica» (override ``null``)."""
+    return [ruta for ruta, valor in job["overrides"] if valor is None]
+
+
+def _bajo(ruta: str, raices: list[str]) -> bool:
+    return any(ruta == raiz or ruta.startswith(f"{raiz}.") for raiz in raices)
+
+
 def test_toda_decision_declarada_es_de_verdad_obligatoria() -> None:
-    """Dirección 1: no se reclama por un campo que ya tiene default."""
+    """Dirección 1: no se reclama por un campo que ya tiene default (salvo en su trabajo)."""
     todas = {p for paths in _obligatorias_del_formulario().values() for p in paths}
-    sobrantes = sorted(set(_decisiones_declaradas()) - todas)
+    sobrantes = sorted(set(_decisiones_declaradas()) - todas - _paths_de_trabajo())
     assert sobrantes == [], (
         f"el catálogo pregunta por campos que no son obligatorios: {sobrantes}. "
         "Si el motor les dio un default, quita su pregunta del catálogo."
@@ -169,7 +189,11 @@ def test_todo_campo_obligatorio_del_formulario_tiene_su_pregunta() -> None:
 
 
 def test_un_trabajo_hereda_exactamente_las_decisiones_de_sus_secciones() -> None:
-    """El reparto por sección no puede dejar a un trabajo con preguntas de una sección que no ve."""
+    """El reparto por sección no puede dejar a un trabajo con preguntas de una sección que no ve.
+
+    Hereda las de sus secciones, menos las que caen bajo un camino que declara «no aplica», más las
+    suyas propias.
+    """
     obligatorias = _obligatorias_del_formulario()
     for job in list_jobs(incluir_referencia=True):
         suyas = set(job["sections"])
@@ -178,8 +202,62 @@ def test_un_trabajo_hereda_exactamente_las_decisiones_de_sus_secciones() -> None
             assert seccion in suyas, (
                 f"«{job['id']}» pregunta por {decision['path']}, de una sección que no muestra"
             )
-        esperadas = {p for s, paths in obligatorias.items() if s in suyas for p in paths}
+        esperadas = {
+            p
+            for s, paths in obligatorias.items()
+            if s in suyas
+            for p in paths
+            if not _bajo(p, _nulos(job))
+        } | {d["path"] for d in _DECISIONES_POR_TRABAJO.get(job["id"], ())}
         assert {d["path"] for d in job["required_decisions"]} == esperadas, job["id"]
+
+
+def test_una_decision_bajo_un_camino_que_el_trabajo_declara_nulo_no_se_pregunta() -> None:
+    """FLUJO-GUIADO-IFRS9 §3.12: la corrida de cartera no pregunta qué es un cliente malo."""
+    por_id = {job["id"]: job for job in list_jobs(incluir_referencia=True)}
+    ifrs9 = por_id["provisiones_ifrs9"]
+    assert {"data.target", "data.partition"} <= set(_nulos(ifrs9))
+    preguntadas = [d["path"] for d in ifrs9["required_decisions"]]
+    assert not [p for p in preguntadas if _bajo(p, ["data.target", "data.partition"])]
+    # Y el mismo filtro, por la función que arma el catálogo.
+    assert [d["path"] for d in decisiones_de(["data"], no_aplican=["data.target"])] == [
+        "data.partition.strategy"
+    ]
+
+
+def _valor_sembrado(job: dict[str, Any], ruta: str) -> tuple[bool, Any]:
+    """``(tiene_valor, valor)`` del camino en el esqueleto: el override, o el de fábrica."""
+    from bayesrisk.core.config.effective_defaults import DISCRIMINADOR, build_effective_defaults
+
+    for override, valor in job["overrides"]:
+        if override == ruta:
+            return True, valor
+    nodo: Any = build_effective_defaults()["sections"]
+    for tramo in ruta.split("."):
+        hijos = nodo.get("children") if isinstance(nodo.get(DISCRIMINADOR), bool) else nodo
+        assert isinstance(hijos, dict) and tramo in hijos, ruta
+        nodo = hijos[tramo]
+    if not nodo[DISCRIMINADOR]:
+        return False, None
+    return True, nodo.get("value")
+
+
+def test_una_decision_de_trabajo_llega_sin_responder_al_esqueleto() -> None:
+    """Dos sentidos: el trabajo existe y la hace, y su esqueleto deja el campo SIN respuesta.
+
+    Una decisión de trabajo sobre un campo que el esqueleto trae con valor saldría ya contestada
+    por el motor —«period» como unidad—, que es el falso «ya está» de D-OBL-5: el trabajo lo siembra
+    en blanco o su default es nulo.
+    """
+    por_id = {job["id"]: job for job in list_jobs(incluir_referencia=True)}
+    assert _DECISIONES_POR_TRABAJO, "el gate no puede ser vacuo"
+    for job_id, decisiones in _DECISIONES_POR_TRABAJO.items():
+        assert job_id in por_id, job_id
+        preguntadas = [d["path"] for d in por_id[job_id]["required_decisions"]]
+        for decision in decisiones:
+            assert decision["path"] in preguntadas, (job_id, decision["path"])
+            _tiene, valor = _valor_sembrado(por_id[job_id], decision["path"])
+            assert valor in (None, ""), (job_id, decision["path"], valor)
 
 
 def test_los_dos_trabajos_con_survival_preguntan_cinco_cosas() -> None:
@@ -188,19 +266,26 @@ def test_los_dos_trabajos_con_survival_preguntan_cinco_cosas() -> None:
     La quinta es el propósito de la ficha del modelo (D-GOB-12), que heredan los diez trabajos
     porque los diez ofrecen ``governance`` (D-GOB-11). Que sea la última no es casual: el orden es
     el de ``_DECISIONES_POR_SECCION`` y la sección va al final del formulario, como ``report``.
+    «Provisiones IFRS 9» no pregunta por target ni partición (corrida de cartera, D-ECL-2) y sí por
+    la unidad y el horizonte de la curva (FLUJO-GUIADO-IFRS9 §3.12).
     """
     por_id = {job["id"]: job for job in list_jobs(incluir_referencia=True)}
     if "survival" not in cargar_configs_de_dominio():
         pytest.skip("el extra de survival no está instalado")
-    for job_id in ("pd_lifetime", "provisiones_ifrs9"):
-        paths = [d["path"] for d in por_id[job_id]["required_decisions"]]
-        assert paths == [
-            "data.target.bad_rule",
-            "data.partition.strategy",
-            "survival.input.duration_col",
-            "survival.input.event_col",
-            "governance.purpose",
-        ], job_id
+    assert [d["path"] for d in por_id["pd_lifetime"]["required_decisions"]] == [
+        "data.target.bad_rule",
+        "data.partition.strategy",
+        "survival.input.duration_col",
+        "survival.input.event_col",
+        "governance.purpose",
+    ]
+    assert [d["path"] for d in por_id["provisiones_ifrs9"]["required_decisions"]] == [
+        "survival.input.duration_col",
+        "survival.input.event_col",
+        "survival.time_grid.time_unit",
+        "survival.time_grid.horizon_periods",
+        "governance.purpose",
+    ]
     assert [d["path"] for d in por_id["scorecard_pd"]["required_decisions"]] == [
         "data.target.bad_rule",
         "data.partition.strategy",

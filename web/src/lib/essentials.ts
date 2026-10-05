@@ -103,6 +103,24 @@ export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
     "governance.purpose",
     "governance.review_period_months",
   ],
+  // FLUJO-GUIADO-IFRS9 D-ECL-6: las columnas de la curva y de la provisión (la de IFRS 9 trae siete,
+  // la única excepción al tope de seis, §8-4).
+  survival: [
+    "survival.input.covariate_cols",
+    "survival.input.duration_col",
+    "survival.input.event_col",
+    "survival.time_grid.horizon_periods",
+    "survival.time_grid.time_unit",
+  ],
+  provisioning_ifrs9: [
+    "provisioning_ifrs9.as_of_date_col",
+    "provisioning_ifrs9.ead.ead_col",
+    "provisioning_ifrs9.ecl.eir_col",
+    "provisioning_ifrs9.lgd.lgd_col",
+    "provisioning_ifrs9.portfolio_col",
+    "provisioning_ifrs9.staging.days_past_due_col",
+    "provisioning_ifrs9.staging.is_default_col",
+  ],
 }
 
 /** Rótulo del bloque plegado. Copy público: una palabra que el modelador entiende. */

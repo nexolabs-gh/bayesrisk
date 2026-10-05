@@ -72,12 +72,10 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
 """Superficies que aún crecen: pueden cambiar de forma aditiva o romper dentro de 2.x."""
 
 EXPERIMENTAL_SYMBOLS: Final[dict[str, str]] = {
-    # FLUJO-GUIADO-IFRS9 D-ECL-9 (Cami, 2026-10-03): la puerta guiada de IFRS 9 vive en `guided`,
-    # que es estable, y sale como adelanto declarado (SDD-31 D-SIM-1) hasta que cierre la capa B
-    # de su enmienda —la pantalla—. Esta entrada se retira en ese cierre; desde entonces la
-    # garantía cubre la firma, los métodos y la forma de los resúmenes, y las cifras siguen la
+    # Vacío desde la capa B de FLUJO-GUIADO-IFRS9 (S31, 2026-10-05). `bayesrisk.guided.ecl.Ecl`
+    # salió aquí como adelanto declarado (D-ECL-9, 2.4.0) y se retiró al cerrar sus tres puertas:
+    # la garantía cubre su firma, sus métodos y la forma de sus resúmenes, y sus cifras siguen la
     # marca experimental de `survival` y `provisioning` (la lectura de D-EST-5).
-    "bayesrisk.guided.ecl.Ecl": "FLUJO-GUIADO-IFRS9 D-ECL-9: experimental hasta la capa B",
 }
 """Símbolos experimentales dentro de un dominio estable, cada uno con su razón y su salida."""
 

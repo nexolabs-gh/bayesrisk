@@ -14,7 +14,7 @@ import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { FieldRenderer } from "@/components/FieldRenderer"
+import { FieldRenderer, NO_APLICA } from "@/components/FieldRenderer"
 import fixtureSchema from "@/fixtures/schema.json"
 import { type Defs, type JsonSchema, resolveRef } from "@/lib/form-engine"
 import { type SchemaPayload, configSectionSchema } from "@/lib/schema"
@@ -56,5 +56,22 @@ describe("un campo obligatorio que admite null no lleva interruptor (D-ECL-2)", 
 
   it("contracara: el mismo campo, si fuera opcional, sí lo lleva", () => {
     expect(pintar("target", false, {})).toContain("Activar Definición de target")
+  })
+})
+
+describe("una corrida de cartera los declara «no aplica» (FLUJO-GUIADO-IFRS9 §3.12)", () => {
+  // El trabajo «Provisiones IFRS 9» siembra los dos en `null`: el formulario dice que no aplican en
+  // vez de pintar un grupo vacío que invitaría a llenarlo a medias (regla de malo sin partición).
+  it.each(["target", "partition"])("data.%s en null: «No aplica», sin editor", (nombre) => {
+    const html = pintar(nombre, true, null)
+    expect(html).toContain(NO_APLICA)
+    expect(html).not.toContain("<fieldset")
+    expect(html).not.toContain("<input")
+  })
+
+  it("contracara: con su objeto declarado se edita como siempre", () => {
+    const html = pintar("partition", true, {})
+    expect(html).not.toContain(NO_APLICA)
+    expect(html).toContain("<fieldset")
   })
 })

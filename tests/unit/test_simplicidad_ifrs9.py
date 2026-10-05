@@ -3,17 +3,18 @@
 Gemelo de ``test_simplicidad_scorecard.py``: cada cifra es un golden con la regla de
 ``HOJAS_DEL_FORMULARIO`` —moverla es legítimo; moverla sin actualizar el número y decir por qué,
 no—. Línea base medida sobre ``3cc9654`` (S28, ``privado/evidencia/s28/ifrs9-mediciones.md``) y
-el después, en la capa A (S30, 2026-10-04):
+el después, en la capa A (S30, 2026-10-04) y la B (S31, 2026-10-05):
 
-| Cifra | Antes (``3cc9654``) | Después (capa A) | Objetivo |
+| Cifra | Antes (``3cc9654``) | Después (capas A y B) | Objetivo |
 |---|---|---|---|
 | Líneas de usuario | sin notebook; YAML de 268 líneas | 21 | ≤ 25 |
-| Esenciales por sección | 0 (se pintan enteras) | 5 y 7 en la firma (*) | 5 y 7 |
+| Esenciales por sección | 0 (se pintan enteras) | 5 y 7, en la firma y en el schema | 5 y 7 |
 | Perillas de las tres secciones | 230 (158 + 24 + 48) | 230 | sin crecer |
 | Segundos al primer resumen | sin resumen; ECL a los 4,8 a 6,4 s | ≈ 1 s («Cartera») | ≤ 30 s |
 | Conceptos antes del primer resultado | ≥ 8 | 5 | ≤ 5 |
 
-(*) En la firma de ``Ecl``: las marcas ``ui_essential`` del schema llegan con la capa B.
+La capa A ancló los esenciales en la firma de ``Ecl``; la B los marca en el schema
+(``ui_essential``) y la pantalla los pinta abiertos: el mismo mapeo, atado aquí a los dos.
 """
 
 from __future__ import annotations
@@ -41,9 +42,9 @@ TOPE_LINEAS_DE_USUARIO: Final = 25
 CONCEPTOS: Final[frozenset[str]] = frozenset({"Ecl", "materialize", "run", "exclude", "resume"})
 TOPE_CONCEPTOS: Final = 5
 
-#: Cifra 2: el mapeo exhaustivo argumento → hoja de §3.7. Las marcas `ui_essential` del schema y
-#: el golden de catorce secciones llegan con la pantalla (capa B, §3.15); en la capa A la cifra se
-#: ancla en la firma de la puerta, que es lo que la guiada expone como esenciales (D-SIM-4).
+#: Cifra 2: el mapeo exhaustivo argumento → hoja de §3.7. Es el mismo en la firma de la puerta
+#: (capa A) y en las marcas `ui_essential` del schema que pinta la pantalla (capa B, golden de
+#: catorce secciones en `test_esenciales_por_seccion.py`).
 ESENCIALES: Final[dict[str, dict[str, str]]] = {
     "data": {"data": "data.load.source", "id": "data.schema.index_col | unique_keys"},
     "survival": {
@@ -129,6 +130,14 @@ def test_cifra_2_cada_argumento_de_la_puerta_es_un_esencial_o_de_infraestructura
     for seccion, args in ESENCIALES.items():
         tope = EXCEPCION_AL_TOPE.get(seccion, TOPE_ESENCIALES_POR_SECCION)
         assert len(args) <= tope, (seccion, len(args))
+
+
+def test_cifra_2_las_marcas_del_schema_son_los_argumentos_de_la_puerta() -> None:
+    """La pantalla abre exactamente las hojas que la puerta pide como argumento (capa B, §3.7)."""
+    from test_esenciales_por_seccion import ESENCIALES_POR_SECCION
+
+    for seccion in ("survival", "provisioning_ifrs9"):
+        assert sorted(ESENCIALES[seccion].values()) == sorted(ESENCIALES_POR_SECCION[seccion])
 
 
 def test_cifra_2_cada_argumento_escribe_su_hoja(tmp_path: Path) -> None:

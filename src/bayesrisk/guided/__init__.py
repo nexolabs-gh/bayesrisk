@@ -13,10 +13,9 @@ puertas —código, config completo y pantalla— cerraron con la capa B de la e
 crecen de forma aditiva.
 
 :class:`~bayesrisk.guided.ecl.Ecl`, la puerta guiada de la provisión IFRS 9 (enmienda
-FLUJO-GUIADO-IFRS9), es la excepción declarada por símbolo
-(:data:`bayesrisk.testing.stability.EXPERIMENTAL_SYMBOLS`): sale experimental hasta que cierre la
-capa B de su enmienda (D-ECL-9), y sus cifras siguen la marca experimental de ``survival`` y
-``provisioning``.
+FLUJO-GUIADO-IFRS9), salió en la 2.4.0 como excepción experimental por símbolo y es estable desde
+la capa B de su enmienda (D-ECL-9): su firma, sus métodos y la forma de sus resúmenes; sus cifras
+siguen la marca experimental de ``survival`` y ``provisioning``.
 """
 
 from bayesrisk.guided.ecl import Ecl, EclInputError, EclRunError

@@ -36,9 +36,9 @@ pantalla): su firma, sus resúmenes y sus decisiones (`exclude`, `keep`, `merge_
 `bayesrisk.Ecl` calcula la provisión IFRS 9 de una cartera con la misma mecánica: el archivo de
 cartera y la historia de incumplimientos que alimenta la curva de PD, resúmenes por etapa en
 palabras de provisiones y dos decisiones con motivo (`exclude` sobre las covariables de la curva y
-`rebut_backstops` sobre las presunciones de mora). Es **experimental**: un adelanto declarado
-dentro de `guided`, fuera de la garantía SemVer 2.x hasta que la pantalla ofrezca lo mismo, y sus
-cifras siguen la marca experimental de `survival` y `provisioning`.
+`rebut_backstops` sobre las presunciones de mora). Su firma, sus métodos y la forma de sus
+resúmenes son estables bajo SemVer 2.x desde que la pantalla ofrece lo mismo; sus cifras siguen la
+marca experimental de `survival` y `provisioning`, los motores que las calculan.
 
 ::: bayesrisk.guided.ecl.Ecl
 

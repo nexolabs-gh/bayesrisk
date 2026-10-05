@@ -1303,9 +1303,19 @@ export interface StageSummaryView {
   lines: string[]
   alerts: string[]
   table: { columns: string[]; rows: string[][] } | null
+  /**
+   * Las tablas que acompañan a la de decisión, con su título (FLUJO-GUIADO-IFRS9 §3.8: la curva de
+   * PD por período y cartera, la provisión por etapa y gatillo). Sólo viajan cuando la etapa las
+   * trae: un resumen del scorecard no las tiene.
+   */
+  extra_tables?: { title: string; columns: string[]; rows: string[][] }[]
 }
 
-/** El resumen final (`FinalSummary.to_dict`): los dos estados, cifras, alertas, decisiones y archivos. */
+/**
+ * El resumen final (`FinalSummary.to_dict`): los dos estados, cifras, alertas, decisiones y archivos.
+ * Una provisión IFRS 9 (familia `cartera`, D-ECL-7) agrega su título y sus supuestos —lo que la
+ * cifra supone— en lugar de un veredicto técnico que no tiene.
+ */
 export interface FinalSummaryView {
   execution: string
   validation: string
@@ -1313,6 +1323,9 @@ export interface FinalSummaryView {
   review: string[]
   decisions: string[]
   files: [string, string][]
+  title?: string
+  family?: string
+  assumptions?: string[]
 }
 
 /**

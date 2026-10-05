@@ -366,6 +366,8 @@ export function ResultsPanel({
   const ifrs9Detail = ifrs9DetailRows(ifrs9)
   const ifrs9Sicr = ifrs9SicrTriggers(ifrs9)
   const ifrs9Methodology = ifrs9?.methodology ?? null
+  const curvaDePd =
+    results.summaries?.stages.find((etapa) => etapa.stage === "survival")?.extra_tables ?? []
 
   return (
     <div className="space-y-6">
@@ -511,6 +513,20 @@ export function ResultsPanel({
             >
               <Ifrs9TermStructureChart points={ifrs9Term} />
               <Ifrs9RunoffNote headline={ifrs9Head} />
+            </ResultsSection>
+          ) : null}
+
+          {/* Curva de PD por cartera (FLUJO-GUIADO-IFRS9 §3.12): la que alimentó esta provisión,
+              tal como la cuenta la etapa «Curva de PD» del resumen —misma fuente que
+              `Ecl.summary("survival")`, celdas ya escritas—. Sin resumen, no se fabrica. */}
+          {curvaDePd.length > 0 ? (
+            <ResultsSection
+              title="Curva de PD por cartera"
+              description="La probabilidad de incumplimiento acumulada, período a período, que alimentó esta provisión: el promedio de las operaciones de cada cartera, en la unidad de la curva."
+            >
+              {curvaDePd.map((tabla) => (
+                <SummaryTableView key={tabla.title} table={tabla} title={tabla.title} />
+              ))}
             </ResultsSection>
           ) : null}
 
@@ -1917,11 +1933,24 @@ function RunSummarySection({ summaries }: { summaries: RunSummaries }) {
               <dt className="font-medium text-foreground">Ejecución:</dt>
               <dd className="text-foreground/90">{final.execution}</dd>
             </div>
-            <div className="flex flex-wrap gap-x-2">
-              <dt className="font-medium text-foreground">Validación técnica:</dt>
-              <dd className="text-foreground/90">{final.validation}</dd>
-            </div>
+            {/* Una provisión no tiene veredicto técnico: en su lugar, lo que la cifra supone
+                (FLUJO-GUIADO-IFRS9 D-ECL-7), leído del config y los artefactos de ESTA corrida. */}
+            {final.family === "cartera" ? null : (
+              <div className="flex flex-wrap gap-x-2">
+                <dt className="font-medium text-foreground">Validación técnica:</dt>
+                <dd className="text-foreground/90">{final.validation}</dd>
+              </div>
+            )}
           </dl>
+          {final.family === "cartera" ? (
+            <Subchart title="Supuestos">
+              <ul className="space-y-1 text-sm text-foreground/90">
+                {(final.assumptions ?? []).map((supuesto) => (
+                  <li key={supuesto}>• {supuesto}</li>
+                ))}
+              </ul>
+            </Subchart>
+          ) : null}
           {final.figures.length > 0 ? (
             <Subchart title="Cifras clave">
               <table className="w-full text-sm">
@@ -2000,42 +2029,64 @@ function RunSummarySection({ summaries }: { summaries: RunSummaries }) {
                     ))}
                   </ul>
                 ) : null}
-                {stage.table ? (
-                  <div className="mt-2 overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr>
-                          {stage.table.columns.map((columna) => (
-                            <th
-                              key={columna}
-                              scope="col"
-                              className="border-b border-border/60 py-1 pr-3 text-left font-medium text-foreground/90"
-                            >
-                              {columna}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stage.table.rows.map((fila, indice) => (
-                          <tr key={indice} className="border-b border-border/40 last:border-0">
-                            {fila.map((celda, j) => (
-                              <td key={j} className="py-1 pr-3 text-foreground/90">
-                                {celda}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : null}
+                {stage.table ? <SummaryTableView table={stage.table} /> : null}
+                {(stage.extra_tables ?? []).map((tabla) => (
+                  <SummaryTableView key={tabla.title} table={tabla} title={tabla.title} />
+                ))}
               </details>
             ))}
           </div>
         </Subchart>
       ) : null}
     </ResultsSection>
+  )
+}
+
+/**
+ * Una tabla del resumen tal como llega (`StageSummary.to_dict`): columnas y celdas YA escritas por
+ * `bayesrisk.guided.summaries`. Cero formato propio: la pantalla dice la cifra del notebook.
+ */
+function SummaryTableView({
+  table,
+  title,
+}: {
+  table: { columns: string[]; rows: string[][] }
+  title?: string
+}) {
+  return (
+    <div className="mt-2 space-y-1">
+      {title ? (
+        <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">{title}</p>
+      ) : null}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr>
+              {table.columns.map((columna) => (
+                <th
+                  key={columna}
+                  scope="col"
+                  className="border-b border-border/60 py-1 pr-3 text-left font-medium text-foreground/90"
+                >
+                  {columna}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((fila, indice) => (
+              <tr key={indice} className="border-b border-border/40 last:border-0">
+                {fila.map((celda, j) => (
+                  <td key={j} className="py-1 pr-3 text-foreground/90">
+                    {celda}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 

@@ -750,6 +750,54 @@ toma el último período real de cada curva. Un control negativo. **Tope de tres
 (1 → 3 medium, 2 → 1, 3 → 1, cada vez más acotados y ninguno contractual): no hay pasada 4; la
 siguiente revisión va sobre la capa B.
 
+## 11. Capa B implementada (S31, 2026-10-05)
+
+**Esenciales (§3.7).** `survival` marca sus cinco (`duration_col`, `event_col`, `time_unit`,
+`horizon_periods`, `covariate_cols`) y `provisioning_ifrs9` sus siete (las siete columnas de la
+entrada mínima, la marca incluida); las dos secciones declaran `ui_essentials_declared`. El golden
+`test_esenciales_por_seccion.py` cubre catorce secciones (51 marcas, 49 caminos) con la excepción
+al tope **sólo** para `provisioning_ifrs9` (`EXCEPCION_AL_TOPE`), su espejo del front
+(`essentials.ts`) también, y `test_simplicidad_ifrs9.py` ata las marcas a los argumentos de `Ecl`:
+la pantalla abre exactamente lo que la puerta pide. La cifra de esenciales del scorecard (35 en
+sus doce secciones) no cambia.
+
+**El trabajo `provisiones_ifrs9` (§3.12).** Siembra `data.target: null` y `data.partition: null`
+como overrides y **deja de preguntarlos**: una decisión bajo un camino que el trabajo declara nulo
+no se pregunta (`decisiones_de(..., no_aplican=)`). Pregunta lo que la provisión necesita:
+duración y evento (de la sección) y la **unidad** y el **horizonte** de la curva. Una decisión de
+implementación, dentro de lo aprobado: unidad y horizonte tienen valor de fábrica en `survival`
+(`"period"` y `None`), así que no son decisiones de la sección —la curva de «PD lifetime» puede
+leerse por índice— sino **decisiones del trabajo** (`_DECISIONES_POR_TRABAJO`): el trabajo deja el
+campo sin responder en su esqueleto —la unidad, sembrada en blanco; el horizonte, nulo de
+fábrica— y la pregunta queda pendiente hasta que la institución la contesta, como `bad_rule`. Los
+gates de D-OBL siguen bidireccionales: una decisión de sección es un campo obligatorio; una de
+trabajo, un campo que el esqueleto de ESE trabajo deja sin responder
+(`test_una_decision_de_trabajo_llega_sin_responder_al_esqueleto`), y un override sobre un campo
+sin default sólo puede declararlo `null` (nunca contestarlo por la institución). El formulario
+pinta un sub-modelo obligatorio declarado `null` como «No aplica en una corrida de cartera: la
+provisión no lo usa.» (`FieldRenderer`, `NO_APLICA`) en vez de un grupo vacío que invitaría a
+llenarlo a medias. La unidad vacía se rechaza con un mensaje en palabras de negocio.
+
+**Resultados (§3.12).** El resumen final de una provisión (familia `cartera`) pinta «Supuestos» en
+lugar de «Validación técnica»; cada etapa pinta sus tablas adicionales (`extra_tables`) con la
+misma tabla que la de decisión; y la curva de PD por cartera gana su bloque junto al de IFRS 9
+(«Curva de PD por cartera»), leída de la etapa «Curva de PD» del resumen: la misma fuente que
+`ecl.summary("survival")`, celdas ya escritas por el motor.
+
+**Excel y paquete (§3.11).** `ecl.export_excel()` escribe `01 Cartera.xlsx`, `02 Curva de PD.xlsx`,
+`03 Provisión IFRS 9.xlsx` y `04 Decisiones.xlsx`. La mecánica del scorecard se movió **tal cual** a
+la base común (`_PuertaGuiada._exportar_excel`); `guided/export.py` numera por familia
+(`stage_books(family)`, `decisions_book(family)`; `STAGE_BOOKS` y `DECISIONS_BOOK` siguen siendo
+los del scorecard) y cada libro suma una hoja por tabla adicional del resumen. Gate celda a celda:
+cada tabla que el informe recolecta para `survival` y `provisioning_ifrs9` es, escrita por la vía
+de sus exports, la misma hoja del libro de su etapa; las tablas adicionales, las mismas celdas que
+el resumen (salvo el último dígito de un real, que el `.xlsx` no conserva). `ecl.export()` las
+empaqueta.
+
+**Estabilidad (§3.10).** `EXPERIMENTAL_SYMBOLS` queda vacío: `bayesrisk.Ecl` es estable en su
+firma, sus métodos y la forma de sus resúmenes, y sus cifras siguen la marca experimental de
+`survival` y `provisioning`. Docstrings, `api.md`, la guía y el CHANGELOG lo dicen así.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima (§3.2):** el archivo de cartera con fecha de corte, cartera, exposición, LGD,

@@ -235,7 +235,20 @@ _JOBS: tuple[dict[str, Any], ...] = (
         # Misma causa que en «PD lifetime», y el censo de defectos no la había visto: el default de
         # la fuente de PD de `survival` exige la sección `model`, que este trabajo tampoco ofrece.
         # Aquí la curva alimenta la ECL lifetime, así que se ajusta con lo que trae el archivo.
-        "overrides": (("survival.input.pd_source", "none"),),
+        #
+        # FLUJO-GUIADO-IFRS9 §3.12 (capa B): una provisión es una corrida de CARTERA (D-ECL-2):
+        # no define qué es un cliente malo ni separa muestras, así que el trabajo siembra los dos en
+        # «no aplica» y deja de preguntarlos —una decisión bajo un camino que el trabajo declara
+        # nulo no se pregunta—. Y la unidad de la curva se siembra EN BLANCO: el valor de fábrica
+        # («period») nombra un índice, no una duración, y con él la provisión no sabe cuántos
+        # períodos son 12 meses ni cómo descontar; queda pendiente hasta que la institución la
+        # declara (`_DECISIONES_POR_TRABAJO`).
+        "overrides": (
+            ("survival.input.pd_source", "none"),
+            ("data.target", None),
+            ("data.partition", None),
+            ("survival.time_grid.time_unit", ""),
+        ),
         "jurisdiction_code": None,
         "jurisdiction_label": None,
         "status": _AVAILABLE,
@@ -860,6 +873,40 @@ _DECISIONES_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
             "help": (
                 "Lo escribe tu institución: el motor no puede inventarlo, y sin esto la ficha "
                 "del modelo no se emite."
+            ),
+            "answer_forms": (),
+        },
+    ),
+}
+
+
+# Las decisiones que un TRABAJO impone sobre un campo que, en otro contexto, tiene un valor de
+# fábrica razonable (FLUJO-GUIADO-IFRS9 §3.12). Son la misma clase que `_DECISIONES_POR_SECCION`
+# —lo que el motor no puede rellenar por nadie— pero sólo en este trabajo: la curva de «PD
+# lifetime» puede leerse por índice de período, y la que alimenta una provisión no. Por eso el
+# trabajo deja el campo SIN RESPONDER en su esqueleto —su default es nulo, o el trabajo lo siembra
+# en blanco con un override— y el gate de `test_jobs_decisiones.py` lo exige en los dos sentidos:
+# una decisión de trabajo sobre un campo que el esqueleto trae respondido pondría la pregunta ya
+# contestada por el motor, que es el falso «ya está» de D-OBL-5.
+_DECISIONES_POR_TRABAJO: dict[str, tuple[dict[str, Any], ...]] = {
+    "provisiones_ifrs9": (
+        {
+            "path": "survival.time_grid.time_unit",
+            "question": "¿En qué unidad está medido ese tiempo?",
+            "help": (
+                "Año, semestre, trimestre, mes, semana o día. Con ella la provisión sabe cuántos "
+                "períodos de la curva son 12 meses y cómo descontar la pérdida: declararla mal "
+                "cambia la provisión, y un número solo no dice si son meses o años."
+            ),
+            "answer_forms": (),
+        },
+        {
+            "path": "survival.time_grid.horizon_periods",
+            "question": "¿Hasta cuántos períodos se proyecta la curva de PD?",
+            "help": (
+                "El horizonte de la pérdida esperada de por vida, en la misma unidad que el "
+                "tiempo. Es una decisión de tu institución: sin él la corrida se detiene antes "
+                "de calcular, en vez de proyectar hasta donde llegan tus datos."
             ),
             "answer_forms": (),
         },
@@ -4806,23 +4853,41 @@ def _json_profundo(valor: Any) -> Any:
     return valor
 
 
-def decisiones_de(secciones: Iterable[str]) -> list[dict[str, Any]]:
+def decisiones_de(
+    secciones: Iterable[str],
+    *,
+    no_aplican: Iterable[str] = (),
+    del_trabajo: Iterable[dict[str, Any]] = (),
+) -> list[dict[str, Any]]:
     """Decisiones obligatorias de un conjunto de secciones, sin repetir y en orden estable.
 
     El orden es el de ``_DECISIONES_POR_SECCION``, no el de ``secciones``: dos trabajos con las
     mismas secciones en distinto orden tienen que preguntar lo mismo en el mismo orden, o la
     interfaz dependería de cómo se escribió el catálogo.
 
+    ``no_aplican`` son los caminos que el trabajo siembra en ``null`` (una corrida de cartera no
+    tiene target ni partición, D-ECL-2): una decisión en ese camino o debajo de él no se pregunta.
+    ``del_trabajo`` son sus decisiones propias (``_DECISIONES_POR_TRABAJO``), que van tras las de
+    su sección.
+
     Devuelve copias **profundas**: con `answer_forms` la decisión dejó de ser plana, y un
     ``dict(decision)`` habría entregado al llamador las mismas plantillas del literal del módulo.
     """
     presentes = set(secciones)
-    return [
-        _decision_json(decision)
-        for seccion, decisiones in _DECISIONES_POR_SECCION.items()
-        if seccion in presentes
-        for decision in decisiones
-    ]
+    nulos = tuple(no_aplican)
+    propias = tuple(del_trabajo)
+
+    def aplica(decision: dict[str, Any]) -> bool:
+        ruta = decision["path"]
+        return not any(ruta == nulo or ruta.startswith(f"{nulo}.") for nulo in nulos)
+
+    salida: list[dict[str, Any]] = []
+    for seccion, decisiones in _DECISIONES_POR_SECCION.items():
+        if seccion not in presentes:
+            continue
+        salida.extend(_decision_json(d) for d in decisiones if aplica(d))
+        salida.extend(_decision_json(d) for d in propias if d["path"].split(".", 1)[0] == seccion)
+    return salida
 
 
 def _decision_json(decision: dict[str, Any]) -> dict[str, Any]:
@@ -4956,7 +5021,11 @@ def list_jobs(*, incluir_referencia: bool = False) -> list[dict[str, Any]]:
             # overrides sobre rutas anidadas del mismo bloque tienen que aplicarse como se
             # escribieron— y un objeto JSON no lo garantiza en todos los clientes.
             "overrides": [[ruta, valor] for ruta, valor in job["overrides"]],
-            "required_decisions": decisiones_de(job["sections"]),
+            "required_decisions": decisiones_de(
+                job["sections"],
+                no_aplican=[ruta for ruta, valor in job["overrides"] if valor is None],
+                del_trabajo=_DECISIONES_POR_TRABAJO.get(job["id"], ()),
+            ),
             "methodology_choices": abanico_de(job["sections"]),
         }
         for job in catalogo

@@ -188,6 +188,9 @@ function childDefaults(props: FieldRendererProps): DefaultsMap | undefined {
   return porRef ?? childMap(nodeFor(props))
 }
 
+/** Lo que dice un sub-modelo obligatorio declarado `null` en una corrida de cartera. Copy público. */
+export const NO_APLICA = "No aplica en una corrida de cartera: la provisión no lo usa."
+
 /**
  * Despacha un campo del schema al widget del mapeo §5 (via `resolveWidget`) y pinta
  * label (title) + tooltip (description) + el widget. Los sub-modelos (`group`) se
@@ -219,6 +222,19 @@ export function FieldRenderer(props: FieldRendererProps) {
     kind !== "multiselect_or_all"
   ) {
     return <NullableField {...props} baseSchema={base} depth={depth} />
+  }
+
+  // Un sub-modelo OBLIGATORIO que la corrida declara `null`: `data.target` y `data.partition` en una
+  // corrida de cartera (D-ECL-2), que el trabajo «Provisiones IFRS 9» siembra así
+  // (FLUJO-GUIADO-IFRS9 §3.12). No hay nada que editar, y pintar el grupo vacío invitaría a llenarlo
+  // a medias —una regla de malo sin partición—: se dice que no aplica. El error de su ruta, si lo
+  // hay, se sigue pintando.
+  if (kind === "group" && props.required && props.value === null) {
+    return (
+      <FieldShell {...props}>
+        <p className="text-sm text-muted-foreground">{NO_APLICA}</p>
+      </FieldShell>
+    )
   }
 
   if (kind === "group") {

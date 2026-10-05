@@ -211,8 +211,10 @@ def _paths_de_slots(forma: dict[str, Any]) -> set[str]:
 def test_el_barrido_no_es_vacuo() -> None:
     """Un gate que recorre cero formas daría verde diciendo nada. Ya pasó en este repo."""
     decisiones = _decisiones()
-    # Cinco desde D-GOB-12: las dos de `data`, las dos de `survival` y el propósito de la ficha.
-    assert len(decisiones) == 5, sorted(decisiones)
+    # Cinco desde D-GOB-12 —las dos de `data`, las dos de `survival` y el propósito de la ficha—,
+    # más las dos de «Provisiones IFRS 9» (unidad y horizonte de la curva, FLUJO-GUIADO-IFRS9
+    # §3.12), que se contestan con un dato y no llevan formas.
+    assert len(decisiones) == 7, sorted(decisiones)
     con_formas = {p: d["answer_forms"] for p, d in decisiones.items() if d["answer_forms"]}
     assert sorted(con_formas) == ["data.partition.strategy", "data.target.bad_rule"]
     assert len(con_formas["data.partition.strategy"]) == 4
@@ -373,7 +375,12 @@ def test_ninguna_decision_se_materializa_en_los_defaults_efectivos() -> None:
     tener valor es la decisión misma, porque materializarla es responderla.
     """
     catalogo = build_effective_defaults()
-    for path in _decisiones():
+    # Las decisiones de un TRABAJO caen sobre un campo con valor de fábrica que ese trabajo siembra
+    # en blanco o deja nulo; su gate es el esqueleto del trabajo (`test_jobs_decisiones.py::
+    # test_una_decision_de_trabajo_llega_sin_responder_al_esqueleto`), no el catálogo.
+    de_trabajo = {d["path"] for ds in jobs._DECISIONES_POR_TRABAJO.values() for d in ds}
+    assert de_trabajo, "sin decisiones de trabajo este filtro sobra"
+    for path in set(_decisiones()) - de_trabajo:
         nodo: Any = catalogo["sections"]
         for tramo in path.split("."):
             nodo = nodo.get(tramo) if tramo in nodo else (nodo.get("children") or {}).get(tramo)
