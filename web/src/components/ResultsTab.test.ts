@@ -1652,6 +1652,22 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     expect(html).toContain("Curva de PD por cartera")
     expect(ocurrencias(html, "PD acumulada por período y cartera (promedio de las operaciones)")).toBe(2)
     expect(ocurrencias(html, "6,37 %")).toBe(2)
+    // Sólo si la provisión consumió esa curva tal cual: con escenarios prospectivos o Vasicek
+    // consumió otra, y la de supervivencia se queda en su etapa (pasada 2 de Codex).
+    const f4 = demoF4 as unknown as ResultsResponse
+    expect(f4.provisioning_ifrs9?.term_structure_source).toBe("survival")
+    expect(f4.provisioning_ifrs9?.pit_mode).toBe("ttc_only")
+    for (const cambio of [{ term_structure_source: "forward" }, { pit_mode: "apply_vasicek" }]) {
+      const otra = render({
+        ...f4,
+        provisioning_ifrs9: { ...f4.provisioning_ifrs9!, ...cambio },
+        summaries: deCartera,
+      })
+      expect(otra).not.toContain("Curva de PD por cartera")
+      expect(
+        ocurrencias(otra, "PD acumulada por período y cartera (promedio de las operaciones)"),
+      ).toBe(1)
+    }
     // El scorecard no cambia: sigue con su validación técnica y sin supuestos ni curva.
     const sc = render({ ...minima(null), summaries: resumenes })
     expect(sc).toContain("Validación técnica")

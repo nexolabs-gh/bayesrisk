@@ -366,8 +366,15 @@ export function ResultsPanel({
   const ifrs9Detail = ifrs9DetailRows(ifrs9)
   const ifrs9Sicr = ifrs9SicrTriggers(ifrs9)
   const ifrs9Methodology = ifrs9?.methodology ?? null
-  const curvaDePd =
-    results.summaries?.stages.find((etapa) => etapa.stage === "survival")?.extra_tables ?? []
+  // La curva de la etapa «Curva de PD» sólo es la que consumió la provisión si la provisión la
+  // leyó de `survival` y no la transformó (TTC): con escenarios prospectivos (`forward`) o con el
+  // ajuste Vasicek consumió OTRA curva, y atribuirle ésta sería falso (pasada 2 de Codex sobre la
+  // capa B). Entonces se queda en su etapa, plegada en el resumen, y no junto al bloque IFRS 9.
+  const curvaConsumida =
+    ifrs9?.term_structure_source === "survival" && ifrs9?.pit_mode === "ttc_only"
+  const curvaDePd = curvaConsumida
+    ? (results.summaries?.stages.find((etapa) => etapa.stage === "survival")?.extra_tables ?? [])
+    : []
 
   return (
     <div className="space-y-6">

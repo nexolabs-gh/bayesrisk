@@ -816,6 +816,14 @@ curva» (`ui_null_label`), no «desactivado». **Aditivo:** el default sigue en 
 antes (F4 en blanco es bit a bit F4 con 1; `test_ifrs9_horizonte_inferido.py`). La puerta guiada
 no cambia: sigue escribiendo el número que infiere.
 
+**Pasada 2 de Codex sobre la capa B** (un medium, real, no contractual). El bloque «Curva de PD
+por cartera» atribuía siempre a la provisión la curva de la etapa de supervivencia, aunque la
+provisión consumiera otra (`term_structure_source: forward`) o la transformara (`apply_vasicek`).
+Ahora se pinta junto al bloque IFRS 9 sólo si la tarjeta de la provisión dice `survival` y
+`ttc_only`; si no, la curva se queda en su etapa del resumen y el CHANGELOG lo declara: mostrar la
+curva consumida tras escenarios o Vasicek es una capacidad aparte (sin artefacto que la publique
+por cartera hoy).
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima (§3.2):** el archivo de cartera con fecha de corte, cartera, exposición, LGD,

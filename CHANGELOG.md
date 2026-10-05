@@ -54,6 +54,10 @@ entradas anteriores conservan el nombre con el que se publicaron.
   nombran.
 - El informe de una provisión todavía no abre con la página «Resumen de la corrida» ni publica la
   curva de PD por cartera en su cuerpo: llegan con el informe de la puerta guiada de IFRS 9.
+- Resultados pinta la curva de PD por cartera junto al bloque IFRS 9 sólo cuando la provisión
+  consumió la curva de supervivencia tal cual (a lo largo del ciclo). Con escenarios prospectivos
+  o el ajuste Vasicek la provisión consume otra curva, que la pantalla todavía no muestra; la de
+  supervivencia sigue en su etapa del resumen.
 
 ## [2.4.0] — 2026-10-05
 
