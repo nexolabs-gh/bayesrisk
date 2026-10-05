@@ -1,25 +1,25 @@
 {
  "status": "done",
- "run_id": "a2822ae26eb24dbf93f2afc8adebb9a9",
+ "run_id": "6470fc0f1dc04f29849fb71e7943d3dd",
  "error": null,
  "model_card": null,
  "lineage": {
-  "git_sha": "2b2d47fa00aa10d36859b3e8237c7130e8562321",
+  "git_sha": "0efa603d6fce982384e60585fcf7c8781a77e82f",
   "git_dirty": false,
   "data_hash": "d713808d0604110d6c450358453cea172934d93eb56ccdcb0e7aea7279a94e3e",
   "config_hash": "013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6",
   "root_seed": 20240706,
   "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
-  "runtime_environment_hash": "8d799329fd48f0ba66650fc4270a7196d853de05b08fc6554722a1ff42240b4d",
+  "runtime_environment_hash": "4aafc33ab633a7f7e34a8a69197d56c1ce3fb5edc22e6e9a473a92e0ceef1a32",
   "library_versions": {
-   "bayesrisk": "2.3.0",
+   "bayesrisk": "2.5.0",
    "numpy": "2.4.6",
    "pandas": "2.3.3",
    "pydantic": "2.13.4",
    "PyYAML": "6.0.3"
   },
   "determinism_caveats": [],
-  "created_at": "2026-10-02T12:52:55.310086Z",
+  "created_at": "2026-10-05T15:48:00.942816Z",
   "schema_version": "1.0.0",
   "injected_artifacts": []
  },
@@ -1004,42 +1004,350 @@
   "stages": [
    {
     "stage": "data",
-    "label": "Datos y muestras",
+    "label": "Cartera",
     "lines": [
      "Archivo: ifrs9_retail_latam",
-     "6.000 filas · 578 malos (9,63 %) · 17 columnas",
-     "Muestras: Desarrollo 4.024 (9,64 %) · Holdout 1.030 (10,00 %) · Fuera de tiempo (OOT) 946 (9,20 %) — cohortes fuera de tiempo: 2024Q2 (columna «cohorte»); holdout 20 % del resto",
-     "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/a2822ae26eb24dbf93f2afc8adebb9a9"
+     "6.000 operaciones · fecha de corte 2025-06-30 · 4 carteras · exposición total 114.325.315",
+     "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/6470fc0f1dc04f29849fb71e7943d3dd"
     ],
     "alerts": [],
     "table": {
      "columns": [
-      "Muestra",
-      "Filas",
-      "Malos",
-      "Tasa de malos"
+      "Cartera",
+      "Operaciones",
+      "Exposición",
+      "Participación en la exposición"
      ],
      "rows": [
       [
-       "Desarrollo",
-       "4.024",
-       "388",
-       "9,64 %"
+       "Comercial",
+       "901",
+       "36.461.315",
+       "31,89 %"
       ],
       [
-       "Holdout",
-       "1.030",
-       "103",
-       "10,00 %"
+       "Consumo",
+       "2.416",
+       "20.651.462",
+       "18,06 %"
       ],
       [
-       "Fuera de tiempo (OOT)",
-       "946",
-       "87",
-       "9,20 %"
+       "Hipotecario",
+       "916",
+       "49.550.400",
+       "43,34 %"
+      ],
+      [
+       "Tarjetas",
+       "1.767",
+       "7.662.139",
+       "6,70 %"
       ]
      ]
     }
+   },
+   {
+    "stage": "survival",
+    "label": "Curva de PD",
+    "lines": [
+     "6.000 operaciones observadas · 1.502 incumplimientos · 4.498 sin incumplir al cierre de su observación (censuradas)",
+     "La curva tiene 5 períodos y llega a 5 años",
+     "Covariables: days_past_due: más alto, más riesgo; utilizacion_linea: más alto, más riesgo; deuda_ingreso: más alto, más riesgo; antiguedad_meses: más alto, menos riesgo",
+     "PD media de las operaciones: a 12 meses 6,23 % y de por vida 24,97 %",
+     "Es una curva a lo largo del ciclo (TTC): resume la historia observada, sin ajuste a las condiciones actuales ni escenarios"
+    ],
+    "alerts": [],
+    "table": {
+     "columns": [
+      "Término",
+      "Coeficiente",
+      "Error estándar",
+      "p-valor",
+      "Efecto"
+     ],
+     "rows": [
+      [
+       "Período 1",
+       "-3,4554",
+       "0,0991",
+       "< 0,001",
+       "nivel base del período"
+      ],
+      [
+       "Período 2",
+       "-3,4517",
+       "0,0996",
+       "< 0,001",
+       "nivel base del período"
+      ],
+      [
+       "Período 3",
+       "-3,5416",
+       "0,1021",
+       "< 0,001",
+       "nivel base del período"
+      ],
+      [
+       "Período 4",
+       "-3,5137",
+       "0,1026",
+       "< 0,001",
+       "nivel base del período"
+      ],
+      [
+       "Período 5",
+       "-3,5858",
+       "0,1051",
+       "< 0,001",
+       "nivel base del período"
+      ],
+      [
+       "days_past_due",
+       "0,0063",
+       "0,00071",
+       "< 0,001",
+       "más alto, más riesgo"
+      ],
+      [
+       "utilizacion_linea",
+       "0,9536",
+       "0,1378",
+       "< 0,001",
+       "más alto, más riesgo"
+      ],
+      [
+       "deuda_ingreso",
+       "1,40196",
+       "0,0987",
+       "< 0,001",
+       "más alto, más riesgo"
+      ],
+      [
+       "antiguedad_meses",
+       "-0,0061",
+       "0,00079",
+       "< 0,001",
+       "más alto, menos riesgo"
+      ]
+     ]
+    },
+    "extra_tables": [
+     {
+      "title": "PD acumulada por período y cartera (promedio de las operaciones)",
+      "columns": [
+       "Período",
+       "Plazo",
+       "Comercial",
+       "Consumo",
+       "Hipotecario",
+       "Tarjetas",
+       "Toda la cartera"
+      ],
+      "rows": [
+       [
+        "1",
+        "1 año",
+        "6,38 %",
+        "6,18 %",
+        "6,22 %",
+        "6,23 %",
+        "6,23 %"
+       ],
+       [
+        "2",
+        "2 años",
+        "12,16 %",
+        "11,79 %",
+        "11,84 %",
+        "11,89 %",
+        "11,88 %"
+       ],
+       [
+        "3",
+        "3 años",
+        "17,01 %",
+        "16,48 %",
+        "16,54 %",
+        "16,63 %",
+        "16,61 %"
+       ],
+       [
+        "4",
+        "4 años",
+        "21,58 %",
+        "20,93 %",
+        "20,99 %",
+        "21,12 %",
+        "21,09 %"
+       ],
+       [
+        "5",
+        "5 años",
+        "25,53 %",
+        "24,78 %",
+        "24,84 %",
+        "25,01 %",
+        "24,97 %"
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "stage": "provisioning_ifrs9",
+    "label": "Provisión IFRS 9",
+    "lines": [
+     "Fecha de corte 2025-06-30 · 6.000 operaciones · exposición 114.325.315",
+     "ECL total 3.423.116 · cobertura 2,99 %",
+     "Stage 1: 5.235 (87,04 % de la exposición) · Stage 2: 477 (7,93 % de la exposición) · Stage 3: 288 (5,03 % de la exposición)",
+     "Qué llevó a Stage 2: mora de 30 días o más (477)",
+     "Qué llevó a Stage 3: mora de 90 días o más (240) y la marca de incumplimiento (288)",
+     "La exposición (EAD) se proyectó constante a lo largo de la vida de cada operación, porque el dataset no trae un perfil de exposición por período: si la cartera amortiza, la ECL de por vida queda sobrestimada"
+    ],
+    "alerts": [
+     "La provisión usa la PD a lo largo del ciclo (TTC), sin ajuste a las condiciones actuales ni a escenarios macroeconómicos: IFRS 9 (5.5.17) pide considerar información razonable sobre el presente y el futuro",
+     "El aumento significativo del riesgo se detecta sólo por la mora y la marca de incumplimiento: la corrida no trae PD de origen, rating ni decisión cualitativa con que compararlo"
+    ],
+    "table": {
+     "columns": [
+      "Cartera",
+      "Etapa",
+      "Operaciones",
+      "Exposición",
+      "ECL",
+      "Cobertura"
+     ],
+     "rows": [
+      [
+       "Comercial",
+       "1",
+       "775",
+       "31.178.796",
+       "581.332",
+       "1,86 %"
+      ],
+      [
+       "Comercial",
+       "2",
+       "75",
+       "3.137.276",
+       "390.914",
+       "12,46 %"
+      ],
+      [
+       "Comercial",
+       "3",
+       "51",
+       "2.145.244",
+       "375.807",
+       "17,52 %"
+      ],
+      [
+       "Consumo",
+       "1",
+       "2.125",
+       "18.099.269",
+       "393.131",
+       "2,17 %"
+      ],
+      [
+       "Consumo",
+       "2",
+       "177",
+       "1.561.398",
+       "201.560",
+       "12,91 %"
+      ],
+      [
+       "Consumo",
+       "3",
+       "114",
+       "990.795",
+       "178.472",
+       "18,01 %"
+      ],
+      [
+       "Hipotecario",
+       "1",
+       "809",
+       "43.611.647",
+       "437.771",
+       "1,00 %"
+      ],
+      [
+       "Hipotecario",
+       "2",
+       "69",
+       "3.693.801",
+       "303.704",
+       "8,22 %"
+      ],
+      [
+       "Hipotecario",
+       "3",
+       "38",
+       "2.244.951",
+       "251.943",
+       "11,22 %"
+      ],
+      [
+       "Tarjetas",
+       "1",
+       "1.526",
+       "6.614.503",
+       "159.269",
+       "2,41 %"
+      ],
+      [
+       "Tarjetas",
+       "2",
+       "156",
+       "672.454",
+       "84.445",
+       "12,56 %"
+      ],
+      [
+       "Tarjetas",
+       "3",
+       "85",
+       "375.181",
+       "64.768",
+       "17,26 %"
+      ]
+     ]
+    },
+    "extra_tables": [
+     {
+      "title": "Operaciones por etapa y gatillo",
+      "columns": [
+       "Etapa",
+       "Gatillo",
+       "Operaciones"
+      ],
+      "rows": [
+       [
+        "1",
+        "ninguno",
+        "5.235"
+       ],
+       [
+        "2",
+        "mora de 30 días o más",
+        "477"
+       ],
+       [
+        "3",
+        "mora de 90 días o más",
+        "240"
+       ],
+       [
+        "3",
+        "la marca de incumplimiento",
+        "288"
+       ]
+      ]
+     }
+    ]
    },
    {
     "stage": "report",
@@ -1049,7 +1357,7 @@
      "Informe Word: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.docx",
      "Informe PDF: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.pdf",
      "Fuente editable (Quarto): /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.qmd",
-     "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/a2822ae26eb24dbf93f2afc8adebb9a9/audit_trail.jsonl"
+     "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/6470fc0f1dc04f29849fb71e7943d3dd/audit_trail.jsonl"
     ],
     "alerts": [],
     "table": null
@@ -1057,22 +1365,46 @@
   ],
   "final": {
    "execution": "completada",
-   "validation": "no corrió: la validación formal no está en el config",
-   "figures": [],
-   "review": [],
+   "validation": "no aplica: una provisión no tiene veredicto técnico; lo que la cifra supone está en «Supuestos»",
+   "figures": [
+    [
+     "ECL total",
+     "3.423.116"
+    ],
+    [
+     "Cobertura (ECL sobre la exposición)",
+     "2,99 %"
+    ],
+    [
+     "Exposición en Stage 2 y 3",
+     "12,96 %"
+    ],
+    [
+     "ECL de Stage 2 y 3",
+     "54,09 %"
+    ],
+    [
+     "PD a 12 meses media, ponderada por la exposición",
+     "6,31 %"
+    ]
+   ],
+   "review": [
+    "Provisión IFRS 9: La provisión usa la PD a lo largo del ciclo (TTC), sin ajuste a las condiciones actuales ni a escenarios macroeconómicos: IFRS 9 (5.5.17) pide considerar información razonable sobre el presente y el futuro",
+    "Provisión IFRS 9: El aumento significativo del riesgo se detecta sólo por la mora y la marca de incumplimiento: la corrida no trae PD de origen, rating ni decisión cualitativa con que compararlo"
+   ],
    "decisions": [],
    "files": [
     [
      "Carpeta del proyecto",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/a2822ae26eb24dbf93f2afc8adebb9a9"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/6470fc0f1dc04f29849fb71e7943d3dd"
     ],
     [
      "Evidencia de la corrida",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/a2822ae26eb24dbf93f2afc8adebb9a9"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/6470fc0f1dc04f29849fb71e7943d3dd"
     ],
     [
      "Registro de auditoría",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/a2822ae26eb24dbf93f2afc8adebb9a9/audit_trail.jsonl"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/6470fc0f1dc04f29849fb71e7943d3dd/audit_trail.jsonl"
     ],
     [
      "Informe HTML",
@@ -1090,6 +1422,17 @@
      "Fuente editable (Quarto)",
      "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.qmd"
     ]
+   ],
+   "title": "Resumen de la provisión IFRS 9",
+   "family": "cartera",
+   "assumptions": [
+    "La PD es a lo largo del ciclo (TTC): no se ajusta a las condiciones actuales ni a escenarios macroeconómicos",
+    "Un escenario único, sin ponderación macroeconómica",
+    "La curva de PD se ajusta a la historia de incumplimientos de la propia cartera, con 4 covariables",
+    "Los 12 meses del Stage 1 son el primer período de la curva (1 año)",
+    "Stage 2 desde 30 días de mora y Stage 3 desde 90: las presunciones de IFRS 9 (5.5.11 y B5.5.37)",
+    "La exposición (EAD) se proyectó constante a lo largo de la vida de cada operación, porque el dataset no trae un perfil de exposición por período: si la cartera amortiza, la ECL de por vida queda sobrestimada",
+    "La LGD es la del archivo de cartera, la misma en cada período"
    ]
   },
   "error": null

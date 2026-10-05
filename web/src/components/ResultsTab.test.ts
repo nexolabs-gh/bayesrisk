@@ -1565,7 +1565,9 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
   })
 
   it("los fixtures de la demo traen el resumen desde la recaptura de 1.18.0 y el bloque se pinta una vez", () => {
-    // Una etapa plegada por cada etapa que corrió: once en el scorecard F1, dos en el IFRS 9.
+    // Una etapa plegada por cada etapa que corrió: once en el scorecard F1; en el IFRS 9, desde la
+    // recaptura de la 2.5.0, las cuatro de una provisión (Cartera, Curva de PD, Provisión IFRS 9,
+    // Informe y ficha), que antes salían con el molde del scorecard (dos).
     const plegadas = (html: string): number =>
       ocurrencias(html, '<summary class="cursor-pointer text-sm font-medium text-foreground">')
     const f1 = render(demoF1 as unknown as ResultsResponse)
@@ -1575,7 +1577,10 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     expect(f1).toContain("completada")
     const f4 = render(demoF4 as unknown as ResultsResponse)
     expect(ocurrencias(f4, "Resumen de la corrida")).toBe(1)
-    expect(plegadas(f4)).toBe(2)
+    expect(plegadas(f4)).toBe(4)
+    expect(f4).toContain("Supuestos")
+    expect(f4).not.toContain("Validación técnica")
+    expect(f4).toContain("Curva de PD por cartera")
   })
 
   it("con `error` dice por qué no hay resumen en vez de esconder el hueco", () => {

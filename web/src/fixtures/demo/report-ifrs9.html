@@ -1127,6 +1127,7 @@ figcaption {
     </span>
     <p class="rail-heading">Contenido</p>
     <nav class="doc-secnav" aria-label="Secciones del informe">
+      <a href="#section-executive_summary" class="lvl-1">Resumen de la corrida</a>
       <a href="#exec-summary" class="lvl-1">Resumen ejecutivo</a>
       <a href="#section-introduction" class="lvl-1">Introducción</a>
       <a href="#section-context" class="lvl-1">Contexto del modelo y de la cartera</a>
@@ -1135,6 +1136,7 @@ figcaption {
       <a href="#section-methodology-data" class="lvl-2">Tratamiento de datos y particiones</a>
       <a href="#section-methodology-provisioning_ifrs9" class="lvl-2">Ficha metodológica IFRS 9 / ECL</a>
       <a href="#section-ifrs9" class="lvl-1">Provisiones IFRS 9 / ECL</a>
+      <a href="#section-ifrs9-survival" class="lvl-2">Supervivencia y curva PD lifetime</a>
       <a href="#section-ifrs9-provisioning_ifrs9" class="lvl-2">Pérdida crediticia esperada (ECL) por etapas</a>
       <a href="#section-conclusions" class="lvl-1">Conclusiones y recomendación</a>
       <a href="#section-limitations" class="lvl-1">Limitaciones y supuestos</a>
@@ -1176,7 +1178,7 @@ figcaption {
     </div>
     <div class="cover-field">
       <dt>Fecha de emisión</dt>
-      <dd>2026-10-02</dd>
+      <dd>2026-10-05</dd>
     </div>
   </dl>
 
@@ -1184,7 +1186,7 @@ figcaption {
     <p class="lineage-caption">Trazabilidad de la corrida (lineage)</p>
     <div class="lineage-line"><code>config_hash=013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6</code></div>
     <div class="lineage-line"><code>data_hash=d713808d0604110d6c450358453cea172934d93eb56ccdcb0e7aea7279a94e3e</code></div>
-    <div class="lineage-line"><code>git_sha=2b2d47fa00aa10d36859b3e8237c7130e8562321</code></div>
+    <div class="lineage-line"><code>git_sha=0efa603d6fce982384e60585fcf7c8781a77e82f</code></div>
     <div class="lineage-line"><code>root_seed=20240706</code></div>
   </div>
 
@@ -1205,6 +1207,56 @@ figcaption {
       <p class="role-hint">Nombre y fecha</p>
     </div>
   </div>
+</section>
+<section id="section-executive_summary" data-section-id="executive_summary" data-kind="summary" data-level="1" class="report-section chapter run-summary">
+  <h2>Resumen de la corrida</h2>
+
+  <p>Lo que cuenta la corrida al terminar, con la misma fuente que la puerta guiada y la pestaña Resultados: el estado de la ejecución, los supuestos de los que depende la provisión, sus cifras clave, qué revisar, las decisiones humanas con su motivo y dónde queda cada archivo. Una provisión no tiene veredicto técnico del motor: el juicio sobre ella lo firma el validador en el resumen ejecutivo.</p>
+  <p>Las rutas son las que el informe escribió al generarse: si la corrida se copia o se archiva después —desde la interfaz, o al apartar una corrida anterior—, los archivos se buscan en su carpeta de destino, y el registro de auditoría deja constancia de cada uno que se escribió.</p>
+
+  <dl class="summary-states">
+    <dt>Ejecución</dt><dd>corrieron sin fallos Cartera, Curva de PD y Provisión IFRS 9; este informe es la última etapa de la corrida</dd>
+  </dl>
+
+  <h4>Supuestos</h4>
+  <ul class="summary-assumptions">
+    <li>La PD es a lo largo del ciclo (TTC): no se ajusta a las condiciones actuales ni a escenarios macroeconómicos</li>
+    <li>Un escenario único, sin ponderación macroeconómica</li>
+    <li>La curva de PD se ajusta a la historia de incumplimientos de la propia cartera, con 4 covariables</li>
+    <li>Los 12 meses del Stage 1 son el primer período de la curva (1 año)</li>
+    <li>Stage 2 desde 30 días de mora y Stage 3 desde 90: las presunciones de IFRS 9 (5.5.11 y B5.5.37)</li>
+    <li>La exposición (EAD) se proyectó constante a lo largo de la vida de cada operación, porque el dataset no trae un perfil de exposición por período: si la cartera amortiza, la ECL de por vida queda sobrestimada</li>
+    <li>La LGD es la del archivo de cartera, la misma en cada período</li>
+  </ul>
+
+  <h4>Cifras clave</h4>
+  <table class="summary-figures">
+    <tbody>
+      <tr><th scope="row">ECL total</th><td class="num">3.423.116</td></tr>
+      <tr><th scope="row">Cobertura (ECL sobre la exposición)</th><td class="num">2,99 %</td></tr>
+      <tr><th scope="row">Exposición en Stage 2 y 3</th><td class="num">12,96 %</td></tr>
+      <tr><th scope="row">ECL de Stage 2 y 3</th><td class="num">54,09 %</td></tr>
+      <tr><th scope="row">PD a 12 meses media, ponderada por la exposición</th><td class="num">6,31 %</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Qué revisar</h4>
+  <ul class="summary-review">
+    <li>⚠ Provisión IFRS 9: La provisión usa la PD a lo largo del ciclo (TTC), sin ajuste a las condiciones actuales ni a escenarios macroeconómicos: IFRS 9 (5.5.17) pide considerar información razonable sobre el presente y el futuro</li>
+    <li>⚠ Provisión IFRS 9: El aumento significativo del riesgo se detecta sólo por la mora y la marca de incumplimiento: la corrida no trae PD de origen, rating ni decisión cualitativa con que compararlo</li>
+  </ul>
+
+  <h4>Decisiones humanas registradas</h4>
+  <p class="muted">Ninguna decisión humana registrada; lo que se decidió vive en el config de la corrida.</p>
+
+  <h4>Dónde quedó cada archivo</h4>
+  <dl class="summary-files">
+    <dt>Informe HTML</dt><dd>/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.html</dd>
+    <dt>Informe PDF</dt><dd>/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.pdf (se escribe si el extra pdf está instalado)</dd>
+    <dt>Informe Word</dt><dd>/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.docx (se escribe si el extra docx está instalado)</dd>
+    <dt>Fuente editable (Quarto)</dt><dd>/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.qmd</dd>
+    <dt>Registro de auditoría</dt><dd>en la ruta que fija la sección audit del config</dd>
+  </dl>
 </section>
 <section class="exec-summary" id="exec-summary">
   <h2>Resumen ejecutivo</h2>
@@ -1261,6 +1313,11 @@ figcaption {
   <h2>Índice</h2>
   <ul class="toc-list">
     <li class="toc-level-1">
+      <a href="#section-executive_summary">
+        <span class="toc-title">Resumen de la corrida</span>
+      </a>
+    </li>
+    <li class="toc-level-1">
       <a href="#exec-summary">
         <span class="toc-title">Resumen ejecutivo</span>
       </a>
@@ -1301,8 +1358,13 @@ figcaption {
       </a>
     </li>
     <li class="toc-level-2">
+      <a href="#section-ifrs9-survival">
+<span class="toc-number">4.1</span>        <span class="toc-title">Supervivencia y curva PD lifetime</span>
+      </a>
+    </li>
+    <li class="toc-level-2">
       <a href="#section-ifrs9-provisioning_ifrs9">
-<span class="toc-number">4.1</span>        <span class="toc-title">Pérdida crediticia esperada (ECL) por etapas</span>
+<span class="toc-number">4.2</span>        <span class="toc-title">Pérdida crediticia esperada (ECL) por etapas</span>
       </a>
     </li>
     <li class="toc-level-1">
@@ -1463,8 +1525,50 @@ figcaption {
 
 
 </section>
+<section id="section-ifrs9-survival" data-section-id="ifrs9.survival" data-kind="data" data-level="2" class="report-section subsection">
+  <h3 class="subsection-title"><span class="section-number">4.1</span>Supervivencia y curva PD lifetime</h3>
+
+
+  <p>La curva de PD de por vida que estimó el modelo de supervivencia sobre la historia de incumplimientos de la propia cartera.</p>
+  <p>La primera tabla da la PD acumulada al cierre de cada período de la curva, como promedio simple de las operaciones de cada cartera y de toda la cartera: no pondera por exposición.</p>
+  <p>La tabla de coeficientes da el ajuste: un coeficiente positivo sube la probabilidad de incumplir en cada período y uno negativo la baja; los términos de período son el nivel base de cada uno, y el error estándar y el p-valor dicen cuán distinguible de cero es cada efecto.</p>
+  <p>La provisión de este capítulo parte de esta curva tal cual, a lo largo del ciclo.</p>
+
+
+<figure class="table-block">
+  <figcaption class="table-title">PD acumulada por período y cartera (promedio de las operaciones)</figcaption>
+  <table id="table-survival-pd_by_period" data-table-key="survival.pd_by_period">
+    <thead><tr><th class="num">Período</th><th>Plazo</th><th class="num">Comercial</th><th class="num">Consumo</th><th class="num">Hipotecario</th><th class="num">Tarjetas</th><th class="num">Toda la cartera</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>1 año</td><td class="num">0,0638</td><td class="num">0,0618</td><td class="num">0,0622</td><td class="num">0,0623</td><td class="num">0,0623</td></tr>
+      <tr><td class="num">2</td><td>2 años</td><td class="num">0,1216</td><td class="num">0,1179</td><td class="num">0,1184</td><td class="num">0,1189</td><td class="num">0,1188</td></tr>
+      <tr><td class="num">3</td><td>3 años</td><td class="num">0,1701</td><td class="num">0,1648</td><td class="num">0,1654</td><td class="num">0,1663</td><td class="num">0,1661</td></tr>
+      <tr><td class="num">4</td><td>4 años</td><td class="num">0,2158</td><td class="num">0,2093</td><td class="num">0,2099</td><td class="num">0,2112</td><td class="num">0,2109</td></tr>
+      <tr><td class="num">5</td><td>5 años</td><td class="num">0,2553</td><td class="num">0,2478</td><td class="num">0,2484</td><td class="num">0,2501</td><td class="num">0,2497</td></tr>
+    </tbody>
+  </table>
+</figure>
+<figure class="table-block">
+  <figcaption class="table-title">Coeficientes de la curva de PD (supervivencia)</figcaption>
+  <table id="table-survival-coefficients" data-table-key="survival.coefficients">
+    <thead><tr><th>term</th><th class="num">coef</th><th class="num">std_<wbr>error</th><th class="num">p_<wbr>value</th></tr></thead>
+    <tbody>
+      <tr><td>period_<wbr>1</td><td class="num">-3,4554</td><td class="num">0,0991</td><td class="num">&lt; 0,001</td></tr>
+      <tr><td>period_<wbr>2</td><td class="num">-3,4517</td><td class="num">0,0996</td><td class="num">&lt; 0,001</td></tr>
+      <tr><td>period_<wbr>3</td><td class="num">-3,5416</td><td class="num">0,1021</td><td class="num">&lt; 0,001</td></tr>
+      <tr><td>period_<wbr>4</td><td class="num">-3,5137</td><td class="num">0,1026</td><td class="num">&lt; 0,001</td></tr>
+      <tr><td>period_<wbr>5</td><td class="num">-3,5858</td><td class="num">0,1051</td><td class="num">&lt; 0,001</td></tr>
+      <tr><td>days_<wbr>past_<wbr>due</td><td class="num">0,0063</td><td class="num">0,00071</td><td class="num">&lt; 0,001</td></tr>
+      <tr><td>utilizacion_<wbr>linea</td><td class="num">0,9536</td><td class="num">0,1378</td><td class="num">&lt; 0,001</td></tr>
+      <tr><td>deuda_<wbr>ingreso</td><td class="num">1,40196</td><td class="num">0,0987</td><td class="num">&lt; 0,001</td></tr>
+      <tr><td>antiguedad_<wbr>meses</td><td class="num">-0,0061</td><td class="num">0,00079</td><td class="num">&lt; 0,001</td></tr>
+    </tbody>
+  </table>
+</figure>
+
+</section>
 <section id="section-ifrs9-provisioning_ifrs9" data-section-id="ifrs9.provisioning_ifrs9" data-kind="data" data-level="2" class="report-section subsection">
-  <h3 class="subsection-title"><span class="section-number">4.1</span>Pérdida crediticia esperada (ECL) por etapas</h3>
+  <h3 class="subsection-title"><span class="section-number">4.2</span>Pérdida crediticia esperada (ECL) por etapas</h3>
 
 
   <p>La probabilidad de incumplimiento por periodo proviene de la curva lifetime PD del modelo de supervivencia (discrete-time hazard), en modalidad through-the-cycle (TTC). La ECL de cada operación multiplica PD marginal, LGD y EAD periodo a periodo y descuenta cada pérdida al presente; Stage 1 corta el horizonte a 12 meses y Stage 2/3 lo extienden a la vida remanente.</p>
@@ -1528,20 +1632,20 @@ figcaption {
   <h4>Parámetros y payload</h4>
   <dl>
     <dt>config_hash</dt><dd>013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6</dd>
-    <dt>created_at</dt><dd>2026-10-02T12:52:55.310086Z</dd>
+    <dt>created_at</dt><dd>2026-10-05T15:48:00.942816Z</dd>
     <dt>data_hash</dt><dd>d713808d0604110d6c450358453cea172934d93eb56ccdcb0e7aea7279a94e3e</dd>
     <dt>determinism_caveats</dt><dd>[]</dd>
     <dt>git_dirty</dt><dd>no</dd>
-    <dt>git_sha</dt><dd>2b2d47fa00aa10d36859b3e8237c7130e8562321</dd>
+    <dt>git_sha</dt><dd>0efa603d6fce982384e60585fcf7c8781a77e82f</dd>
     <dt>library_versions</dt><dd><pre>{
   &#34;PyYAML&#34;: &#34;6.0.3&#34;,
-  &#34;bayesrisk&#34;: &#34;2.3.0&#34;,
+  &#34;bayesrisk&#34;: &#34;2.5.0&#34;,
   &#34;numpy&#34;: &#34;2.4.6&#34;,
   &#34;pandas&#34;: &#34;2.3.3&#34;,
   &#34;pydantic&#34;: &#34;2.13.4&#34;
 }</pre></dd>
     <dt>root_seed</dt><dd>20240706</dd>
-    <dt>runtime_environment_hash</dt><dd>8d799329fd48f0ba66650fc4270a7196d853de05b08fc6554722a1ff42240b4d</dd>
+    <dt>runtime_environment_hash</dt><dd>4aafc33ab633a7f7e34a8a69197d56c1ce3fb5edc22e6e9a473a92e0ceef1a32</dd>
     <dt>schema_version</dt><dd>1.0.0</dd>
     <dt>uv_lock_hash</dt><dd>6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322</dd>
   </dl>
@@ -1561,9 +1665,11 @@ figcaption {
     <dt>figure_keys</dt><dd>[]</dd>
     <dt>table_keys</dt><dd><pre>[
   &#34;provisioning_ifrs9.summary&#34;,
+  &#34;survival.coefficients&#34;,
   &#34;data.states&#34;,
   &#34;data.partitions&#34;,
-  &#34;data.exclusions&#34;
+  &#34;data.exclusions&#34;,
+  &#34;survival.pd_by_period&#34;
 ]</pre></dd>
   </dl>
 
@@ -2045,6 +2151,7 @@ figcaption {
   <aside class="doc-rail">
     <nav class="doc-otp" aria-label="En esta página">
       <p class="rail-heading">En esta página</p>
+      <a href="#section-executive_summary">Resumen de la corrida</a>
       <a href="#exec-summary">Resumen ejecutivo</a>
       <a href="#section-introduction">Introducción</a>
       <a href="#section-context">Contexto del modelo y de la cartera</a>
