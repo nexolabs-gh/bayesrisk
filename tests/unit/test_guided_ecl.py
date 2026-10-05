@@ -214,12 +214,32 @@ def test_la_historia_de_la_curva_no_entra_como_covariable(datos: Path, tmp_path:
         _ecl(datos, tmp_path, covariates=["event", "deuda_ingreso"])
 
 
-def test_un_id_como_columna_alimenta_la_curva_y_la_provision(datos: Path, tmp_path: Path) -> None:
+def test_un_id_como_columna_corre_de_punta_a_punta_con_la_cifra_de_f4(
+    datos: Path, tmp_path: Path, _semilla: None
+) -> None:
+    """Un archivo de banco trae el identificador como COLUMNA, no como índice (S32, criterio C1).
+
+    La curva de supervivencia identifica cada operación por el índice del archivo —su contrato—, y
+    la puerta escribía además ``row_id_col`` con la columna: la provisión buscaba ``loan_id`` donde
+    la curva publicaba posiciones y toda corrida con ``id=`` columna moría en la provisión (medido
+    sobre Lending Club; el dataset del paquete trae ``loan_id`` como índice y no lo mostraba). La
+    puerta verifica que la columna sea única y deja que curva, provisión y resumen identifiquen
+    por la misma posición: la cifra es la de F4 y la curva por cartera trae sus carteras.
+    """
     frame = pd.read_parquet(datos).reset_index()
     ecl = _ecl(frame, tmp_path, name="id_columna")
     assert ecl.config.data.schema_.unique_keys == ("loan_id",)
-    assert ecl.config.survival.input.id_col == "loan_id"
-    assert ecl.config.provisioning_ifrs9.row_id_col == "loan_id"
+    assert ecl.config.survival.input.id_col is None
+    assert ecl.config.provisioning_ifrs9.row_id_col is None
+    identificador = next(i for i in ecl.inferences if i.regla == "inferencia_identificador")
+    assert "posición" in identificador.motivo
+    ecl.run()
+    assert ecl.study.run_context.status == "done", ecl.study.run_context.error
+    card = ecl.study.artifacts.get("provisioning_ifrs9", "card")
+    assert round(float(card.total_ecl_reported)) == 3_423_116
+    (_titulo, curva, _formatos) = ecl.summary("survival").extra_tables[0]
+    assert {"Comercial", "Consumo", "Hipotecario", "Tarjetas"} <= set(curva.columns)
+    assert curva[["Comercial", "Consumo", "Hipotecario", "Tarjetas"]].notna().all().all()
 
 
 # ─────────────────────────── constantes de la puerta (§3.5) y D-ECL-2 ───────────────────────────

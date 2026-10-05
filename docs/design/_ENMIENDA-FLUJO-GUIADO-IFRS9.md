@@ -833,6 +833,71 @@ tres pasadas cumplido** (1 → un medium contractual, elevado y decidido por Cam
 3 → un medium acotado; ninguno más allá de la atribución de la curva): no hay pasada 4; el arreglo
 de la 3 tiene test y control negativo, sin revisión de Codex.
 
+## 12. Capa C implementada (S32, 2026-10-05)
+
+**Informe (§3.13).** La página ejecutiva «Resumen de la corrida» se emite también para la familia
+IFRS 9: la condición any-of gana `provisioning_ifrs9`, y una corrida sin dominios del scorecard la
+recibe sólo si su resumen es el de una provisión (`family = "cartera"` en el payload, que se declara
+aunque el resumen no se arme); el payload del scorecard no gana claves. HTML, Word y la fuente
+editable pintan «Supuestos» en lugar de «Validación técnica». El capítulo IFRS 9 gana la
+subsección de la curva (`ifrs9.survival`, antes de la ECL) con `KEY_TABLES["survival"]`: la PD
+acumulada por período y cartera (`survival.pd_by_period`, que el builder arma con
+`guided.summaries.pd_curve_by_portfolio`, la misma función de la etapa «Curva de PD») y
+`survival.coefficients`; su prosa atribuye la curva a la provisión sólo si ésta la consumió tal cual
+(`survival` + `ttc_only`, con el tope de vida si lo hay), la misma regla que la pantalla. El anexo
+C.2 conserva la card. El Excel `02 Curva de PD.xlsx` suma los coeficientes del informe y no repite
+la PD por cartera, que ya es tabla adicional del resumen. Goldens declarados antes de moverlos
+(`privado/evidencia/s32/goldens_declarados_capa_c.md`); diez controles negativos.
+
+**Tres datasets de punta a punta (§3.14, criterio C1).** Las tres corridas terminan `done` por
+`bayesrisk.Ecl`; los datos externos viven fuera de los repos (`E:\Proyectos\datos-externos\ifrs9\`,
+con `LEEME.md` y `SHA256SUMS`) y la preparación de cada uno —decisión del modelador, no del motor—
+quedó en scripts del repo privado (`privado/evidencia/s32/`), con sólo agregados.
+
+| | Paquete (`ifrs9_retail_latam`) | Lending Club (2013–2016) | Freddie Mac SFLLD (2016) |
+|---|---|---|---|
+| Archivo | 6.000 filas, 18 columnas | 2.260.701 préstamos, 151 columnas; muestra de 60.000 | 50.000 préstamos; desempeño mensual (3,38 M filas, 35 campos, layout Release 47) |
+| Fecha de corte | 2025-06-30 | 2019-03-31 (último pago del archivo) | 2026-03-31 (último período) |
+| Unidad y horizonte de la curva | año, 5 | trimestre, 20 (60 meses) | año, 11 |
+| Vivas al corte / EAD | 6.000 / 114,3 M | 9.593 / 54,1 M | 14.038 / 1.968 M |
+| ECL del motor (cobertura) | 3.423.116 (2,99 %) | 3.254.890 (6,02 %) | 1.530.096 (0,08 %) |
+| Segundos hasta el resumen final | 6,5 | 115 | 60 |
+
+La ECL del motor se reconstruyó fuera del motor (PD marginal × LGD × EAD × DF por período) y casa
+exactamente en las tres; sobre esa reconstrucción se midió lo que cuestan los supuestos:
+
+| Supuesto del motor | Paquete | Lending Club | Freddie Mac |
+|---|---|---|---|
+| EAD constante (frente a la amortización de cuota fija hasta el vencimiento) | sin plazo en el archivo | **−37,5 %** de la ECL | −3,8 % |
+| La curva parte de la originación y llega al horizonte de la curva (frente a condicionarla a la antigüedad de cada operación y cortarla en su plazo remanente) | sin plazo en el archivo | +5,7 % | **−47,3 %** (antigüedad mediana 115 meses; más allá del horizonte observado se extendió el último hazard) |
+| Las dos juntas | — | −12,3 % | −47,4 % |
+| Stage 3 con la PD de la curva (`stage3_direct=False`, constante de F4) frente a PD = 1 (LGD × EAD) | **+39,8 %** (288 operaciones) | sin vivas en Stage 3 | **+98,0 %** (55 operaciones) |
+| Sin PD de origen (SICR sólo por mora y marca): operaciones en Stage 1 cuya PD a 12 meses con la covariable actual supera 2× la esperada en origen | sin covariable actual | 255 de 9.308 (FICO actual), +5,5 % de la ECL | 0 (ELTV actual: la vivienda se valorizó) |
+
+Y tres hallazgos de forma, medidos:
+
+1. **`Ecl(id=<columna>)` moría siempre** (corregido en la puerta, dentro de lo aprobado). La curva
+   identifica cada operación por el índice del archivo —su contrato— y la puerta escribía además
+   `row_id_col` con la columna: la provisión buscaba `loan_id` donde la curva publicaba posiciones.
+   El dataset del paquete trae `loan_id` como índice y lo ocultaba; el test que existía sólo
+   miraba el config. Ahora la columna se verifica única y las tres etapas identifican por la
+   posición de la fila (declarado en el trail); con un índice nombrado nada cambia (F4 y su
+   `config_hash` intactos). Que la curva identifique por la columna —el detalle por operación con
+   `loan_id`— es un cambio del motor de supervivencia: candidato, no programado.
+2. **La historia de la curva vive en las mismas filas que la cartera.** Con datos reales los
+   incumplimientos están en operaciones ya cerradas; para que la curva los vea entran con EAD 0 y
+   la ECL es correcta, pero los conteos no: «60.000 operaciones» y «Stage 3: 10.191» en Lending
+   Club cuentan 50.407 préstamos cerrados; en Freddie Mac, 35.962. Candidato: separar historia y
+   cartera, o no contar las filas sin exposición.
+3. **El plazo de vida es el horizonte de la curva, no el plazo remanente.** En Freddie Mac la vida
+   remanente mediana es 243 meses y la curva cubre 132.
+
+**Candidatas que este caso real deja con evidencia** (D-SIM-3; ninguna se programa sin su
+enmienda): Stage 3 con PD = 1 (la de mayor efecto y la más simple: es una constante de la puerta y
+del preset), curva condicionada a la antigüedad y cortada en el plazo remanente, perfil de
+amortización de la EAD (CT-3), PD de origen para el SICR, historia separada de la cartera, y la
+supervivencia identificando por `id_col`. Elevadas a Cami al cierre de S32.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima (§3.2):** el archivo de cartera con fecha de corte, cartera, exposición, LGD,

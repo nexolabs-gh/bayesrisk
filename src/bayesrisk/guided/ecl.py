@@ -78,7 +78,9 @@ class Ecl(_PuertaGuiada):
         exactamente los mismos bytes.
     id
         Identificador de cada operación, opcional y recomendado: una columna o el nombre del
-        índice del archivo. Sin él se usa el índice del archivo y se declara.
+        índice del archivo. Sin él se usa el índice del archivo y se declara. Una columna se
+        verifica única; la curva, la provisión y el resumen identifican cada operación por su
+        posición en el archivo (la copia de la corrida la conserva), y se declara.
     as_of, portfolio, exposure, lgd, rate, days_past_due
         Las columnas de la provisión: fecha de corte (un solo valor), cartera, exposición al
         incumplimiento ya calculada, LGD, tasa efectiva **anual** de cada operación y días de mora.
@@ -246,7 +248,27 @@ class Ecl(_PuertaGuiada):
                     motivo="no se declaró id=: cada operación se identifica por su posición",
                 )
             )
+        elif unique_keys is not None:
+            # Un archivo de banco trae el identificador como COLUMNA. La curva de supervivencia
+            # identifica cada operación por el índice del archivo (su contrato), así que la
+            # provisión y el resumen tienen que identificar por lo mismo: si la provisión leyera
+            # la columna, buscaría `loan_id` donde la curva publica posiciones y la corrida moriría
+            # (medido sobre Lending Club en S32). La columna se verifica única; las tres etapas
+            # identifican por la posición de la fila, que la copia de la corrida conserva.
+            inferencias.append(
+                Inferencia(
+                    regla="inferencia_identificador",
+                    valor={"columna": id, "llave": "posición de la fila"},
+                    motivo=(
+                        f"id={id} es una columna del archivo: se verifica que sea única, y la "
+                        "curva, la provisión y el resumen identifican cada operación por su "
+                        "posición en el archivo, que la copia de la corrida conserva"
+                    ),
+                )
+            )
         id_columna = id if unique_keys is not None else None
+        if id_columna is not None:
+            id_label = f"{id_label}; cada etapa identifica la operación por su fila en el archivo"
 
         # ── esquema de las columnas declaradas ───────────────────────────────────────────
         en_esquema = list(dict.fromkeys([*([id_columna] if id_columna else []), *declaradas]))
@@ -322,13 +344,15 @@ class Ecl(_PuertaGuiada):
         survival["input"]["duration_col"] = columnas["duration"]
         survival["input"]["event_col"] = columnas["event"]
         survival["input"]["covariate_cols"] = list(covariables)
-        survival["input"]["id_col"] = id_columna
+        # Sin `id_col` ni `row_id_col`: la curva, la provisión y el resumen identifican por el
+        # índice del archivo, el único identificador que las tres leen igual (ver arriba).
+        survival["input"]["id_col"] = None
         survival["time_grid"]["time_unit"] = period
         survival["time_grid"]["horizon_periods"] = horizonte
         ifrs = cfg["provisioning_ifrs9"]
         ifrs["as_of_date_col"] = columnas["as_of"]
         ifrs["portfolio_col"] = columnas["portfolio"]
-        ifrs["row_id_col"] = id_columna
+        ifrs["row_id_col"] = None
         ifrs["pd"]["horizon_12m_periods"] = horizonte_12m
         ifrs["ead"]["ead_col"] = columnas["exposure"]
         ifrs["lgd"]["lgd_col"] = columnas["lgd"]

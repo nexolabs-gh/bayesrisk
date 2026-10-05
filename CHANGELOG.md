@@ -57,8 +57,33 @@ entradas anteriores conservan el nombre con el que se publicaron.
 - Una unidad vacía en la grilla de la curva se rechaza con un mensaje en palabras de negocio
   («Declara en qué unidad está la duración de la curva…») en vez del nombre del campo.
 
+### Corregido
+
+- **`bayesrisk.Ecl` con el identificador como columna** —lo normal en el archivo de un banco—
+  moría en la provisión: la curva identificaba cada operación por su fila y la provisión por la
+  columna, y no se encontraban. Ahora la columna se verifica única y la curva, la provisión y el
+  resumen identifican cada operación por su posición en el archivo (lo declara el registro de
+  auditoría). Con el identificador como índice del archivo, como en el dataset del paquete, nada
+  cambia.
+
 ### Sabido
 
+Medido al correr la provisión de punta a punta sobre dos carteras reales públicas (Lending Club y
+Freddie Mac) además de la del paquete; ninguno cambia la cifra de una corrida existente:
+
+- Por defecto, una operación en Stage 3 —ya en incumplimiento— se provisiona con la PD de la curva,
+  como una sana, y no con la pérdida de un incumplimiento (LGD × EAD). Con la opción «Stage 3 como
+  EAD·LGD directo» de la sección de provisiones la ECL total sube: medido, +40 % en la cartera del
+  paquete y +98 % en las hipotecas de Freddie Mac.
+- La curva de cada operación parte de su originación y llega al horizonte de la curva: no se
+  condiciona a la antigüedad de la operación ni se corta en su plazo remanente. En una cartera con
+  años de antigüedad la ECL de por vida se mueve decenas de puntos (medido: −47 % en hipotecas de
+  diez años; +6 % en créditos de consumo de tres años).
+- La exposición se proyecta constante; en créditos de cuota fija cortos la amortización bajaría la
+  ECL en un tercio (medido: −38 % en Lending Club, −4 % en hipotecas).
+- La historia de incumplimientos que alimenta la curva vive en las mismas filas que la cartera: las
+  operaciones ya cerradas entran con exposición 0, no cambian la ECL, pero cuentan como operaciones
+  en los conteos por etapa del resumen.
 - La ficha del modelo registra la decisión `exclude` sobre la curva con la lista de covariables
   que **quedan**, no con la que se retiró; el registro de auditoría y el resumen final sí la
   nombran.
