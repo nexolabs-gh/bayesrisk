@@ -13,7 +13,12 @@
 > reales, ninguno contractual): la lectura condicionada exige el método `discrete_hazard` —el único
 > que publica los incumplimientos por período— y la provisión pasa a requerir la card de la curva
 > (§3.2-7); la tabla de pagos ya no usa la EIR: su tasa es la **implícita** con que la cuota paga el
-> saldo justo al vencimiento (§3.3).
+> saldo justo al vencimiento (§3.3). **Pasada 3** (un high, real, no contractual): con fechas, la
+> PD a 12 meses tampoco puede venir de la calibración transversal; requisito por contexto (§3.2-7).
+> **Con esto se cierra la revisión de diseño en el tope declarado de tres pasadas** —cada una
+> encontró menos y más acotado (4 → 2 → 1) y ninguno de los siete hallazgos fue contractual—; la
+> siguiente revisión va sobre el código de la capa A. Informes: `evidencia/s33/codex_p1.md` …
+> `codex_p3.md`.
 >
 > **Base medida:** `main` = `629e422` (bayesrisk 2.5.0). Las cifras de S32 (enmienda
 > FLUJO-GUIADO-IFRS9 §12) se **reprodujeron** con sus propios scripts sobre este HEAD y casan al
@@ -294,14 +299,16 @@ contractual). En la puerta, `Ecl(..., origination=None, maturity=None)`. Con ell
    período 1 y sólo se corta en el vencimiento. Sin ninguna de las dos hojas, la provisión es **bit
    a bit la de hoy**.
 7. **Sólo curvas de supervivencia por períodos discretos** (pasadas 1 y 2 de Codex). Aplica con
-   `pd.term_structure_source = "survival"` y `survival.method = "discrete_hazard"` —el método de la
-   puerta, y el único que publica los incumplimientos por período (`_person_period_section`)—; con
-   cualquiera de las dos hojas declarada, el paso de la provisión **requiere** además
-   `("survival", "card")` (sus `requires` dinámicos, hoy sólo `term_structure`), para que el DAG
-   detecte su ausencia antes de correr. Con `forward` o `markov` —esta última ya parte del estado
-   actual, y `forward` puede venir de ella— o con otro método de supervivencia, la corrida se
-   detiene antes de correr con un requisito por contexto. Extenderlo a `forward` es de H7, junto
-   con lo PIT.
+   `pd.term_structure_source = "survival"`, `pd.base_pd_source = "term_structure"` y
+   `survival.method = "discrete_hazard"` —lo que escribe la puerta—. El método es el único que publica
+   los incumplimientos por período (`_person_period_section`); la base `calibration` reemplaza la PD
+   a 12 meses por la calibrada transversal (`engine.py`, `_calibrated_pd_12m`), que no se puede leer
+   desde la edad de la operación (pasada 3 de Codex). Con cualquiera de las dos hojas declarada, el
+   paso de la provisión **requiere** además `("survival", "card")` (sus `requires` dinámicos, hoy
+   sólo `term_structure`), para que el DAG detecte su ausencia antes de correr. Con `forward` o
+   `markov` —esta última ya parte del estado actual, y `forward` puede venir de ella—, con la base
+   `calibration` o con otro método de supervivencia, la corrida se detiene antes de correr con un
+   requisito por contexto. Extenderlo a `forward` es de H7, junto con lo PIT.
 8. **Lo que se lee aguas abajo.** La verificación de D-ECL-0 (`FALTA-DATO-IFRS-8`: que los 12
    meses del Stage 1 tengan la duración de un año) sigue midiendo la curva publicada, antes del
    corte por operación: una operación con menos de 12 meses de vida no la dispara (B5.5.43). Las PD a
@@ -529,7 +536,8 @@ que el horizonte de la curva (toda la vida en la cola, declarada); las fechas co
 §3.5); la cuota sin `maturity_date_col` o con `ead.method = "ccf"` (requisitos por contexto); una
 cuota que no cubre el interés (no amortiza); una cuota que no paga el saldo al vencimiento (saldo
 expuesto hasta el vencimiento); tasa implícita cero (`c · n = B`: la tabla resta la cuota sin
-interés); las fechas con otro método de supervivencia (requisito por contexto); un identificador
+interés); las fechas con otro método de supervivencia o con `base_pd_source = "calibration"`
+(requisitos por contexto); un identificador
 repetido (error con los repetidos); `survival.input.id_col` y `row_id_col` distintos (requisito por
 contexto); `stage3_direct=False` con operaciones en Stage 3 (declarado, §3.1).
 
