@@ -2247,10 +2247,14 @@ function NumHead({ children }: { children: ReactNode }) {
   return <th className="py-2 pl-3 text-right font-medium">{children}</th>
 }
 
-/** Celda numérica de tabla (mono, tabular, alineada a la derecha). */
+/**
+ * Celda numérica de tabla (mono, tabular, alineada a la derecha). Sin corte de línea: una cifra y su
+ * unidad son una sola pieza (`12,80 %` se partía en dos con el panel angosto); si la tabla no cabe,
+ * la desplaza su contenedor `overflow-x-auto`.
+ */
 function NumCell({ children }: { children: ReactNode }) {
   return (
-    <td className="py-2 pl-3 text-right font-mono tabular-nums text-muted-foreground">
+    <td className="whitespace-nowrap py-2 pl-3 text-right font-mono tabular-nums text-muted-foreground">
       {children}
     </td>
   )

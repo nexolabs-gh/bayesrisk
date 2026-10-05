@@ -583,6 +583,11 @@ describe("«Validación formal» (D-SC-9) sobre una corrida real", () => {
     expect(html).toContain("Diferencia (pp)")
     // De menor a mayor grupo, aunque el motor los mande en otro orden.
     expect(html.indexOf("5,00 %")).toBeLessThan(html.indexOf("45,56 %"))
+    // La cifra no se separa de su «%» con el panel angosto: ninguna celda numérica corta línea.
+    expect(html).toMatch(/<td class="[^"]*\bwhitespace-nowrap\b[^"]*">42,14 %<\/td>/)
+    const celdasNumericas = html.match(/<td class="[^"]*\btabular-nums\b[^"]*">/g) ?? []
+    expect(celdasNumericas.length).toBeGreaterThan(0)
+    expect(celdasNumericas.filter((c) => !/\bwhitespace-nowrap\b/.test(c))).toEqual([])
     // Sin la clave (la demo, o una corrida anterior a la 2.3.0) no se pinta nada.
     expect(render(conValidacion(VALIDATION_F1))).not.toContain("Hosmer-Lemeshow por grupo")
   })
