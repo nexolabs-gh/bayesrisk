@@ -9,7 +9,11 @@
 > historia (§3.2-7); la EAD amortiza con la **cuota del contrato** y no con una tabla deducida de la
 > EIR activada por el vencimiento (§3.3); las filas sin exposición se separan justo después de
 > calcular la EAD (§3.5); y la edad es **fraccionaria**, con riesgo constante dentro de cada período
-> de la curva (§3.2-1/2). Las cifras se volvieron a medir con esas reglas.
+> de la curva (§3.2-1/2). Las cifras se volvieron a medir con esas reglas. **Pasada 2** (dos high,
+> reales, ninguno contractual): la lectura condicionada exige el método `discrete_hazard` —el único
+> que publica los incumplimientos por período— y la provisión pasa a requerir la card de la curva
+> (§3.2-7); la tabla de pagos ya no usa la EIR: su tasa es la **implícita** con que la cuota paga el
+> saldo justo al vencimiento (§3.3).
 >
 > **Base medida:** `main` = `629e422` (bayesrisk 2.5.0). Las cifras de S32 (enmienda
 > FLUJO-GUIADO-IFRS9 §12) se **reprodujeron** con sus propios scripts sobre este HEAD y casan al
@@ -57,7 +61,7 @@ dos defectos de forma:
 2. **Vida contractual y antigüedad** (D-CRE-2) y **EAD que amortiza con su cuota** (D-CRE-3): con
    tres columnas opcionales del archivo de cartera —fecha de otorgamiento, fecha de vencimiento y
    cuota— la curva se lee desde la edad de cada operación, la vida se corta en su vencimiento (IFRS 9
-   5.5.19) y la exposición sigue su tabla de pagos. Juntas: Lending Club **−14,8 %**, Freddie Mac
+   5.5.19) y la exposición sigue su tabla de pagos. Juntas: Lending Club **−13,8 %**, Freddie Mac
    **−25,9 %**. Sin esas columnas, nada cambia.
 3. **Las filas sin exposición no son operaciones** (D-CRE-5): Lending Club dice hoy «60.000
    operaciones, Stage 3: 10.191» de una cartera de 9.593 préstamos vivos sin ninguno en Stage 3.
@@ -90,7 +94,7 @@ o −37 %). Capa A (D-CRE-1, 5 y 6) en la 2.6.0 y capa B (D-CRE-2 y 3) en la 2.7
 3. **«EAD constante: −37,5 % en Lending Club, −3,8 % en Freddie Mac»** incluía el corte en el
    vencimiento. Separados: la vida contractual sola mueve **−15,5 %** en Lending Club (los
    préstamos vencen antes del horizonte de la curva) y **+5,5 %** en Freddie Mac (la vida se
-   **alarga**: 243 meses remanentes frente a 132 de la curva); la amortización encima, **−26,4 %** y
+   **alarga**: 243 meses remanentes frente a 132 de la curva); la amortización encima, **−24,9 %** y
    **−6,3 %**.
 4. **«Sin PD de origen: 255 de 9.308 operaciones de Stage 1»** se sostiene con la ventana de 12
    meses condicionada a la antigüedad; con la de vida remanente son 240, y con la PD de por vida
@@ -276,7 +280,8 @@ contractual). En la puerta, `Ecl(..., origination=None, maturity=None)`. Con ell
    período** de vida (no cero: sigue expuesta); se cuenta en «Qué revisar». Lending Club: 221
    operaciones, EAD 100.128.
 5. **La cola** (§8-6). Más allá del último período de la curva con incumplimientos observados
-   (`H_ev`, leído de `events_by_period`), el hazard de cada operación se extiende constante en **la
+   (`H_ev`, leído de `events_by_period` en la card de la curva, `("survival", "card")`, sección
+   `person_period`), el hazard de cada operación se extiende constante en **la
    media de sus hazards de los tres últimos períodos con incumplimientos** (de los que haya, si son
    menos de tres); los períodos finales sin incumplimientos dentro del horizonte se reemplazan igual.
    Sólo con alguna de las dos hojas declarada: la curva publicada no cambia. «Supuestos» dice desde
@@ -288,11 +293,15 @@ contractual). En la puerta, `Ecl(..., origination=None, maturity=None)`. Con ell
    desde la edad (hoy, desde el período 1). Sin otorgamiento, `A = 0`: la curva se lee desde el
    período 1 y sólo se corta en el vencimiento. Sin ninguna de las dos hojas, la provisión es **bit
    a bit la de hoy**.
-7. **Sólo curvas de supervivencia** (pasada 1 de Codex). Aplica con
-   `pd.term_structure_source = "survival"`, la única fuente de la que se conocen el origen de la
-   curva y sus incumplimientos por período; con `forward` o `markov` —esta última ya parte del
-   estado actual, y `forward` puede venir de ella— la corrida se detiene antes de correr con un
-   requisito por contexto. Extenderlo a `forward` es de H7, junto con lo PIT.
+7. **Sólo curvas de supervivencia por períodos discretos** (pasadas 1 y 2 de Codex). Aplica con
+   `pd.term_structure_source = "survival"` y `survival.method = "discrete_hazard"` —el método de la
+   puerta, y el único que publica los incumplimientos por período (`_person_period_section`)—; con
+   cualquiera de las dos hojas declarada, el paso de la provisión **requiere** además
+   `("survival", "card")` (sus `requires` dinámicos, hoy sólo `term_structure`), para que el DAG
+   detecte su ausencia antes de correr. Con `forward` o `markov` —esta última ya parte del estado
+   actual, y `forward` puede venir de ella— o con otro método de supervivencia, la corrida se
+   detiene antes de correr con un requisito por contexto. Extenderlo a `forward` es de H7, junto
+   con lo PIT.
 8. **Lo que se lee aguas abajo.** La verificación de D-ECL-0 (`FALTA-DATO-IFRS-8`: que los 12
    meses del Stage 1 tengan la duración de un año) sigue midiendo la curva publicada, antes del
    corte por operación: una operación con menos de 12 meses de vida no la dispara (B5.5.43). Las PD a
@@ -339,16 +348,20 @@ es lo que trae un archivo de banco y no tiene unidad que declarar mal).
 
 **Contrato.** Una hoja nueva, `provisioning_ifrs9.ead.installment_col` (la **cuota mensual** del
 contrato), default `None` (EAD constante, lo de hoy). Con ella, la EAD de cada período de una
-operación con vencimiento es **el saldo al inicio del período** que deja pagar esa cuota:
-`B_k = B(1 + i)^k − c((1 + i)^k − 1)/i` tras `k` meses, con piso cero y hasta el vencimiento, donde
-`i` es la tasa mensual efectiva equivalente a la EIR anual, `(1 + EIR)^(1/12) − 1`. La cuota es un
-dato del contrato y fija el ritmo de pago; la tasa sólo reparte cada cuota entre interés y capital:
-con la EIR tres puntos más alta, Lending Club se mueve un punto (−36,8 % frente a −37,8 %). Una
-cuota que no cubre el interés del mes **no amortiza** (un *bullet*, o sólo intereses): la EAD queda
-constante hasta el vencimiento. Una cuota que no alcanza a pagar el saldo al vencimiento (atrasos,
-pago final mayor) deja ese saldo expuesto hasta el vencimiento: Lending Club, 1.055 de 9.593. Sin
-cuota en una fila, EAD constante. `FALTA-DATO-IFRS-4` («EAD constante») sigue declarándose cuando
-alguna operación conserva la EAD constante, y deja de hacerlo cuando ninguna.
+operación con vencimiento es **el saldo al inicio del período** de la tabla de cuota fija que paga
+el saldo de hoy `B` con esa cuota `c` justo en los `n` meses que quedan hasta el vencimiento:
+`B_k = B(1 + i)^k − c((1 + i)^k − 1)/i` tras `k` meses, donde `i ≥ 0` es la **tasa mensual
+implícita** que resuelve `B · i / (1 − (1 + i)^(−n)) = c` (con `i = 0`, la resta lineal `B − c·k`).
+**No usa la EIR** (pasada 2 de Codex: la EIR incluye comisiones y no es la tasa del contrato): sólo
+datos del contrato —saldo, cuota y vencimiento—. Para una operación al día, la tasa implícita es la
+contractual: en Lending Club la diferencia con `int_rate` tiene mediana +0,01 puntos anuales y el
+81 % queda dentro de ±1 punto; lo que se aparta son operaciones adelantadas o atrasadas, que ya no
+siguen su tabla original. Si la cuota no alcanza a pagar el saldo en el plazo ni a tasa cero
+(`c · n < B`: un *bullet*, un pago final mayor, atrasos o intereses que se capitalizan), la EAD queda
+**constante hasta el vencimiento** y se cuenta en «Qué revisar» —con capitalización la EAD real
+crece y queda subestimada; se dice—: Lending Club, 1.055 de 9.593. Sin cuota en una fila, EAD
+constante. `FALTA-DATO-IFRS-4` («EAD constante») sigue declarándose cuando alguna operación conserva
+la EAD constante, y deja de hacerlo cuando ninguna.
 
 Exige `maturity_date_col` y `ead.method = "provided"` (requisitos por contexto: sin vencimiento no
 hay plazo, y la tabla parte de un saldo entregado, no de un dispuesto más CCF). En la puerta,
@@ -356,25 +369,28 @@ hay plazo, y la tabla parte de un saldo entregado, no de un dispuesto más CCF).
 Codex). `exposure_profile_col` (el panel EAD(t) entregado por la institución) sigue reservado: es
 CT-3 completo, sin evidencia todavía de que la cuota falle.
 
-**Qué NO se configura:** la frecuencia de la cuota (mensual), la tasa con que se reparte (la EIR),
-la EAD del período (saldo al inicio) ni el tratamiento de una cuota que no amortiza.
+**Qué NO se configura:** la frecuencia de la cuota (mensual), la tasa de la tabla (la implícita),
+la EAD del período (saldo al inicio) ni el tratamiento de una cuota que no paga el saldo en el plazo.
 
 **Cifras** (sobre la vida contractual de D-CRE-2, que la tabla necesita; Freddie Mac no publica la
-cuota y se midió con la que se deduce de saldo, tasa y plazo remanente):
+cuota y se midió con la que se deduce de saldo, tasa vigente y plazo remanente, cuya tasa implícita
+es la vigente):
 
 | | Vida contractual sola | + cuota | Frente al motor |
 |---|---|---|---|
-| Lending Club | 2.748.843 | 2.024.464 (−26,4 %) | **−37,8 %** |
+| Lending Club | 2.748.843 | 2.063.669 (−24,9 %) | **−36,6 %** |
 | Freddie Mac | 1.615.007 | 1.513.043 (−6,3 %) | **−1,1 %** |
 
-**D-CRE-2 + D-CRE-3:** Lending Club 2.771.978 (**−14,8 %**), Freddie Mac 1.133.294 (**−25,9 %**);
+**D-CRE-2 + D-CRE-3:** Lending Club 2.805.331 (**−13,8 %**), Freddie Mac 1.133.294 (**−25,9 %**);
 con D-CRE-1, Freddie Mac 2.632.095 (**+72,0 %**) y Lending Club igual.
 
 **Alternativas descartadas.** Una tabla de cuota fija recalculada desde la EIR y activada por el
-vencimiento (la primera versión: −38,0 % en Lending Club; pasada 1 de Codex: la EIR incluye
-comisiones y no es la tasa contractual, y un *bullet* con vencimiento quedaba amortizado sin que
-nada lo detectara). Una columna de tasa contractual (no detecta el *bullet* y la cuota la hace
-innecesaria). Pedir el panel EAD(t) (CT-3: ningún archivo de los tres lo trae).
+vencimiento (la primera versión: −38,0 % en Lending Club; pasada 1 de Codex: un *bullet* con
+vencimiento quedaba amortizado sin que nada lo detectara). La cuota con la EIR como tasa (la
+segunda: −37,8 %; pasada 2: la EIR no es la tasa contractual y el reparto entre interés y capital
+quedaba sin dato que lo verificara). Una columna de tasa contractual (una hoja más; la tasa
+implícita la reproduce en las operaciones al día, y sola no detecta el *bullet*). Pedir el panel
+EAD(t) (CT-3: ningún archivo de los tres lo trae).
 
 ### 3.4 D-CRE-4 — La PD de origen para el SICR: no se adopta; se difiere a H7
 
@@ -471,7 +487,7 @@ falla en un caso real (D-SIM-3):
 |---|---|---|
 | `origination_date_col` | `None` | sin ella, Freddie Mac −26,6 % y Lending Club +13,7 % por la antigüedad sola (§3.2) |
 | `maturity_date_col` | `None` | sin ella, la vida es la de la curva: Lending Club −15,5 %, Freddie Mac +5,5 % (§3.2) |
-| `ead.installment_col` | `None` | con la EAD constante, Lending Club −26,4 % sobre la vida contractual (§3.3) |
+| `ead.installment_col` | `None` | con la EAD constante, Lending Club −24,9 % sobre la vida contractual (§3.3) |
 
 `stage3_direct`, `id_col` y `row_id_col` ya existen. **Esenciales:** `provisioning_ifrs9` pasa de
 7 a **10** (las tres columnas, opcionales); es ampliar la única excepción al tope de 6 de SDD-31
@@ -480,9 +496,9 @@ puerta sólo expone esenciales); dejarlas sólo en «Avanzado» deja la vida con
 alcance del usuario de `Ecl`.
 
 **No se configura en la puerta:** la fórmula de Stage 3; la regla de la cola, el riesgo constante
-dentro del período y la vida de la operación vencida; la frecuencia de la cuota y la tasa con que se
-reparte; qué es una fila sin exposición; la identificación por la columna. Todo lo que el motor
-admite sigue en «Avanzado» y en `ecl.config`.
+dentro del período y la vida de la operación vencida; la frecuencia de la cuota y la tasa de la
+tabla (la implícita); qué es una fila sin exposición; la identificación por la columna. Todo lo que
+el motor admite sigue en «Avanzado» y en `ecl.config`.
 
 ## 4. Contratos de datos (I/O)
 
@@ -512,7 +528,8 @@ que el horizonte de la curva (toda la vida en la cola, declarada); las fechas co
 (error: no hay cartera que provisionar); un dato inválido en una fila con EAD = 0 (no se valida:
 §3.5); la cuota sin `maturity_date_col` o con `ead.method = "ccf"` (requisitos por contexto); una
 cuota que no cubre el interés (no amortiza); una cuota que no paga el saldo al vencimiento (saldo
-expuesto hasta el vencimiento); EIR cero (la tabla resta la cuota sin interés); un identificador
+expuesto hasta el vencimiento); tasa implícita cero (`c · n = B`: la tabla resta la cuota sin
+interés); las fechas con otro método de supervivencia (requisito por contexto); un identificador
 repetido (error con los repetidos); `survival.input.id_col` y `row_id_col` distintos (requisito por
 contexto); `stage3_direct=False` con operaciones en Stage 3 (declarado, §3.1).
 
@@ -532,8 +549,9 @@ Un control negativo por regla, en paralelo, cada uno en su copia del árbol (RUN
    de §8-6. CN: extender el último período → rojo.
 5. **D-CRE-2/3, sin columnas:** proyección canónica de F4 y de una corrida de Lending Club bit a bit
    iguales a las de la capa A salvo el hash. CN: amortizar sin cuota → rojo.
-6. **D-CRE-3:** la tabla contra la fórmula cerrada del saldo; una cuota de sólo intereses deja la EAD
-   constante. CN: amortizar la cuota que no cubre el interés → rojo.
+6. **D-CRE-3:** la tabla contra la fórmula cerrada del saldo, con la tasa implícita que reproduce
+   una tasa contractual conocida; una cuota de sólo intereses deja la EAD constante. CN: usar la EIR
+   como tasa de la tabla → rojo.
 7. **D-CRE-5:** conteos de §3.5 sobre una cartera con filas de EAD 0, una de ellas con una LGD
    inválida; la ECL igual y la corrida `done`. CN: separar las filas al publicar en vez de tras la
    EAD → rojo.
