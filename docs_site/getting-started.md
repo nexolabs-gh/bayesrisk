@@ -259,6 +259,8 @@ con el resumen, las tablas de cada etapa y las que el informe publica (exige el 
 `ecl.export("corrida.zip")` empaqueta la carpeta entera. En la interfaz, el trabajo «Provisiones
 IFRS 9 / ECL» pregunta lo mismo que la puerta —sin «cliente malo» ni muestras— y Resultados pinta
 este mismo resumen, con sus supuestos y la curva de PD por cartera.
+La guía [La provisión IFRS 9 de punta a punta](guias/provision-ifrs9.md) recorre las tres
+puertas con tus propios datos y dice cuánto mueven la cifra sus supuestos en carteras reales.
 
 ## La puerta completa: correr el preset F1
 
