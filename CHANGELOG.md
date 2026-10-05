@@ -65,6 +65,11 @@ entradas anteriores conservan el nombre con el que se publicaron.
   resumen identifican cada operación por su posición en el archivo (lo declara el registro de
   auditoría). Con el identificador como índice del archivo, como en el dataset del paquete, nada
   cambia.
+- **La PD acumulada por período y cartera** —en el resumen de la curva, la pantalla, el Excel y el
+  informe— podía atribuir la PD de una cartera a otra cuando el config declaraba la columna de
+  identificador de la curva y ésta no coincidía con el índice del archivo: la curva identifica
+  siempre por el índice, y la tabla ahora también. Si la curva trae operaciones que el archivo no
+  tiene, la tabla no se reparte por cartera y queda sólo «Toda la cartera».
 
 ### Sabido
 

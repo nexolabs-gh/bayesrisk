@@ -2612,7 +2612,10 @@ def _pd_por_periodo_y_cartera(study: Study, curva: Any, unidad: Any) -> pd.DataF
     columnas: list[str] = []
     if carteras is not None:
         base["cartera"] = base["row_id"].astype(str).map(carteras)
-        columnas = sorted(str(c) for c in base["cartera"].dropna().unique())
+        # Sólo se reparte por cartera si TODA operación de la curva tiene la suya: una curva con
+        # operaciones que el archivo no tiene no se promedia por cartera a medias.
+        if bool(base["cartera"].notna().all()):
+            columnas = sorted(str(c) for c in base["cartera"].unique())
     filas: list[dict[str, Any]] = []
     for periodo, grupo in base.groupby("period", sort=True):
         tiempo = _float(grupo["time_value"].iloc[0]) if "time_value" in grupo.columns else None
@@ -2625,20 +2628,21 @@ def _pd_por_periodo_y_cartera(study: Study, curva: Any, unidad: Any) -> pd.DataF
 
 
 def _cartera_por_operacion(study: Study) -> dict[str, str] | None:
-    """``row_id`` → cartera, con el mismo identificador que usan la curva y la provisión."""
+    """``row_id`` de la curva → cartera.
+
+    La curva de supervivencia publica ``row_id`` desde el **índice** del archivo, aunque el config
+    declare ``survival.input.id_col`` (su contrato: ``id_col`` sólo se valida). Mapear por esa
+    columna atribuía las PD a la cartera equivocada cuando no coincide con el índice (pasada 1 de
+    Codex sobre la capa C), así que el mapa se arma con el mismo índice que lee la curva.
+    """
     frame = _artifact(study, "data", "frame")
     cartera_col = _hoja(_seccion(study, "provisioning_ifrs9"), "portfolio_col")
     if not isinstance(frame, pd.DataFrame) or not isinstance(cartera_col, str):
         return None
     if cartera_col not in frame.columns:
         return None
-    id_col = _hoja(_seccion(study, "survival"), "input", "id_col")
-    ids = (
-        frame[id_col].astype(str)
-        if isinstance(id_col, str) and id_col in frame.columns
-        else pd.Series(frame.index.astype(str), index=frame.index)
-    )
-    return dict(zip(ids.tolist(), frame[cartera_col].astype(str).tolist(), strict=True))
+    ids = [str(valor) for valor in frame.index]
+    return dict(zip(ids, frame[cartera_col].astype(str).tolist(), strict=True))
 
 
 def _plazo(tiempo: float | None, unidad: Any) -> str:

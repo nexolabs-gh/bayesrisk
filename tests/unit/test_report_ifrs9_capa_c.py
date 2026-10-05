@@ -249,6 +249,48 @@ def test_la_curva_se_atribuye_a_la_provision_solo_si_la_consumio_tal_cual() -> N
     assert "escenarios" in escenarios
 
 
+def test_la_curva_por_cartera_se_alinea_por_el_identificador_que_publica_la_curva() -> None:
+    """La curva publica ``row_id`` desde el índice del archivo aunque el YAML declare
+    ``survival.input.id_col`` (su contrato). Mapear la cartera por esa columna atribuía las PD a
+    la cartera equivocada cuando la columna no coincide con el índice (pasada 1 de Codex sobre la
+    capa C): con índices [0, 1], ``loan_id`` ['1', '0'] y carteras [A, B], A recibía la PD de B.
+    """
+    from types import SimpleNamespace
+
+    from bayesrisk.guided.summaries import pd_curve_by_portfolio
+
+    frame = pd.DataFrame({"loan_id": ["1", "0"], "portfolio": ["A", "B"]}, index=[0, 1])
+    curva = pd.DataFrame(
+        {
+            "row_id": ["0", "1"],
+            "period": [1, 1],
+            "time_value": [1.0, 1.0],
+            "time_unit": ["year", "year"],
+            "pd_cumulative": [0.1, 0.9],
+        }
+    )
+    artefactos = {("data", "frame"): frame, ("survival", "term_structure"): curva}
+    study = SimpleNamespace(
+        config=SimpleNamespace(
+            survival={"input": {"id_col": "loan_id"}, "time_grid": {"time_unit": "year"}},
+            provisioning_ifrs9={"portfolio_col": "portfolio"},
+        ),
+        artifacts=SimpleNamespace(
+            has=lambda d, k: (d, k) in artefactos, get=lambda d, k: artefactos[(d, k)]
+        ),
+    )
+    tabla = pd_curve_by_portfolio(study)  # type: ignore[arg-type]
+    assert tabla is not None
+    assert tabla.loc[0, "A"] == pytest.approx(0.1)
+    assert tabla.loc[0, "B"] == pytest.approx(0.9)
+
+    # Si la curva trae operaciones que el archivo no tiene, no se reparte por cartera a medias.
+    artefactos[("survival", "term_structure")] = curva.assign(row_id=["0", "7"])
+    sin_cobertura = pd_curve_by_portfolio(study)  # type: ignore[arg-type]
+    assert sin_cobertura is not None
+    assert list(sin_cobertura.columns) == ["Período", "Plazo", "Toda la cartera"]
+
+
 # ──────────────────────────────────────────── helpers ────────────────────────────────────────────
 
 
