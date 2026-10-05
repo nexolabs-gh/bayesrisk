@@ -203,11 +203,6 @@ separar muestras: la provisión no los usa.
     motores de supervivencia y de provisiones (fuera de la garantía SemVer 2.x). Necesita el
     extra `scoring`, que trae el ajuste de la curva.
 
-!!! note "Si instalaste desde PyPI"
-    `bayesrisk.Ecl` llegó después de la 2.3.0 publicada: en esa versión `from bayesrisk import Ecl`
-    falla. Esta documentación describe el código del repositorio; lo que aún no está en PyPI lo
-    lista el [changelog](changelog.md#no-publicado).
-
 <!-- primera-provision-ifrs9:start -->
 ```python
 from pathlib import Path

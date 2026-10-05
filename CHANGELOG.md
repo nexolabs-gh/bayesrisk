@@ -7,10 +7,14 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
-## [No publicado]
+## [2.4.0] — 2026-10-05
 
 ### Corregido
 
+- **En la pantalla, una cifra ya no se separa de su unidad.** Con el panel angosto, la columna «PD
+  media» de la tabla Hosmer-Lemeshow por grupo partía el «%» a una segunda línea en ocho de sus
+  diez filas. Las celdas numéricas de Resultados ya no cortan línea: si una tabla no cabe, se
+  desplaza en horizontal.
 - **IFRS 9 ya no entrega una «ECL a 12 meses» que cubre varios años.** Con una curva de PD anual
   más corta que el horizonte de 12 meses declarado —por ejemplo, cinco años con el valor de
   fábrica `horizon_12m_periods=12`—, la ventana sumaba la curva entera y la corrida terminaba con
