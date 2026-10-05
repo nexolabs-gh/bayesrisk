@@ -116,20 +116,26 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
     }
   })
 
-  it("los esenciales visibles a la vez respetan el tope de 6 y suman 35 (cifra 2)", () => {
+  it("los esenciales visibles a la vez respetan el tope de 6 y suman 35 en el scorecard (cifra 2)", () => {
     // La estrategia de partición es UNA unión atómica: cuenta como un campo abierto aunque su
     // rama más cargada pinte cuatro esenciales; el golden de Python cuenta por rama (6 en data).
+    // `provisioning_ifrs9` es la única excepción al tope, con siete (FLUJO-GUIADO-IFRS9 §8-4).
+    const EXCEPCION_AL_TOPE: Record<string, number> = { provisioning_ifrs9: 7 }
+    const DE_IFRS9 = new Set(["survival", "provisioning_ifrs9"])
     let total = 0
+    let deIfrs9 = 0
     for (const clave of Object.keys(ESSENTIALS_BY_SECTION)) {
       const marcas = essentialPaths(seccion(clave), DEFS, clave)
       const porRama =
         clave === "data"
           ? marcas.size - 2 // `date_col`/`oot_from` y `cohort_col`/`oot_cohorts` no coinciden
           : marcas.size
-      expect(porRama).toBeLessThanOrEqual(6)
-      total += porRama
+      expect(porRama).toBeLessThanOrEqual(EXCEPCION_AL_TOPE[clave] ?? 6)
+      if (DE_IFRS9.has(clave)) deIfrs9 += porRama
+      else total += porRama
     }
     expect(total).toBe(35)
+    expect(deIfrs9).toBe(12)
   })
 
   it("eda declara cero esenciales: nada abierto y todo plegado", () => {
