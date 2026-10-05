@@ -8924,12 +8924,21 @@
             "ui_widget": "selectbox"
           },
           "horizon_12m_periods": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": 12,
-            "description": "Períodos de la term-structure que cubren 12 meses (mensual=12, trimestral=4, anual=1).",
-            "minimum": 1,
+            "description": "Períodos de la term-structure que cubren 12 meses (mensual=12, trimestral=4, anual=1). En blanco, se infieren de la unidad de la curva.",
             "title": "Períodos que cubren 12 meses",
-            "type": "integer",
             "ui_group": "PD",
+            "ui_help": "Cuántos períodos de la curva de PD forman los 12 meses del Stage 1. En blanco, el motor los infiere de la unidad de la curva —1 con años, 4 con trimestres, 12 con meses— con la misma regla que la puerta guiada, y lo deja en el registro de auditoría; si la curva no declara una unidad reconocida, la corrida se detiene y lo dice.",
+            "ui_null_label": "inferido de la unidad de la curva",
             "ui_order": 7,
             "ui_widget": "number_input"
           },

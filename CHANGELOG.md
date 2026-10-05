@@ -16,7 +16,8 @@ entradas anteriores conservan el nombre con el que se publicaron.
   cartera, y el formulario dice que esos dos bloques no aplican en vez de mostrarlos vacíos— y
   pregunta lo que la provisión sí necesita: la duración, el evento, la unidad en que se mide ese
   tiempo y el horizonte de la curva. La unidad llega en blanco: el valor de fábrica nombra un
-  índice, no una duración, y con él la provisión no sabría cuántos períodos son 12 meses. Las
+  índice, no una duración, y con él la provisión no sabría cuántos períodos son 12 meses. Esos 12
+  meses los infiere el motor de la unidad que declares, como `bayesrisk.Ecl` (abajo). Las
   secciones de la curva y de la provisión abren sus campos esenciales —cinco y siete, los mismos
   argumentos de `bayesrisk.Ecl`— y pliegan el resto en «Avanzado». Resultados pinta el resumen de
   una provisión con sus **supuestos** en lugar de «Validación técnica», las tablas adicionales de
@@ -35,6 +36,14 @@ entradas anteriores conservan el nombre con el que se publicaron.
   puertas: su firma, sus métodos y la forma de sus resúmenes sólo crecen de forma aditiva bajo
   SemVer 2.x. Sus **cifras** siguen la marca experimental de los motores que las calculan
   —supervivencia y provisiones—, como siempre.
+- **Los 12 meses del Stage 1 pueden inferirse de la unidad de la curva.** En la sección de
+  provisiones IFRS 9, «Períodos que cubren 12 meses» acepta quedar en blanco (`null`): el motor los
+  infiere de la unidad que declara la curva con la misma regla que `bayesrisk.Ecl` —1 con años, 4
+  con trimestres, 12 con meses—, lo deja en el registro de auditoría y el resumen lo dice; si la
+  curva no declara una sola unidad reconocida, la corrida se detiene y dice cómo arreglarlo. El
+  trabajo de la pantalla lo siembra así: sin eso, contestar «año» y un horizonte de 5 detenía la
+  corrida porque los 12 meses quedaban en el 12 de fábrica. Es aditivo: con un número declarado
+  —todo YAML vigente y el preset IFRS 9— la provisión y lo que registra la corrida son los mismos.
 - Una unidad vacía en la grilla de la curva se rechaza con un mensaje en palabras de negocio
   («Declara en qué unidad está la duración de la curva…») en vez del nombre del campo.
 

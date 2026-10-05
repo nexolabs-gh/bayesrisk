@@ -938,8 +938,11 @@ function NullableField(props: FieldRendererProps & { baseSchema: JsonSchema }) {
         {active ? null : (
           // "None" es el literal de Python, no una palabra que el usuario tenga por qué leer en
           // pantalla: aparecía doce veces en las secciones de Configuración. El estado ya lo dice
-          // "desactivado"; el valor nulo con que viaja al config es detalle de implementación.
-          <span className="text-xs text-muted-foreground">(desactivado)</span>
+          // "desactivado"; el valor nulo con que viaja al config es detalle de implementación. Un
+          // campo cuyo `null` significa otra cosa lo declara en su schema (`ui_null_label`).
+          <span className="text-xs text-muted-foreground">
+            ({schema.ui_null_label ?? "desactivado"})
+          </span>
         )}
       </div>
       {/* El toggle es dueño del `path`: pinta aquí su error (el hijo va con hideLabel). */}

@@ -248,6 +248,11 @@ _JOBS: tuple[dict[str, Any], ...] = (
             ("data.target", None),
             ("data.partition", None),
             ("survival.time_grid.time_unit", ""),
+            # Y los 12 meses del Stage 1 en blanco: el motor los infiere de esa unidad con la regla
+            # de `bayesrisk.Ecl` (1 con años, 12 con meses). Con el 12 de fábrica, una curva anual
+            # sumaba cinco años y la corrida se detenía con FALTA-DATO-IFRS-8 (pasada 1 de Codex
+            # sobre la capa B; OK de Cami, 2026-10-05).
+            ("provisioning_ifrs9.pd.horizon_12m_periods", None),
         ),
         "jurisdiction_code": None,
         "jurisdiction_label": None,

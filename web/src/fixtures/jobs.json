@@ -3710,6 +3710,10 @@
         [
           "survival.time_grid.time_unit",
           ""
+        ],
+        [
+          "provisioning_ifrs9.pd.horizon_12m_periods",
+          null
         ]
       ],
       "required_decisions": [

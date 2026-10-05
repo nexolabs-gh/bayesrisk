@@ -151,6 +151,8 @@ class IfrsProvisioningStep(AuditableMixin):
         declarada es una propiedad de la curva recibida y no sobrevive al cálculo: la salida ya
         publica los plazos convertidos (D-HOR-0).
         """
+        from bayesrisk.provisioning.ifrs9.engine import effective_horizon_12m
+
         card = result.card
         self.log_decision(
             regla="ifrs9_term_structure_source",
@@ -180,6 +182,16 @@ class IfrsProvisioningStep(AuditableMixin):
                 # horizonte. Sin él, el audit trail registraba los dos campos de config y no había
                 # forma de reconstruir por qué el aviso salió (o por qué no salió).
                 "soporte_periodos": _period_bounds(term_structure),
+                # FLUJO-GUIADO-IFRS9 §3.12: en blanco, el horizonte se infirió de la unidad de la
+                # curva; la clave sólo viaja entonces, así que una corrida con el número declarado
+                # registra exactamente lo de antes.
+                **(
+                    {
+                        "horizon_12m_inferido": effective_horizon_12m(None, term_structure),
+                    }
+                    if config.pd.horizon_12m_periods is None
+                    else {}
+                ),
             },
             accion="derivar_horizontes_pd",
         )

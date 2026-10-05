@@ -69,7 +69,7 @@ else:
     DataFrame: TypeAlias = Any
     Series: TypeAlias = Any
 
-__all__ = ["IfrsProvisioningEngine"]
+__all__ = ["IfrsProvisioningEngine", "effective_horizon_12m"]
 
 # Etiqueta canónica del escenario único cuando la term-structure base (survival/markov) no puebla la
 # columna ``scenario`` (queda ``None``); forward la puebla con nombres reales.
@@ -271,6 +271,10 @@ class IfrsProvisioningEngine:
         eir_arr = _frame_float_column(frame, config.ecl.eir_col, "eir", numpy)
 
         _validate_term_structure(ts, numpy)
+        # FLUJO-GUIADO-IFRS9 §3.12 (OK de Cami, 2026-10-05): un horizonte de 12 meses en blanco se
+        # infiere de la unidad de la curva, antes de que nada lo lea; declarado, no se toca. Los
+        # tres que lo usan —la PD a 12 meses, el chequeo D-ECL-0 y la ECL— reciben este número.
+        horizonte_12m = effective_horizon_12m(config.pd.horizon_12m_periods, ts)
         ts = _prepare_term_structure(ts, config, numpy)
         _check_row_coverage(row_ids, [str(value) for value in ts["row_id"].to_numpy()])
 
@@ -278,7 +282,7 @@ class IfrsProvisioningEngine:
         pit_marginal = self._resolve_pit_marginal(ts, config, numpy)
         ts = ts.assign(pd_marginal=pit_marginal)
 
-        pd_12m_by_rid, pd_life_by_rid = _weighted_horizons(ts, config, weights, pandas)
+        pd_12m_by_rid, pd_life_by_rid = _weighted_horizons(ts, horizonte_12m, weights, pandas)
         if config.pd.base_pd_source == "calibration":
             pd_12m_by_rid = _calibrated_pd_12m(calibrated, row_ids, numpy)
 
@@ -303,7 +307,7 @@ class IfrsProvisioningEngine:
         # En bloque, a diferencia de IFRS-7: el horizonte es un escalar de config. Se mide curva a
         # curva (D-ECL-0), pero basta una desajustada para que la «ECL a 12 meses» de la corrida
         # no lo sea, y la marca la gobierna `fail_on_falta_dato` para la corrida entera.
-        if _horizonte_inconmensurable(ts, config, numpy):
+        if _horizonte_inconmensurable(ts, horizonte_12m, numpy):
             row_warnings = [(*codes, _WARNING_HORIZON_MISMATCH) for codes in row_warnings]
         stage_arr, triggers, exempt = self._assign_staging(frame, pd_life_arr, pd_pit_arr, pandas)
 
@@ -317,7 +321,7 @@ class IfrsProvisioningEngine:
             eir=pandas.Series(eir_arr, index=row_ids),
             stages=pandas.Series(stage_arr, index=row_ids),
             weights=weights,
-            horizon_12m=config.pd.horizon_12m_periods,
+            horizon_12m=horizonte_12m,
         )
 
         pd_basis = "ttc" if config.pd.pit_mode == "ttc_only" else "pit"
@@ -775,6 +779,38 @@ def _ts_float(ts: DataFrame, column: str, numpy: Any) -> NDArrayFloat:
     return cast("NDArrayFloat", array)
 
 
+def effective_horizon_12m(declared: int | None, term_structure: DataFrame) -> int:
+    """Los períodos de la curva que cubren 12 meses: el declarado o, en blanco, el de su unidad.
+
+    En blanco (``horizon_12m_periods=None``, lo que siembra el trabajo «Provisiones IFRS 9» de la
+    pantalla) se infiere de la unidad que declara la curva con la misma regla que la puerta guiada
+    ``bayesrisk.Ecl``: ``round(1 / year_fraction(unidad))`` —1 con años, 4 con trimestres, 12 con
+    meses—. Una sola fuente para el motor, el paso que lo registra y el resumen que lo cuenta.
+
+    La inferencia exige que TODAS las filas declaren una unidad reconocida y que sea una sola
+    duración (``"year"`` y ``"años"`` valen lo mismo): con filas sin unidad, una unidad que
+    :mod:`bayesrisk.core.time_units` no convierte o curvas de periodicidades distintas no hay un
+    número que inferir, y se detiene con el arreglo en palabras en vez de suponer uno.
+
+    Raises
+    ------
+    IfrsConfigError
+        Si el horizonte está en blanco y la curva no permite inferirlo.
+    """
+    if declared is not None:
+        return declared
+    fracciones = {year_fraction(unidad) for unidad in _time_unit_values(term_structure)}
+    if len(fracciones) != 1 or None in fracciones:
+        raise IfrsConfigError(
+            "«Períodos que cubren 12 meses» está en blanco para inferirlo de la unidad de la "
+            "curva, y la curva no declara una sola unidad reconocida: declara la unidad de su "
+            "duración —año, semestre, trimestre, mes, semana o día— o el número de períodos que "
+            "cubren 12 meses."
+        )
+    (fraccion,) = fracciones
+    return max(1, round(1.0 / cast("float", fraccion)))
+
+
 def _time_unit_values(ts: DataFrame) -> list[str | None]:
     """Devuelve la unidad temporal declarada por fila, o ``None`` donde no la haya.
 
@@ -853,7 +889,7 @@ def _ts_row_ids_sin_unidad(ts: DataFrame) -> set[str]:
     }
 
 
-def _horizonte_inconmensurable(ts: DataFrame, config: IfrsProvisioningConfig, numpy: Any) -> bool:
+def _horizonte_inconmensurable(ts: DataFrame, horizonte: int, numpy: Any) -> bool:
     """Indica si ``horizon_12m_periods`` no es conmensurable con alguna curva recibida.
 
     Dos criterios, y **ninguno de los dos es «el horizonte alcanza el soporte»**. Ese era el modo A
@@ -892,7 +928,6 @@ def _horizonte_inconmensurable(ts: DataFrame, config: IfrsProvisioningConfig, nu
     haber uno—, no la discrepancia de calendario; un gatillo estrecho dispararía sobre curvas
     legítimas y se aprendería a ignorar.
     """
-    horizonte = config.pd.horizon_12m_periods
     for puntos, con_unidad in _curvas_por_operacion(ts, numpy).values():
         ventana = [punto for punto in puntos if punto[0] <= horizonte]
         if not ventana:
@@ -1023,13 +1058,13 @@ def _forward_weights(ts: DataFrame, scenarios_present: list[str], numpy: Any) ->
 
 def _weighted_horizons(
     ts: DataFrame,
-    config: IfrsProvisioningConfig,
+    horizon_12m: int,
     weights: dict[str, float],
     pandas: Any,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """Deriva y pondera por escenario la PD 12m/lifetime por operación (SDD-16 §7)."""
     ts_pd = ts.loc[:, ["row_id", _TS_SCENARIO_COLUMN, "period", "pd_marginal"]].copy(deep=True)
-    horizons = marginal_to_horizon(ts_pd, horizon_periods=config.pd.horizon_12m_periods)
+    horizons = marginal_to_horizon(ts_pd, horizon_periods=horizon_12m)
     weight_series = horizons[_TS_SCENARIO_COLUMN].map(weights)
     weighted = pandas.DataFrame(
         {

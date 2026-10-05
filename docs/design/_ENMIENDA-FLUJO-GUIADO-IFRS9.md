@@ -798,6 +798,24 @@ empaqueta.
 firma, sus métodos y la forma de sus resúmenes, y sus cifras siguen la marca experimental de
 `survival` y `provisioning`. Docstrings, `api.md`, la guía y el CHANGELOG lo dicen así.
 
+**Pasada 1 de Codex sobre la capa B** (un medium, real, **contractual**; elevado y decidido por
+Cami el 2026-10-05: «inferir en el motor»). La pantalla preguntaba la unidad y el horizonte, pero
+los 12 meses del Stage 1 (`provisioning_ifrs9.pd.horizon_12m_periods`) quedaban en el 12 de
+fábrica, plegados en «Avanzado»: con una curva anual de cinco períodos la corrida se detenía con
+`FALTA-DATO-IFRS-8` (medido: `failed` con unidad «year», horizonte 5 y el 12 de fábrica; antes de
+la capa B, con la unidad «period», D-ECL-0 no podía medirla y la ECL a 12 meses sumaba la curva
+entera sin aviso). `bayesrisk.Ecl` los infiere de la unidad (§3.5); la pantalla, no. Decisión: el
+campo acepta `null` = «inferir de la unidad de la curva», con la **misma** regla que la puerta
+(`round(1 / year_fraction(unidad))`) en una sola función, `effective_horizon_12m`, que usan el
+motor (una vez, antes de la PD a 12 meses, el chequeo D-ECL-0 y la ECL), el paso (que registra
+`horizon_12m_inferido` en `ifrs9_pd_horizon` sólo cuando infiere) y el resumen («…, inferido de su
+unidad»). Sin una sola unidad reconocida en toda la curva, se detiene con el arreglo en palabras.
+El trabajo siembra `null`; el formulario rotula el campo en blanco «inferido de la unidad de la
+curva» (`ui_null_label`), no «desactivado». **Aditivo:** el default sigue en 12, ningún
+`config_hash` existente se mueve, y con un número declarado la provisión y el trail son los de
+antes (F4 en blanco es bit a bit F4 con 1; `test_ifrs9_horizonte_inferido.py`). La puerta guiada
+no cambia: sigue escribiendo el número que infiere.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima (§3.2):** el archivo de cartera con fecha de corte, cartera, exposición, LGD,

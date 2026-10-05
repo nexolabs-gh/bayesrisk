@@ -57,6 +57,12 @@ export interface JsonSchema {
    */
   ui_essentials_declared?: boolean
   /**
+   * Lo que dice un campo `X | None` apagado cuando su `null` NO es «desactivado»: los 12 meses del
+   * Stage 1 en blanco se infieren de la unidad de la curva (FLUJO-GUIADO-IFRS9 §3.12). Sin la
+   * clave, el rótulo de siempre.
+   */
+  ui_null_label?: string
+  /**
    * Qué ES el valor de un campo que nombra columnas (D-PRE-3, vocabulario en :type:`ColumnRole`).
    *
    * Va declarado —y no sólo alcanzable por la firma de índice— porque es metadato que **viaja con

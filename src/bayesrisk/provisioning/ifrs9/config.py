@@ -159,14 +159,27 @@ class IfrsPdConfig(BayesRiskBaseConfig):
             "ui_order": 6,
         },
     )
-    horizon_12m_periods: int = Field(
+    horizon_12m_periods: int | None = Field(
         default=12,
         ge=1,
         title="Períodos que cubren 12 meses",
         description=(
-            "Períodos de la term-structure que cubren 12 meses (mensual=12, trimestral=4, anual=1)."
+            "Períodos de la term-structure que cubren 12 meses (mensual=12, trimestral=4, "
+            "anual=1). En blanco, se infieren de la unidad de la curva."
         ),
-        json_schema_extra={"ui_widget": "number_input", "ui_group": "PD", "ui_order": 7},
+        json_schema_extra={
+            "ui_help": (
+                "Cuántos períodos de la curva de PD forman los 12 meses del Stage 1. En blanco, el "
+                "motor los infiere de la unidad de la curva —1 con años, 4 con trimestres, 12 con "
+                "meses— con la misma regla que la puerta guiada, y lo deja en el registro de "
+                "auditoría; si la curva no declara una unidad reconocida, la corrida se detiene y "
+                "lo dice."
+            ),
+            "ui_null_label": "inferido de la unidad de la curva",
+            "ui_widget": "number_input",
+            "ui_group": "PD",
+            "ui_order": 7,
+        },
     )
     max_lifetime_periods: int | None = Field(
         default=None,

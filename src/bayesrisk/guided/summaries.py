@@ -2336,6 +2336,20 @@ _PRESUNCION_STAGE_2: Final = 30
 _PRESUNCION_STAGE_3: Final = 90
 
 
+def _horizonte_de_la_curva(study: Study, card: Mapping[str, Any]) -> int | None:
+    """Los períodos de 12 meses que el motor infirió, con la misma función que los usó."""
+    from bayesrisk.provisioning.ifrs9.engine import effective_horizon_12m
+
+    fuente = str(card.get("term_structure_source") or "")
+    curva = _artifact(study, fuente, "term_structure") if fuente else None
+    if not isinstance(curva, pd.DataFrame):
+        return None
+    try:
+        return effective_horizon_12m(None, curva)
+    except Exception:  # la corrida ya se habría detenido: el resumen no inventa el número
+        return None
+
+
 def _resumen_cartera(study: Study, context: SummaryContext) -> StageSummary:
     """«Cartera»: operaciones, fecha de corte, exposición y carteras; sin malos ni muestras."""
     frame = _artifact(study, "data", "frame")
@@ -3212,6 +3226,9 @@ def _supuestos(study: Study) -> tuple[str, ...]:
         else:
             supuestos.append("Una sola curva de PD para toda la cartera, sin covariables")
     horizonte = _int(_hoja(ifrs, "pd", "horizon_12m_periods"))
+    inferido = ifrs is not None and horizonte is None
+    if inferido:
+        horizonte = _horizonte_de_la_curva(study, card)
     if horizonte is not None:
         # La duración de esos períodos sale de la curva que consumió la provisión, en años: el
         # número de períodos no es una duración (pasada 2 de Codex).
@@ -3227,6 +3244,7 @@ def _supuestos(study: Study) -> tuple[str, ...]:
         supuestos.append(
             f"Los 12 meses del Stage 1 son {cuantos} de la curva"
             + (f" ({duracion})" if duracion else "")
+            + (", inferido de su unidad" if inferido else "")
         )
     s2 = _int(_hoja(ifrs, "staging", "dpd_sicr_backstop"))
     s3 = _int(_hoja(ifrs, "staging", "dpd_default_backstop"))

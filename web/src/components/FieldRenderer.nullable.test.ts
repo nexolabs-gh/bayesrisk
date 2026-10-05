@@ -75,3 +75,37 @@ describe("una corrida de cartera los declara «no aplica» (FLUJO-GUIADO-IFRS9 �
     expect(html).toContain("<fieldset")
   })
 })
+
+describe("un campo cuyo null no es «desactivado» lo dice (FLUJO-GUIADO-IFRS9 §3.12)", () => {
+  // Los 12 meses del Stage 1 en blanco los infiere el motor de la unidad de la curva: rotularlos
+  // «desactivado» diría que no se usan, que es lo contrario.
+  function horizonte12m(value: unknown): string {
+    const entrada = configSectionSchema(PAYLOAD, "provisioning_ifrs9")
+    if (!entrada) throw new Error("el fixture no trae la sección provisioning_ifrs9")
+    const pd = resolveRef(
+      (resolveRef(entrada.schema, DEFS).properties ?? {}).pd as JsonSchema,
+      DEFS,
+    )
+    return renderToStaticMarkup(
+      createElement(FieldRenderer, {
+        name: "horizon_12m_periods",
+        schema: (pd.properties ?? {}).horizon_12m_periods as JsonSchema,
+        path: ["provisioning_ifrs9", "pd", "horizon_12m_periods"],
+        value,
+        defs: DEFS,
+        onChange: () => undefined,
+        required: false,
+      }),
+    )
+  }
+
+  it("en blanco: «inferido de la unidad de la curva», no «desactivado»", () => {
+    const html = horizonte12m(null)
+    expect(html).toContain("(inferido de la unidad de la curva)")
+    expect(html).not.toContain("(desactivado)")
+  })
+
+  it("contracara: un anulable cualquiera sigue diciendo «desactivado»", () => {
+    expect(pintar("target", false, null)).toContain("(desactivado)")
+  })
+})
