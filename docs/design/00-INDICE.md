@@ -1164,7 +1164,8 @@ por módulo bajo SDD-31, la primera
 > [`_ENMIENDA-CASO-REAL-IFRS9.md`](_ENMIENDA-CASO-REAL-IFRS9.md), D-CRE-1…8, enmienda a SDD-16,
 > SDD-18 y [`_ENMIENDA-FLUJO-GUIADO-IFRS9.md`](_ENMIENDA-FLUJO-GUIADO-IFRS9.md) con lo que midieron
 > Lending Club y Freddie Mac: Stage 3 con PD = 1, vida contractual y antigüedad con dos fechas
-> opcionales, EAD de cuota fija, filas sin exposición fuera de los conteos, la curva identificada
+> opcionales, EAD que amortiza con la cuota del contrato, filas sin exposición fuera de los conteos,
+> la curva identificada
 > por la columna; la PD de origen se difiere a H7. 🔴 **Medido** con el motor: pasar Stage 3 de la
 > PD de la curva a LGD × EAD sube la ECL +39,8 % en el paquete y +98,0 % en Freddie Mac; la cola de
 > la curva sin incumplimientos decidía la cifra de las hipotecas que midió S32.
