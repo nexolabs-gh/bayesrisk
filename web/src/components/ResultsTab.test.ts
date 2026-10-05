@@ -1650,6 +1650,10 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     expect(html).toContain("Mora de 30 días")
     // La curva de PD por cartera: plegada en su etapa Y junto al bloque IFRS 9.
     expect(html).toContain("Curva de PD por cartera")
+    // Sin atribuirle a la provisión la curva entera: un tope lifetime la acota (pasada 3 de Codex).
+    expect(html).toContain("la curva de la que parte esta provisión")
+    expect(html).toContain("sólo usa sus períodos hasta ese tope")
+    expect(html).not.toContain("que alimentó esta provisión")
     expect(ocurrencias(html, "PD acumulada por período y cartera (promedio de las operaciones)")).toBe(2)
     expect(ocurrencias(html, "6,37 %")).toBe(2)
     // Sólo si la provisión consumió esa curva tal cual: con escenarios prospectivos o Vasicek

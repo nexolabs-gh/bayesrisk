@@ -824,6 +824,15 @@ Ahora se pinta junto al bloque IFRS 9 sólo si la tarjeta de la provisión dice 
 curva consumida tras escenarios o Vasicek es una capacidad aparte (sin artefacto que la publique
 por cartera hoy).
 
+**Pasada 3 de Codex sobre la capa B** (un medium, real, acotado, consecuencia del arreglo de la 2):
+aun con `survival` y `ttc_only`, un tope de horizonte lifetime (`max_lifetime_periods`) recorta la
+curva antes de calcular, y el bloque presentaba todos sus períodos como los que alimentaron la
+provisión. El bloque ya no se los atribuye: dice que es la curva de supervivencia de la que parte
+la provisión y que, con un tope declarado, la provisión sólo usa sus períodos hasta él. **Tope de
+tres pasadas cumplido** (1 → un medium contractual, elevado y decidido por Cami; 2 → un medium;
+3 → un medium acotado; ninguno más allá de la atribución de la curva): no hay pasada 4; el arreglo
+de la 3 tiene test y control negativo, sin revisión de Codex.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima (§3.2):** el archivo de cartera con fecha de corte, cartera, exposición, LGD,

@@ -527,9 +527,12 @@ export function ResultsPanel({
               tal como la cuenta la etapa «Curva de PD» del resumen —misma fuente que
               `Ecl.summary("survival")`, celdas ya escritas—. Sin resumen, no se fabrica. */}
           {curvaDePd.length > 0 ? (
+            // No dice que la curva ENTERA alimentó la provisión: un tope de horizonte lifetime
+            // (`max_lifetime_periods`) la acota antes de calcular, y el resumen de supervivencia
+            // conserva todos sus períodos (pasada 3 de Codex sobre la capa B).
             <ResultsSection
               title="Curva de PD por cartera"
-              description="La probabilidad de incumplimiento acumulada, período a período, que alimentó esta provisión: el promedio de las operaciones de cada cartera, en la unidad de la curva."
+              description="La probabilidad de incumplimiento acumulada que estimó la curva de supervivencia, período a período y promediada por cartera, en la unidad de la curva: la curva de la que parte esta provisión. Si declaraste un tope de horizonte lifetime, la provisión sólo usa sus períodos hasta ese tope."
             >
               {curvaDePd.map((tabla) => (
                 <SummaryTableView key={tabla.title} table={tabla} title={tabla.title} />
