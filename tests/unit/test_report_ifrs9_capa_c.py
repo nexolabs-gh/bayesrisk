@@ -291,6 +291,70 @@ def test_la_curva_por_cartera_se_alinea_por_el_identificador_que_publica_la_curv
     assert list(sin_cobertura.columns) == ["Período", "Plazo", "Toda la cartera"]
 
 
+def _estudio_falso(frame: pd.DataFrame, curva: pd.DataFrame, survival: dict[str, Any]) -> Any:
+    from types import SimpleNamespace
+
+    artefactos = {("data", "frame"): frame, ("survival", "term_structure"): curva}
+    return SimpleNamespace(
+        config=SimpleNamespace(
+            survival=survival, provisioning_ifrs9={"portfolio_col": "portfolio"}
+        ),
+        artifacts=SimpleNamespace(
+            has=lambda d, k: (d, k) in artefactos, get=lambda d, k: artefactos[(d, k)]
+        ),
+    )
+
+
+def _curva_por_segmento(pds: dict[str | None, float]) -> pd.DataFrame:
+    """Una curva de Kaplan-Meier: una fila por segmento y período, sin ``row_id``."""
+    return pd.DataFrame(
+        {
+            "row_id": [None] * len(pds),
+            "segment": list(pds),
+            "period": [1] * len(pds),
+            "time_value": [1.0] * len(pds),
+            "time_unit": ["year"] * len(pds),
+            "pd_cumulative": list(pds.values()),
+        }
+    )
+
+
+def test_una_curva_por_segmento_se_promedia_por_operaciones_no_por_segmentos() -> None:
+    """Kaplan-Meier publica una curva por segmento, sin ``row_id``. Promediar las filas de la
+    curva daba el promedio de los SEGMENTOS bajo el título «promedio de las operaciones» (pasada 2
+    de Codex sobre la capa C): con 90 operaciones en un segmento de PD 0,1 y 10 en uno de 0,9 la
+    tabla decía 0,5 en vez de 0,18. Cada operación toma la curva de su segmento."""
+    from bayesrisk.guided.summaries import pd_curve_by_portfolio
+
+    frame = pd.DataFrame(
+        {"segmento": ["s1"] * 80 + ["s2"] * 10 + ["s1"] * 10, "portfolio": ["A"] * 90 + ["B"] * 10}
+    )
+    survival = {"input": {"segment_col": "segmento"}, "time_grid": {"time_unit": "year"}}
+    estudio = _estudio_falso(frame, _curva_por_segmento({"s1": 0.1, "s2": 0.9}), survival)
+    tabla = pd_curve_by_portfolio(estudio)
+    assert tabla is not None
+    assert tabla.loc[0, "Toda la cartera"] == pytest.approx(0.18)
+    assert tabla.loc[0, "A"] == pytest.approx((80 * 0.1 + 10 * 0.9) / 90)
+    assert tabla.loc[0, "B"] == pytest.approx(0.1)
+
+    # Sin segmentos, una sola curva para toda la cartera: cada operación la toma.
+    sin_segmentos = {"input": {"segment_col": None}, "time_grid": {"time_unit": "year"}}
+    unica = pd_curve_by_portfolio(
+        _estudio_falso(frame, _curva_por_segmento({None: 0.2}), sin_segmentos)
+    )
+    assert unica is not None
+    assert unica.loc[0, "Toda la cartera"] == pytest.approx(0.2)
+
+    # Una operación cuyo segmento no tiene curva: no hay promedio que publicar.
+    huerfana = frame.assign(segmento=["s3", *frame["segmento"].tolist()[1:]])
+    assert (
+        pd_curve_by_portfolio(
+            _estudio_falso(huerfana, _curva_por_segmento({"s1": 0.1, "s2": 0.9}), survival)
+        )
+        is None
+    )
+
+
 # ──────────────────────────────────────────── helpers ────────────────────────────────────────────
 
 

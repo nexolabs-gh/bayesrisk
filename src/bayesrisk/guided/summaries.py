@@ -2605,6 +2605,8 @@ def _pd_por_periodo_y_cartera(study: Study, curva: Any, unidad: Any) -> pd.DataF
     """
     if not isinstance(curva, pd.DataFrame) or curva.empty:
         return None
+    if not bool(curva["row_id"].notna().all()):
+        return _pd_por_segmento_y_cartera(study, curva, unidad)
     base = curva[["row_id", "period", "pd_cumulative"]].copy()
     if "time_value" in curva.columns:
         base["time_value"] = curva["time_value"]
@@ -2623,6 +2625,69 @@ def _pd_por_periodo_y_cartera(study: Study, curva: Any, unidad: Any) -> pd.DataF
         for cartera in columnas:
             fila[cartera] = _float(grupo.loc[grupo["cartera"] == cartera, "pd_cumulative"].mean())
         fila["Toda la cartera"] = _float(grupo["pd_cumulative"].mean())
+        filas.append(fila)
+    return pd.DataFrame(filas)
+
+
+#: Clave del segmento de una curva sin segmentos (Kaplan-Meier sin ``segment_col``): una sola
+#: curva que toman todas las operaciones.
+_SIN_SEGMENTO: Final = "\x00toda la cartera"
+
+
+def _clave_de_segmento(valor: Any) -> str:
+    return (
+        _SIN_SEGMENTO
+        if valor is None or (isinstance(valor, float) and pd.isna(valor))
+        else str(valor)
+    )
+
+
+def _pd_por_segmento_y_cartera(
+    study: Study, curva: pd.DataFrame, unidad: Any
+) -> pd.DataFrame | None:
+    """La misma tabla cuando la curva es por SEGMENTO (Kaplan-Meier publica ``row_id`` vacío).
+
+    Promediar las filas de la curva promediaría segmentos, no operaciones (pasada 2 de Codex sobre
+    la capa C): cada operación del archivo toma la curva de su segmento —la de toda la cartera si
+    no hay ``segment_col``— y el promedio pondera por operaciones, como dice el título. Una curva
+    que mezcla filas con y sin operación, o una operación cuyo segmento no tiene curva, no tienen
+    promedio que publicar.
+    """
+    if bool(curva["row_id"].notna().any()) or "segment" not in curva.columns:
+        return None
+    frame = _artifact(study, "data", "frame")
+    if not isinstance(frame, pd.DataFrame) or frame.empty:
+        return None
+    segment_col = _hoja(_seccion(study, "survival"), "input", "segment_col")
+    if segment_col is None:
+        claves = pd.Series(_SIN_SEGMENTO, index=frame.index)
+    elif segment_col in frame.columns:
+        claves = frame[segment_col].map(_clave_de_segmento)
+    else:
+        return None
+    curva = curva.assign(_clave=curva["segment"].map(_clave_de_segmento))
+    if not set(claves.unique()) <= set(curva["_clave"].unique()):
+        return None
+    carteras = _cartera_por_operacion(study)
+    operaciones = pd.DataFrame({"clave": claves.to_numpy()})
+    columnas: list[str] = []
+    if carteras is not None:
+        operaciones["cartera"] = [carteras.get(str(i)) for i in frame.index]
+        if bool(operaciones["cartera"].notna().all()):
+            columnas = sorted(str(c) for c in operaciones["cartera"].unique())
+    filas: list[dict[str, Any]] = []
+    for periodo, grupo in curva.groupby("period", sort=True):
+        pd_por_clave = dict(
+            zip(grupo["_clave"], pd.to_numeric(grupo["pd_cumulative"]), strict=True)
+        )
+        if not set(operaciones["clave"].unique()) <= set(pd_por_clave):
+            return None
+        pd_de_cada_una = operaciones["clave"].map(pd_por_clave).astype(float)
+        tiempo = _float(grupo["time_value"].iloc[0]) if "time_value" in grupo.columns else None
+        fila: dict[str, Any] = {"Período": _int(periodo), "Plazo": _plazo(tiempo, unidad)}
+        for cartera in columnas:
+            fila[cartera] = _float(pd_de_cada_una[operaciones["cartera"] == cartera].mean())
+        fila["Toda la cartera"] = _float(pd_de_cada_una.mean())
         filas.append(fila)
     return pd.DataFrame(filas)
 

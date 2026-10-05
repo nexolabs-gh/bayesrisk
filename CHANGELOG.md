@@ -69,7 +69,9 @@ entradas anteriores conservan el nombre con el que se publicaron.
   informe— podía atribuir la PD de una cartera a otra cuando el config declaraba la columna de
   identificador de la curva y ésta no coincidía con el índice del archivo: la curva identifica
   siempre por el índice, y la tabla ahora también. Si la curva trae operaciones que el archivo no
-  tiene, la tabla no se reparte por cartera y queda sólo «Toda la cartera».
+  tiene, la tabla no se reparte por cartera y queda sólo «Toda la cartera». Con una curva por
+  segmento (Kaplan-Meier) promediaba los segmentos como si fueran operaciones; ahora cada
+  operación toma la curva de su segmento y el promedio es por operaciones, como dice su título.
 
 ### Sabido
 
