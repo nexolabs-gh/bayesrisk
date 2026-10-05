@@ -104,13 +104,15 @@ def _pagina(sc: Scorecard) -> str:
 
 
 def test_el_capitulo_es_el_primero_del_documento_y_condicional_al_scorecard() -> None:
-    """Va tras la portada (antes del índice), sin número, y sólo en corridas de scorecard: una
-    corrida IFRS 9 sin scorecard no recibe el molde del scorecard (insumo de H2)."""
+    """Va tras la portada (antes del índice), sin número, en corridas de scorecard y —desde la
+    capa C de FLUJO-GUIADO-IFRS9 (D-ECL-12)— en las de provisión IFRS 9, con SU resumen final; una
+    corrida IFRS 9 cuyo resumen es del molde del scorecard sigue sin página
+    (``test_report_ifrs9_capa_c``)."""
     spec = CHAPTER_SPECS[0]
     assert spec.id == EXECUTIVE_SUMMARY_ID
     assert spec.kind == "summary"
     assert spec.numbered is False
-    assert set(spec.requires_any_domain) == set(RESULT_DOMAINS)
+    assert set(spec.requires_any_domain) == {*RESULT_DOMAINS, "provisioning_ifrs9"}
 
 
 def test_el_informe_abre_con_la_pagina_tras_la_portada(corrida: Scorecard) -> None:

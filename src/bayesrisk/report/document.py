@@ -60,6 +60,7 @@ __all__ = [
     "PER_OBSERVATION_TABLES",
     "PIPELINE_DOMAINS",
     "RESULT_DOMAINS",
+    "SURVIVAL_PD_BY_PERIOD_TABLE",
     "VALIDATION_FAMILIES",
     "ChapterSpec",
     "domain_section_id",
@@ -166,9 +167,11 @@ PROVISION_DOMAINS: Final[tuple[str, ...]] = (
     "provisioning_cmf",
     "provisioning_internal",
 )
-# Subsección del capítulo CONDICIONAL de IFRS 9 (SDD-16). Un solo dominio: la card del step
-# ``provisioning_ifrs9`` trae staging, EAD y ECL reportada. Solo se emite si el dominio corrió.
-IFRS9_DOMAINS: Final[tuple[str, ...]] = ("provisioning_ifrs9",)
+# Subsecciones del capítulo CONDICIONAL de IFRS 9 (SDD-16). La card del step ``provisioning_ifrs9``
+# trae staging, EAD y ECL reportada; antes, la curva de PD de la etapa de supervivencia, si corrió
+# (FLUJO-GUIADO-IFRS9 D-ECL-12): es lo primero que lee un validador de la provisión, y hasta la
+# capa C sólo vivía en el anexo C.2 como card. Cada una se emite sólo si su dominio corrió.
+IFRS9_DOMAINS: Final[tuple[str, ...]] = ("survival", "provisioning_ifrs9")
 
 # Familias publicadas por el ``ValidationResult`` atómico (SDD-22), en el orden metodológico del
 # capítulo condicional. Solo se emiten las declaradas en ``card.families_run``.
@@ -211,6 +214,11 @@ METHODOLOGY_STEPS: Final[tuple[tuple[str, str], ...]] = (
     ("provisioning_ifrs9", "Ficha metodológica IFRS 9 / ECL"),
 )
 
+#: La PD acumulada por período y cartera de la curva de supervivencia. No es un artefacto del motor:
+#: la arma el builder con la misma función que la etapa «Curva de PD» del resumen
+#: (:func:`bayesrisk.guided.summaries.pd_curve_by_portfolio`), una sola fuente (D-SIM-5).
+SURVIVAL_PD_BY_PERIOD_TABLE: Final = "survival.pd_by_period"
+
 # Tablas que el CUERPO del informe muestra por dominio: las que un validador necesita leer para
 # formarse un juicio. El Anexo de tablas publica el RESTO de las tablas agregadas de la corrida —lo
 # que el cuerpo no mostró, no lo que ya mostró—: el cuerpo cura, el anexo completa. Repetir una
@@ -234,6 +242,9 @@ KEY_TABLES: Final[dict[str, tuple[str, ...]]] = {
     "provisioning": ("provisioning.comparison",),
     "provisioning_cmf": ("provisioning_cmf.summary",),
     "provisioning_internal": ("provisioning_internal.groups",),
+    # La curva de PD de una provisión (D-ECL-12): la PD acumulada por período y cartera —la misma
+    # tabla que la etapa «Curva de PD» del resumen— y los coeficientes del ajuste.
+    "survival": (SURVIVAL_PD_BY_PERIOD_TABLE, "survival.coefficients"),
     "provisioning_ifrs9": ("provisioning_ifrs9.summary",),
 }
 
@@ -319,6 +330,10 @@ _TABLE_TITLES: Final[dict[str, str]] = {
     "provisioning_cmf.summary": "Provisión estándar por categoría CMF",
     "provisioning_internal.groups": "Provisión interna por grupo homogéneo",
     "provisioning_ifrs9.summary": "Pérdida crediticia esperada (ECL) por etapa",
+    SURVIVAL_PD_BY_PERIOD_TABLE: (
+        "PD acumulada por período y cartera (promedio de las operaciones)"
+    ),
+    "survival.coefficients": "Coeficientes de la curva de PD (supervivencia)",
 }
 _BINNING_TABLE_PREFIX: Final = "binning.tables."
 #: Prefijo de los perfiles por variable del análisis exploratorio (`UnivariateResult.profiles`,
@@ -376,15 +391,17 @@ CHAPTER_SPECS: Final[tuple[ChapterSpec, ...]] = (
     # corrida —los dos estados, las cifras clave, qué revisar, las decisiones humanas con motivo
     # y dónde queda cada archivo— desde los mismos constructores que `Scorecard.summary()` y que
     # la pestaña Resultados. Va tras la portada y antes del resumen ejecutivo: es materia
-    # preliminar, sin número. CONDICIONAL any-of a los dominios del scorecard, como «Resultados»:
-    # una corrida IFRS 9 sin scorecard no recibe el molde del scorecard (insumo de H2). El builder
-    # además lo omite cuando el bundle no trae `summary` (un bundle armado a mano, sin corrida).
+    # preliminar, sin número. CONDICIONAL any-of a los dominios del scorecard y a la provisión
+    # IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-12): una provisión abre con SU resumen final —supuestos y
+    # cinco cifras de provisión—. El builder además lo omite cuando el bundle no trae `summary` (un
+    # bundle armado a mano, sin corrida) y cuando una corrida sin dominios del scorecard trae un
+    # resumen que no es el de una provisión: no recibe el molde del scorecard.
     ChapterSpec(
         id=EXECUTIVE_SUMMARY_ID,
         title="Resumen de la corrida",
         kind="summary",
         numbered=False,
-        requires_any_domain=RESULT_DOMAINS,
+        requires_any_domain=(*RESULT_DOMAINS, "provisioning_ifrs9"),
     ),
     ChapterSpec(id="toc", title="Índice", kind="toc", numbered=False),
     ChapterSpec(

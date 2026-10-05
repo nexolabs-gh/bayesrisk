@@ -224,8 +224,12 @@ _REGLA_DECISION_SIN_EFECTO: Final = REGLA_DECISION_SIN_EFECTO
 _ROTULO_DECISIONES: Final = "Decisiones con motivo"
 #: El bloque que reemplaza a «Validación técnica» en el resumen final de una provisión (§3.8), y
 #: la primera de sus cinco cifras, la que la consola repite al cerrar la corrida.
-_ROTULO_SUPUESTOS: Final = "Supuestos"
+ROTULO_SUPUESTOS: Final = "Supuestos"
+_ROTULO_SUPUESTOS: Final = ROTULO_SUPUESTOS
 _ROTULO_ECL_TOTAL: Final = "ECL total"
+#: El título de la PD acumulada por período y cartera: la tabla adicional de «Curva de PD» y, con
+#: el mismo texto, la tabla del cuerpo del informe (``report.document``, D-ECL-12).
+CURVA_POR_CARTERA_TITULO: Final = "PD acumulada por período y cartera (promedio de las operaciones)"
 
 _Kind = Literal["text", "int", "num", "num2", "num3", "pct", "bool", "pvalor"]
 
@@ -2484,17 +2488,11 @@ def _resumen_curva(study: Study, context: SummaryContext) -> StageSummary:
         )
     tabla = _tabla_de_coeficientes(terminos)
     extra: list[tuple[str, pd.DataFrame, Mapping[str, _Kind]]] = []
-    por_cartera = _pd_por_periodo_y_cartera(study, curva, unidad)
+    por_cartera = pd_curve_by_portfolio(study)
     if por_cartera is not None:
         formatos: dict[str, _Kind] = {"Período": "int"}
         formatos.update({str(c): "pct" for c in por_cartera.columns[2:]})
-        extra.append(
-            (
-                "PD acumulada por período y cartera (promedio de las operaciones)",
-                por_cartera,
-                formatos,
-            )
-        )
+        extra.append((CURVA_POR_CARTERA_TITULO, por_cartera, formatos))
     return StageSummary(
         stage="survival",
         label=STAGE_LABELS_CARTERA["survival"],
@@ -2584,6 +2582,19 @@ def _en_anios(curva: pd.DataFrame) -> pd.Series | None:
     return pd.to_numeric(curva["time_value"], errors="coerce") * pd.to_numeric(
         fracciones, errors="coerce"
     )
+
+
+def pd_curve_by_portfolio(study: Study) -> pd.DataFrame | None:
+    """La PD acumulada media por período, por cartera y para toda la cartera, o ``None``.
+
+    Es la tabla adicional de la etapa «Curva de PD» y, con la misma función, la que el informe
+    publica en el cuerpo de su capítulo IFRS 9 (D-ECL-12): una sola fuente para la puerta, la
+    pantalla, el Excel y el documento. Lee la curva que publicó ``survival`` y la unidad de ESA
+    corrida; sin curva, no hay tabla.
+    """
+    card = _card(study, "survival", "card") or {}
+    unidad = card.get("time_unit") or _hoja(_seccion(study, "survival"), "time_grid", "time_unit")
+    return _pd_por_periodo_y_cartera(study, _artifact(study, "survival", "term_structure"), unidad)
 
 
 def _pd_por_periodo_y_cartera(study: Study, curva: Any, unidad: Any) -> pd.DataFrame | None:

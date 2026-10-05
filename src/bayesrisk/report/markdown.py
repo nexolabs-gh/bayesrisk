@@ -286,8 +286,16 @@ def _summary(section: Mapping[str, Any]) -> str:
     if not final:
         return "\n".join(lines).rstrip()
     labels = summary["labels"]
-    lines.append(f"**{labels['execution']}:** {literal(str(final['execution']))}  ")
-    lines.extend([f"**{labels['validation']}:** {literal(str(final['validation']))}", ""])
+    supuestos = summary.get("assumptions")
+    if supuestos is None:
+        lines.append(f"**{labels['execution']}:** {literal(str(final['execution']))}  ")
+        lines.extend([f"**{labels['validation']}:** {literal(str(final['validation']))}", ""])
+    else:
+        # Una provisión (D-ECL-12): no tiene veredicto técnico; en su lugar, lo que la cifra supone.
+        lines.extend([f"**{labels['execution']}:** {literal(str(final['execution']))}", ""])
+        lines.extend([f"**{labels['assumptions']}**", ""])
+        lines.extend(f"- {literal(str(supuesto))}" for supuesto in supuestos)
+        lines.append("")
     lines.extend([f"**{labels['figures']}**", ""])
     if final["figures"]:
         lines.append(

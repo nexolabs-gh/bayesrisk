@@ -232,8 +232,14 @@ def _hojas_de_la_etapa(
         hojas[hoja] = tabla
         con_indice[hoja] = False
         indice.append({"Hoja": hoja, "Contenido": titulo, "Filas": len(tabla.index)})
+    adicionales = [tabla for _titulo, tabla, _formatos in resumen.extra_tables]
     for clave in sorted(k for k in tablas if k.startswith(f"{stage}.")):
         tabla = tablas[clave]
+        if any(tabla.equals(adicional) for adicional in adicionales):
+            # La tabla del informe que ES una tabla adicional del resumen —la PD por período y
+            # cartera de la curva, que el informe arma con la misma función (D-ECL-12)— ya tiene
+            # su hoja: repetirla daría dos hojas idénticas en el mismo libro.
+            continue
         hoja = _nombre_de_hoja(clave, hojas)
         hojas[hoja] = tabla
         con_indice[hoja] = True  # como los exports del informe: el índice es el identificador

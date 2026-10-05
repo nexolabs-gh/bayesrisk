@@ -462,7 +462,21 @@ def _summary_view(section: ReportSection) -> dict[str, Any] | None:
         "sin_alertas": str(payload.get("sin_alertas") or ""),
         "sin_decisiones": str(payload.get("sin_decisiones") or ""),
         "error": payload.get("error"),
+        # Una provisión (D-ECL-12) pinta sus «Supuestos» en lugar de la validación técnica.
+        "assumptions": _supuestos_de_la_pagina(payload),
     }
+
+
+def _supuestos_de_la_pagina(payload: Mapping[str, Any]) -> list[str] | None:
+    """Los supuestos de una provisión, o ``None`` si la página es la del scorecard.
+
+    Los dice la familia del payload (``"cartera"``), no la presencia de la lista: una provisión
+    sin supuestos legibles igual reemplaza la validación técnica, que no tiene.
+    """
+    final = payload.get("final")
+    if payload.get("family") != "cartera" or not isinstance(final, Mapping):
+        return None
+    return [str(supuesto) for supuesto in final.get("assumptions") or ()]
 
 
 def _placeholder_view(section: ReportSection) -> dict[str, Any] | None:

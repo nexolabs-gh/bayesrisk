@@ -302,13 +302,21 @@ def _summary(word: Any, section: Mapping[str, Any], *, points: Any) -> None:
         word.add_page_break()
         return
     labels = summary["labels"]
-    _key_value_table(
-        word,
-        [
-            (labels["execution"], str(final["execution"])),
-            (labels["validation"], str(final["validation"])),
-        ],
-    )
+    supuestos = summary.get("assumptions")
+    if supuestos is None:
+        _key_value_table(
+            word,
+            [
+                (labels["execution"], str(final["execution"])),
+                (labels["validation"], str(final["validation"])),
+            ],
+        )
+    else:
+        # Una provisión (D-ECL-12): no tiene veredicto técnico; en su lugar, lo que la cifra supone.
+        _key_value_table(word, [(labels["execution"], str(final["execution"]))])
+        _caption(word, labels["assumptions"], points=points, bold=True)
+        for supuesto in supuestos:
+            word.add_paragraph(str(supuesto), style="List Bullet")
     _caption(word, labels["figures"], points=points, bold=True)
     if final["figures"]:
         _table(word, ("Cifra", "Valor"), [tuple(fila) for fila in final["figures"]])

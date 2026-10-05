@@ -46,6 +46,7 @@ from bayesrisk.report.document import (
     PIPELINE_DOMAINS,
     PROVISION_DOMAINS,
     RESULT_DOMAINS,
+    SURVIVAL_PD_BY_PERIOD_TABLE,
     VALIDATION_FAMILIES,
     ChapterSpec,
     domain_section_id,
@@ -154,6 +155,10 @@ _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     # IFRS 9: solo el ``summary`` agregado por stage (3 filas). NUNCA ``detail``/``staging``
     # (una fila por operación): mismo criterio que provisiones.
     ("provisioning_ifrs9", "summary"),
+    # La curva de PD (D-ECL-12): los coeficientes del ajuste, una fila por término. NUNCA
+    # ``term_structure`` (una fila por operación y período); su PD por período y cartera la arma
+    # :func:`_curva_de_pd_por_cartera` con la función del resumen.
+    ("survival", "coefficients"),
 )
 #: Las claves de la puntuación fuera del ajuste (enmienda PUNTUAR-POBLACION-TTD, D-TTD-2) se
 #: publican siempre, vacías cuando la corrida no tiene esas filas. Una tabla sin filas no es
@@ -205,6 +210,7 @@ class ReportBuilder:
         tables.update(_data_card_tables(cards))
         tables.update(_atomic_result_tables(results))
         tables.update(_hl_group_tables(study, results))
+        tables.update(_curva_de_pd_por_cartera(study))
         tables.update(_extract_card_dataframes(cards))
         figures = self._collect_figures(study)
         pipeline_params = _collect_pipeline_params(study)
@@ -259,8 +265,8 @@ class ReportBuilder:
                 domain in bundle.cards for domain in spec.requires_any_domain
             ):
                 continue  # condicional any-of: ninguno de sus dominios corrió ⇒ sin capítulo
-            if spec.kind == "summary" and bundle.summary is None:
-                continue  # página ejecutiva: sin corrida (bundle armado a mano) no hay resumen
+            if spec.kind == "summary" and not _hay_pagina_ejecutiva(bundle):
+                continue  # sin corrida, o el resumen no es el de lo que corrió: no hay página
             if spec.numbered:
                 chapter_number += 1
                 number = str(chapter_number)
@@ -601,8 +607,43 @@ class ReportBuilder:
         )
 
 
+def _hay_pagina_ejecutiva(bundle: ReportInputBundle) -> bool:
+    """Si la página ejecutiva se emite: hay resumen y es el de lo que corrió.
+
+    Sin ``summary`` (un bundle armado a mano, sin corrida) no hay página. Con un dominio del
+    scorecard en las cards, la página es la del scorecard, como siempre. Sin ninguno —la cadena
+    ``data → survival → provisioning_ifrs9``—, la página sólo sale si el resumen es el de una
+    provisión (``family`` = ``"cartera"``, D-ECL-12): una corrida IFRS 9 cuyo config arrastra
+    secciones del scorecard que no corrieron tendría el resumen del molde del scorecard, y no lo
+    recibe.
+    """
+    if bundle.summary is None:
+        return False
+    if any(domain in bundle.cards for domain in RESULT_DOMAINS):
+        return True
+    return bundle.summary.get("family") == _FAMILIA_CARTERA
+
+
+#: La familia de resúmenes de una provisión (``bayesrisk.guided.summaries.family_of``).
+_FAMILIA_CARTERA: Final = "cartera"
+
+
 def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]:
     """Prosa determinista del capítulo; los capítulos sin prosa propia devuelven vacío."""
+    if chapter_id == EXECUTIVE_SUMMARY_ID and (bundle.summary or {}).get("family") == (
+        _FAMILIA_CARTERA
+    ):
+        return (
+            "Lo que cuenta la corrida al terminar, con la misma fuente que la puerta guiada y la "
+            "pestaña Resultados: el estado de la ejecución, los supuestos de los que depende la "
+            "provisión, sus cifras clave, qué revisar, las decisiones humanas con su motivo y "
+            "dónde queda cada archivo. Una provisión no tiene veredicto técnico del motor: el "
+            "juicio sobre ella lo firma el validador en el resumen ejecutivo.",
+            "Las rutas son las que el informe escribió al generarse: si la corrida se copia o se "
+            "archiva después —desde la interfaz, o al apartar una corrida anterior—, los archivos "
+            "se buscan en su carpeta de destino, y el registro de auditoría deja constancia de "
+            "cada uno que se escribió.",
+        )
     if chapter_id == EXECUTIVE_SUMMARY_ID:
         return (
             "Lo que cuenta la corrida al terminar, con la misma fuente que la puerta guiada y la "
@@ -665,12 +706,14 @@ def _run_summary(study: Study, config: ReportConfig) -> dict[str, Any]:
     """
     from bayesrisk.guided.summaries import (
         RESUMEN_FINAL_ROTULOS,
+        ROTULO_SUPUESTOS,
         SIN_ALERTAS,
         SIN_DECISIONES,
         SummaryContext,
         build_final_summary,
         build_stage_summaries,
         decision_lines_from_preamble,
+        family_of,
         partition_label_from_config,
         source_label_from_config,
     )
@@ -682,6 +725,13 @@ def _run_summary(study: Study, config: ReportConfig) -> dict[str, Any]:
         "sin_decisiones": SIN_DECISIONES,
         "error": None,
     }
+    if family_of(study.config) == _FAMILIA_CARTERA:
+        # Una provisión (D-ECL-12): la página dice sus «Supuestos» en lugar de la validación
+        # técnica, que no tiene. Se declara aunque el resumen no se arme, para que el capítulo
+        # diga por qué no hay resumen en vez de omitirse. El payload del scorecard no gana
+        # claves: su informe queda byte a byte.
+        payload["family"] = _FAMILIA_CARTERA
+        payload["labels"]["assumptions"] = ROTULO_SUPUESTOS
     try:
         contexto = SummaryContext(
             project_dir=None,
@@ -1003,6 +1053,25 @@ def _hl_group_tables(study: Study, results: Mapping[str, Any]) -> dict[str, Data
             registros, _HL_GROUP_REPORT_COLUMNS
         )
     return tablas
+
+
+def _curva_de_pd_por_cartera(study: Study) -> dict[str, DataFrameLike]:
+    """La PD acumulada por período y cartera de la curva, para el capítulo IFRS 9 (D-ECL-12).
+
+    La arma la MISMA función que la tabla adicional de la etapa «Curva de PD» del resumen
+    (:func:`bayesrisk.guided.summaries.pd_curve_by_portfolio`, import perezoso: arrastra los
+    mapas de rótulos de los dominios): el informe no recalcula la curva, la publica como la lee la
+    persona en la puerta, la pantalla y el Excel. Sin curva —survival no corrió, o publicó otra
+    forma—, no hay tabla y la subsección no la anuncia.
+    """
+    if not study.artifacts.has("survival", "term_structure"):
+        return {}
+    from bayesrisk.guided.summaries import pd_curve_by_portfolio
+
+    tabla = pd_curve_by_portfolio(study)
+    if tabla is None or tabla.empty:
+        return {}
+    return {SURVIVAL_PD_BY_PERIOD_TABLE: tabla}
 
 
 def _required_mapping(

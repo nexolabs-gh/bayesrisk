@@ -29,6 +29,16 @@ entradas anteriores conservan el nombre con el que se publicaron.
   dominio, celda a celda iguales, con la misma protección de celdas. El número de cada libro es la
   posición de su etapa y no se mueve en una corrida parcial. `ecl.export("corrida.zip")` lo
   empaqueta con la corrida. El Excel del scorecard no cambia.
+- **El informe de una provisión abre con su resumen y publica la curva.** Tras la portada, la
+  página «Resumen de la corrida» cuenta la provisión como la puerta guiada y la pantalla: la
+  ejecución, sus **supuestos** en lugar de «Validación técnica», sus cinco cifras, qué revisar, las
+  decisiones humanas con su motivo y dónde quedó cada archivo, en el HTML, el Word y la fuente
+  editable. El capítulo IFRS 9 gana, antes de la ECL por etapas, la subsección de la curva de PD
+  con la PD acumulada por período y cartera —la misma tabla que `ecl.summary("survival")`— y los
+  coeficientes del ajuste con su error estándar y p-valor; dice si la provisión consumió esa curva
+  tal cual, y con escenarios prospectivos o el ajuste Vasicek dice que no. El anexo de parámetros
+  conserva la ficha de la curva. `02 Curva de PD.xlsx` suma los coeficientes del informe y no
+  repite la PD por cartera, que ya trae. El informe del scorecard no cambia.
 
 ### Cambiado
 
@@ -52,8 +62,6 @@ entradas anteriores conservan el nombre con el que se publicaron.
 - La ficha del modelo registra la decisión `exclude` sobre la curva con la lista de covariables
   que **quedan**, no con la que se retiró; el registro de auditoría y el resumen final sí la
   nombran.
-- El informe de una provisión todavía no abre con la página «Resumen de la corrida» ni publica la
-  curva de PD por cartera en su cuerpo: llegan con el informe de la puerta guiada de IFRS 9.
 - Resultados pinta la curva de PD por cartera junto al bloque IFRS 9 sólo cuando la provisión
   consumió la curva de supervivencia tal cual (a lo largo del ciclo). Con escenarios prospectivos
   o el ajuste Vasicek la provisión consume otra curva, que la pantalla todavía no muestra; la de

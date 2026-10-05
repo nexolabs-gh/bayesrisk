@@ -16,10 +16,25 @@
   {% elif section.summary.final %}
   {% set final = section.summary.final %}
   {% set labels = section.summary.labels %}
+  {% if section.summary.assumptions is not none %}
+  {# Una provisión (FLUJO-GUIADO-IFRS9 D-ECL-12): no tiene veredicto técnico; en su lugar, lo que
+     la cifra supone, leído del config y de los artefactos de ESA corrida. #}
+  <dl class="summary-states">
+    <dt>{{ labels.execution }}</dt><dd>{{ final.execution }}</dd>
+  </dl>
+
+  <h4>{{ labels.assumptions }}</h4>
+  <ul class="summary-assumptions">
+    {% for supuesto in section.summary.assumptions %}
+    <li>{{ supuesto }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
   <dl class="summary-states">
     <dt>{{ labels.execution }}</dt><dd>{{ final.execution }}</dd>
     <dt>{{ labels.validation }}</dt><dd>{{ final.validation }}</dd>
   </dl>
+  {% endif %}
 
   <h4>{{ labels.figures }}</h4>
   {% if final.figures %}
@@ -30,6 +45,8 @@
       {% endfor %}
     </tbody>
   </table>
+  {% elif section.summary.assumptions is not none %}
+  <p class="muted">Las cifras clave no están disponibles: esta corrida no publicó la provisión.</p>
   {% else %}
   <p class="muted">Las cifras clave no están disponibles: esta corrida no evaluó desempeño ni estabilidad.</p>
   {% endif %}

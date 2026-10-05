@@ -1022,6 +1022,8 @@ def results_body(bundle: ReportInputBundle, domain: str) -> tuple[str, ...]:
         return _results_provisioning_internal(bundle)
     if domain == "provisioning_ifrs9":
         return _results_provisioning_ifrs9(bundle)
+    if domain == "survival":
+        return _results_survival(bundle)
     return ()
 
 
@@ -2600,6 +2602,64 @@ def ifrs9_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
         "El cálculo IFRS 9 es una función experimental: los números son trazables y "
         "deterministas, pero su interfaz puede cambiar en próximas versiones de la librería."
     )
+    return tuple(paragraphs)
+
+
+def _results_survival(bundle: ReportInputBundle) -> tuple[str, ...]:
+    """Subsección de la curva de PD (D-ECL-12): qué muestran sus tablas y si la provisión la usó.
+
+    Describe la curva que estimó la etapa de supervivencia, no la que consumió la provisión: sólo
+    se le atribuye a la provisión si ésta la leyó de la supervivencia sin transformarla (a lo largo
+    del ciclo). Con escenarios prospectivos o con el ajuste de Vasicek la provisión consumió OTRA
+    curva, y con un tope de horizonte de vida sólo sus períodos hasta él (la misma regla que la
+    pantalla, pasadas 2 y 3 de Codex sobre la capa B). Cada tabla se anuncia sólo si está.
+    """
+    from bayesrisk.report.document import SURVIVAL_PD_BY_PERIOD_TABLE  # perezoso: ciclo
+
+    if _card(bundle, "survival") is None:
+        return ()
+    paragraphs: list[str] = [
+        "La curva de PD de por vida que estimó el modelo de supervivencia sobre la historia de "
+        "incumplimientos de la propia cartera."
+    ]
+    if SURVIVAL_PD_BY_PERIOD_TABLE in bundle.tables:
+        paragraphs.append(
+            "La primera tabla da la PD acumulada al cierre de cada período de la curva, como "
+            "promedio simple de las operaciones de cada cartera y de toda la cartera: no pondera "
+            "por exposición."
+        )
+    if "survival.coefficients" in bundle.tables:
+        paragraphs.append(
+            "La tabla de coeficientes da el ajuste: un coeficiente positivo sube la "
+            "probabilidad de incumplir en cada período y uno negativo la baja; los términos de "
+            "período son el nivel base de cada uno, y el error estándar y el p-valor dicen cuán "
+            "distinguible de cero es cada efecto."
+        )
+    provision = _card(bundle, "provisioning_ifrs9")
+    if provision is not None:
+        term_source = str(provision.get("term_structure_source") or "")
+        pit_mode = str(provision.get("pit_mode") or "")
+        if term_source == "survival" and pit_mode == "ttc_only":
+            atribucion = (
+                "La provisión de este capítulo parte de esta curva tal cual, a lo largo del ciclo."
+            )
+            pd_config = _mapping(
+                _mapping(bundle.pipeline_params.get("provisioning_ifrs9")).get("pd")
+            )
+            tope = _int(pd_config.get("max_lifetime_periods"))
+            if tope is not None:
+                atribucion += (
+                    f" Con el tope de horizonte de vida declarado, sólo usa sus períodos hasta el "
+                    f"{_miles(tope)}."
+                )
+            paragraphs.append(atribucion)
+        else:
+            fuente = _IFRS9_TERM_SOURCE_LABELS.get(term_source, f"la fuente '{term_source}'")
+            pit = _IFRS9_PIT_MODE_LABELS.get(pit_mode, pit_mode)
+            paragraphs.append(
+                "La provisión de este capítulo no usa esta curva tal cual: su PD por período "
+                f"proviene de {fuente}, en modalidad {pit}."
+            )
     return tuple(paragraphs)
 
 

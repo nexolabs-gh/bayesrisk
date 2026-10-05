@@ -185,17 +185,24 @@ def test_cada_tabla_del_informe_esta_celda_a_celda_en_el_libro_de_su_etapa(
     for stage, nombre in stage_books("cartera").items():
         indice = _indice(libros[nombre])
         for clave in sorted(k for k in tablas if k.startswith(f"{stage}.")):
-            referencia = tmp_path / f"{clave}.xlsx"
-            write_workbook({"t": tablas[clave]}, referencia, index=True)
+            # Como la escribe el informe (con índice) o, si es la tabla adicional del resumen que
+            # el informe arma con la misma función —la PD por período y cartera, D-ECL-12—, como
+            # su hoja de tabla adicional (sin índice): una sola vez en el libro.
+            referencias = []
+            for con_indice in (True, False):
+                referencia = tmp_path / f"{clave}-{con_indice}.xlsx"
+                write_workbook({"t": tablas[clave]}, referencia, index=con_indice)
+                referencias.append(_filas(referencia, "t"))
             hojas = [
                 str(h)
                 for h, filas in zip(indice["Hoja"], indice["Filas"], strict=True)
                 if filas == len(tablas[clave].index)
-                and _filas(libros[nombre], str(h)) == _filas(referencia, "t")
+                and _filas(libros[nombre], str(h)) in referencias
             ]
-            assert hojas, (stage, clave)
+            assert len(hojas) == 1, (stage, clave, hojas)
             comparadas += 1
-    assert comparadas >= 1, sorted(tablas)
+    # Las de la curva (PD por período y cartera, coeficientes) y la de la provisión.
+    assert comparadas >= 3, sorted(tablas)
 
 
 def test_una_corrida_parcial_deja_los_primeros_libros_sin_mover_los_numeros(
