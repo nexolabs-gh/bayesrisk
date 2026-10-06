@@ -293,18 +293,19 @@ class IfrsProvisioningEngine:
         portfolios = _frame_column_texts(frame, config.portfolio_col, "portfolio_col")
         eir_arr = _frame_float_column(frame, config.ecl.eir_col, "eir", numpy)
 
+        if sin_exposicion and "row_id" in ts.columns:
+            # D-CRE-5: la curva de una fila sin exposición tampoco se valida ni decide el horizonte
+            # (pasada 1 de Codex): se retira antes que nada, y la cobertura y la malla de
+            # componentes van contra las activas. La curva de una fila que el archivo no trae no
+            # se retira: sigue siendo un error de cobertura.
+            ts_ids = [str(value) for value in ts["row_id"].to_numpy()]
+            ts = ts.loc[[rid not in sin_exposicion for rid in ts_ids]].copy(deep=True)
         _validate_term_structure(ts, numpy)
         # FLUJO-GUIADO-IFRS9 §3.12 (OK de Cami, 2026-10-05): un horizonte de 12 meses en blanco se
         # infiere de la unidad de la curva, antes de que nada lo lea; declarado, no se toca. Los
         # tres que lo usan —la PD a 12 meses, el chequeo D-ECL-0 y la ECL— reciben este número.
         horizonte_12m = effective_horizon_12m(config.pd.horizon_12m_periods, ts)
         ts = _prepare_term_structure(ts, config, numpy)
-        if sin_exposicion:
-            # D-CRE-5: la cobertura de la curva y la malla de componentes van contra las activas.
-            # La curva de una fila sin exposición sobra; la de una fila que el archivo no trae,
-            # no: sigue siendo un error de cobertura.
-            ts_ids = [str(value) for value in ts["row_id"].to_numpy()]
-            ts = ts.loc[[rid not in sin_exposicion for rid in ts_ids]].copy(deep=True)
         _check_row_coverage(row_ids, [str(value) for value in ts["row_id"].to_numpy()])
 
         weights = self._resolve_weights(ts, numpy)

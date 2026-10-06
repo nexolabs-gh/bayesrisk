@@ -2378,14 +2378,14 @@ def _resumen_cartera(study: Study, context: SummaryContext) -> StageSummary:
         else (_int(card.get("n_rows")) if card is not None else None) or 0
     )
     # CASO-REAL-IFRS9 D-CRE-5 (§3.5): una fila con exposición 0 no es una operación de la cartera
-    # —sólo aporta historia a la curva— y la provisión no la cuenta. «Cartera» dice lo mismo, con
-    # la misma regla (el cero exacto), cuando la exposición es una columna del archivo.
+    # —sólo aporta historia a la curva— y la provisión no la cuenta. «Cartera» dice lo mismo.
     historia = 0
-    if isinstance(frame, pd.DataFrame) and isinstance(ead_col, str) and ead_col in frame.columns:
-        sin_exposicion = pd.to_numeric(frame[ead_col], errors="coerce").eq(0)
-        historia = int(sin_exposicion.sum())
-        if historia:
-            frame = frame.loc[~sin_exposicion.to_numpy()]
+    if isinstance(frame, pd.DataFrame):
+        con_exposicion = _filas_con_exposicion(study, frame, ifrs, ead_col)
+        if con_exposicion is not None:
+            historia = int((~con_exposicion).sum())
+            if historia:
+                frame = frame.loc[con_exposicion]
     n_operaciones = n_filas - historia
     partes = [f"{_miles(n_operaciones)} {_plural(n_operaciones, 'operación', 'operaciones')}"]
     if historia:
@@ -2431,6 +2431,32 @@ def _resumen_cartera(study: Study, context: SummaryContext) -> StageSummary:
             "Participación en la exposición": "pct",
         },
     )
+
+
+def _filas_con_exposicion(study: Study, frame: pd.DataFrame, ifrs: Any, ead_col: str | None) -> Any:
+    """Qué filas del archivo son operaciones de la cartera (EAD > 0), o ``None`` si no se sabe.
+
+    La fuente es la provisión de ESA corrida —las operaciones de su detalle, que el motor separó
+    con la EAD que calculó— y, antes de que corra, la columna de exposición entregada, que es la
+    misma regla (pasada 1 de Codex sobre la capa A). Con la EAD por CCF y sin provisión todavía,
+    no se sabe: no se afirma nada.
+    """
+    detalle = _artifact(study, "provisioning_ifrs9", "detail")
+    if isinstance(detalle, pd.DataFrame) and "row_id" in detalle.columns:
+        row_id_col = _hoja(ifrs, "row_id_col")
+        if isinstance(row_id_col, str):
+            if row_id_col not in frame.columns:
+                return None
+            ids = [str(valor) for valor in frame[row_id_col].tolist()]
+        else:
+            ids = [str(valor) for valor in frame.index]
+        activas = {str(valor) for valor in detalle["row_id"].tolist()}
+        mascara = pd.Series([i in activas for i in ids], index=frame.index).to_numpy()
+        # Un detalle que no calza fila a fila con el archivo no es de este archivo: no se cuenta.
+        return mascara if int(mascara.sum()) == len(activas) else None
+    if isinstance(ead_col, str) and ead_col in frame.columns:
+        return pd.to_numeric(frame[ead_col], errors="coerce").ne(0).to_numpy()
+    return None
 
 
 def _tabla_por_cartera(frame: pd.DataFrame, cartera_col: str, ead_col: str | None) -> pd.DataFrame:

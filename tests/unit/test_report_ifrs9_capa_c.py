@@ -250,35 +250,47 @@ def test_la_curva_se_atribuye_a_la_provision_solo_si_la_consumio_tal_cual() -> N
 
 
 def test_la_curva_por_cartera_se_alinea_por_el_identificador_que_publica_la_curva() -> None:
-    """La curva publica ``row_id`` desde el índice del archivo aunque el YAML declare
-    ``survival.input.id_col`` (su contrato). Mapear la cartera por esa columna atribuía las PD a
-    la cartera equivocada cuando la columna no coincide con el índice (pasada 1 de Codex sobre la
-    capa C): con índices [0, 1], ``loan_id`` ['1', '0'] y carteras [A, B], A recibía la PD de B.
+    """La cartera de cada operación se lee con el MISMO identificador que publica la curva.
+
+    Desde CASO-REAL-IFRS9 D-CRE-6 la curva publica el valor de ``survival.input.id_col`` y, sin
+    él, el índice del archivo. Mapear por el otro atribuía las PD a la cartera equivocada cuando
+    la columna no coincide con el índice (pasada 1 de Codex sobre la capa C de FLUJO-GUIADO-IFRS9):
+    con índices [0, 1], ``loan_id`` ['1', '0'] y carteras [A, B], A recibía la PD de B.
     """
     from types import SimpleNamespace
 
     from bayesrisk.guided.summaries import pd_curve_by_portfolio
 
     frame = pd.DataFrame({"loan_id": ["1", "0"], "portfolio": ["A", "B"]}, index=[0, 1])
+    # Con `id_col`, la curva publica `loan_id`: la operación «1» (cartera A) tiene PD 0,1.
     curva = pd.DataFrame(
         {
-            "row_id": ["0", "1"],
+            "row_id": ["1", "0"],
             "period": [1, 1],
             "time_value": [1.0, 1.0],
             "time_unit": ["year", "year"],
             "pd_cumulative": [0.1, 0.9],
         }
     )
+    survival: dict[str, Any] = {"input": {"id_col": "loan_id"}, "time_grid": {"time_unit": "year"}}
     artefactos = {("data", "frame"): frame, ("survival", "term_structure"): curva}
     study = SimpleNamespace(
         config=SimpleNamespace(
-            survival={"input": {"id_col": "loan_id"}, "time_grid": {"time_unit": "year"}},
+            survival=survival,
             provisioning_ifrs9={"portfolio_col": "portfolio"},
         ),
         artifacts=SimpleNamespace(
             has=lambda d, k: (d, k) in artefactos, get=lambda d, k: artefactos[(d, k)]
         ),
     )
+    tabla = pd_curve_by_portfolio(study)  # type: ignore[arg-type]
+    assert tabla is not None
+    assert tabla.loc[0, "A"] == pytest.approx(0.1)
+    assert tabla.loc[0, "B"] == pytest.approx(0.9)
+
+    # Sin `id_col`, la curva publica el índice: la fila 0 (cartera A) es la de `row_id` «0».
+    survival["input"]["id_col"] = None
+    artefactos[("survival", "term_structure")] = curva.assign(row_id=["0", "1"])
     tabla = pd_curve_by_portfolio(study)  # type: ignore[arg-type]
     assert tabla is not None
     assert tabla.loc[0, "A"] == pytest.approx(0.1)

@@ -187,7 +187,9 @@ class IfrsProvisioningStep(AuditableMixin):
                 # registra exactamente lo de antes.
                 **(
                     {
-                        "horizon_12m_inferido": effective_horizon_12m(None, term_structure),
+                        "horizon_12m_inferido": effective_horizon_12m(
+                            None, _curva_de_las_activas(term_structure, result)
+                        ),
                     }
                     if config.pd.horizon_12m_periods is None
                     else {}
@@ -374,6 +376,17 @@ def _as_calibrated_dataframe(value: object, pd: Any, artifact: str) -> DataFrame
         "base_pd_source='calibration' exige un artefacto de PD calibrada pandas.DataFrame: "
         f"artefacto='{artifact}', tipo observado={type(value).__name__}."
     )
+
+
+def _curva_de_las_activas(term_structure: DataFrame, result: IfrsProvisionResult) -> DataFrame:
+    """La curva de las operaciones que provisionó el motor (CASO-REAL-IFRS9 D-CRE-5).
+
+    El motor infiere los 12 meses de la curva SIN las filas de exposición 0; el registro los
+    infiere de la misma, o una fila cerrada con otra unidad haría morir el paso después de calcular.
+    """
+    activas = {str(rid) for rid in cast(Any, result.detail["row_id"]).tolist()}
+    ids = [str(rid) for rid in cast(Any, term_structure["row_id"]).tolist()]
+    return term_structure.loc[[rid in activas for rid in ids]]
 
 
 def _period_bounds(term_structure: DataFrame) -> dict[str, int]:

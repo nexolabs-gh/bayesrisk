@@ -450,3 +450,86 @@ def test_el_capitulo_ifrs9_dice_las_filas_de_historia_solo_si_las_hay() -> None:
         "Otras 2 filas del archivo, sin exposición al corte, sólo aportan historia a la curva "
         "de PD." in con_historia
     )
+
+
+# ───────────────────── pasada 1 de Codex sobre el código de la capa A ─────────────────────
+
+
+def test_la_curva_de_una_fila_sin_exposicion_tampoco_se_valida() -> None:
+    """Codex p1 (high): la curva de un préstamo cerrado no decide la validez ni el horizonte.
+
+    La fila cerrada trae en su curva una PD fuera de [0, 1] y otra unidad: antes de separarla,
+    la validación de la curva y la inferencia de los 12 meses abortaban la provisión de las vivas.
+    """
+    frame = _cartera()
+    curva = _curva(list(frame.index))
+    cerrada = curva["row_id"] == "h1"
+    curva.loc[cerrada, "pd_marginal"] = 1.5
+    curva.loc[cerrada, "time_unit"] = "month"
+    cfg = _cfg()
+    cfg = cfg.model_copy(update={"pd": cfg.pd.model_copy(update={"horizon_12m_periods": None})})
+    resultado = IfrsProvisioningEngine.from_config(cfg).calculate(
+        frame, term_structure=curva, as_of_date="2026-03-31"
+    )
+    assert resultado.card.n_rows == 3
+    assert resultado.card.n_rows_without_exposure == 2
+
+
+def test_el_paso_registra_el_horizonte_de_la_curva_que_uso_el_motor() -> None:
+    """El registro de auditoría infiere los 12 meses de la misma curva que el motor (las activas):
+    con la curva de una fila cerrada en otra unidad, el paso no muere después de calcular."""
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.core.study import Study
+
+    frame = _cartera().assign(as_of_date="2026-03-31")
+    curva = _curva(list(frame.index))
+    curva.loc[curva["row_id"] == "h2", "time_unit"] = "month"
+    cfg = _cfg()
+    cfg = cfg.model_copy(update={"pd": cfg.pd.model_copy(update={"horizon_12m_periods": None})})
+    study = Study(BayesRiskConfig(provisioning_ifrs9=cfg))
+    study.artifacts.set("data", "frame", frame)
+    study.artifacts.set("survival", "term_structure", curva)
+    study.run(steps=["provisioning_ifrs9"])
+    assert study.run_context.status == "done", study.run_context.error
+    assert study.artifacts.get("provisioning_ifrs9", "card").n_rows == 3
+
+
+def test_cartera_cuenta_lo_que_separo_el_motor_aunque_la_ead_no_sea_una_columna() -> None:
+    """Codex p1 (medium): «Cartera» cuenta las operaciones que la provisión tomó, no las que
+    deduce de la columna cruda: con la EAD por CCF no hay columna de exposición que mirar."""
+    from types import SimpleNamespace
+
+    from bayesrisk.guided.summaries import SummaryContext, _resumen_cartera
+    from bayesrisk.ui.presets import ifrs9_preset
+
+    cfg = ifrs9_preset()["config"]
+    cfg["provisioning_ifrs9"]["ead"]["method"] = "ccf"
+    cfg["provisioning_ifrs9"]["ead"]["ccf_value"] = 0.5
+    frame = pd.DataFrame(
+        {
+            "as_of_date": ["2026-03-31"] * 5,
+            "portfolio": ["consumo", "consumo", "tarjetas", "consumo", "tarjetas"],
+            "drawn": [800.0, 0.0, 500.0, 0.0, 900.0],
+            "credit_limit": [1_000.0, 0.0, 500.0, 0.0, 1_100.0],
+        },
+        index=pd.Index(["v1", "h1", "v2", "h2", "v3"], name="loan_id"),
+    )
+    detalle = pd.DataFrame({"row_id": ["v1", "v2", "v3"], "stage": [1, 2, 3]})
+    artefactos = {
+        ("data", "frame"): frame,
+        ("provisioning_ifrs9", "detail"): detalle,
+        ("provisioning_ifrs9", "card"): {"n_rows": 3, "n_rows_without_exposure": 2},
+    }
+    study = SimpleNamespace(
+        config=SimpleNamespace(**cfg),
+        artifacts=SimpleNamespace(
+            has=lambda d, k: (d, k) in artefactos, get=lambda d, k: artefactos[(d, k)]
+        ),
+    )
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="x", partition_label="")
+    resumen = _resumen_cartera(study, contexto)
+    assert resumen.lines[1].startswith(
+        "5 filas: 3 operaciones con exposición al corte; 2 sin exposición sólo aportan historia "
+        "a la curva · fecha de corte"
+    ), resumen.lines[1]
+    assert int(resumen.table["Operaciones"].sum()) == 3
