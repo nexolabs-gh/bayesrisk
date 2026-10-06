@@ -41,8 +41,9 @@ const F4_ID = "f4-ifrs9-retail"
 // confianza de Kaplan-Meier. Los dos goldens fallaron a la vez —éste y el de Python—, que es
 // exactamente lo que se les pide: son el par que detecta un fixture de demo servido con un
 // config distinto del que trae el paquete instalado.
+// Recalculado en 2.6.0 por CASO-REAL-IFRS9 D-CRE-1: el preset provisiona Stage 3 con LGD × EAD.
 const F4_CONFIG_HASH =
-  "013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6"
+  "a3b7cf9b485cb194807b94017915ddc76df2fd7680aeb79bd501a03c05320ee9"
 
 beforeEach(() => {
   // Cada test arranca con el preset activo en su default (F1): el estado de módulo no se filtra.
@@ -103,7 +104,7 @@ describe("elegir el preset IFRS 9 (F4) rastrea todo el set", () => {
     expect(results.provisioning_ifrs9).not.toBeNull()
     const ifrs9 = results.provisioning_ifrs9
     expect(ifrs9).not.toBeNull()
-    expect(Math.round(ifrs9?.total_ecl_reported ?? 0)).toBe(3_423_116)
+    expect(Math.round(ifrs9?.total_ecl_reported ?? 0)).toBe(4_786_739) // D-CRE-1 (2.6.0)
     expect(Math.round(ifrs9?.total_ead ?? 0)).toBe(114_325_315)
     expect([ifrs9?.n_stage1, ifrs9?.n_stage2, ifrs9?.n_stage3]).toEqual([
       5_235,
@@ -111,7 +112,7 @@ describe("elegir el preset IFRS 9 (F4) rastrea todo el set", () => {
       288,
     ])
     expect((ifrs9?.total_ecl_reported ?? 0) / (ifrs9?.total_ead ?? 1)).toBeCloseTo(
-      0.029941891063941795,
+      0.04186945482638982, // D-CRE-1 (2.6.0): antes 0,029941891063941795
       12,
     )
     expect(results.survival?.n_rows).toBe(6_000)

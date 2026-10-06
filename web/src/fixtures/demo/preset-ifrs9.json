@@ -265,7 +265,7 @@
    "ecl": {
     "eir_col": "eir",
     "discount_convention": "annual_eir_year_fraction",
-    "stage3_direct": false,
+    "stage3_direct": true,
     "rounding": "none"
    },
    "fail_on_falta_dato": true
@@ -323,7 +323,7 @@
   "governance": null,
   "tracking": null
  },
- "config_hash": "013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6",
+ "config_hash": "a3b7cf9b485cb194807b94017915ddc76df2fd7680aeb79bd501a03c05320ee9",
  "dataset_id": "ifrs9_retail_latam",
  "name": "Preset F4 — provisiones IFRS 9 / ECL (retail multi-cartera)",
  "description": "Config listo para correr sin tocar nada, y sin scorecard de por medio: sobre una cartera retail LatAm multi-producto (Consumo, Tarjetas, Comercial, Hipotecario) ajusta la curva lifetime PD con un modelo de supervivencia sobre covariables propias de la cartera (mora, utilización, carga financiera, antigüedad) y calcula la pérdida esperada IFRS 9 de tres etapas — staging Stage 1/2/3 por los backstops de mora 30/90 días y ECL 12 meses / lifetime descontada a la tasa efectiva. IFRS 9 es experimental (fuera de la garantía SemVer 2.x)."

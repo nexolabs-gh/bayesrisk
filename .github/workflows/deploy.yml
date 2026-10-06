@@ -323,8 +323,8 @@ jobs:
           # que la demo sí publica tienen que estar. Son los `run_id` de `results-f1.json` y
           # `results-ifrs9.json`; `test_deploy_publica_las_corridas_de_la_demo.py` los ata a los
           # fixtures versionados, así que una recaptura mueve los dos lados en el mismo commit.
-          for publicado in 358893520b6644c4b04b28fa0886e3bd \
-                           6470fc0f1dc04f29849fb71e7943d3dd; do
+          for publicado in 13c5d0685c9a42639e0fd6458f13a446 \
+                           7104f31ee14c4eee824069f88bdbac5d; do
             grep -qF "$publicado" <<<"$cuerpo" || {
               echo "::error::la demo no publica la corrida ${publicado:0:16}…: el bundle no sirve ningún ejemplo"
               exit 1; }

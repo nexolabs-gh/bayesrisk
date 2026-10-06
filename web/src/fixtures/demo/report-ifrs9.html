@@ -1178,15 +1178,15 @@ figcaption {
     </div>
     <div class="cover-field">
       <dt>Fecha de emisión</dt>
-      <dd>2026-10-05</dd>
+      <dd>2026-10-06</dd>
     </div>
   </dl>
 
   <div class="lineage-box">
     <p class="lineage-caption">Trazabilidad de la corrida (lineage)</p>
-    <div class="lineage-line"><code>config_hash=013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6</code></div>
+    <div class="lineage-line"><code>config_hash=a3b7cf9b485cb194807b94017915ddc76df2fd7680aeb79bd501a03c05320ee9</code></div>
     <div class="lineage-line"><code>data_hash=d713808d0604110d6c450358453cea172934d93eb56ccdcb0e7aea7279a94e3e</code></div>
-    <div class="lineage-line"><code>git_sha=0efa603d6fce982384e60585fcf7c8781a77e82f</code></div>
+    <div class="lineage-line"><code>git_sha=3a195fdaa421937dbbefaadd4147a0f124407936</code></div>
     <div class="lineage-line"><code>root_seed=20240706</code></div>
   </div>
 
@@ -1225,6 +1225,7 @@ figcaption {
     <li>La curva de PD se ajusta a la historia de incumplimientos de la propia cartera, con 4 covariables</li>
     <li>Los 12 meses del Stage 1 son el primer período de la curva (1 año)</li>
     <li>Stage 2 desde 30 días de mora y Stage 3 desde 90: las presunciones de IFRS 9 (5.5.11 y B5.5.37)</li>
+    <li>Stage 3: la pérdida del incumplimiento ya ocurrido, LGD × EAD (PD = 1)</li>
     <li>La exposición (EAD) se proyectó constante a lo largo de la vida de cada operación, porque el dataset no trae un perfil de exposición por período: si la cartera amortiza, la ECL de por vida queda sobrestimada</li>
     <li>La LGD es la del archivo de cartera, la misma en cada período</li>
   </ul>
@@ -1232,10 +1233,10 @@ figcaption {
   <h4>Cifras clave</h4>
   <table class="summary-figures">
     <tbody>
-      <tr><th scope="row">ECL total</th><td class="num">3.423.116</td></tr>
-      <tr><th scope="row">Cobertura (ECL sobre la exposición)</th><td class="num">2,99 %</td></tr>
+      <tr><th scope="row">ECL total</th><td class="num">4.786.739</td></tr>
+      <tr><th scope="row">Cobertura (ECL sobre la exposición)</th><td class="num">4,19 %</td></tr>
       <tr><th scope="row">Exposición en Stage 2 y 3</th><td class="num">12,96 %</td></tr>
-      <tr><th scope="row">ECL de Stage 2 y 3</th><td class="num">54,09 %</td></tr>
+      <tr><th scope="row">ECL de Stage 2 y 3</th><td class="num">67,17 %</td></tr>
       <tr><th scope="row">PD a 12 meses media, ponderada por la exposición</th><td class="num">6,31 %</td></tr>
     </tbody>
   </table>
@@ -1279,7 +1280,7 @@ figcaption {
         <tr>
           <td>ECL reportada (IFRS 9)</td>
           <td>Cartera total</td>
-          <td class="num">$3.423.116</td>
+          <td class="num">$4.786.739</td>
           <td><span class="band band-none">Cifra contable</span></td>
         </tr>
         <tr>
@@ -1291,7 +1292,7 @@ figcaption {
         <tr>
           <td>Cobertura ECL / EAD</td>
           <td>Cartera total</td>
-          <td class="num">2,99 %</td>
+          <td class="num">4,19 %</td>
           <td><span class="band band-none">Cifra contable</span></td>
         </tr>
         <tr>
@@ -1519,7 +1520,7 @@ figcaption {
 
 
   <p>IFRS 9 (NIIF 9) exige reconocer provisiones por pérdida crediticia esperada (ECL) según el deterioro relativo de cada exposición: las operaciones sin aumento significativo del riesgo (Stage 1) provisionan la pérdida esperada a 12 meses, y las que lo presentan o ya están deterioradas (Stage 2 y 3) provisionan la pérdida esperada de por vida (IFRS 9 5.5.3 y 5.5.5). Este capítulo reporta el cálculo sobre la cartera de la corrida.</p>
-  <p>Sobre una exposición al incumplimiento (EAD) de $114.325.315, la pérdida crediticia esperada a constituir es $3.423.116, una cobertura del 2,99 %. Fecha de corte: 2025-06-30.</p>
+  <p>Sobre una exposición al incumplimiento (EAD) de $114.325.315, la pérdida crediticia esperada a constituir es $4.786.739, una cobertura del 4,19 %. Fecha de corte: 2025-06-30.</p>
   <p>De las 6.000 operaciones de la cartera, 5.235 clasifican en Stage 1, 477 en Stage 2 y 288 en Stage 3.</p>
   <p>El cálculo IFRS 9 es una función experimental: los números son trazables y deterministas, pero su interfaz puede cambiar en próximas versiones de la librería.</p>
 
@@ -1571,7 +1572,7 @@ figcaption {
   <h3 class="subsection-title"><span class="section-number">4.2</span>Pérdida crediticia esperada (ECL) por etapas</h3>
 
 
-  <p>La probabilidad de incumplimiento por periodo proviene de la curva lifetime PD del modelo de supervivencia (discrete-time hazard), en modalidad through-the-cycle (TTC). La ECL de cada operación multiplica PD marginal, LGD y EAD periodo a periodo y descuenta cada pérdida al presente; Stage 1 corta el horizonte a 12 meses y Stage 2/3 lo extienden a la vida remanente.</p>
+  <p>La probabilidad de incumplimiento por periodo proviene de la curva lifetime PD del modelo de supervivencia (discrete-time hazard), en modalidad through-the-cycle (TTC). La ECL de cada operación multiplica PD marginal, LGD y EAD periodo a periodo y descuenta cada pérdida al presente; Stage 1 corta el horizonte a 12 meses y Stage 2 lo extiende a la vida remanente; Stage 3, una operación que ya incumplió, provisiona la pérdida de ese incumplimiento: su LGD por su EAD (PD = 1).</p>
   <p>La curva lifetime no extrapola la PD de horizonte fijo del modelo: se estima un modelo de riesgo en tiempo discreto (discrete-time hazard) sobre la historia de duración censurada de la propia cartera (6.000 operaciones, 1.502 eventos de incumplimiento observados y 4.498 censuradas). La probabilidad condicional de incumplimiento se estima período a período, y de ella se derivan la supervivencia y la PD marginal de cada período: la dimensión temporal la aportan los datos de duración, no un supuesto de hazard constante.</p>
   <p>El ajuste no toma insumos de un scorecard de originación: el orden de riesgo entre operaciones lo aportan covariables propias de la cartera, y el nivel y la forma temporal de la curva los fija la historia de duración observada. La pérdida esperada queda así autocontenida en el área IFRS 9.</p>
   <p>La corrida usa un escenario único (sin ponderación macroeconómica múltiple); la norma admite incorporar escenarios adicionales cuando la entidad disponga de ellos.</p>
@@ -1586,16 +1587,16 @@ figcaption {
     <tbody>
       <tr><td>Comercial</td><td class="num">1</td><td>all</td><td class="num">775</td><td class="num">31.178.795,53</td><td class="num">581.332,24</td><td class="num">0,0186</td></tr>
       <tr><td>Comercial</td><td class="num">2</td><td>all</td><td class="num">75</td><td class="num">3.137.275,52</td><td class="num">390.914,01</td><td class="num">0,1246</td></tr>
-      <tr><td>Comercial</td><td class="num">3</td><td>all</td><td class="num">51</td><td class="num">2.145.243,75</td><td class="num">375.806,68</td><td class="num">0,1752</td></tr>
+      <tr><td>Comercial</td><td class="num">3</td><td>all</td><td class="num">51</td><td class="num">2.145.243,75</td><td class="num">922.931,98</td><td class="num">0,4302</td></tr>
       <tr><td>Consumo</td><td class="num">1</td><td>all</td><td class="num">2.125</td><td class="num">18.099.269,13</td><td class="num">393.131,23</td><td class="num">0,0217</td></tr>
       <tr><td>Consumo</td><td class="num">2</td><td>all</td><td class="num">177</td><td class="num">1.561.397,65</td><td class="num">201.559,53</td><td class="num">0,1291</td></tr>
-      <tr><td>Consumo</td><td class="num">3</td><td>all</td><td class="num">114</td><td class="num">990.794,93</td><td class="num">178.471,85</td><td class="num">0,1801</td></tr>
+      <tr><td>Consumo</td><td class="num">3</td><td>all</td><td class="num">114</td><td class="num">990.794,93</td><td class="num">546.825,86</td><td class="num">0,5519</td></tr>
       <tr><td>Hipotecario</td><td class="num">1</td><td>all</td><td class="num">809</td><td class="num">43.611.647,09</td><td class="num">437.771,24</td><td class="num">0,01004</td></tr>
       <tr><td>Hipotecario</td><td class="num">2</td><td>all</td><td class="num">69</td><td class="num">3.693.801,39</td><td class="num">303.704,23</td><td class="num">0,0822</td></tr>
-      <tr><td>Hipotecario</td><td class="num">3</td><td>all</td><td class="num">38</td><td class="num">2.244.951,10</td><td class="num">251.942,93</td><td class="num">0,1122</td></tr>
+      <tr><td>Hipotecario</td><td class="num">3</td><td>all</td><td class="num">38</td><td class="num">2.244.951,10</td><td class="num">510.248,15</td><td class="num">0,2273</td></tr>
       <tr><td>Tarjetas</td><td class="num">1</td><td>all</td><td class="num">1.526</td><td class="num">6.614.503,17</td><td class="num">159.269,35</td><td class="num">0,0241</td></tr>
       <tr><td>Tarjetas</td><td class="num">2</td><td>all</td><td class="num">156</td><td class="num">672.454,41</td><td class="num">84.444,87</td><td class="num">0,1256</td></tr>
-      <tr><td>Tarjetas</td><td class="num">3</td><td>all</td><td class="num">85</td><td class="num">375.181,03</td><td class="num">64.767,96</td><td class="num">0,1726</td></tr>
+      <tr><td>Tarjetas</td><td class="num">3</td><td>all</td><td class="num">85</td><td class="num">375.181,03</td><td class="num">254.605,91</td><td class="num">0,6786</td></tr>
     </tbody>
   </table>
 </figure>
@@ -1631,21 +1632,21 @@ figcaption {
 
   <h4>Parámetros y payload</h4>
   <dl>
-    <dt>config_hash</dt><dd>013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6</dd>
-    <dt>created_at</dt><dd>2026-10-05T15:48:00.942816Z</dd>
+    <dt>config_hash</dt><dd>a3b7cf9b485cb194807b94017915ddc76df2fd7680aeb79bd501a03c05320ee9</dd>
+    <dt>created_at</dt><dd>2026-10-06T17:58:31.631169Z</dd>
     <dt>data_hash</dt><dd>d713808d0604110d6c450358453cea172934d93eb56ccdcb0e7aea7279a94e3e</dd>
     <dt>determinism_caveats</dt><dd>[]</dd>
     <dt>git_dirty</dt><dd>no</dd>
-    <dt>git_sha</dt><dd>0efa603d6fce982384e60585fcf7c8781a77e82f</dd>
+    <dt>git_sha</dt><dd>3a195fdaa421937dbbefaadd4147a0f124407936</dd>
     <dt>library_versions</dt><dd><pre>{
   &#34;PyYAML&#34;: &#34;6.0.3&#34;,
-  &#34;bayesrisk&#34;: &#34;2.5.0&#34;,
+  &#34;bayesrisk&#34;: &#34;2.6.0&#34;,
   &#34;numpy&#34;: &#34;2.4.6&#34;,
   &#34;pandas&#34;: &#34;2.3.3&#34;,
   &#34;pydantic&#34;: &#34;2.13.4&#34;
 }</pre></dd>
     <dt>root_seed</dt><dd>20240706</dd>
-    <dt>runtime_environment_hash</dt><dd>4aafc33ab633a7f7e34a8a69197d56c1ce3fb5edc22e6e9a473a92e0ceef1a32</dd>
+    <dt>runtime_environment_hash</dt><dd>fd4021bb7cc1dd2998556502803469ca0371f052d2b8232291d06b76379fddf3</dd>
     <dt>schema_version</dt><dd>1.0.0</dd>
     <dt>uv_lock_hash</dt><dd>6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322</dd>
   </dl>
@@ -2054,7 +2055,7 @@ figcaption {
     &#34;discount_convention&#34;: &#34;annual_eir_year_fraction&#34;,
     &#34;eir_col&#34;: &#34;eir&#34;,
     &#34;rounding&#34;: &#34;none&#34;,
-    &#34;stage3_direct&#34;: false
+    &#34;stage3_direct&#34;: true
   },
   &#34;fail_on_falta_dato&#34;: true,
   &#34;lgd&#34;: {
@@ -2106,6 +2107,7 @@ figcaption {
   &#34;FALTA-DATO-IFRS-4&#34;
 ]</pre></dd>
     <dt>n_rows</dt><dd>6.000</dd>
+    <dt>n_rows_without_exposure</dt><dd>0</dd>
     <dt>n_stage1</dt><dd>5.235</dd>
     <dt>n_stage2</dt><dd>477</dd>
     <dt>n_stage3</dt><dd>288</dd>
@@ -2119,7 +2121,7 @@ figcaption {
     <dt>segmentation</dt><dd>—</dd>
     <dt>term_structure_source</dt><dd>survival</dd>
     <dt>total_ead</dt><dd>114.325.314,70</dd>
-    <dt>total_ecl_reported</dt><dd>3.423.116,12</dd>
+    <dt>total_ecl_reported</dt><dd>4.786.738,599</dd>
   </dl>
 
   <h4>Métricas estructuradas</h4>
