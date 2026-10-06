@@ -2686,11 +2686,23 @@ def _results_provisioning_ifrs9(bundle: ReportInputBundle) -> tuple[str, ...]:
     pit_mode = str(card.get("pit_mode") or "")
     fuente = _IFRS9_TERM_SOURCE_LABELS.get(term_source, f"la fuente '{term_source}'")
     pit = _IFRS9_PIT_MODE_LABELS.get(pit_mode, pit_mode)
+    # CASO-REAL-IFRS9 D-CRE-1 (pasada 3 de Codex): con `stage3_direct` —el default desde la
+    # 2.6.0— Stage 3 no suma la PD de la curva: provisiona la pérdida del incumplimiento ya
+    # ocurrido. El texto dice la fórmula que corrió; sin el parámetro, la de antes.
+    directo = _mapping(_mapping(bundle.pipeline_params.get("provisioning_ifrs9")).get("ecl")).get(
+        "stage3_direct"
+    )
+    horizontes = (
+        "Stage 1 corta el horizonte a 12 meses y Stage 2 lo extiende a la vida remanente; Stage 3, "
+        "una operación que ya incumplió, provisiona la pérdida de ese incumplimiento: su LGD por "
+        "su EAD (PD = 1)."
+        if directo is True
+        else "Stage 1 corta el horizonte a 12 meses y Stage 2/3 lo extienden a la vida remanente."
+    )
     paragraphs.append(
         f"La probabilidad de incumplimiento por periodo proviene de {fuente}, en modalidad {pit}. "
         "La ECL de cada operación multiplica PD marginal, LGD y EAD periodo a periodo y descuenta "
-        "cada pérdida al presente; Stage 1 corta el horizonte a 12 meses y Stage 2/3 lo extienden "
-        "a la vida remanente."
+        f"cada pérdida al presente; {horizontes}"
     )
 
     # Mecanismo PD→lifetime (la pregunta que un validador hace primero): se describe desde la

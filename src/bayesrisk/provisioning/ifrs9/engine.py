@@ -1129,14 +1129,14 @@ def _calibrated_pd_12m(
             f"El frame de PD calibrada debe contener la columna '{_CALIBRATED_PD_COLUMN}'."
         )
     keys = [str(index) for index in calibrated.index]
-    values = _to_float_array(
-        calibrated[_CALIBRATED_PD_COLUMN].to_numpy(), _CALIBRATED_PD_COLUMN, numpy
-    )
-    mapping = dict(zip(keys, (float(value) for value in values), strict=True))
+    mapping = dict(zip(keys, calibrated[_CALIBRATED_PD_COLUMN].tolist(), strict=True))
     missing = [rid for rid in row_ids if rid not in mapping]
     if missing:
         raise IfrsConfigError(f"El frame de PD calibrada no cubre las operaciones: {missing}.")
-    return {rid: mapping[rid] for rid in row_ids}
+    # CASO-REAL-IFRS9 D-CRE-5 (pasada 3 de Codex): se valida sólo la PD de las operaciones que se
+    # provisionan; la de una fila sin exposición no se usa, y una vacía no aborta la provisión.
+    values = _to_float_array([mapping[rid] for rid in row_ids], _CALIBRATED_PD_COLUMN, numpy)
+    return dict(zip(row_ids, (float(value) for value in values), strict=True))
 
 
 def _components_frame(

@@ -563,3 +563,65 @@ def test_el_registro_de_auditoria_lee_solo_la_curva_de_las_activas() -> None:
     }
     assert decisiones["ifrs9_pd_horizon"]["valor"]["soporte_periodos"] == {"min": 1, "max": 2}
     assert decisiones["ifrs9_discount_time_unit"]["valor"]["unidades_observadas"] == ("year",)
+
+
+def test_la_pd_calibrada_de_una_fila_sin_exposicion_tampoco_se_valida() -> None:
+    """Codex p3 (medium): con ``base_pd_source='calibration'``, la PD calibrada de un préstamo
+    cerrado no se usa, así que tampoco se valida: una vacía no aborta la provisión de las vivas."""
+    frame = _cartera()
+    cfg = _cfg()
+    cfg = cfg.model_copy(update={"pd": cfg.pd.model_copy(update={"base_pd_source": "calibration"})})
+    calibrada = pd.DataFrame(
+        {"pd_calibrated": [0.02, np.nan, 0.05, np.nan, 0.30]}, index=list(frame.index)
+    )
+    resultado = IfrsProvisioningEngine.from_config(cfg).calculate(
+        frame,
+        term_structure=_curva(list(frame.index)),
+        calibrated_pd=calibrada,
+        as_of_date="2026-03-31",
+    )
+    assert resultado.detail["pd_12m"].tolist() == [0.02, 0.05, 0.30]
+
+
+def _ecl_ifrs9(stage3_direct: bool | None) -> str:
+    from datetime import UTC, datetime
+
+    from bayesrisk.core.lineage import LineageBundle
+    from bayesrisk.report import prose
+    from bayesrisk.report.results import ReportInputBundle
+
+    lineage = LineageBundle(
+        git_sha="abc123",
+        git_dirty=False,
+        data_hash="d" * 16,
+        config_hash="c" * 16,
+        root_seed=42,
+        uv_lock_hash="uv123",
+        library_versions={"bayesrisk": "0.1.0"},
+        determinism_caveats=[],
+        created_at=datetime(2026, 10, 6, tzinfo=UTC),
+        schema_version="1.0.0",
+    )
+    parametros: dict[str, Any] = (
+        {} if stage3_direct is None else {"ecl": {"stage3_direct": stage3_direct}}
+    )
+    bundle = ReportInputBundle(
+        lineage=lineage,
+        cards={"provisioning_ifrs9": {"term_structure_source": "survival", "pit_mode": "ttc_only"}},
+        tables={},
+        figures={},
+        sections=(),
+        pipeline_params={"provisioning_ifrs9": parametros},
+    )
+    return " ".join(prose._results_provisioning_ifrs9(bundle))
+
+
+def test_el_informe_describe_la_formula_de_stage3_que_corrio() -> None:
+    """Codex p3 (medium): con Stage 3 = LGD × EAD —el default—, el informe no puede decir que
+    Stage 3 suma la PD marginal de toda la vida; con la curva, sí."""
+    directo = _ecl_ifrs9(True)
+    assert "Stage 3" in directo and "LGD por su EAD (PD = 1)" in directo
+    assert "Stage 2/3" not in directo
+    con_curva = _ecl_ifrs9(False)
+    assert "Stage 2/3 lo extienden a la vida remanente" in con_curva
+    assert "PD = 1" not in con_curva
