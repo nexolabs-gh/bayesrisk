@@ -149,11 +149,15 @@ class IfrsProvisioningStep(AuditableMixin):
 
         Recibe la ``term_structure`` de ENTRADA —no basta ``result``— porque la unidad temporal
         declarada es una propiedad de la curva recibida y no sobrevive al cálculo: la salida ya
-        publica los plazos convertidos (D-HOR-0).
+        publica los plazos convertidos (D-HOR-0). De esa curva, sólo las filas de las operaciones
+        que provisionó el motor (CASO-REAL-IFRS9 D-CRE-5, pasadas 1 y 2 de Codex): la de una fila
+        sin exposición no se validó ni se usó, y registrarla describiría —o tumbaría, si trae un
+        período ilegible— un cálculo que no ocurrió.
         """
         from bayesrisk.provisioning.ifrs9.engine import effective_horizon_12m
 
         card = result.card
+        curva_usada = _curva_de_las_activas(term_structure, result)
         self.log_decision(
             regla="ifrs9_term_structure_source",
             umbral=config.pd.term_structure_source,
@@ -181,15 +185,13 @@ class IfrsProvisioningStep(AuditableMixin):
                 # D-HOR-0: el soporte OBSERVADO de la curva, que es contra lo que se contrasta el
                 # horizonte. Sin él, el audit trail registraba los dos campos de config y no había
                 # forma de reconstruir por qué el aviso salió (o por qué no salió).
-                "soporte_periodos": _period_bounds(term_structure),
+                "soporte_periodos": _period_bounds(curva_usada),
                 # FLUJO-GUIADO-IFRS9 §3.12: en blanco, el horizonte se infirió de la unidad de la
                 # curva; la clave sólo viaja entonces, así que una corrida con el número declarado
                 # registra exactamente lo de antes.
                 **(
                     {
-                        "horizon_12m_inferido": effective_horizon_12m(
-                            None, _curva_de_las_activas(term_structure, result)
-                        ),
+                        "horizon_12m_inferido": effective_horizon_12m(None, curva_usada),
                     }
                     if config.pd.horizon_12m_periods is None
                     else {}
@@ -267,7 +269,7 @@ class IfrsProvisioningStep(AuditableMixin):
             regla="ifrs9_discount_time_unit",
             umbral={"unidades_convertibles": known_time_units()},
             valor={
-                "unidades_observadas": _observed_time_units(term_structure),
+                "unidades_observadas": _observed_time_units(curva_usada),
                 "unidad_presumida_anios": _WARNING_TIME_UNIT_ASSUMED in card.falta_dato,
             },
             accion="convertir_time_value_a_anios",

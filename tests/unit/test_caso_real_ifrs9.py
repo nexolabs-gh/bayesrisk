@@ -533,3 +533,33 @@ def test_cartera_cuenta_lo_que_separo_el_motor_aunque_la_ead_no_sea_una_columna(
         "a la curva · fecha de corte"
     ), resumen.lines[1]
     assert int(resumen.table["Operaciones"].sum()) == 3
+
+
+def test_el_registro_de_auditoria_lee_solo_la_curva_de_las_activas() -> None:
+    """Codex p2 (medium): el soporte y las unidades que registra el paso son los de la curva que
+    usó el motor. Una fila cerrada con un período ilegible o más largo, o en otra unidad, ni
+    tumba el paso después de calcular ni queda descrita como si se hubiera usado."""
+    from bayesrisk.core.audit import InMemoryAuditSink
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.core.study import Study
+
+    frame = _cartera().assign(as_of_date="2026-03-31")
+    curva = _curva(list(frame.index))
+    extra = curva.loc[curva["row_id"] == "h1"].iloc[[0]].assign(period=9, time_unit="month")
+    curva = pd.concat([curva, extra], ignore_index=True)
+    curva["period"] = curva["period"].astype(object)
+    curva.loc[curva["row_id"] == "h2", "period"] = "?"
+    study = Study(BayesRiskConfig(provisioning_ifrs9=_cfg()))
+    sink = InMemoryAuditSink()
+    study.set_audit_sink(sink)
+    study.artifacts.set("data", "frame", frame)
+    study.artifacts.set("survival", "term_structure", curva)
+    study.run(steps=["provisioning_ifrs9"])
+    assert study.run_context.status == "done", study.run_context.error
+    decisiones = {
+        evento.payload["regla"]: evento.payload
+        for evento in sink.events
+        if evento.kind == "decision" and "regla" in evento.payload
+    }
+    assert decisiones["ifrs9_pd_horizon"]["valor"]["soporte_periodos"] == {"min": 1, "max": 2}
+    assert decisiones["ifrs9_discount_time_unit"]["valor"]["unidades_observadas"] == ("year",)
