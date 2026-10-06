@@ -294,8 +294,16 @@ def test_golden_staging_stage3_dpd() -> None:
 
     row = result.detail.iloc[0]
     assert row["stage"] == 3
-    np.testing.assert_allclose(row["ecl_reported"], _ECL_S2_LIFETIME, rtol=1e-12)
+    # CASO-REAL-IFRS9 D-CRE-1: por default, Stage 3 es la pérdida del incumplimiento ya ocurrido,
+    # LGD × EAD (PD = 1, sin descontar), no la ECL de por vida de la curva.
+    np.testing.assert_allclose(row["ecl_reported"], 1000.0 * 0.5, rtol=1e-12)
     assert "dpd_default_backstop" in result.staging.iloc[0]["sicr_triggers"]
+
+    # La ruta de la curva sigue disponible, declarada explícita en el config.
+    con_curva = cfg.model_copy(update={"ecl": IfrsEclConfig(stage3_direct=False)})
+    row = _run(con_curva, frame, _ts(pd_marginal=[0.06, 0.05])).detail.iloc[0]
+    assert row["stage"] == 3
+    np.testing.assert_allclose(row["ecl_reported"], _ECL_S2_LIFETIME, rtol=1e-12)
 
 
 # ─────────────────────────── multiescenario forward (consume_pit) ───────────────────────────
@@ -917,7 +925,11 @@ def test_summary_agrega_por_cartera_stage() -> None:
     ts = _ts(pd_marginal=[0.10, 0.10], periods=[1, 1], row_id=["op1", "op2"])
     result = _run(cfg, frame, ts)
     summary = result.summary
-    assert list(summary["portfolio"]) == ["retail", "sme"]
+    # CASO-REAL-IFRS9 D-CRE-5: la operación de `sme` no tiene exposición, así que no es una
+    # operación de la cartera —sólo alimentaría la curva— y su cartera no aparece en el resumen
+    # (antes salía con cobertura 0,0 por la rama sin división, que ya no alcanza ninguna activa).
+    assert list(summary["portfolio"]) == ["retail"]
+    assert result.card.n_rows_without_exposure == 1
     assert list(summary.columns) == [
         "portfolio",
         "stage",
@@ -928,9 +940,6 @@ def test_summary_agrega_por_cartera_stage() -> None:
         "coverage_ratio",
         "warning_codes",
     ]
-    # La cartera sme tiene EAD=0 → coverage_ratio=0.0 (rama sin división).
-    sme = summary.loc[summary["portfolio"] == "sme"].iloc[0]
-    assert sme["coverage_ratio"] == 0.0
     retail = summary.loc[summary["portfolio"] == "retail"].iloc[0]
     np.testing.assert_allclose(retail["coverage_ratio"], 50.0 / 1000.0, rtol=1e-12)
 

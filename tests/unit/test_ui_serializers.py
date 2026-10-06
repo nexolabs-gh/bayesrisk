@@ -1112,8 +1112,8 @@ def test_serializa_el_bloque_ifrs9_del_preset_f4(tmp_path: Path) -> None:
     assert block["n_rows"] == 6_000
     assert (block["n_stage1"], block["n_stage2"], block["n_stage3"]) == (5_235, 477, 288)
     assert round(block["total_ead"]) == 114_325_315
-    assert round(block["total_ecl_reported"]) == 3_423_116
-    assert f"{coverage:.2%}" == "2.99%"
+    assert round(block["total_ecl_reported"]) == 4_786_739
+    assert f"{coverage:.2%}" == "4.19%"
 
     methodology = block["methodology"]
     assert isinstance(methodology, dict)

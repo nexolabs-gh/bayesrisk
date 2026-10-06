@@ -209,7 +209,16 @@ class IfrsProvisioningStep(AuditableMixin):
         self.log_decision(
             regla="ifrs9_ead",
             umbral=config.ead.method,
-            valor={"exposure_profile_col": config.ead.exposure_profile_col},
+            valor={
+                "exposure_profile_col": config.ead.exposure_profile_col,
+                # CASO-REAL-IFRS9 D-CRE-5: las filas con EAD 0 se separaron y sólo alimentaron la
+                # curva. La clave sólo viaja entonces: una corrida sin ellas registra lo de antes.
+                **(
+                    {"n_rows_without_exposure": card.n_rows_without_exposure}
+                    if card.n_rows_without_exposure
+                    else {}
+                ),
+            },
             accion="estimar_ead",
         )
         self.log_decision(

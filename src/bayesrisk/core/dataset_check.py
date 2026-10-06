@@ -22,7 +22,9 @@ una propiedad del campo, no un criterio transversal —a diferencia de
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Literal
 
 from pydantic import BaseModel
@@ -86,6 +88,15 @@ METODO_REQUISITOS_CONTEXTO = "requisitos_incumplidos_por_contexto"
 #: núcleo pasaría a depender del vocabulario de un dominio. Con el protocolo, el núcleo transporta
 #: un valor que no interpreta y la sección decide qué significa, igual que con :data:`CLAVE_ROL`.
 METODO_CONVENCION_SCORE = "direccion_del_score_declarada"
+
+#: Nombre del método con que una sección que publica artefactos **por operación** declara con qué
+#: columna identifica cada fila —``None``: el índice del archivo— (CASO-REAL-IFRS9, D-CRE-6). Lo
+#: consume :func:`_identificadores` para llenar :attr:`ContextoConfig.identificadores`.
+#:
+#: Existe por la misma razón que :data:`METODO_CONVENCION_SCORE`: la curva de PD y la provisión
+#: tienen que identificar las operaciones igual o no se encuentran, y el núcleo no debe conocer
+#: ``survival.input.id_col``. La sección lo declara; el núcleo lo transporta sin interpretarlo.
+METODO_IDENTIFICADOR_DE_FILAS = "identificador_de_filas_declarado"
 
 #: Igual que el anterior, pero para las invariantes que necesitan **estadísticas** del dataset y no
 #: sólo sus nombres de columna (enmienda PERFIL-DE-COLUMNAS, D-PERF-4). Va por un método propio y no
@@ -276,6 +287,15 @@ class ContextoConfig:
     «ninguna sección activa lo declara» —el caso de quien trae un puntaje ya construido por la
     puerta de artefactos externos, donde la orientación sólo la sabe el usuario—, y entonces cada
     sección manda sobre la suya.
+    """
+
+    identificadores: Mapping[str, str | None] = field(default_factory=lambda: MappingProxyType({}))
+    """Con qué columna identifica sus filas cada sección ACTIVA que lo declara (D-CRE-6).
+
+    Tercer campo, por el punto de extensión de arriba. ``None`` como valor es «el índice del
+    archivo»; una sección ausente es que no corre o no lo declara, y quien lo lea no supone nada
+    de ella. Lo llena :func:`_identificadores` vía :data:`METODO_IDENTIFICADOR_DE_FILAS`; quien no
+    lo lea sigue funcionando igual.
     """
 
 
@@ -529,6 +549,26 @@ def _direccion_del_score(config: BayesRiskConfig, activas: frozenset[str]) -> st
         if declarada is not None:
             return str(declarada)
     return None
+
+
+def _identificadores(config: BayesRiskConfig, activas: frozenset[str]) -> Mapping[str, str | None]:
+    """El identificador de filas que declara cada sección raíz ACTIVA y tipada (D-CRE-6).
+
+    Mismo recorrido que :func:`_direccion_del_score`: una sección apagada no publica nada, y una
+    opaca (``dict``) no tiene método al que preguntar.
+    """
+    declarados: dict[str, str | None] = {}
+    for nombre in type(config).model_fields:
+        if nombre not in activas:
+            continue
+        seccion = getattr(config, nombre, None)
+        if not isinstance(seccion, BaseModel):
+            continue
+        metodo = getattr(seccion, METODO_IDENTIFICADOR_DE_FILAS, None)
+        if callable(metodo):
+            declarado = metodo()
+            declarados[nombre] = None if declarado is None else str(declarado)
+    return MappingProxyType(declarados)
 
 
 def _columnas_producidas(config: Any) -> frozenset[str]:
@@ -816,6 +856,7 @@ def check_dataset(
     contexto = ContextoConfig(
         secciones_activas=activas,
         direccion_del_score=_direccion_del_score(config, activas),
+        identificadores=_identificadores(config, activas),
     )
     for ruta, requisito in _requisitos(
         config, frozenset(presentes), perfil=column_profile, contexto=contexto

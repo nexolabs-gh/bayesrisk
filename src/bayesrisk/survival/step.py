@@ -192,6 +192,16 @@ class SurvivalStep(AuditableMixin):
         term_structure = _with_step_warnings(term_structure, time_context["warnings"])
         survival_curves = fitted.predict_survival(data_frame.copy(deep=True), times=times)
         hazards = fitted.predict_hazard(data_frame.copy(deep=True), times=times)
+        if cfg.input.id_col is not None:
+            # CASO-REAL-IFRS9 D-CRE-6 (§3.6): con el identificador declarado, cada artefacto por
+            # operación sale con el valor de esa columna y no con la posición de la fila. Se
+            # traduce AQUÍ, sobre la salida de cualquier método, y no en cada motor: los motores
+            # siguen indexando por el índice del archivo, que es con lo que alinean la fuente de
+            # PD y la partición. `_validate_frame_contracts` ya verificó que sea única.
+            ids = _identificadores_por_indice(data_frame, cfg.input.id_col)
+            term_structure = _identificar_por_columna(term_structure, ids, pd=pd)
+            survival_curves = _identificar_por_columna(survival_curves, ids, pd=pd)
+            hazards = _identificar_por_columna(hazards, ids, pd=pd)
         warnings = _warning_codes(term_structure)
         diagnostics = _diagnostics_from_model(fitted, cfg=cfg, term_structure=term_structure)
         card = _card_from_model(
@@ -492,6 +502,8 @@ def _validate_frame_contracts(
         missing_columns.append(cfg.input.id_col)
     if missing_columns:
         raise SurvivalInputError(f"Faltan columnas requeridas para survival: {missing_columns}.")
+    if cfg.input.id_col is not None:
+        _validate_unique_id(data_frame, cfg.input.id_col)
 
     if pd_frame is None:
         return
@@ -502,6 +514,80 @@ def _validate_frame_contracts(
             "model.raw_pd_frame/calibration no cubre filas de survival: "
             f"pd_source='{cfg.input.pd_source}', filas_sin_match={missing_index}."
         )
+
+
+#: Cuántos identificadores repetidos nombra el error: los primeros, en orden; bastan para
+#: encontrarlos en el archivo y no inundan el mensaje con una columna entera mal elegida.
+_REPETIDOS_EN_EL_MENSAJE: Final = 10
+
+
+def _ids_de_la_columna(data_frame: DataFrame, id_col: str) -> list[str]:
+    """Los valores de la columna identificador como texto, con la conversión de la provisión.
+
+    ``str`` sobre ``tolist()`` —no ``astype(str)``— porque es exactamente como
+    ``provisioning_ifrs9`` lee su ``row_id_col``: un entero llega como ``"1"`` a los dos lados.
+    """
+    return [str(valor) for valor in cast(Any, data_frame[id_col]).tolist()]
+
+
+def _validate_unique_id(data_frame: DataFrame, id_col: str) -> None:
+    """Exige que la columna identificador sea única y nombra las repetidas (D-CRE-6)."""
+    ids = _ids_de_la_columna(data_frame, id_col)
+    vistos: set[str] = set()
+    repetidos: dict[str, None] = {}
+    for valor in ids:
+        if valor in vistos:
+            repetidos.setdefault(valor, None)
+        vistos.add(valor)
+    if repetidos:
+        nombrados = list(repetidos)[:_REPETIDOS_EN_EL_MENSAJE]
+        resto = len(repetidos) - len(nombrados)
+        cola = f" y {resto} más" if resto else ""
+        raise SurvivalInputError(
+            f"La columna identificador '{id_col}' debe identificar una sola fila por operación, "
+            f"y repite {', '.join(nombrados)}{cola}: con valores repetidos la curva no puede "
+            "decir a qué operación pertenece cada PD."
+        )
+
+
+def _identificadores_por_indice(data_frame: DataFrame, id_col: str) -> dict[str, str]:
+    """Índice del archivo (como lo publican los motores) → valor de la columna identificador."""
+    return dict(
+        zip(
+            (str(indice) for indice in data_frame.index),
+            _ids_de_la_columna(data_frame, id_col),
+            strict=True,
+        )
+    )
+
+
+def _identificar_por_columna(frame: DataFrame, ids: dict[str, str], *, pd: Any) -> DataFrame:
+    """Traduce ``row_id`` —y el ``curve_id`` ``"<row_id>|<período>"``— al identificador.
+
+    Una curva por segmento (Kaplan-Meier) publica ``row_id`` vacío: no identifica operaciones y
+    queda tal cual.
+    """
+    if "row_id" not in frame.columns or frame.empty:
+        return frame
+    actuales = cast(Any, frame["row_id"]).tolist()
+    nuevos = [None if _sin_operacion(rid) else ids[str(rid)] for rid in actuales]
+    traducida = frame.copy(deep=True)
+    traducida["row_id"] = nuevos
+    traducida.index = pd.Index(
+        [
+            indice
+            if nuevo is None or "|" not in str(indice)
+            else f"{nuevo}|{str(indice).split('|', 1)[1]}"
+            for indice, nuevo in zip(traducida.index, nuevos, strict=True)
+        ],
+        name=traducida.index.name,
+    )
+    return traducida
+
+
+def _sin_operacion(valor: Any) -> bool:
+    """Un ``row_id`` vacío: la fila es de una curva por segmento, no de una operación."""
+    return valor is None or (isinstance(valor, float) and valor != valor)
 
 
 def _pd_match_context(

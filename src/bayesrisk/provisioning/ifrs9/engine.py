@@ -267,6 +267,29 @@ class IfrsProvisioningEngine:
         )
 
         row_ids = _frame_row_ids(frame, config)
+        # CASO-REAL-IFRS9 D-CRE-5 (§3.5): una fila sin exposición no es una operación de la
+        # cartera. La historia de la curva vive en el mismo archivo —los préstamos cerrados entran
+        # con EAD 0— y contarla como cartera daba «60.000 operaciones, Stage 3: 10.191» sobre
+        # 9.593 préstamos vivos sin ninguno en Stage 3 (Lending Club). La EAD se calcula sobre
+        # TODAS las filas —es lo que decide cuáles son operaciones— y las de EAD 0 se separan aquí,
+        # antes de validar o leer cualquier otro insumo, de buscar su PD y de estagear: un dato
+        # inválido en un préstamo cerrado ya no aborta la provisión. La ECL no cambia (aportaban
+        # cero). El umbral es el cero exacto, sin perilla.
+        ead_arr, row_warnings = self._estimate_ead(frame, numpy)
+        activas = ead_arr > 0.0
+        n_sin_exposicion = int(activas.size - int(activas.sum()))
+        sin_exposicion = {rid for rid, activa in zip(row_ids, activas, strict=True) if not activa}
+        if not bool(activas.any()):
+            raise IfrsInputError(
+                "Ninguna fila tiene exposición al corte (EAD > 0): no hay cartera que "
+                "provisionar. Las filas con exposición 0 sólo aportan historia a la curva."
+            )
+        if n_sin_exposicion:
+            posiciones = numpy.flatnonzero(activas)
+            frame = frame.iloc[posiciones].copy(deep=True)
+            row_ids = [row_ids[int(i)] for i in posiciones]
+            row_warnings = [row_warnings[int(i)] for i in posiciones]
+            ead_arr = ead_arr[posiciones]
         portfolios = _frame_column_texts(frame, config.portfolio_col, "portfolio_col")
         eir_arr = _frame_float_column(frame, config.ecl.eir_col, "eir", numpy)
 
@@ -276,6 +299,12 @@ class IfrsProvisioningEngine:
         # tres que lo usan —la PD a 12 meses, el chequeo D-ECL-0 y la ECL— reciben este número.
         horizonte_12m = effective_horizon_12m(config.pd.horizon_12m_periods, ts)
         ts = _prepare_term_structure(ts, config, numpy)
+        if sin_exposicion:
+            # D-CRE-5: la cobertura de la curva y la malla de componentes van contra las activas.
+            # La curva de una fila sin exposición sobra; la de una fila que el archivo no trae,
+            # no: sigue siendo un error de cobertura.
+            ts_ids = [str(value) for value in ts["row_id"].to_numpy()]
+            ts = ts.loc[[rid not in sin_exposicion for rid in ts_ids]].copy(deep=True)
         _check_row_coverage(row_ids, [str(value) for value in ts["row_id"].to_numpy()])
 
         weights = self._resolve_weights(ts, numpy)
@@ -290,7 +319,6 @@ class IfrsProvisioningEngine:
         pd_pit_arr = numpy.array([pd_12m_by_rid[rid] for rid in row_ids], dtype=numpy.float64)
 
         lgd_arr = self._estimate_lgd(frame, eir_arr, numpy, pandas)
-        ead_arr, row_warnings = self._estimate_ead(frame, numpy)
         if _ts_lgd_present(ts):
             row_warnings = [(*codes, _WARNING_LGD_FORWARD_IGNORED) for codes in row_warnings]
         # Por `row_id` y no en bloque, a diferencia de IFRS-6: con `forward` conviven filas que
@@ -347,6 +375,7 @@ class IfrsProvisioningEngine:
             ecl_detail=ecl_detail,
             ecl_term_structure=ecl_ts,
             as_of_date=as_of_date,
+            n_rows_without_exposure=n_sin_exposicion,
             pandas=pandas,
         )
 
@@ -456,6 +485,7 @@ class IfrsProvisioningEngine:
         ecl_detail: DataFrame,
         ecl_term_structure: DataFrame,
         as_of_date: str,
+        n_rows_without_exposure: int,
         pandas: Any,
     ) -> IfrsProvisionResult:
         """Construye ``staging``/``detail``/``summary``, los registros y la card (SDD-16 §4/§6)."""
@@ -573,6 +603,7 @@ class IfrsProvisioningEngine:
             pd_basis=context.pd_basis,
             as_of_date=as_of_date,
             ecl_term_structure=ecl_term_structure,
+            n_rows_without_exposure=n_rows_without_exposure,
         )
         return IfrsProvisionResult(
             staging=staging,
@@ -592,6 +623,7 @@ class IfrsProvisioningEngine:
         pd_basis: str,
         as_of_date: str,
         ecl_term_structure: DataFrame,
+        n_rows_without_exposure: int,
     ) -> IfrsProvisionCard:
         """Construye la ``IfrsProvisionCard`` CT-2 con totales, conteos y secciones métricas."""
         stages = [int(row["stage"]) for row in detail_rows]
@@ -640,6 +672,7 @@ class IfrsProvisioningEngine:
             term_structure_source=self._config.pd.term_structure_source,
             pit_mode=self._config.pd.pit_mode,
             n_rows=len(detail_rows),
+            n_rows_without_exposure=n_rows_without_exposure,
             n_stage1=stages.count(1),
             n_stage2=stages.count(2),
             n_stage3=stages.count(3),
@@ -1181,9 +1214,20 @@ def _check_row_coverage(frame_row_ids: list[str], ts_row_ids: list[str]) -> None
     if frame_set != ts_set:
         faltan = sorted(frame_set - ts_set)
         sobran = sorted(ts_set - frame_set)
+        # D-CRE-6: si NINGÚN identificador coincide, la causa casi nunca es una curva incompleta
+        # sino que la curva y la provisión identifican las operaciones por cosas distintas (una
+        # columna en una y el índice en la otra). Por código no hay preflight que lo avise; el
+        # mensaje lo dice además de las listas.
+        causa = (
+            " Ningún identificador coincide: la curva y la provisión no identifican las "
+            "operaciones igual. Declara la misma columna en survival.input.id_col y en "
+            "provisioning_ifrs9.row_id_col, o ninguna de las dos."
+            if frame_set.isdisjoint(ts_set)
+            else ""
+        )
         raise IfrsTermStructureError(
             "La term-structure debe cubrir exactamente las operaciones del frame "
-            f"(sin curva={faltan}, sin operación={sobran})."
+            f"(sin curva={faltan}, sin operación={sobran}).{causa}"
         )
 
 

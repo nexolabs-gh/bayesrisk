@@ -313,7 +313,9 @@ def test_provisiones_preset_activa_las_tres_secciones_y_la_regla_real() -> None:
 # de Kaplan-Meier. Este golden hizo su trabajo —falló al cambiar el preset— y por eso la recaptura
 # de los fixtures de demo.bayesadvisory.cl entró al mismo lote en vez de quedar pendiente en
 # silencio.
-_EXPECTED_F4_CONFIG_HASH = "013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6"
+# Actualizado en S34 por CASO-REAL-IFRS9 D-CRE-1: el preset escribe `stage3_direct: true` (Stage 3
+# = LGD × EAD); antes 013e69dc…. La demo se recaptura sólo con el OK de esa recaptura.
+_EXPECTED_F4_CONFIG_HASH = "a3b7cf9b485cb194807b94017915ddc76df2fd7680aeb79bd501a03c05320ee9"
 
 
 def test_ifrs9_preset_config_valida_y_hash_estable() -> None:
@@ -360,7 +362,9 @@ def test_correccion_anti_fuga_no_mueve_bytes_hashes_ni_candidatas_de_presets() -
         # la garantía SemVer 2.x» (antes 1.x): es presentación, fuera del `config_hash`.
         STANDARD_PRESET_ID: "48bf8e1023b1134cc881794782dd56c50b53f60f7e03f09de63a2c02163423a2",
         PROVISIONES_PRESET_ID: "e6d7ac7c4355f2841d70ae1c8270b0198b50f51a2c4936db771ebacff3965403",
-        F4_IFRS9_PRESET_ID: "e3fa91f4c5bc440cc40d8d64615dfe74991ef83fc01a37f20c8c4bf13bd4b81b",
+        # S34, CASO-REAL-IFRS9 D-CRE-1: el F4 escribe `stage3_direct: true` y mueven los DOS lados
+        # —bytes y `config_hash`—, porque Stage 3 es cálculo (antes e3fa91f4…).
+        F4_IFRS9_PRESET_ID: "f0a41f56a57bdb2973779c953c3ade4d262a9d1267acf304ed76c32dda6f5f90",
     }
     for preset_id, expected_hash in expected_hashes.items():
         preset = get_preset(preset_id)

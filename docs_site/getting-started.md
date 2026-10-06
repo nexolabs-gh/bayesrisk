@@ -239,7 +239,8 @@ coeficientes de la curva con su signo, error estándar y p-valor; `ecl.summary("
 PD acumulada por período y cartera). El resumen final no tiene «validación técnica», porque una
 provisión no tiene veredicto: en su lugar dice sus **supuestos** —la PD a lo largo del ciclo
 (TTC), sin ajuste a las condiciones actuales; el escenario único; la exposición constante en el
-tiempo; las presunciones de mora— y cinco cifras: la ECL total, la cobertura, la exposición y la
+tiempo; las presunciones de mora; el Stage 3 provisionado con su pérdida, LGD × EAD— y cinco
+cifras: la ECL total, la cobertura, la exposición y la
 ECL en Stage 2 y 3, y la PD a 12 meses ponderada por exposición. Lo que la puerta infiere lo
 declara en el registro de auditoría: cuántos períodos de la curva son 12 meses (uno con
 `period="year"`, doce con `"month"`), el esquema de las columnas que nombraste y que es una

@@ -930,7 +930,8 @@ _IFRS9_PROVISIONING_SECTION: dict[str, Any] = {
     "ecl": {
         "eir_col": "eir",
         "discount_convention": "annual_eir_year_fraction",
-        "stage3_direct": False,
+        # CASO-REAL-IFRS9 D-CRE-1: Stage 3 es la pérdida del incumplimiento ya ocurrido, LGD × EAD.
+        "stage3_direct": True,
         "rounding": "none",
     },
     "fail_on_falta_dato": True,

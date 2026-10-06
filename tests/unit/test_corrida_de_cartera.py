@@ -38,7 +38,7 @@ from bayesrisk.ui.serializers import serialize_study
 
 _RAIZ = Path(__file__).resolve().parents[2]
 _HASH_F1 = "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633"
-_HASH_F4 = "013e69dc4c96e03ee87e9f3f54bcf5e1f6e6fd56b5a1b1ffdd5bf021093360b6"
+_HASH_F4 = "a3b7cf9b485cb194807b94017915ddc76df2fd7680aeb79bd501a03c05320ee9"
 _PRODUCIDAS_CON_TARGET = frozenset({"target", "label_status", "partition", "ttd"})
 
 

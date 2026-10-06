@@ -7,6 +7,40 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Cambiado
+
+- **Stage 3 se provisiona con la pérdida del incumplimiento ya ocurrido.** Una operación en Stage 3
+  ya incumplió (IFRS 9, Apéndice A; 5.5.3): su pérdida esperada es su LGD por su exposición (PD =
+  1), y no la PD de por vida de la curva, que la provisionaba como si siguiera sana. Es ahora el
+  default de fábrica de `provisioning_ifrs9.ecl.stage3_direct`, el del preset IFRS 9 y el de
+  `bayesrisk.Ecl`. Medido con el motor: la cartera del paquete pasa de 3.423.116 a **4.786.739**
+  (+39,8 %), la muestra de hipotecas de Freddie Mac 2016 de 1.530.096 a **3.028.897** (+98,0 %) y
+  la de consumo de Lending Club 2013–2016 no cambia (3.254.890: ninguna operación viva en Stage 3).
+  El `config_hash` del preset IFRS 9 pasa de `013e69dc…` a `a3b7cf9b…`, y todo YAML con provisiones
+  IFRS 9 que omita la hoja cambia el suyo y, si tiene operaciones en Stage 3, su cifra (el motor es
+  experimental). «Supuestos» lo dice; con `stage3_direct: false` y operaciones en Stage 3 dice lo
+  contrario y «Qué revisar» avisa con su exposición. Si la institución tiene una LGD en
+  incumplimiento distinta, va en la misma columna para esas operaciones.
+- **Una fila sin exposición no es una operación de la cartera.** La historia de la curva vive en el
+  mismo archivo: los préstamos ya cerrados entran con exposición 0, alimentan la curva y no suman
+  provisión. Hasta ahora además se validaban, se estageaban y se contaban como operaciones —Lending
+  Club decía «60.000 operaciones, Stage 3: 10.191» sobre 9.593 préstamos vivos sin ninguno en Stage
+  3—. Ahora se separan justo después de calcular la exposición: un dato inválido en un préstamo
+  cerrado ya no detiene la provisión; el detalle, las etapas y las tablas cuentan sólo las
+  operaciones con exposición; la card gana `n_rows_without_exposure`, y «Cartera» dice cuántas
+  filas son sólo historia. La ECL no cambia. Sin ninguna operación con exposición, la corrida se
+  detiene con su mensaje.
+- **La curva identifica cada operación por la columna del identificador.** Con
+  `survival.input.id_col`, la curva publica el valor de esa columna —verificada única: un repetido
+  detiene la corrida y se nombra— en vez de la posición de la fila, en todos sus artefactos por
+  operación; la provisión la lee con `row_id_col`. Si una declara la columna y la otra no, o
+  declaran columnas distintas, la verificación previa lo avisa antes de correr. `bayesrisk.Ecl` con
+  `id=` columna escribe las dos y el detalle por operación sale con tu identificador; con el
+  identificador en el índice —el preset IFRS 9— nada cambia. Una corrida de `Ecl` con `id=` columna
+  cambia su `config_hash`; su cifra, no.
+
 ## [2.5.0] — 2026-10-05
 
 ### Añadido

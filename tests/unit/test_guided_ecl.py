@@ -40,8 +40,9 @@ from bayesrisk.ui.presets import ifrs9_preset
 _GOLDEN_COEFICIENTES = (
     Path(__file__).resolve().parents[1] / "fixtures" / ("survival_coefficients_f4.json")
 )
-#: La ECL del preset F4 sobre el dataset del paquete (S28 §1; enmienda §4).
-_ECL_F4 = 3_423_116.118598177
+#: La ECL del preset F4 sobre el dataset del paquete (S28 §1; enmienda §4), con Stage 3 = LGD × EAD
+#: (CASO-REAL-IFRS9 D-CRE-1: antes 3.423.116,118598177).
+_ECL_F4 = 4_786_738.599344447
 _COVARIABLES = ["days_past_due", "utilizacion_linea", "deuda_ingreso", "antiguedad_meses"]
 #: Los dominios cuyo resultado es cálculo en una provisión: lo que se compara bit a bit.
 _DOMINIOS = ("survival", "provisioning_ifrs9")
@@ -222,21 +223,28 @@ def test_un_id_como_columna_corre_de_punta_a_punta_con_la_cifra_de_f4(
     La curva de supervivencia identifica cada operación por el índice del archivo —su contrato—, y
     la puerta escribía además ``row_id_col`` con la columna: la provisión buscaba ``loan_id`` donde
     la curva publicaba posiciones y toda corrida con ``id=`` columna moría en la provisión (medido
-    sobre Lending Club; el dataset del paquete trae ``loan_id`` como índice y no lo mostraba). La
-    puerta verifica que la columna sea única y deja que curva, provisión y resumen identifiquen
-    por la misma posición: la cifra es la de F4 y la curva por cartera trae sus carteras.
+    sobre Lending Club; el dataset del paquete trae ``loan_id`` como índice y no lo mostraba). Desde
+    CASO-REAL-IFRS9 D-CRE-6 la curva identifica por la columna y la provisión la lee con
+    ``row_id_col``: la cifra es la de F4, el detalle sale con ``loan_id`` y la curva por cartera
+    trae sus carteras.
     """
     frame = pd.read_parquet(datos).reset_index()
     ecl = _ecl(frame, tmp_path, name="id_columna")
     assert ecl.config.data.schema_.unique_keys == ("loan_id",)
-    assert ecl.config.survival.input.id_col is None
-    assert ecl.config.provisioning_ifrs9.row_id_col is None
+    # CASO-REAL-IFRS9 D-CRE-6: la curva y la provisión identifican por la columna (antes, por la
+    # posición de la fila, con las dos hojas vacías).
+    assert ecl.config.survival.input.id_col == "loan_id"
+    assert ecl.config.provisioning_ifrs9.row_id_col == "loan_id"
     identificador = next(i for i in ecl.inferences if i.regla == "inferencia_identificador")
-    assert "posición" in identificador.motivo
+    assert "posición" not in identificador.motivo
     ecl.run()
     assert ecl.study.run_context.status == "done", ecl.study.run_context.error
     card = ecl.study.artifacts.get("provisioning_ifrs9", "card")
-    assert round(float(card.total_ecl_reported)) == 3_423_116
+    assert round(float(card.total_ecl_reported)) == 4_786_739
+    detalle = ecl.study.artifacts.get("provisioning_ifrs9", "detail")
+    assert detalle["row_id"].tolist() == [str(v) for v in frame["loan_id"].tolist()]
+    curva = ecl.study.artifacts.get("survival", "term_structure")
+    assert set(curva["row_id"]) == set(detalle["row_id"])
     (_titulo, curva, _formatos) = ecl.summary("survival").extra_tables[0]
     assert {"Comercial", "Consumo", "Hipotecario", "Tarjetas"} <= set(curva.columns)
     assert curva[["Comercial", "Consumo", "Hipotecario", "Tarjetas"]].notna().all().all()
@@ -279,6 +287,8 @@ def test_la_ecl_de_la_puerta_es_la_de_f4_salvo_la_etiqueta_de_particion(
 ) -> None:
     card = corrida.study.artifacts.get("provisioning_ifrs9", "card")
     assert card.total_ecl_reported == pytest.approx(_ECL_F4, abs=1e-6)
+    # D-CRE-1: la puerta provisiona Stage 3 con LGD × EAD (la del preset F4).
+    assert corrida.config.provisioning_ifrs9.ecl.stage3_direct is True
     assert (card.n_stage1, card.n_stage2, card.n_stage3) == (5235, 477, 288)
     assert _proyeccion(corrida.study, sin_particion=True) == _proyeccion(f4, sin_particion=True)
     # Lo único que difiere: la etiqueta de partición que arrastra la curva por fila.

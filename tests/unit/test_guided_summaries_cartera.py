@@ -234,7 +234,7 @@ def test_la_curva_dice_su_historia_su_forma_y_el_efecto_de_cada_covariable(corri
 def test_la_provision_dice_etapas_gatillos_y_la_ead_declarada(corrida: Ecl) -> None:
     resumen = corrida.summary("provisioning_ifrs9")
     texto = "\n".join(resumen.lines)
-    assert "ECL total 3.423.116 · cobertura 2,99 %" in texto
+    assert "ECL total 4.786.739 · cobertura 4,19 %" in texto
     assert "Qué llevó a Stage 2: mora de 30 días o más (477)" in texto
     assert (
         "Qué llevó a Stage 3: mora de 90 días o más (240) y la marca de incumplimiento (288)"
@@ -267,7 +267,7 @@ def test_el_resumen_final_dice_supuestos_y_las_cinco_cifras(corrida: Ecl) -> Non
         "ECL de Stage 2 y 3",
         "PD a 12 meses media, ponderada por la exposición",
     ]
-    assert dict(final.figures)["ECL total"] == "3.423.116"
+    assert dict(final.figures)["ECL total"] == "4.786.739"
     supuestos = "\n".join(final.assumptions)
     assert "a lo largo del ciclo (TTC)" in supuestos
     assert "Un escenario único" in supuestos
@@ -276,7 +276,7 @@ def test_el_resumen_final_dice_supuestos_y_las_cinco_cifras(corrida: Ecl) -> Non
     assert "si la cartera amortiza" in supuestos
     # «Qué revisar» repite el TTC (§3.6 (a): lo dice siempre).
     assert any("(TTC)" in alerta for alerta in final.review)
-    assert final.headline() == ("Ejecución: completada", "ECL total: 3.423.116")
+    assert final.headline() == ("Ejecución: completada", "ECL total: 4.786.739")
 
 
 # ─────────────────────────── una sola fuente: YAML y pantalla ───────────────────────────
@@ -456,6 +456,76 @@ def test_sin_cambios_el_estudio_minimo_si_es_ttc_y_solo_por_mora() -> None:
     provision = _resumen_provision(study, contexto)
     todo = "\n".join((*final.assumptions, *provision.alerts))
     assert "TTC" in todo and "Un escenario único" in todo and "sólo por la mora" in todo
+
+
+#: «Supuestos» de Stage 3 (CASO-REAL-IFRS9 D-CRE-1, §3.1): la fórmula de ESA corrida.
+_STAGE3_PD_1 = "Stage 3: la pérdida del incumplimiento ya ocurrido, LGD × EAD (PD = 1)"
+_STAGE3_CON_CURVA = (
+    "Stage 3 con la PD de la curva: una operación ya incumplida se provisiona como una sana"
+)
+
+
+def test_stage3_con_pd_1_lo_dicen_los_supuestos_de_la_puerta(corrida: Ecl) -> None:
+    """D-CRE-1: la puerta provisiona Stage 3 con LGD × EAD y el resumen final lo declara."""
+    assert corrida.config.provisioning_ifrs9.ecl.stage3_direct is True
+    final = corrida.summary()
+    assert _STAGE3_PD_1 in final.assumptions
+    assert _STAGE3_CON_CURVA not in final.assumptions
+    assert not any("PD de la curva" in alerta for alerta in final.review)
+
+
+def _estudio_con_stage3(stage3_direct: bool, etapas: tuple[int, ...]) -> Any:
+    study = _estudio(
+        {"provisioning_ifrs9.ecl.stage3_direct": stage3_direct},
+        {"n_rows": len(etapas), "n_stage3": etapas.count(3)},
+        _COLUMNAS_F4,
+    )
+    study.artifacts._datos[("provisioning_ifrs9", "detail")] = pd.DataFrame(
+        {
+            "row_id": [str(i) for i in range(len(etapas))],
+            "stage": list(etapas),
+            "ead": [1_000.0 * (i + 1) for i in range(len(etapas))],
+            "ecl_reported": [10.0] * len(etapas),
+        }
+    )
+    return study
+
+
+def test_stage3_con_la_curva_se_declara_y_se_alerta_con_su_exposicion() -> None:
+    """D-CRE-1: un YAML con ``stage3_direct=False`` y Stage 3 lo dice en «Supuestos» y en
+    «Qué revisar», con la exposición que se provisiona como sana."""
+    from bayesrisk.guided.summaries import _resumen_provision
+
+    study = _estudio_con_stage3(False, (1, 3, 3))
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="x", partition_label="")
+    provision = _resumen_provision(study, contexto)
+    final = build_final_summary(study, (provision,), contexto)
+    assert _STAGE3_CON_CURVA in final.assumptions
+    assert _STAGE3_PD_1 not in final.assumptions
+    (alerta,) = [a for a in final.review if "PD de la curva" in a]
+    assert alerta.startswith("Provisión IFRS 9: ")
+    assert "2 operaciones en Stage 3" in alerta
+    assert "exposición 5.000" in alerta
+    assert "LGD × EAD" in alerta
+
+
+def test_stage3_con_la_curva_sin_operaciones_en_stage3_no_dice_nada() -> None:
+    """La regla de Stage 3 sólo se declara contraria si hay a quién aplicarla."""
+    from bayesrisk.guided.summaries import _resumen_provision
+
+    study = _estudio_con_stage3(False, (1, 2))
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="x", partition_label="")
+    provision = _resumen_provision(study, contexto)
+    final = build_final_summary(study, (provision,), contexto)
+    todo = "\n".join((*final.assumptions, *final.review))
+    assert "PD de la curva" not in todo and "LGD × EAD" not in todo, todo
+
+
+def test_stage3_con_pd_1_se_declara_aunque_no_haya_stage3() -> None:
+    """Con PD = 1 la regla es un supuesto de la cifra, haya o no operaciones en Stage 3."""
+    study = _estudio_con_stage3(True, (1, 2))
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="x", partition_label="")
+    assert _STAGE3_PD_1 in build_final_summary(study, (), contexto).assumptions
 
 
 def test_sin_marca_no_se_afirma_que_el_stage_3_sea_solo_por_mora_si_hay_override() -> None:

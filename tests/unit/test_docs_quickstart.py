@@ -174,7 +174,7 @@ def test_el_primer_scorecard_cabe_en_el_tope_de_lineas_y_corre_hasta_el_final(
 _PRIMERA_PROVISION = "primera-provision-ifrs9"
 #: La ECL del preset F4 sobre el dataset del paquete (S28, `ifrs9-mediciones.md` §1): la corrida
 #: de la puerta antes de la decisión humana del cuaderno es la misma provisión (§4 de la enmienda).
-_ECL_F4: float = 3_423_116.0
+_ECL_F4: float = 4_786_739.0
 
 
 def test_la_primera_provision_ifrs9_cabe_en_el_tope_y_corre_hasta_el_final(

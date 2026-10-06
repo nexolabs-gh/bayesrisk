@@ -74,7 +74,12 @@ def test_el_contexto_expone_exactamente_los_campos_declarados() -> None:
     lo transporta sin interpretarlo — que es lo que mantiene cerrada la puerta que este gate vigila.
     """
     campos = {campo.name for campo in dataclasses.fields(ContextoConfig)}
-    assert campos == {"secciones_activas", "direccion_del_score"}, (
+    # El tercero, `identificadores`, entró por CASO-REAL-IFRS9 D-CRE-6 (§3.6, aprobada el
+    # 2026-10-05): «si la curva y la provisión declaran identificadores distintos, la corrida se
+    # detiene antes de correr con un requisito por contexto». Lo llena la sección que publica
+    # artefactos por operación (`identificador_de_filas_declarado`) y el núcleo lo transporta sin
+    # interpretarlo, como `direccion_del_score`.
+    assert campos == {"secciones_activas", "direccion_del_score", "identificadores"}, (
         f"ContextoConfig expone {sorted(campos)}. Un campo nuevo amplía lo que CADA sección puede "
         "saber del resto del config: se decide en el SDD (D-ABA-8), no al programar."
     )
@@ -252,7 +257,9 @@ def test_los_declarantes_del_protocolo_estan_inventariados() -> None:
     sección raíz que empiece a declararlo sin pasar por aquí pone el gate en rojo.
     """
     # D-ECL-2 (S29): `data` avisa de una corrida de cartera con una etapa que modela.
-    esperados = {"data", "performance", "stability"}
+    # CASO-REAL-IFRS9 D-CRE-6 (S34): `provisioning_ifrs9` avisa de una curva y una provisión que
+    # identifican las operaciones por columnas distintas (§3.6 de la enmienda).
+    esperados = {"data", "performance", "provisioning_ifrs9", "stability"}
     for preset_id in _PRESETS:
         config = _config_de(preset_id)
         declarantes = {

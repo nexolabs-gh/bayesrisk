@@ -231,6 +231,9 @@ line-length = 100
 target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF", "D"]   # D = docstrings (en español)
+# El signo de multiplicación es tipografía del copy en español («LGD × EAD», CASO-REAL-IFRS9), no un
+# homógrafo de la «x»: RUF001-003 lo confundía. Los demás confusables siguen vetados.
+allowed-confusables = ["×"]
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 [tool.ruff.lint.per-file-ignores]

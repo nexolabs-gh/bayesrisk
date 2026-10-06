@@ -28,7 +28,7 @@ from typing import Literal, Self
 from pydantic import ConfigDict, Field, model_validator
 
 from bayesrisk.core.config import BayesRiskBaseConfig, declara_esenciales
-from bayesrisk.core.dataset_check import Requisito
+from bayesrisk.core.dataset_check import ContextoConfig, Requisito
 from bayesrisk.provisioning.ifrs9.exceptions import IfrsConfigError
 from bayesrisk.provisioning.lgd import (
     WORKOUT_COST_COLUMN,
@@ -820,12 +820,16 @@ class IfrsEclConfig(BayesRiskBaseConfig):
         ),
         json_schema_extra={"ui_widget": "selectbox", "ui_group": "ECL", "ui_order": 2},
     )
+    # CASO-REAL-IFRS9 D-CRE-1 (Cami, 2026-10-05, §8-2 (b)): activado de fábrica. Una operación en
+    # Stage 3 ya incumplió (IFRS 9, Apéndice A; 5.5.3): su pérdida no depende de la probabilidad de
+    # incumplir sino de cuánto se pierde (B5.5.33). Con la PD de la curva se provisionaba como una
+    # sana: en la cartera del paquete, el 39 % de su LGD × EAD; medido +39,8 % y +98,0 % de ECL.
     stage3_direct: bool = Field(
-        default=False,
+        default=True,
         title="Stage 3 como EAD·LGD directo",
         description=(
-            "Si está activado, Stage 3 calcula EAD·LGD descontado directo en vez de la ECL "
-            "lifetime."
+            "Activado, Stage 3 provisiona la pérdida del incumplimiento ya ocurrido, EAD·LGD "
+            "(PD = 1), en vez de la ECL lifetime con la PD de la curva."
         ),
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "ECL", "ui_order": 3},
     )
@@ -1002,6 +1006,41 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
                     loc=(*_LOC_SECCION, "pd", "systemic_factor_col"),
                 )
         return self
+
+    def requisitos_incumplidos_por_contexto(
+        self, contexto: ContextoConfig
+    ) -> tuple[Requisito, ...]:
+        """La curva y la provisión tienen que identificar las operaciones igual (D-CRE-6).
+
+        Con ``survival.input.id_col`` la curva publica el valor de esa columna como ``row_id``; la
+        provisión lo busca con ``row_id_col``. Si una declara la columna y la otra no, o declaran
+        columnas distintas, ninguna operación se encuentra con su curva y la corrida muere en la
+        provisión, después de ajustar la curva. Se avisa antes de correr. Sólo con la curva de
+        ``survival``: la de ``forward`` hereda su ``row_id`` y la de ``markov`` tiene el suyo.
+        """
+        if self.pd.term_structure_source != "survival":
+            return ()
+        if "survival" not in contexto.identificadores:
+            return ()
+        de_la_curva = contexto.identificadores["survival"]
+        if de_la_curva == self.row_id_col:
+            return ()
+
+        def _por(columna: str | None) -> str:
+            return "el índice del archivo" if columna is None else f"la columna «{columna}»"
+
+        return (
+            Requisito(
+                path="row_id_col",
+                declared=self.row_id_col or "(índice del archivo)",
+                message=(
+                    f"La curva de PD identifica cada operación por {_por(de_la_curva)} y la "
+                    f"provisión, por {_por(self.row_id_col)}: no se encontrarían. Declara la "
+                    "misma columna de identificador en las dos, o déjalas las dos vacías para "
+                    "identificar por el índice del archivo."
+                ),
+            ),
+        )
 
     def requisitos_incumplidos(self, columnas: frozenset[str] | None) -> tuple[Requisito, ...]:
         """Lo que esta sección se exige a sí misma y la corrida rechazará (D-INV-1).

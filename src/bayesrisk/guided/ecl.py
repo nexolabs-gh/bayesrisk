@@ -79,8 +79,8 @@ class Ecl(_PuertaGuiada):
     id
         Identificador de cada operación, opcional y recomendado: una columna o el nombre del
         índice del archivo. Sin él se usa el índice del archivo y se declara. Una columna se
-        verifica única; la curva, la provisión y el resumen identifican cada operación por su
-        posición en el archivo (la copia de la corrida la conserva), y se declara.
+        verifica única, y la curva, la provisión y el detalle por operación identifican cada
+        operación por ella.
     as_of, portfolio, exposure, lgd, rate, days_past_due
         Las columnas de la provisión: fecha de corte (un solo valor), cartera, exposición al
         incumplimiento ya calculada, LGD, tasa efectiva **anual** de cada operación y días de mora.
@@ -249,26 +249,25 @@ class Ecl(_PuertaGuiada):
                 )
             )
         elif unique_keys is not None:
-            # Un archivo de banco trae el identificador como COLUMNA. La curva de supervivencia
-            # identifica cada operación por el índice del archivo (su contrato), así que la
-            # provisión y el resumen tienen que identificar por lo mismo: si la provisión leyera
-            # la columna, buscaría `loan_id` donde la curva publica posiciones y la corrida moriría
-            # (medido sobre Lending Club en S32). La columna se verifica única; las tres etapas
-            # identifican por la posición de la fila, que la copia de la corrida conserva.
+            # Un archivo de banco trae el identificador como COLUMNA. Desde CASO-REAL-IFRS9
+            # (D-CRE-6) la curva identifica por esa columna —`survival.input.id_col`— y la
+            # provisión la lee con `row_id_col`: las dos hojas se escriben juntas, y el detalle
+            # por operación sale con el identificador del banco. Hasta la 2.5.0 las tres etapas
+            # identificaban por la posición de la fila, porque la curva sólo publicaba el índice.
             inferencias.append(
                 Inferencia(
                     regla="inferencia_identificador",
-                    valor={"columna": id, "llave": "posición de la fila"},
+                    valor={"columna": id},
                     motivo=(
                         f"id={id} es una columna del archivo: se verifica que sea única, y la "
-                        "curva, la provisión y el resumen identifican cada operación por su "
-                        "posición en el archivo, que la copia de la corrida conserva"
+                        "curva, la provisión y el detalle por operación identifican cada "
+                        "operación por ella"
                     ),
                 )
             )
         id_columna = id if unique_keys is not None else None
         if id_columna is not None:
-            id_label = f"{id_label}; cada etapa identifica la operación por su fila en el archivo"
+            id_label = f"{id_label}; la curva y la provisión identifican cada operación por ella"
 
         # ── esquema de las columnas declaradas ───────────────────────────────────────────
         en_esquema = list(dict.fromkeys([*([id_columna] if id_columna else []), *declaradas]))
@@ -344,15 +343,15 @@ class Ecl(_PuertaGuiada):
         survival["input"]["duration_col"] = columnas["duration"]
         survival["input"]["event_col"] = columnas["event"]
         survival["input"]["covariate_cols"] = list(covariables)
-        # Sin `id_col` ni `row_id_col`: la curva, la provisión y el resumen identifican por el
-        # índice del archivo, el único identificador que las tres leen igual (ver arriba).
-        survival["input"]["id_col"] = None
+        # D-CRE-6: con id= columna, la curva y la provisión leen la misma columna; con id= índice
+        # (o sin id=), las dos hojas vacías: identifican por el índice, como el preset F4.
+        survival["input"]["id_col"] = id_columna
         survival["time_grid"]["time_unit"] = period
         survival["time_grid"]["horizon_periods"] = horizonte
         ifrs = cfg["provisioning_ifrs9"]
         ifrs["as_of_date_col"] = columnas["as_of"]
         ifrs["portfolio_col"] = columnas["portfolio"]
-        ifrs["row_id_col"] = None
+        ifrs["row_id_col"] = id_columna
         ifrs["pd"]["horizon_12m_periods"] = horizonte_12m
         ifrs["ead"]["ead_col"] = columnas["exposure"]
         ifrs["lgd"]["lgd_col"] = columnas["lgd"]

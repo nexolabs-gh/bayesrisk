@@ -446,6 +446,15 @@ class SurvivalConfig(BayesRiskBaseConfig):
             )
         return self
 
+    def identificador_de_filas_declarado(self) -> str | None:
+        """La columna con que la curva identifica cada operación; ``None``: el índice (D-CRE-6).
+
+        Desde CASO-REAL-IFRS9 la curva publica el valor de ``input.id_col`` como ``row_id`` en sus
+        artefactos por operación; la provisión que la consume tiene que leer la misma columna, y
+        lo comprueba con este valor (``provisioning_ifrs9``, requisito por contexto).
+        """
+        return self.input.id_col
+
     def requisitos_incumplidos(self, columnas: frozenset[str] | None) -> tuple[Requisito, ...]:
         """Lo que esta sección se exige a sí misma y detiene la corrida al final (D-INV-1).
 

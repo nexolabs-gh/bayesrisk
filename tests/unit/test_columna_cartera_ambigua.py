@@ -131,7 +131,8 @@ def test_el_aviso_no_mueve_el_config_hash_de_ningun_preset() -> None:
     esperados = {
         "f1-estandar-consumo": "1063d6cf",
         "f3-provisiones-consumo": "857b06ee",
-        "f4-ifrs9-retail": "013e69dc",
+        # CASO-REAL-IFRS9 D-CRE-1 (S34): el preset escribe Stage 3 = LGD × EAD; antes 013e69dc…
+        "f4-ifrs9-retail": "a3b7cf9b",
     }
     for preset_id, prefijo in esperados.items():
         config = BayesRiskConfig.model_validate(get_preset(preset_id)["config"])

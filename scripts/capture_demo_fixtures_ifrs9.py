@@ -69,7 +69,8 @@ _CAPTURE_WORKDIR_NAME = ".bayesrisk-demo-fixtures-f4"
 _COVERAGE_MIN, _COVERAGE_MAX = 0.01, 0.15  # rango creíble de retail (el ⚑ checkpoint del número)
 _EXPECTED_F4_STAGES = (5_235, 477, 288)
 _EXPECTED_F4_EAD = 114_325_315
-_EXPECTED_F4_ECL = 3_423_116
+# CASO-REAL-IFRS9 D-CRE-1 (S34): Stage 3 = LGD × EAD; antes 3.423.116.
+_EXPECTED_F4_ECL = 4_786_739
 _EXPECTED_F4_SURVIVAL = (6_000, 1_502)
 
 # Procedencia de la corrida: lo que el Anexo A del informe publica y lo único que permite

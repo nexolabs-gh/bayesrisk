@@ -57,7 +57,8 @@ DATASET_ID = "ifrs9_retail_latam"
 HORIZON_YEARS = 5  # periodos ANUALES (== registro del dataset); grilla lifetime = 1..T años
 _EXPECTED_F4_STAGES = (5_235, 477, 288)
 _EXPECTED_F4_EAD = 114_325_315
-_EXPECTED_F4_ECL = 3_423_116
+# CASO-REAL-IFRS9 D-CRE-1 (S34): Stage 3 = LGD × EAD; antes 3.423.116.
+_EXPECTED_F4_ECL = 4_786_739
 _EXPECTED_F4_SURVIVAL = (6_000, 1_502)
 
 # Secciones que la cadena standalone IFRS 9 NO necesita: TODO el pipeline scorecard
@@ -121,7 +122,9 @@ _IFRS9_SECTION = IfrsProvisioningConfig(
         dpd_default_backstop=90,
     ),
     scenarios=IfrsScenarioConfig(source="single"),
-    ecl=IfrsEclConfig(eir_col="eir", discount_convention="annual_eir_year_fraction"),
+    ecl=IfrsEclConfig(
+        eir_col="eir", discount_convention="annual_eir_year_fraction", stage3_direct=True
+    ),
 ).model_dump(mode="json", by_alias=True)
 
 

@@ -2593,10 +2593,22 @@ def ifrs9_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
         paragraphs.append(titular)
 
     if n_rows is not None and n_s1 is not None and n_s2 is not None and n_s3 is not None:
-        paragraphs.append(
+        conteo = (
             f"De las {_miles(n_rows)} operaciones de la cartera, {_miles(n_s1)} clasifican en "
             f"Stage 1, {_miles(n_s2)} en Stage 2 y {_miles(n_s3)} en Stage 3."
         )
+        # CASO-REAL-IFRS9 D-CRE-5: las filas sin exposición no son operaciones; se dicen sólo si
+        # las hay, así que el capítulo de una cartera sin historia en el archivo no cambia.
+        historia = _int(card.get("n_rows_without_exposure"))
+        if historia:
+            conteo += (
+                f" Otras {_miles(historia)} filas del archivo, sin exposición al corte, sólo "
+                "aportan historia a la curva de PD."
+                if historia > 1
+                else " Otra fila del archivo, sin exposición al corte, sólo aporta historia a la "
+                "curva de PD."
+            )
+        paragraphs.append(conteo)
 
     paragraphs.append(
         "El cálculo IFRS 9 es una función experimental: los números son trazables y "

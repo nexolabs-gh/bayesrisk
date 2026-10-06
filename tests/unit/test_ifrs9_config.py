@@ -112,7 +112,8 @@ def _ifrs9_defaults() -> dict[str, Any]:
         "ecl": {
             "eir_col": "eir",
             "discount_convention": "annual_eir_year_fraction",
-            "stage3_direct": False,
+            # CASO-REAL-IFRS9 D-CRE-1 (Cami, 2026-10-05, §8-2 (b)): Stage 3 = LGD × EAD de fábrica.
+            "stage3_direct": True,
             "rounding": "none",
         },
         "fail_on_falta_dato": True,

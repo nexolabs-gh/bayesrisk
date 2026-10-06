@@ -1331,7 +1331,7 @@
         },
         "stage3_direct": {
           "has_default": true,
-          "value": false
+          "value": true
         }
       },
       "provisioning_ifrs9__IfrsLgdConfig": {
@@ -3879,7 +3879,7 @@
           },
           "stage3_direct": {
             "has_default": true,
-            "value": false
+            "value": true
           }
         },
         "fail_on_falta_dato": {
@@ -8795,8 +8795,8 @@
             "ui_widget": "selectbox"
           },
           "stage3_direct": {
-            "default": false,
-            "description": "Si está activado, Stage 3 calcula EAD·LGD descontado directo en vez de la ECL lifetime.",
+            "default": true,
+            "description": "Activado, Stage 3 provisiona la pérdida del incumplimiento ya ocurrido, EAD·LGD (PD = 1), en vez de la ECL lifetime con la PD de la curva.",
             "title": "Stage 3 como EAD·LGD directo",
             "type": "boolean",
             "ui_group": "ECL",

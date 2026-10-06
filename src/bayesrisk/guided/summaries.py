@@ -2338,6 +2338,13 @@ _COLUMNA_PD_PIT_ORIGEN: Final = "pd_pit_origination"
 #: Las presunciones de mora de IFRS 9 (5.5.11 y B5.5.37): lo que se rebate con motivo (§3.9).
 _PRESUNCION_STAGE_2: Final = 30
 _PRESUNCION_STAGE_3: Final = 90
+#: La regla de Stage 3 de ESA corrida (CASO-REAL-IFRS9 D-CRE-1, §3.1): con ``stage3_direct`` —el
+#: default de fábrica, el de F4 y el de la puerta— la pérdida del incumplimiento ya ocurrido; sin
+#: él, y con alguna operación en Stage 3, la contraria y una alerta en «Qué revisar».
+_STAGE3_PD_1: Final = "Stage 3: la pérdida del incumplimiento ya ocurrido, LGD × EAD (PD = 1)"
+_STAGE3_CON_CURVA: Final = (
+    "Stage 3 con la PD de la curva: una operación ya incumplida se provisiona como una sana"
+)
 
 
 def _horizonte_de_la_curva(study: Study, card: Mapping[str, Any]) -> int | None:
@@ -2370,7 +2377,25 @@ def _resumen_cartera(study: Study, context: SummaryContext) -> StageSummary:
         if isinstance(frame, pd.DataFrame)
         else (_int(card.get("n_rows")) if card is not None else None) or 0
     )
-    partes = [f"{_miles(n_filas)} {_plural(n_filas, 'operación', 'operaciones')}"]
+    # CASO-REAL-IFRS9 D-CRE-5 (§3.5): una fila con exposición 0 no es una operación de la cartera
+    # —sólo aporta historia a la curva— y la provisión no la cuenta. «Cartera» dice lo mismo, con
+    # la misma regla (el cero exacto), cuando la exposición es una columna del archivo.
+    historia = 0
+    if isinstance(frame, pd.DataFrame) and isinstance(ead_col, str) and ead_col in frame.columns:
+        sin_exposicion = pd.to_numeric(frame[ead_col], errors="coerce").eq(0)
+        historia = int(sin_exposicion.sum())
+        if historia:
+            frame = frame.loc[~sin_exposicion.to_numpy()]
+    n_operaciones = n_filas - historia
+    partes = [f"{_miles(n_operaciones)} {_plural(n_operaciones, 'operación', 'operaciones')}"]
+    if historia:
+        # En la misma línea y no en una propia: el resumen de una etapa tiene tope de ocho.
+        partes = [
+            f"{_miles(n_filas)} {_plural(n_filas, 'fila', 'filas')}: {_miles(n_operaciones)} "
+            f"{_plural(n_operaciones, 'operación', 'operaciones')} con exposición al corte; "
+            f"{_miles(historia)} sin exposición "
+            f"{_plural(historia, 'sólo aporta', 'sólo aportan')} historia a la curva"
+        ]
     if isinstance(frame, pd.DataFrame):
         if isinstance(as_of_col, str) and as_of_col in frame.columns:
             fechas = sorted({_fecha_legible(v) for v in frame[as_of_col].dropna().unique()})
@@ -2695,10 +2720,10 @@ def _pd_por_segmento_y_cartera(
 def _cartera_por_operacion(study: Study) -> dict[str, str] | None:
     """``row_id`` de la curva → cartera.
 
-    La curva de supervivencia publica ``row_id`` desde el **índice** del archivo, aunque el config
-    declare ``survival.input.id_col`` (su contrato: ``id_col`` sólo se valida). Mapear por esa
-    columna atribuía las PD a la cartera equivocada cuando no coincide con el índice (pasada 1 de
-    Codex sobre la capa C), así que el mapa se arma con el mismo índice que lee la curva.
+    La curva publica ``row_id`` con el mismo identificador que lee: el valor de
+    ``survival.input.id_col`` si lo declara (CASO-REAL-IFRS9 D-CRE-6) y, si no, el **índice** del
+    archivo. El mapa se arma con ESE identificador: mapear por otro atribuía las PD a la cartera
+    equivocada (pasada 1 de Codex sobre la capa C de FLUJO-GUIADO-IFRS9, con la curva por índice).
     """
     frame = _artifact(study, "data", "frame")
     cartera_col = _hoja(_seccion(study, "provisioning_ifrs9"), "portfolio_col")
@@ -2706,7 +2731,13 @@ def _cartera_por_operacion(study: Study) -> dict[str, str] | None:
         return None
     if cartera_col not in frame.columns:
         return None
-    ids = [str(valor) for valor in frame.index]
+    id_col = _hoja(_seccion(study, "survival"), "input", "id_col")
+    if isinstance(id_col, str):
+        if id_col not in frame.columns:
+            return None
+        ids = [str(valor) for valor in frame[id_col].tolist()]
+    else:
+        ids = [str(valor) for valor in frame.index]
     return dict(zip(ids, frame[cartera_col].astype(str).tolist(), strict=True))
 
 
@@ -2825,6 +2856,15 @@ def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
             + (" y la marca de incumplimiento" if con_marca else "")
             + ": la corrida no trae PD de origen, rating ni decisión cualitativa con que "
             "compararlo"
+        )
+    if _hoja(ifrs, "ecl", "stage3_direct") is False and 3 in por_etapa:
+        n3, exp3, _ecl3 = por_etapa[3]
+        alerts.append(
+            f"Stage 3 con la PD de la curva: {_miles(n3)} "
+            f"{_plural(n3, 'operación', 'operaciones')} en Stage 3, con exposición "
+            f"{_monto(exp3)}, "
+            f"{_plural(n3, 'se provisiona como sana', 'se provisionan como sanas')}: la pérdida "
+            "del incumplimiento ya ocurrido es LGD × EAD (PD = 1)"
         )
     otras = [c for c in falta if c != "FALTA-DATO-IFRS-4"]
     alerts.extend(_capitalizar(d) for d in _declared_warning_descriptions(otras))
@@ -3339,6 +3379,11 @@ def _supuestos(study: Study) -> tuple[str, ...]:
                 f"Stage 2 desde {s2} días de mora y Stage 3 desde {s3}, frente a las presunciones "
                 f"de IFRS 9 de {_PRESUNCION_STAGE_2} y {_PRESUNCION_STAGE_3}"
             )
+    directo = _hoja(ifrs, "ecl", "stage3_direct")
+    if directo is True:
+        supuestos.append(_STAGE3_PD_1)
+    elif directo is False and _int(card.get("n_stage3")):
+        supuestos.append(_STAGE3_CON_CURVA)
     if "FALTA-DATO-IFRS-4" in tuple(str(c) for c in _sequence(card.get("falta_dato"))):
         supuestos.append(_ead_constante())
     if _hoja(ifrs, "lgd", "method") == "provided":

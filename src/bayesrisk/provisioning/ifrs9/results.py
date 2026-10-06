@@ -325,6 +325,10 @@ class IfrsProvisionCard(BaseModel):
     term_structure_source: str
     pit_mode: str
     n_rows: int = Field(ge=0)
+    # CASO-REAL-IFRS9 D-CRE-5 (§3.5): las filas del archivo con EAD = 0, que sólo alimentan la curva
+    # y no son operaciones de la cartera (``n_rows`` las excluye). Aditivo, con default 0 para que
+    # una card anterior a la enmienda siga recargando.
+    n_rows_without_exposure: int = Field(default=0, ge=0)
     n_stage1: int = Field(ge=0)
     n_stage2: int = Field(ge=0)
     n_stage3: int = Field(ge=0)

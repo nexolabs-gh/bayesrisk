@@ -14,8 +14,9 @@ veinte líneas), la **completa** (el config entero, en YAML o por código) y la 
 ## Qué calcula
 
 La pérdida crediticia esperada (ECL) de cada operación en tres etapas: Stage 1 provisiona la
-pérdida de los próximos 12 meses y Stage 2 y 3, la de toda la vida de la operación (IFRS 9
-5.5.3 y 5.5.5). La probabilidad de incumplimiento de cada período sale de una **curva de PD**
+pérdida de los próximos 12 meses; Stage 2, la de toda la vida de la operación (IFRS 9 5.5.3 y
+5.5.5); y Stage 3, una operación que ya incumplió, la pérdida de ese incumplimiento: su LGD por
+su exposición. La probabilidad de incumplimiento de cada período sale de una **curva de PD**
 que se ajusta sobre la historia de incumplimientos de tu propia cartera —un modelo de riesgo en
 tiempo discreto con tus covariables—; la LGD y la exposición (EAD) vienen de tu archivo; cada
 pérdida se descuenta a la tasa efectiva anual de la operación; y la etapa la deciden la mora
@@ -36,11 +37,10 @@ Dos cosas que conviene saber antes de armar el archivo con datos reales:
 
 - **La historia vive en las mismas filas que la cartera.** Los incumplimientos de tu historia
   suelen estar en operaciones que ya se cerraron —castigadas o pagadas—. Inclúyelas con
-  exposición 0: alimentan la curva y no suman provisión. Los conteos por etapa del resumen las
-  cuentan como operaciones.
-- **El identificador puede ser una columna.** `id=` verifica que sea única; la curva, la provisión
-  y el resumen identifican cada operación por su posición en el archivo, que la copia de la
-  corrida conserva.
+  exposición 0: alimentan la curva y no son operaciones de la cartera. La provisión no las
+  valida, no las estagea ni las cuenta, y «Cartera» dice cuántas filas son sólo historia.
+- **El identificador puede ser una columna.** `id=` verifica que sea única, y la curva, la
+  provisión y el detalle por operación identifican cada operación por ella.
 
 ## La puerta guiada
 
@@ -152,11 +152,17 @@ paquete —créditos de consumo de Lending Club (2013–2016) e hipotecas de Fre
 | Supuesto | Qué significa | Cuánto movió la ECL al cambiarlo |
 |---|---|---|
 | PD a lo largo del ciclo (TTC), escenario único | la curva resume la historia, sin condiciones actuales ni escenarios macroeconómicos | — (IFRS 9 5.5.17 pide considerarlos) |
-| Stage 3 con la PD de la curva | una operación ya en incumplimiento se provisiona como una sana; la opción «Stage 3 como EAD·LGD directo» (`provisioning_ifrs9.ecl.stage3_direct`, en «Avanzado») la provisiona con su pérdida de incumplimiento | +40 % en la cartera del paquete; +98 % en las hipotecas |
-| La curva parte de la originación | no se condiciona a la antigüedad de cada operación ni se corta en su plazo remanente | +6 % en consumo de tres años; −47 % en hipotecas de diez años |
-| Exposición constante | la EAD no amortiza a lo largo de la vida | −38 % en consumo de cuota fija; −4 % en hipotecas |
-| El aumento significativo del riesgo, sólo por mora y marca | sin PD de origen no hay comparación con lo esperado al originar | con el FICO actual, un 2,7 % de las operaciones en Stage 1 de Lending Club pasaría a Stage 2 |
+| Stage 3 con su pérdida, LGD × EAD | una operación ya incumplida se provisiona con lo que se pierde, PD = 1 (el default); con la PD de la curva —la opción «Stage 3 como EAD·LGD directo» apagada, en «Avanzado»— se provisionaría como una sana | +40 % en la cartera del paquete y +98 % en las hipotecas frente a la PD de la curva |
+| La curva parte de la originación | no se lee desde la antigüedad de cada operación | +14 % en consumo de tres años; −27 % en hipotecas de diez años |
+| La vida es la de la curva | no se corta en el vencimiento de cada operación | −16 % en consumo (vence antes que la curva); +6 % en hipotecas (la vida se alarga) |
+| Las dos juntas | la curva leída desde la edad de cada operación hasta su vencimiento | +2 % en consumo; −21 % en hipotecas |
+| Exposición constante | la EAD no amortiza a lo largo de la vida | −25 % en consumo de cuota fija y −6 % en hipotecas, sobre la vida contractual |
+| El aumento significativo del riesgo, sólo por mora y marca | sin PD de origen no hay comparación con lo esperado al originar | con el FICO actual, un 2,7 % de las operaciones en Stage 1 de Lending Club pasaría a Stage 2; evaluar la curva con las covariables actuales mueve la ECL +13 % en consumo y −30 % en hipotecas |
 
-Ninguno de esos cambios está hoy en la puerta guiada: lo que se puede cambiar, se cambia en el
-config (la puerta completa) y queda con su `config_hash`; lo demás está declarado como límite
-conocido en el [changelog](../changelog.md).
+Las cifras de consumo y de hipotecas leen la curva desde la edad de cada operación con riesgo
+constante dentro de cada período y, más allá del último período con incumplimientos observados,
+con la media de los tres últimos: en las hipotecas, el último año de la curva no tiene ninguno.
+Stage 3 con su pérdida ya es el default de las tres puertas. La antigüedad, el vencimiento y la
+cuota de cada operación llegarán como tres columnas opcionales del archivo de cartera; lo que se
+puede cambiar hoy se cambia en el config (la puerta completa) y queda con su `config_hash`, y lo
+demás está declarado como límite conocido en el [changelog](../changelog.md).

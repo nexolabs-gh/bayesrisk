@@ -214,6 +214,8 @@ def test_ifrs_provision_card_golden_metric_sections_y_copias() -> None:
         "term_structure_source",
         "pit_mode",
         "n_rows",
+        # CASO-REAL-IFRS9 D-CRE-5: aditivo, con default 0 (una card anterior sigue recargando).
+        "n_rows_without_exposure",
         "n_stage1",
         "n_stage2",
         "n_stage3",
