@@ -289,7 +289,7 @@ def verify_business(results: dict[str, Any]) -> dict[str, float]:
     assert (n1, n2, n3) == _EXPECTED_F4_STAGES
     assert round(total_ead) == _EXPECTED_F4_EAD
     assert round(total_ecl) == _EXPECTED_F4_ECL
-    assert f"{coverage:.2%}" == "2.99%"
+    assert f"{coverage:.2%}" == "4.19%"  # D-CRE-1 (S34): antes 2,99 %
 
     survival = results.get("survival")
     assert isinstance(survival, dict), "results-ifrs9.json no trae la card survival"
