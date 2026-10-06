@@ -2,7 +2,7 @@
 
 Superficie pública de bayesrisk, organizada por dominio. Cada símbolo se genera
 automáticamente desde sus *docstrings* con [mkdocstrings]; las firmas y campos son los del código
-publicado (`2.5.0`).
+publicado (`2.6.0`).
 
 !!! note "Estabilidad (SemVer 2.x)"
     El pipeline de validación de scorecard (F1) —el trío `run` → `Study` → `BayesRiskConfig` y los
