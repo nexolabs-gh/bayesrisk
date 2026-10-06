@@ -8,6 +8,8 @@
 > Diseño sin código: **la capa A se programa en la sesión siguiente**, con tests nacidos rojos,
 > controles negativos y revisión del código; la B después. Cada release y cada recaptura piden su OK
 > aparte.
+> **Capa A implementada en S34 (2026-10-06) y publicada en la 2.6.0** con la demo
+> recapturada: §9.
 > **Corregida tras la pasada 1 de Codex** (tres high y un medium, los cuatro reales y ninguno
 > contractual): la lectura condicionada se limita a curvas de supervivencia, de las que se conoce la
 > historia (§3.2-7); la EAD amortiza con la **cuota del contrato** y no con una tabla deducida de la
@@ -601,6 +603,57 @@ del paquete; no programa nada.
 —las seis, la recomendación—. La capa A (D-CRE-1 con el default de fábrica, D-CRE-5 y D-CRE-6) se
 programa en S34 y sale en la 2.6.0; la B (D-CRE-2 y D-CRE-3, esenciales a 10, la cola con la media
 de tres) en la 2.7.0. Cada release y cada recaptura piden su OK aparte.
+
+## 9. Capa A implementada (S34, 2026-10-06)
+
+**D-CRE-1.** `IfrsEclConfig.stage3_direct` pasa a `True` de fábrica (la descripción del campo lo
+dice en palabras), el preset F4 lo escribe y `Ecl` lo hereda del preset: F4 y `Ecl` sobre el
+paquete dan **4.786.739** (antes 3.423.116) y el `config_hash` de F4 es **`a3b7cf9b…`**, medido otra
+vez sobre el árbol nuevo. «Supuestos» —resumen final, página ejecutiva, Resultados— dice «Stage 3:
+la pérdida del incumplimiento ya ocurrido, LGD × EAD (PD = 1)»; con `stage3_direct: false` y
+alguna operación en Stage 3, la línea contraria y una alerta en «Qué revisar» con cuántas son y su
+exposición. Por la pasada 3 de Codex, el capítulo IFRS 9 del informe describe también la fórmula
+que corrió (antes decía, siempre, que Stage 2 y 3 suman la PD de la curva). Freddie Mac con el
+motor: **3.028.897**.
+
+**D-CRE-5.** `engine.calculate` calcula la EAD de todas las filas, separa las de EAD 0 y recién
+entonces valida y lee la curva —también la de esas filas se retira antes de validarla e inferir los
+12 meses (pasada 1)—, la cartera, la tasa, la LGD, la mora, la marca y la PD calibrada —sólo la de
+las activas (pasada 3)—; sin ninguna activa, se detiene. La card gana `n_rows_without_exposure`; el
+registro de auditoría del paso infiere el horizonte y registra soporte y unidades sobre la misma
+curva que usó el motor (pasadas 1 y 2) y anota las filas separadas. «Cartera» lo dice en su primera
+línea («60.000 filas: 9.593 operaciones con exposición al corte; 50.407 sin exposición sólo aportan
+historia a la curva») y cuenta con el detalle de la provisión cuando existe o, antes, con la columna
+de exposición entregada, que es la misma regla (pasada 1); el capítulo IFRS 9 del informe lo dice
+tras el conteo por etapas. Lending Club con el motor: 60.000 → **9.593** operaciones (9.308/285/0),
+la ECL igual (3.254.890); Freddie Mac 50.000 → 14.038 (13.828/155/55).
+
+**D-CRE-6.** `survival/step.py` verifica única la columna `input.id_col` (el error nombra hasta
+diez repetidas) y traduce `row_id` —y el `curve_id`— al valor de la columna en `term_structure`,
+`survival_curves` y `hazards`, sobre la salida de cualquier método (Kaplan-Meier publica `row_id`
+vacío y queda igual); los motores siguen indexando por el índice, que es con lo que alinean la
+fuente de PD y la partición. El requisito por contexto de §3.6 exigió **ampliar `ContextoConfig`**
+con un tercer campo, `identificadores` (con qué columna identifica sus filas cada sección activa que
+lo declara, vía el protocolo `identificador_de_filas_declarado`, que declara `SurvivalConfig`), con
+el mismo molde que D-DIR-5: el núcleo transporta el valor sin interpretarlo, y el gate que fija los
+campos del DTO y el inventario de declarantes lo registran con esta razón. `provisioning_ifrs9`
+avisa antes de correr si `row_id_col` no es la columna de la curva; por código, sin preflight, el
+error de cobertura del motor dice la causa cuando ningún identificador coincide. `Ecl(id=<columna>)`
+escribe las dos hojas; el resumen y el informe leen la cartera de cada operación con el mismo
+identificador que publica la curva.
+
+**Fuera de lo previsto, medido.** `allowed-confusables = ["×"]` en ruff (el copy dice «LGD × EAD»).
+Tres goldens que la lista de §3.1 no traía (orden de campos de la card, la cartera de EAD 0 del
+resumen del motor, la curva por cartera de la capa C de FLUJO-GUIADO-IFRS9) y el gate de identidad
+de la demo, que hace la recaptura obligatoria con el F4 nuevo: la capa A vivió en una rama hasta el
+bump. Las cinco cifras no cambian (21 · 5 y 7 · 230 · ~6,5 s · 5).
+
+**Gates.** Tests nacidos rojos por regla (`tests/unit/test_caso_real_ifrs9.py` y los goldens
+movidos); cinco controles negativos en paralelo, cada uno sobre su copia de `src/`, rojos por el
+motivo esperado. Codex sobre el código (tope tres; criterio: `approve` o hallazgos que dejen de ser
+reales; lo contractual se eleva): p1 1 high + 1 medium, p2 1 medium, p3 2 medium; los cinco reales,
+ninguno contractual, todos corregidos con su test; revisión cerrada en el tope. Publicada en la
+**2.6.0** con la demo recapturada (OK de Cami del 2026-10-06).
 
 ## 13. Simplicidad (SDD-31)
 
