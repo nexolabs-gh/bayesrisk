@@ -763,15 +763,15 @@ def _check_via_de_escenarios(cfg: ForwardConfig) -> bool:
     por_tasa = cfg.satellite.mode == "reference_rate"
     por_trayectorias = cfg.macro.kind == "scenario_paths"
     if por_tasa != por_trayectorias:
-        raise ForwardConfigError(
+        mensaje = (
             "satellite.mode='reference_rate' y macro.kind='scenario_paths' van juntos: la "
             "sensibilidad se estima sobre la tasa de referencia y los escenarios son las "
-            "trayectorias de la institución, sin modelo macro.",
-            # D-EXI-5: se ancla en la hoja que quedó sola.
-            loc=(*_LOC_SECCION, "macro", "kind")
-            if por_tasa
-            else (*_LOC_SECCION, "satellite", "mode"),
+            "trayectorias de la institución, sin modelo macro."
         )
+        # D-EXI-5: se ancla en la hoja que quedó sola.
+        if por_tasa:
+            raise ForwardConfigError(mensaje, loc=(*_LOC_SECCION, "macro", "kind"))
+        raise ForwardConfigError(mensaje, loc=(*_LOC_SECCION, "satellite", "mode"))
     if not por_tasa:
         return False
     if not cfg.satellite.reference_rate_col.strip():

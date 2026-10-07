@@ -35,7 +35,8 @@ entradas anteriores conservan el nombre con el que se publicaron.
   2.754.714 (−1,8 %) y la de hipotecas de Freddie Mac sube de 2.632.095 a 2.971.347 (+12,9 %).
 - La etapa «Escenarios» del resumen dice la tasa de referencia y su ventana, la sensibilidad con su
   error y su sentido, y los escenarios con sus pesos; «Provisión IFRS 9» dice la ECL ponderada
-  frente a la de la curva sin escenarios, el ancla y la ECL de cada escenario; «Supuestos», el
+  frente a la de desplazamiento cero —la curva a lo largo del ciclo, con las mismas etapas—, el
+  ancla y la ECL de cada escenario; «Supuestos», el
   ajuste por ciclo, que la sensibilidad de la tasa de referencia se transfiere uno a uno a la curva
   de la cartera, y el ancla; «Qué revisar» alerta si la sensibilidad es incierta, si la ventana es
   corta o si falta la fecha de otorgamiento. La card de la provisión gana, sólo con escenarios, las

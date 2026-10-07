@@ -338,22 +338,26 @@ class CycleShifter:
             )
         return salida
 
-    def by_period(self, n_periods: int) -> DataFrame:
-        """``("provisioning_ifrs9", "cycle_by_period")``: escenario × tramo completo (§3.1)."""
+    def by_period(self, ventanas: DataFrame) -> DataFrame:
+        """``("provisioning_ifrs9", "cycle_by_period")``: escenario × tramo completo (§3.1).
+
+        ``ventanas`` trae, por período posterior al corte, el inicio y el largo de su ventana de
+        calendario en meses desde el primer mes futuro (:func:`period_windows`).
+        """
         pandas = _import_pandas()
         numpy = _import_numpy()
-        u = self.months_per_period
-        t = numpy.arange(1, n_periods + 1, dtype=numpy.float64)
-        inicio = self.first_month + (t - 1.0) * u
-        fin = inicio + u
+        t = ventanas["period"].to_numpy(dtype=numpy.float64)
+        largo = ventanas["length"].to_numpy(dtype=numpy.float64)
+        inicio = self.first_month + ventanas["start"].to_numpy(dtype=numpy.float64)
+        fin = inicio + largo
         hasta = int(numpy.ceil(fin.max()))
         filas: list[DataFrame] = []
         for escenario in self.model.scenarios:
             delta = _promedio_en_ventanas(
                 self._delta_mensual(escenario, hasta, numpy), self.first_month, inicio, fin, numpy
             )
-            dentro = numpy.minimum(fin, escenario.last_month + 1.0) - inicio
-            dentro = numpy.clip(dentro, 0.0, u)
+            dentro = numpy.clip(numpy.minimum(fin, escenario.last_month + 1.0) - inicio, 0.0, None)
+            dentro = numpy.minimum(dentro, largo)
             columnas: dict[str, Any] = {
                 "scenario": escenario.name,
                 "period": t.astype(numpy.int64),
@@ -379,7 +383,7 @@ class CycleShifter:
             columnas["cycle_shift"] = delta
             meses_tras = inicio - (escenario.last_month + 1.0)
             columnas["state"] = numpy.where(
-                dentro >= u - 1e-12,
+                dentro >= largo - 1e-12,
                 _ESTADO_ESCENARIO,
                 numpy.where(
                     meses_tras >= self.model.reversion_months - 1e-12,
@@ -425,16 +429,56 @@ class CycleShifter:
         return cast("NDArrayFloat", numpy.where(meses <= ultimo, delta, reversion))
 
 
-def shift_term_structure(
-    term_structure: DataFrame, shifter: CycleShifter, *, months_per_period: float
-) -> DataFrame:
+def period_windows(term_structure: DataFrame) -> DataFrame:
+    """La ventana de calendario de cada fila de una curva leída sin fechas (§3.1, ``A = 0``).
+
+    El período ``t`` cubre el tiempo de la curva entre el ``time_value`` del período anterior (0 en
+    el primero) y el suyo, convertido a meses con su unidad (``time_value_years``): en una curva
+    por períodos discretos, ``[(t - 1)·u, t·u)``; en una de Cox o AFT, con su grilla real (pasada 1
+    de Codex sobre el código: un período no siempre dura una unidad). Devuelve, en el orden de la
+    curva ordenada por ``row_id`` y ``period``, ``row_id``, ``period``, ``start`` y ``length`` en
+    meses desde el primer mes posterior al corte.
+
+    Raises
+    ------
+    IfrsTermStructureError
+        Si el tiempo de la curva no crece estrictamente de un período al siguiente.
+    """
+    from bayesrisk.provisioning.ifrs9.exceptions import IfrsTermStructureError
+
+    numpy = _import_numpy()
+    pandas = _import_pandas()
+    base = term_structure.sort_values(["row_id", "period"], kind="mergesort").reset_index(drop=True)
+    curvas = base["row_id"].astype(str).to_numpy()
+    anios = base["time_value_years"].to_numpy(dtype=numpy.float64)
+    previo = pandas.Series(anios).groupby(curvas).shift(1, fill_value=0.0).to_numpy()
+    largo = (anios - previo) * 12.0
+    if bool(numpy.any(~(largo > 0.0))):
+        raise IfrsTermStructureError(
+            "Con escenarios, cada período de la curva cubre una ventana de calendario: su tiempo "
+            "(time_value) tiene que crecer de un período al siguiente, desde más de cero."
+        )
+    return cast(
+        "DataFrame",
+        pandas.DataFrame(
+            {
+                "row_id": curvas,
+                "period": base["period"].to_numpy(),
+                "start": previo * 12.0,
+                "length": largo,
+            }
+        ),
+    )
+
+
+def shift_term_structure(term_structure: DataFrame, shifter: CycleShifter) -> DataFrame:
     """La curva sin fechas del contrato, una por escenario: el período ``t`` es el tramo ``t``.
 
-    Sin fechas, cada operación lee la curva desde su período 1 (``A = 0``, §3.1): el período ``t``
-    cubre los meses ``[M + (t - 1)·u, M + t·u)``. Por curva ``(row_id, escenario)``, el riesgo de
-    cada período sale de la PD marginal y de la supervivencia anterior, se desplaza en logit y se
-    recompone la supervivencia; la salida lleva una curva por escenario del modelo, con su peso
-    (``scenario_weight``) y su desplazamiento (``cycle_shift``).
+    Sin fechas, cada operación lee la curva desde su período 1 (``A = 0``, §3.1), y cada período
+    cubre su ventana de calendario (:func:`period_windows`). Por curva ``(row_id, escenario)``, el
+    riesgo de cada período sale de la PD marginal y de la supervivencia anterior, se desplaza en
+    logit y se recompone la supervivencia; la salida lleva una curva por escenario del modelo, con
+    su peso (``scenario_weight``) y su desplazamiento (``cycle_shift``).
     """
     numpy = _import_numpy()
     pandas = _import_pandas()
@@ -443,16 +487,15 @@ def shift_term_structure(
     periodo = base["period"].to_numpy(dtype=numpy.float64)
     marginal = base["pd_marginal"].to_numpy(dtype=numpy.float64)
     riesgo = _riesgo_por_periodo(curvas, periodo, marginal, numpy)
+    ventanas = period_windows(base)
     deltas = shifter.deltas(
-        (periodo - 1.0) * months_per_period, numpy.full(periodo.size, months_per_period)
+        ventanas["start"].to_numpy(dtype=numpy.float64),
+        ventanas["length"].to_numpy(dtype=numpy.float64),
     )
     salida: list[DataFrame] = []
     for nombre, delta in deltas.items():
         nuevo = _desplazar(riesgo, delta, numpy)
-        log_s = numpy.log1p(-nuevo)
-        acumulado = pandas.Series(log_s).groupby(curvas).cumsum().to_numpy()
-        supervivencia = numpy.exp(acumulado)
-        previa = numpy.exp(acumulado - log_s)
+        previa, supervivencia = _supervivencia_por_curva(1.0 - nuevo, curvas, numpy)
         marco = base.copy(deep=True)
         marco["scenario"] = nombre
         marco["scenario_weight"] = float(shifter.weights[nombre])
@@ -484,7 +527,6 @@ def shifted_tranche_pd(
     incumplir en el tramo dado que la operación sobrevivió hasta el corte.
     """
     numpy = _import_numpy()
-    pandas = _import_pandas()
     n_periodos = riesgos.shape[1]
     piso = numpy.floor(desde + 1e-12)
     k1 = piso.astype(numpy.int64) + 1
@@ -501,14 +543,27 @@ def shifted_tranche_pd(
 
     h1 = _desplazar(_riesgo(k1), delta, numpy)
     h2 = _desplazar(_riesgo(k1 + 1), delta, numpy)
-    with numpy.errstate(divide="ignore", invalid="ignore"):
-        log_s = numpy.where(l1 > 0.0, l1 * numpy.log1p(-h1), 0.0) + numpy.where(
-            l2 > 0.0, l2 * numpy.log1p(-h2), 0.0
-        )
-    acumulado = pandas.Series(log_s).groupby(numpy.asarray(curva)).cumsum().to_numpy()
-    fin = numpy.exp(acumulado)
-    inicio = numpy.exp(acumulado - log_s)
+    # La supervivencia de cada tramo como producto, no como suma de logaritmos: con un riesgo de 1
+    # el logaritmo es -inf y restar dos infinitos daba NaN (pasada 1 de Codex sobre el código).
+    factor = numpy.where(l1 > 0.0, (1.0 - h1) ** l1, 1.0) * numpy.where(
+        l2 > 0.0, (1.0 - h2) ** l2, 1.0
+    )
+    inicio, fin = _supervivencia_por_curva(factor, numpy.asarray(curva), numpy)
     return cast("NDArrayFloat", numpy.maximum(inicio - fin, 0.0))
+
+
+def _supervivencia_por_curva(factor: Any, curvas: Any, numpy: Any) -> tuple[Any, Any]:
+    """La supervivencia al inicio y al final de cada período, por curva, como producto acumulado.
+
+    ``factor`` es la probabilidad de sobrevivir cada período (``1 - h``); las filas de cada curva
+    van seguidas y en orden. Sin logaritmos: un riesgo de 1 deja la supervivencia en 0 desde ahí,
+    y la previa del período siguiente en 0, sin infinitos.
+    """
+    pandas = _import_pandas()
+    serie = pandas.Series(numpy.asarray(factor, dtype=numpy.float64))
+    fin = serie.groupby(curvas).cumprod()
+    inicio = fin.groupby(curvas).shift(1, fill_value=1.0)
+    return inicio.to_numpy(dtype=numpy.float64), fin.to_numpy(dtype=numpy.float64)
 
 
 def _desplazar(riesgo: NDArrayFloat, delta: NDArrayFloat, numpy: Any) -> NDArrayFloat:

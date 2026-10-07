@@ -155,7 +155,10 @@ def test_el_bloque_de_escenarios_recupera_la_sensibilidad_y_pondera(
     escenarios = ecl.summary("forward")
     assert any("Sensibilidad a «desempleo»" in linea for linea in escenarios.lines)
     provision = ecl.summary("provisioning_ifrs9").lines
-    assert any(linea.startswith("ECL ponderada por 3 escenarios") for linea in provision)
+    assert any(
+        linea.startswith("ECL ponderada por 3 escenarios") and "con desplazamiento cero" in linea
+        for linea in provision
+    )
     assert any(linea.startswith("Ancla: la macro media de la historia") for linea in provision)
     supuestos = ecl.summary().assumptions
     assert any("uno a uno" in s for s in supuestos), supuestos

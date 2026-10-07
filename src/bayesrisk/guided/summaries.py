@@ -3129,8 +3129,9 @@ def _lineas_del_ciclo(card: Mapping[str, Any]) -> tuple[list[str], list[str], pd
     lines: list[str] = []
     variacion = f" ({_variacion(ponderada / ttc - 1.0)})" if ttc else ""
     lines.append(
-        f"ECL ponderada por {_miles(len(por_escenario))} escenarios: {_monto(ponderada)}; a lo "
-        f"largo del ciclo, sin escenarios, sería {_monto(ttc or 0.0)}{variacion}"
+        f"ECL ponderada por {_miles(len(por_escenario))} escenarios: {_monto(ponderada)}; con "
+        f"desplazamiento cero —la curva a lo largo del ciclo, con las mismas etapas— sería "
+        f"{_monto(ttc or 0.0)}{variacion}"
     )
     anclas = _mapping(ciclo.get("anchor_values"))
     largos = _mapping(ciclo.get("long_run_values"))
@@ -3151,7 +3152,8 @@ def _lineas_del_ciclo(card: Mapping[str, Any]) -> tuple[list[str], list[str], pd
     if str(ciclo.get("anchor")) != "curve_history":
         alerts.append(
             "Sin la fecha de otorgamiento, la curva se supone estimada en condiciones de largo "
-            "plazo: si su historia fue de años de bonanza o de crisis, el desplazamiento queda sesgado"
+            "plazo: si su historia fue de años de bonanza o de crisis, el desplazamiento queda "
+            "sesgado"
         )
     sin_fecha = _int(ciclo.get("rows_without_date")) or 0
     pp = _int(ciclo.get("person_periods")) or 0

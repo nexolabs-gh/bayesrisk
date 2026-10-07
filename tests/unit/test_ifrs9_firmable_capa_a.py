@@ -222,6 +222,91 @@ def test_d_fir_1_sin_fechas_el_periodo_t_es_el_tramo_t() -> None:
     assert ts.loc[("base", 1), "pd_marginal"] == pytest.approx(_sigma(_logit(0.1) + d1), abs=1e-12)
 
 
+def test_d_fir_1_sin_fechas_la_ventana_sale_del_tiempo_real_de_la_curva() -> None:
+    """Pasada 1 de Codex: una curva de Cox o AFT numera ``period`` 1…N y guarda su tiempo real en
+    ``time_value`` —aquí cuatro trimestres expresados en años—; cada período cubre su ventana
+    real (tres meses), no una unidad entera."""
+    modelo = _modelo({"base": (0.5, _BASE), "adverso": (0.5, _ADVERSO)})
+    cfg = _cfg(
+        origination_date_col=None,
+        maturity_date_col=None,
+        pd=IfrsPdConfig(
+            term_structure_source="survival",
+            base_pd_source="term_structure",
+            pit_mode="cycle",
+            horizon_12m_periods=4,
+        ),
+    )
+    curva = _curva(["op0"], [0.02, 0.03, 0.04, 0.05])
+    curva["time_value"] = [0.25, 0.5, 0.75, 1.0]
+    motor = IfrsProvisioningEngine.from_config(cfg)
+    resultado = motor.calculate(
+        _cartera(as_of_date=[_CORTE]),
+        term_structure=curva,
+        as_of_date=_CORTE,
+        cycle=CycleInputs(model=modelo, history=None),
+    )
+    ts = resultado.ecl_term_structure.set_index(["scenario", "period"])
+    # Marzo a mayo de 2026: un mes de 2026T1 y dos de T2; junio a agosto: uno de T2 y dos de T3.
+    x1 = (_BASE[0] + 2 * _BASE[1]) / 3
+    x2 = (_BASE[1] + 2 * _BASE[2]) / 3
+    assert ts.loc[("base", 1), "cycle_shift"] == pytest.approx(0.2 * (x1 - 6.0), abs=1e-12)
+    assert ts.loc[("base", 2), "cycle_shift"] == pytest.approx(0.2 * (x2 - 6.0), abs=1e-12)
+    porcion = motor.cycle_by_period_
+    assert porcion is not None
+    fila = porcion.set_index(["scenario", "period"]).loc[("base", 1)]
+    assert (fila["window_start"], fila["window_end"]) == ("2026-03-01", "2026-06-01")
+
+
+@pytest.mark.parametrize("con_fechas", [False, True])
+def test_d_fir_1_un_riesgo_de_uno_recompone_sin_nan(con_fechas: bool) -> None:
+    """Pasada 1 de Codex: con un riesgo de 1, la supervivencia cae a 0 y queda ahí; restar dos
+    logaritmos infinitos daba NaN y la corrida moría al validar la PD."""
+    modelo = _modelo({"base": (0.5, _BASE), "adverso": (0.5, _ADVERSO)})
+    cambios: dict[str, Any] = (
+        {} if con_fechas else {"origination_date_col": None, "maturity_date_col": None}
+    )
+    frame = (
+        _cartera(otorgamiento=["2025-09-01"], vencimiento=["2029-03-01"])
+        if con_fechas
+        else _cartera(as_of_date=[_CORTE])
+    )
+    resultado = IfrsProvisioningEngine.from_config(_cfg(**cambios)).calculate(
+        frame,
+        term_structure=_curva(["op0"], [0.20, 1.0, 0.30]),
+        as_of_date=_CORTE,
+        events_by_period={1: 5, 2: 4, 3: 3},
+        cycle=CycleInputs(model=modelo, history=None),
+    )
+    marginal = resultado.ecl_term_structure["pd_marginal"].to_numpy()
+    assert np.all(np.isfinite(marginal))
+    por_escenario = resultado.ecl_term_structure.groupby("scenario")["pd_marginal"].sum()
+    assert np.allclose(por_escenario.to_numpy(), 1.0), por_escenario
+
+
+def test_d_fir_6_vasicek_con_riesgo_de_uno_no_da_nan() -> None:
+    curva = _curva(["op0"], [0.20, 1.0, 0.30])
+    curva["z"] = -6.0  # tan adverso que el riesgo transformado satura en 1,0 exacto
+    cfg = _cfg(
+        origination_date_col=None,
+        maturity_date_col=None,
+        pd=IfrsPdConfig(
+            term_structure_source="survival",
+            base_pd_source="term_structure",
+            pit_mode="apply_vasicek",
+            rho=0.15,
+            systemic_factor_col="z",
+            horizon_12m_periods=1,
+        ),
+        scenarios=IfrsScenarioConfig(source="single"),
+    )
+    resultado = IfrsProvisioningEngine.from_config(cfg).calculate(
+        _cartera(as_of_date=[_CORTE]), term_structure=curva, as_of_date=_CORTE
+    )
+    marginal = resultado.ecl_term_structure["pd_marginal"].to_numpy()
+    assert np.all(np.isfinite(marginal)) and float(marginal.sum()) <= 1.0 + 1e-12
+
+
 def test_d_fir_1_la_ecl_pondera_escenarios_y_no_la_macro_promediada() -> None:
     """§6-2: la pérdida no es lineal en la macro; con escenarios distintos, la ponderada difiere de
     la de un escenario «medio» con la macro promediada (guarda contra el escenario medio)."""
@@ -551,14 +636,16 @@ def test_d_fir_5_el_satelite_fit_sobre_la_curva_de_survival_se_detiene() -> None
                 "macro_source": {"type": "path", "path": "m.csv", "variable_cols": ["u"]},
                 "pd_basis_assumption": "ttc",
             },
-            "satellite": {"mode": "fit", "factor_cols": ["u"]},
+            "satellite": {"mode": "fit", "factor_cols": ["u"], "min_history_periods": 3},
             "fail_on_falta_dato": False,
         }
     )
     curva = _curva(["op0", "op1"], _HAZARDS)
     curva["method"] = "discrete_hazard"
     curva["pd_source"] = "survival"
-    macro = pd.DataFrame({"period": [1, 2, 3] * 5, "u": np.linspace(4.0, 8.0, 15)})
+    # Una serie que casa con el `period` de la curva: sin la guarda, el ajuste correría en silencio
+    # contra la edad (lo que medía §1.1 de la enmienda).
+    macro = pd.DataFrame({"period": [1, 2, 3, 4, 5], "u": [4.0, 5.5, 5.0, 7.0, 6.0]})
     with pytest.raises(SatelliteModelError, match="EDAD"):
         SatelliteModel.from_config(cfg).fit(curva, macro)
 

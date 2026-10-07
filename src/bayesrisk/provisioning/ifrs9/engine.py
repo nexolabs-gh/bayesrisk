@@ -49,6 +49,7 @@ from bayesrisk.provisioning.ifrs9.cycle import (
     check_scenario_coverage,
     cycle_anchor,
     first_future_month,
+    period_windows,
     require_cycle,
     shift_term_structure,
 )
@@ -418,7 +419,7 @@ class IfrsProvisioningEngine:
                 for rid, codes in zip(row_ids, row_warnings, strict=True)
             ]
         elif shifter is not None:
-            ts = shift_term_structure(ts, shifter, months_per_period=shifter.months_per_period)
+            ts = shift_term_structure(ts, shifter)
         if shifter is not None:
             # Los pesos son los del modelo (`scenario_weight` en la curva), con las mismas
             # validaciones que los de `forward`: positivos, que suman 1, sin escenario medio.
@@ -491,7 +492,9 @@ class IfrsProvisioningEngine:
                 horizonte_12m=horizonte_12m,
                 pandas=pandas,
             )
-            self.cycle_by_period_ = shifter.by_period(int(components["period"].max()))
+            self.cycle_by_period_ = shifter.by_period(
+                _ventanas_por_periodo(ts_ttc, lectura is not None, shifter, pandas)
+            )
 
         pd_basis = "ttc" if config.pd.pit_mode == "ttc_only" else "pit"
         origination = _origination_pd_life(frame, config, numpy)
@@ -1267,9 +1270,11 @@ def _apply_vasicek(
     with numpy.errstate(divide="ignore", invalid="ignore"):
         riesgo = numpy.clip(numpy.where(previa > 0.0, m / previa, 0.0), 0.0, 1.0)
     pit = vasicek_pit(riesgo, rho=rho, z=z[orden])
-    log_s = numpy.log1p(-numpy.minimum(pit, 1.0))
-    acumulado = pandas.Series(log_s).groupby(claves).cumsum().to_numpy()
-    nueva = numpy.maximum(numpy.exp(acumulado - log_s) - numpy.exp(acumulado), 0.0)
+    # Producto acumulado y no suma de logaritmos: un riesgo transformado de 1 daba NaN (pasada 1
+    # de Codex sobre el código).
+    sobrevive = pandas.Series(1.0 - numpy.minimum(pit, 1.0)).groupby(claves).cumprod()
+    antes = sobrevive.groupby(claves).shift(1, fill_value=1.0).to_numpy()
+    nueva = numpy.maximum(antes - sobrevive.to_numpy(), 0.0)
     salida = numpy.empty_like(nueva)
     salida[orden] = nueva
     return cast("NDArrayFloat", numpy.where(salida == 0.0, 0.0, salida))
@@ -1404,6 +1409,32 @@ def _con_tramo_de_la_curva(ecl_ts: DataFrame, components: DataFrame) -> DataFram
         if tramo in components.columns:
             salida[tramo] = components[tramo].to_numpy()
     return salida
+
+
+def _ventanas_por_periodo(
+    ts_ttc: DataFrame, por_contrato: bool, shifter: CycleShifter, pandas: Any
+) -> DataFrame:
+    """La ventana de calendario de cada período posterior al corte, para ``cycle_by_period``.
+
+    Con las fechas del contrato, el tramo ``t`` es el período completo ``[(t - 1)·u, t·u)``; sin
+    ellas, la ventana de la grilla de la curva (:func:`period_windows`), la misma que desplazó.
+    """
+    if por_contrato:
+        n = int(pandas.to_numeric(ts_ttc["period"]).max())
+        u = shifter.months_per_period
+        return cast(
+            "DataFrame",
+            pandas.DataFrame(
+                {
+                    "period": list(range(1, n + 1)),
+                    "start": [(t - 1) * u for t in range(1, n + 1)],
+                    "length": [u] * n,
+                }
+            ),
+        )
+    ventanas = period_windows(ts_ttc)
+    unicas: DataFrame = ventanas.drop_duplicates("period")[["period", "start", "length"]]
+    return unicas.reset_index(drop=True)
 
 
 def _check_cycle_config(config: IfrsProvisioningConfig) -> None:
