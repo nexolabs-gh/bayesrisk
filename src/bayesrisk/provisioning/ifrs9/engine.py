@@ -1414,26 +1414,32 @@ def _con_tramo_de_la_curva(ecl_ts: DataFrame, components: DataFrame) -> DataFram
 def _ventanas_por_periodo(
     ts_ttc: DataFrame, por_contrato: bool, shifter: CycleShifter, pandas: Any
 ) -> DataFrame:
-    """La ventana de calendario de cada período posterior al corte, para ``cycle_by_period``.
+    """Las ventanas de calendario que la corrida usó de verdad, para ``cycle_by_period``.
 
-    Con las fechas del contrato, el tramo ``t`` es el período completo ``[(t - 1)·u, t·u)``; sin
-    ellas, la ventana de la grilla de la curva (:func:`period_windows`), la misma que desplazó.
+    Una fila por período y largo distintos: con las fechas del contrato, el tramo ``t`` empieza en
+    ``(t - 1)·u`` y dura lo que la operación vive en él —el último de cada una puede ser parcial
+    (pasada 2 de Codex: publicar sólo el período completo describía meses que nadie consumió)—;
+    sin ellas, la ventana de la grilla de la curva (:func:`period_windows`).
     """
     if por_contrato:
-        n = int(pandas.to_numeric(ts_ttc["period"]).max())
         u = shifter.months_per_period
-        return cast(
-            "DataFrame",
-            pandas.DataFrame(
-                {
-                    "period": list(range(1, n + 1)),
-                    "start": [(t - 1) * u for t in range(1, n + 1)],
-                    "length": [u] * n,
-                }
-            ),
+        periodo = pandas.to_numeric(ts_ttc["period"])
+        largo = (
+            pandas.to_numeric(ts_ttc["curve_end"]) - pandas.to_numeric(ts_ttc["curve_start"])
+        ) * u
+        ventanas = pandas.DataFrame(
+            {"period": periodo, "start": (periodo - 1) * u, "length": largo}
         )
-    ventanas = period_windows(ts_ttc)
-    unicas: DataFrame = ventanas.drop_duplicates("period")[["period", "start", "length"]]
+    else:
+        ventanas = period_windows(ts_ttc)[["period", "start", "length"]]
+    redondeo = ventanas.assign(
+        _largo=ventanas["length"].round(9), _inicio=ventanas["start"].round(9)
+    )
+    unicas: DataFrame = (
+        redondeo.drop_duplicates(["period", "_inicio", "_largo"])
+        .sort_values(["period", "_largo"], kind="mergesort")
+        .drop(columns=["_inicio", "_largo"])
+    )
     return unicas.reset_index(drop=True)
 
 

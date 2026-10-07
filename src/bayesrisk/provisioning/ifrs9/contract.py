@@ -412,8 +412,20 @@ def read_curve_by_contract(
         for nombre, delta in por_escenario.items():
             bloque = dict(columnas_base)
             bloque["scenario"] = nombre
-            bloque["pd_marginal"] = shifted_tranche_pd(
-                extendidos, relleno, curva=curva, desde=desde_curva, hasta=hasta_curva, delta=delta
+            # Como la lectura sin escenarios: si la curva ya no deja a nadie vivo a la edad de la
+            # operación (S(A) = 0), su PD es 0 en todo escenario (pasada 2 de Codex: recompuesta
+            # desde 1 al corte, el desplazamiento cero no reproducía la TTC).
+            bloque["pd_marginal"] = numpy.where(
+                sobrevive_a[curva] > 0.0,
+                shifted_tranche_pd(
+                    extendidos,
+                    relleno,
+                    curva=curva,
+                    desde=desde_curva,
+                    hasta=hasta_curva,
+                    delta=delta,
+                ),
+                0.0,
             )
             bloque["scenario_weight"] = float((weights or {})[nombre])
             bloque["cycle_shift"] = delta

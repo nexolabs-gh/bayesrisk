@@ -256,6 +256,10 @@ class SatelliteModel(AuditableMixin):
         )
 
 
+#: Las columnas de una curva de ``survival`` o ``markov`` que miden la EDAD de la operación.
+_EJES_DE_EDAD: frozenset[str] = frozenset({"period", "time_value", "time_value_years"})
+
+
 def _check_no_ajusta_contra_la_edad(term_structure: Any, *, cfg: ForwardConfig) -> None:
     """IFRS9-FIRMABLE D-FIR-5 (§3.5): ``fit`` contra la edad de la curva se detiene.
 
@@ -278,7 +282,9 @@ def _check_no_ajusta_contra_la_edad(term_structure: Any, *, cfg: ForwardConfig) 
     if columnas is None:
         return  # no es una tabla: la validación de siempre lo dice con su mensaje
     time_col = cfg.input.macro_source.time_col
-    if time_col == "period" or time_col not in columnas:
+    # Pasada 2 de Codex: `time_value` (y su versión en años) también es la edad de la curva, no
+    # una fecha; alinear por ella es el mismo ajuste contra la forma de la curva.
+    if time_col in _EJES_DE_EDAD or time_col not in columnas:
         raise SatelliteModelError(
             "satellite.mode='fit' alinearía la serie macro con la EDAD de la curva (su columna "
             "period), no con el calendario: la sensibilidad que estimaría no es la del ciclo. Usa "

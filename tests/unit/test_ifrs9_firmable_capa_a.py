@@ -200,9 +200,17 @@ def test_d_fir_1_cada_tramo_toma_la_macro_de_su_ventana_de_calendario() -> None:
         assert ts.loc[(nombre, 2), "pd_marginal"] == pytest.approx(pd2, abs=1e-12)
     porcion = motor.cycle_by_period_
     assert porcion is not None
-    fila = porcion.set_index(["scenario", "period"]).loc[("base", 1)]
+    tabla = porcion.set_index(["scenario", "period"])
+    fila = tabla.loc[("base", 1)]
     assert (fila["window_start"], fila["window_end"]) == ("2026-03-01", "2027-03-01")
     assert fila["state"] == "scenario"
+    # Pasada 2 de Codex: el último tramo es parcial (marzo a mayo de 2027) y la tabla publica esa
+    # ventana, con el desplazamiento que la operación consumió, no la del período completo.
+    parcial = tabla.loc[("base", 2)]
+    assert (parcial["window_start"], parcial["window_end"]) == ("2027-03-01", "2027-06-01")
+    x2 = (1 * _BASE[4] + 2 * _BASE[5]) / 3
+    assert parcial["cycle_shift"] == pytest.approx(0.2 * (x2 - 6.0), abs=1e-12)
+    assert parcial["state"] == "scenario"
 
 
 def test_d_fir_1_sin_fechas_el_periodo_t_es_el_tramo_t() -> None:
@@ -282,6 +290,24 @@ def test_d_fir_1_un_riesgo_de_uno_recompone_sin_nan(con_fechas: bool) -> None:
     assert np.all(np.isfinite(marginal))
     por_escenario = resultado.ecl_term_structure.groupby("scenario")["pd_marginal"].sum()
     assert np.allclose(por_escenario.to_numpy(), 1.0), por_escenario
+
+
+def test_d_fir_1_sin_supervivencia_a_la_edad_la_pd_es_cero_en_todo_escenario() -> None:
+    """Pasada 2 de Codex: si la curva ya no deja a nadie vivo a la edad de la operación
+    (S(A) = 0), la lectura sin escenarios da PD 0; con escenarios, también, y la ECL de
+    desplazamiento cero cuadra con la de cada escenario."""
+    modelo = _modelo({"base": (0.5, _BASE), "adverso": (0.5, _ADVERSO)})
+    resultado = IfrsProvisioningEngine.from_config(_cfg()).calculate(
+        _cartera(otorgamiento=["2024-03-01"], vencimiento=["2027-03-01"]),
+        term_structure=_curva(["op0"], [0.20, 1.0, 0.30]),
+        as_of_date=_CORTE,
+        events_by_period={1: 5, 2: 4, 3: 3},
+        cycle=CycleInputs(model=modelo, history=None),
+    )
+    secciones = resultado.card.metric_sections
+    assert secciones["ecl_reported_ttc"] == 0.0
+    assert secciones["ecl_reported_by_scenario"] == {"base": 0.0, "adverso": 0.0}
+    assert float(resultado.ecl_term_structure["pd_marginal"].abs().sum()) == 0.0
 
 
 def test_d_fir_6_vasicek_con_riesgo_de_uno_no_da_nan() -> None:
@@ -646,6 +672,38 @@ def test_d_fir_5_el_satelite_fit_sobre_la_curva_de_survival_se_detiene() -> None
     # Una serie que casa con el `period` de la curva: sin la guarda, el ajuste correría en silencio
     # contra la edad (lo que medía §1.1 de la enmienda).
     macro = pd.DataFrame({"period": [1, 2, 3, 4, 5], "u": [4.0, 5.5, 5.0, 7.0, 6.0]})
+    with pytest.raises(SatelliteModelError, match="EDAD"):
+        SatelliteModel.from_config(cfg).fit(curva, macro)
+
+
+@pytest.mark.parametrize("eje", ["time_value", "time_value_years"])
+def test_d_fir_5_tampoco_se_ajusta_contra_el_tiempo_de_la_curva(eje: str) -> None:
+    """Pasada 2 de Codex: ``time_value`` también es la edad de la curva; alinear por él es el
+    mismo ajuste contra su forma."""
+    from bayesrisk.forward.config import ForwardConfig
+    from bayesrisk.forward.exceptions import SatelliteModelError
+    from bayesrisk.forward.satellite import SatelliteModel
+
+    cfg = ForwardConfig.model_validate(
+        {
+            "input": {
+                "macro_source": {
+                    "type": "path",
+                    "path": "m.csv",
+                    "variable_cols": ["u"],
+                    "time_col": eje,
+                },
+                "pd_basis_assumption": "ttc",
+            },
+            "satellite": {"mode": "fit", "factor_cols": ["u"], "min_history_periods": 3},
+            "fail_on_falta_dato": False,
+        }
+    )
+    curva = _curva(["op0", "op1"], _HAZARDS)
+    curva["method"] = "discrete_hazard"
+    curva["pd_source"] = "survival"
+    curva["time_value_years"] = curva["time_value"]
+    macro = pd.DataFrame({eje: [1.0, 2.0, 3.0, 4.0, 5.0], "u": [4.0, 5.5, 5.0, 7.0, 6.0]})
     with pytest.raises(SatelliteModelError, match="EDAD"):
         SatelliteModel.from_config(cfg).fit(curva, macro)
 
