@@ -42,8 +42,10 @@ const F4_ID = "f4-ifrs9-retail"
 // exactamente lo que se les pide: son el par que detecta un fixture de demo servido con un
 // config distinto del que trae el paquete instalado.
 // Recalculado en 2.6.0 por CASO-REAL-IFRS9 D-CRE-1: el preset provisiona Stage 3 con LGD × EAD.
+// Y en 2.7.0 por D-CRE-2/3: el preset escribe las tres hojas del contrato vacías (la cifra no
+// cambia).
 const F4_CONFIG_HASH =
-  "a3b7cf9b485cb194807b94017915ddc76df2fd7680aeb79bd501a03c05320ee9"
+  "f688fce704ad36414a7c4e5f4e7c10e9455c9d50a0802b3f3ec90bb97ff4b9c7"
 
 beforeEach(() => {
   // Cada test arranca con el preset activo en su default (F1): el estado de módulo no se filtra.
