@@ -328,6 +328,20 @@ class Ecl(_PuertaGuiada):
                 f"{', '.join(str(c) for c in frame.columns)}."
             )
         horizonte = self._resolver_horizonte(frame, columnas["duration"], period, horizon)
+        if (
+            modelo["pd"] is not None
+            and contrato["origination"] is None
+            and contrato["maturity"] is None
+            and horizonte < horizonte_12m
+        ):
+            # IFRS9-FIRMABLE §3.7 (pasada 2 de Codex sobre el código): sin las fechas, la curva no
+            # dice nada más allá de su horizonte; anclar ahí la PD de 12 meses la concentraría.
+            raise EclInputError(
+                f"pd={modelo['pd']!r} es la PD de los 12 meses siguientes al corte, y la curva "
+                f"llega a horizon={horizonte} y 12 meses son {horizonte_12m} {unidad_12m}: amplía "
+                "horizon= hasta cubrirlos, o declara origination= o maturity=, que extienden la "
+                "curva con su cola."
+            )
         ciclo = self._escenarios(frame, columnas["as_of"], *escenarios)
 
         # ── identificador ────────────────────────────────────────────────────────────────

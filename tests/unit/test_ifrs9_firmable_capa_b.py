@@ -27,7 +27,11 @@ from test_ifrs9_firmable_capa_a import _ADVERSO, _BASE, _CORTE, _cartera, _cfg, 
 from bayesrisk.provisioning.ifrs9 import IfrsProvisioningConfig, IfrsProvisioningEngine
 from bayesrisk.provisioning.ifrs9.config import IfrsPdConfig, IfrsScenarioConfig
 from bayesrisk.provisioning.ifrs9.cycle import CycleInputs
-from bayesrisk.provisioning.ifrs9.exceptions import IfrsConfigError, IfrsInputError
+from bayesrisk.provisioning.ifrs9.exceptions import (
+    IfrsConfigError,
+    IfrsInputError,
+    IfrsTermStructureError,
+)
 
 
 def _sigma(x: float) -> float:
@@ -525,3 +529,58 @@ def test_codex_p1_una_pd_que_el_intervalo_no_alcanza_se_cuenta() -> None:
 
     _lineas, alertas = _lineas_de_la_pd_del_modelo(resultado.card.model_dump())
     assert any("no alcanza" in a for a in alertas), alertas
+
+
+def test_codex_p2_sin_fechas_una_curva_mas_corta_que_12_meses_no_se_ancla() -> None:
+    """Pasada 2 (high): sin fechas, con una curva de seis meses, la ventana del anclaje se quedaba
+    en su soporte y la PD anual del modelo cabía entera en seis meses (ECL 60). La curva no dice
+    nada del riesgo más allá: la corrida se detiene y dice cómo cubrir los 12 meses."""
+    cfg = _cfg_b(
+        origination_date_col=None,
+        maturity_date_col=None,
+        pd=_pd_cfg(horizon_12m_periods=12),
+    )
+    with pytest.raises(IfrsTermStructureError, match="12 meses"):
+        IfrsProvisioningEngine.from_config(cfg).calculate(
+            _cartera(pd_modelo=[0.12]),
+            term_structure=_curva_mensual(["op0"], [0.02] * 6),
+            as_of_date=_CORTE,
+        )
+    # Sin la PD del modelo, la curva corta sigue corriendo como antes (su vida es su soporte).
+    sin = IfrsProvisioningEngine.from_config(
+        _cfg_b(
+            origination_date_col=None,
+            maturity_date_col=None,
+            pd=_pd_cfg(horizon_12m_periods=12, pd_12m_col=None),
+        )
+    ).calculate(
+        _cartera(pd_modelo=[0.12]),
+        term_structure=_curva_mensual(["op0"], [0.02] * 6),
+        as_of_date=_CORTE,
+    )
+    assert sin.card.n_rows == 1
+
+
+def test_codex_p2_la_puerta_avisa_antes_de_correr_con_una_curva_corta(tmp_path: Any) -> None:
+    from bayesrisk.guided import Ecl
+    from bayesrisk.guided.ecl import EclInputError
+    from bayesrisk.ui.datasets import materialize
+
+    datos = pd.read_parquet(materialize("ifrs9_retail_latam", workdir=tmp_path / "datos"))
+    datos["pd_hoy"] = 0.05
+    with pytest.raises(EclInputError, match="12 meses"):
+        Ecl(
+            datos,
+            as_of="as_of_date",
+            portfolio="portfolio",
+            exposure="ead",
+            lgd="lgd",
+            rate="eir",
+            days_past_due="days_past_due",
+            duration="duration",
+            event="event",
+            period="month",
+            horizon=6,
+            pd="pd_hoy",
+            run_dir=tmp_path / "corridas",
+        )

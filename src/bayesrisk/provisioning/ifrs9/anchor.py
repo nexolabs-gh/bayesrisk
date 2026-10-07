@@ -339,16 +339,16 @@ def anchor_term_structure(
 
     Por curva ``(row_id, escenario)``, el riesgo de cada período sale de la PD marginal y de la
     supervivencia anterior; la ventana de 12 meses son los períodos ``1…H`` de la curva (los que el
-    motor suma para el Stage 1), sin pasar de su último período. Las operaciones con PD del modelo
-    se desplazan en logit sobre el riesgo acotado y se recomponen la supervivencia, la PD marginal y
-    la acumulada; las demás quedan **exactamente** como venían. La salida conserva el orden de la
-    curva recibida.
+    motor suma para el Stage 1), y una curva anclada que no los cubre detiene la corrida. Las
+    operaciones con PD del modelo se desplazan en logit sobre el riesgo acotado y se recomponen la
+    supervivencia, la PD marginal y la acumulada; las demás quedan **exactamente** como venían. La
+    salida conserva el orden de la curva recibida.
 
     Raises
     ------
     IfrsTermStructureError
-        Si alguna operación tiene más de una curva (la PD del modelo es una por operación) o su
-        curva no va del período 1 al último sin saltos.
+        Si alguna operación tiene más de una curva (la PD del modelo es una por operación), su
+        curva no va del período 1 al último sin saltos o, con PD del modelo, no cubre los 12 meses.
     """
     numpy = _import_numpy()
     pandas = _import_pandas()
@@ -385,10 +385,23 @@ def anchor_term_structure(
     matriz[fila_de, periodo.astype(numpy.int64) - 1] = riesgo
     numpy.maximum.at(ultimo, fila_de, periodo)
 
+    objetivo = pd_model.values
+    # Pasada 2 de Codex sobre el código: sin fechas, la curva no dice nada del riesgo más allá de su
+    # último período; si no cubre los 12 meses, anclar en su soporte concentraría la PD anual del
+    # modelo en menos tiempo. No se extrapola (sería otra regla): se detiene con el arreglo.
+    corta = ~numpy.isnan(objetivo) & (ultimo < float(window_periods) - 1e-9)
+    if bool(corta.any()):
+        i = int(numpy.flatnonzero(corta)[0])
+        raise IfrsTermStructureError(
+            f"La curva de PD de la operación {row_ids[i]!r} cubre {int(ultimo[i])} períodos y los "
+            f"12 meses de la PD de tu modelo son {window_periods}: sin las fechas del contrato, la "
+            "curva no dice nada del riesgo más allá de su último período, y anclar ahí la PD de "
+            "12 meses la concentraría en menos tiempo. Amplía el horizonte de la curva hasta "
+            "cubrir los 12 meses, o declara las fechas del contrato, que la extienden con su cola."
+        )
     filas = numpy.arange(len(row_ids))
     desde = numpy.zeros(len(row_ids), dtype=numpy.float64)
     hasta = numpy.minimum(float(window_periods), ultimo)
-    objetivo = pd_model.values
     desplazamiento, encerrada = solve_shift(
         matriz, None, curva=filas, desde=desde, hasta=hasta, target=objetivo
     )
