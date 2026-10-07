@@ -1,8 +1,15 @@
 # Enmienda SDD — IFRS 9 firmable: escenarios, la PD de tu modelo y el aumento significativo del riesgo
 
-> **Estado: PROPUESTA** (S36, 2026-10-07). Diseño sin código: nada se programa hasta el OK de Cami
-> a §8. Es el primer eslabón de la cadena del banco que Cami puso primero el 2026-10-07 («lo que un
-> banco necesita de punta a punta»; después, H5 y H4; H2b al final).
+> **Estado: APROBADA por Cami el 2026-10-07** (cierre de S36), de forma interactiva y con la
+> recomendación de cada uno de los siete puntos de §8: la enmienda entera; la sensibilidad desde una
+> tasa de referencia larga con el supuesto de transferencia declarado y sus cuatro criterios; el
+> ancla en las condiciones de la historia de la curva; el SICR con PD de origen y el escenario en la
+> razón (resuelve D-CRE-4); `provisioning_ifrs9` 10 → 12 esenciales, `forward` 3 en la pantalla y
+> cuatro argumentos de `Ecl`; los datos del ejemplo sintéticos en el bloque de la guía; A en la
+> 2.8.0, B en la 2.9.0 y C en la 2.10.0. Diseño sin código: **la capa A se programa en la sesión
+> siguiente** (S37), con tests nacidos rojos, controles negativos y Codex sobre el código; B y C
+> después. Cada release y cada recaptura piden su OK aparte. Es el primer eslabón de la cadena del
+> banco que Cami puso primero el 2026-10-07 (después, H5 y H4; H2b al final).
 > **Corregida tras la pasada 1 de Codex** (cinco high y dos medium, los siete reales; dos
 > contractuales, elevados): la etapa también la mueve el escenario —la razón del SICR usa la PD
 > ponderada; dejarla fuera contradecía 5.5.11 y B5.5.17(f)— (§3.1, §3.8, §8-4); el supuesto de
@@ -741,6 +748,11 @@ anterior de `forward` ni Vasicek; no implementa stress (IHN-002); no toca CMF; n
 | 8-5 | Esenciales y argumentos | (a) **`provisioning_ifrs9` 10 → 12 (las dos PD) y `forward` con 3 en el trabajo de la pantalla; `Ecl` gana `scenarios`, `history`, `pd`, `origination_pd`**; (b) las dos PD sólo en «Avanzado» y en la puerta completa | **(a)**: sin ellas en la puerta, la PD del modelo y el SICR no llegan al usuario de `Ecl` |
 | 8-6 | Los datos del ejemplo (D-FIR-10) | (a) **sintéticos generados en el bloque de la guía, con sensibilidad conocida**; (b) tablas sintéticas en el catálogo del paquete; (c) un extracto real de la CMF por cartera (CC BY 4.0) y de la desocupación del INE (CC BY-SA 4.0) | **(a)**: cero licencias, reproducible, y es el precedente de S35 |
 | 8-7 | Releases (D-FIR-11) | (a) **A en 2.8.0, B en 2.9.0, C en 2.10.0**; (b) A + B en 2.8.0 y C en 2.9.0 | **(a)**: la capa A es la que falta para 5.5.17 y es la más grande |
+
+**Respuestas de Cami (2026-10-07, interactivas): (a) en los siete puntos** —la recomendación de
+cada uno—. La capa A (D-FIR-1…6, más el bloque de la guía de D-FIR-10) se programa en S37 y sale
+en la 2.8.0; la B (D-FIR-7…9) en la 2.9.0, con la recaptura de la demo que exige el hash de F4; la C
+en la 2.10.0. Cada release y cada recaptura piden su OK aparte.
 
 ## 13. Simplicidad (SDD-31)
 
