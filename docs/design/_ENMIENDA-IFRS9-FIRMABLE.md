@@ -811,8 +811,28 @@ esa misma columna en el oráculo (`evidencia/s37/oraculo_s36_otorgamiento_unico.
 **2.971.347,34** —base 2.632.104,87 y severo 3.762.913,08—, idéntico al motor. El cambio frente a la
 curva sigue siendo +12,9 %.
 
-**Sin escenarios, bit a bit**, y los tests nacidos rojos por regla (§6: 1–7 y 10) con un control
-negativo por regla: ver el HANDOFF de S37.
+**Sin escenarios, bit a bit** (`evidencia/s37/bit_a_bit.py`, proyección canónica del código de
+`698423a` frente al nuevo): F4 (17 artefactos de `data`, `survival` y `provisioning_ifrs9`),
+Lending Club y Freddie Mac (15 cada uno) con la misma huella y la misma ECL en hexadecimal, la card
+incluida: las claves nuevas sólo existen con escenarios.
+
+**Gates.** Tests por regla (§6: 1–7 y 10) en `tests/unit/test_ifrs9_firmable_capa_a.py` y el
+bloque de la guía en `test_docs_provision_ifrs9.py` (la sensibilidad sintética 0,15 recuperada
+dentro de su error, la reconciliación por escenario, la TTC igual a la corrida sin escenarios);
+**un control negativo por regla, en paralelo** —cada uno sobre su copia de `src/`—: el tramo por la
+edad, la macro promediada, el satélite contra la edad, el ancla siempre de largo plazo, la
+reversión en 12 meses, un escenario aceptado, `fit` contra la edad que corre, Vasicek sobre la
+marginal y el desplazamiento de un escenario vacío sin escenarios; los nueve rojos por su motivo
+(`evidencia/s37/cn_capa_a.py`). Los arreglos de Codex nacieron rojos contra el commit anterior.
+
+**Codex sobre el código** (binario 0.160.1; tope tres; criterio: `approve` o hallazgos que dejen
+de ser materiales; lo contractual se eleva): p1 (`12cb6af`) 1 high y 2 medium —sin fechas, la
+ventana de un período salía de su unidad y no de su tiempo real (curvas de Cox o AFT); un riesgo
+de 1 daba `NaN` al recomponer; el resumen llamaba «sin escenarios» a la TTC con las mismas
+etapas— → `8c87445`; p2 2 high y 1 medium —con S(A) = 0 la PD desplazada no era 0 como la de la
+lectura sin escenarios; `fit` se podía alinear por `time_value`, que también es la edad;
+`cycle_by_period` publicaba el tramo completo aunque el último sea parcial— → `5cec48c`; p3
+**approve**, sin hallazgos materiales. Ninguno contractual. 3 → 3 → 0.
 
 ## 13. Simplicidad (SDD-31)
 
