@@ -34,7 +34,7 @@ entradas anteriores conservan el nombre con el que se publicaron.
   monto; el aviso de exposición constante sólo sale si alguna operación la conserva.
 - Medido con el motor sobre las dos carteras reales: con las dos fechas, la muestra de consumo de
   Lending Club 2013–2016 pasa de 3.254.890 a 3.315.758 (+1,9 %) y la de hipotecas de Freddie Mac
-  2016 de 3.028.897 a 2.706.204 (−10,7 %); con fechas y cuota, 2.805.331 (−13,8 %) y 2.632.095
+  2016 de 3.028.897 a 2.706.204 (−10,7 %); con fechas y cuota, 2.805.408 (−13,8 %) y 2.632.095
   (−13,1 %). Sin las tres columnas la provisión es la misma de antes, bit a bit.
 - «Supuestos», «Qué revisar», el capítulo IFRS 9 del informe y la ficha metodológica dicen cómo se
   leyó la curva, desde qué período se extiende su cola y qué exposición vive más allá de lo

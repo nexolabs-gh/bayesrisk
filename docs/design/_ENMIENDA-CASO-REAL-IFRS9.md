@@ -714,10 +714,15 @@ vivo (`evidencia/s35/cap_pantalla_contrato*.jpg`).
 
 | | Capa A (2.6.0) | D-CRE-2 | D-CRE-2 + 3 | Oráculo de §3.2/§3.3 |
 |---|---|---|---|---|
-| Lending Club | 3.254.890 | **3.315.758** (S1 3.102.159, S2 213.599) | **2.805.331** | 3.315.758 / 2.805.331 |
+| Lending Club | 3.254.890 | **3.315.758** (S1 3.102.159, S2 213.599) | **2.805.408** | 3.315.758 / 2.805.331 |
 | Freddie Mac | 3.028.897 | **2.706.204** (S1 750.410, S2 270.512) | **2.632.095** | 1.207.403 + Stage 3 = 2.706.204 / 2.632.095 |
 
-Al peso en las cuatro. Lending Club: 221 vencidas con saldo, 1.055 cuotas que no alcanzan, 8.538 en
+Al peso en tres de las cuatro; la cuarta, Lending Club con la cuota, se aparta en **+77 (0,003 %)**
+por un defecto del propio oráculo que la pasada 1 de Codex encontró en el motor: la bisección de
+la tasa implícita se topaba en 100 % mensual, y **29** préstamos con la cuota mayor que su saldo a
+pocos meses del vencimiento tienen la raíz más arriba —topada, su EAD caía a cero tras el primer
+mes—. Con la raíz encerrada en `[0, max(1, c/B)]` y la forma estable del saldo, 2.805.408; el
+−13,8 % no cambia. Lending Club: 221 vencidas con saldo, 1.055 cuotas que no alcanzan, 8.538 en
 tabla, cola desde el período 21 (3.888 de exposición más allá); Freddie Mac: cola desde el 11, el
 ~100 % de la exposición más allá. **Sin las tres columnas**, los 14 artefactos de `survival` y
 `provisioning_ifrs9` del paquete (F4 = `Ecl`), de Lending Club y de Freddie Mac son bit a bit los de

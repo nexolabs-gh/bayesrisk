@@ -2652,12 +2652,22 @@ def _results_survival(bundle: ReportInputBundle) -> tuple[str, ...]:
         term_source = str(provision.get("term_structure_source") or "")
         pit_mode = str(provision.get("pit_mode") or "")
         if provision.get("contract_dates") is True:
-            # CASO-REAL-IFRS9 D-CRE-2 (§3.2-8): la lectura condicionada no es «tal cual».
+            # CASO-REAL-IFRS9 D-CRE-2 (§3.2-8): la lectura condicionada no es «tal cual». Dice sólo
+            # las fechas que se declararon (pasada 1 de Codex): con una sola, la otra no se usó.
+            ifrs = _mapping(bundle.pipeline_params.get("provisioning_ifrs9"))
+            como = [
+                parte
+                for parte, columna in (
+                    ("desde su antigüedad", "origination_date_col"),
+                    ("hasta su vencimiento", "maturity_date_col"),
+                )
+                if ifrs.get(columna) is not None
+            ]
+            detalle = f" —{' y '.join(como)}—" if como else ""
             paragraphs.append(
                 "La provisión de este capítulo no usa esta curva tal cual: la lee con las fechas "
-                "del contrato de cada operación —desde su antigüedad y hasta su vencimiento— y, "
-                "más allá del último período con incumplimientos observados, extiende el riesgo "
-                "con la media de los tres últimos."
+                f"del contrato de cada operación{detalle} y, más allá del último período con "
+                "incumplimientos observados, extiende el riesgo con la media de los tres últimos."
             )
         elif term_source == "survival" and pit_mode == "ttc_only":
             atribucion = (

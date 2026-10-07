@@ -814,3 +814,89 @@ def test_un_riesgo_de_uno_no_rompe_la_lectura_por_tramos() -> None:
     assert tramos.loc["op0", "pd_marginal"].tolist() == pytest.approx([1.0, 0.0])
     # Desde 2,5 la supervivencia ya es cero: no hay a quién condicionar, y la PD queda en cero.
     assert tramos.loc["op1", "pd_marginal"].tolist() == [0.0, 0.0]
+
+
+# ─────────────────────────── pasada 1 de Codex ───────────────────────────
+
+
+def _tasa_que_paga(saldo: float, cuota: float, meses: float) -> float:
+    """La tasa mensual con que la cuota paga el saldo en el plazo, por bisección amplia."""
+    bajo, alto = 0.0, 1_000.0
+    for _ in range(400):
+        medio = (bajo + alto) / 2.0
+        if saldo * medio / (1.0 - (1.0 + medio) ** (-meses)) > cuota:
+            alto = medio
+        else:
+            bajo = medio
+    return (bajo + alto) / 2.0
+
+
+def test_una_cuota_mayor_que_el_saldo_sigue_la_tabla_con_su_tasa_aunque_pase_el_100() -> None:
+    """Codex p1 (medium): con la cuota por encima del saldo la tasa implícita pasa del 100 %
+    mensual; topada ahí, la EAD caía a la mitad tras el primer período sin aviso."""
+    saldo, cuota, meses = 1_000.0, 1_500.0, 24
+    i = _tasa_que_paga(saldo, cuota, meses)
+    assert i > 1.0  # la raíz está fuera del 100 % mensual
+    frame = _cartera(
+        ead=[saldo], eir=[0.20], days_past_due=[45], vencimiento=["2028-03-01"], cuota=[cuota]
+    )
+    cfg = _cfg(
+        origination_date_col=None,
+        ead=IfrsEadConfig(method="provided", installment_col="cuota"),
+        pd=IfrsPdConfig(
+            term_structure_source="survival",
+            base_pd_source="term_structure",
+            pit_mode="ttc_only",
+            horizon_12m_periods=4,
+        ),
+    )
+    curva = _curva(list(frame.index), [0.02] * 8, unidad="quarter")
+    resultado = _calcular(frame, curva, cfg, eventos={p: 3 for p in range(1, 9)})
+    tabla = resultado.ecl_term_structure["ead"].tolist()
+    esperado = [
+        saldo * (1.0 - (1.0 + i) ** (3 * (t - 1) - meses)) / (1.0 - (1.0 + i) ** (-meses))
+        for t in range(1, 9)
+    ]
+    assert tabla == pytest.approx(esperado, rel=1e-9)
+    assert tabla[1] > 0.99 * saldo  # casi todo es interés: el saldo apenas baja al principio
+
+
+def _capitulo_con(columnas: dict[str, Any]) -> str:
+    from datetime import UTC, datetime
+
+    from bayesrisk.core.lineage import LineageBundle
+    from bayesrisk.report import prose
+    from bayesrisk.report.results import ReportInputBundle
+
+    lineage = LineageBundle(
+        git_sha="abc123",
+        git_dirty=False,
+        data_hash="d" * 16,
+        config_hash="c" * 16,
+        root_seed=42,
+        uv_lock_hash="uv123",
+        library_versions={"bayesrisk": "0.1.0"},
+        determinism_caveats=[],
+        created_at=datetime(2026, 10, 6, tzinfo=UTC),
+        schema_version="1.0.0",
+    )
+    card = {"term_structure_source": "survival", "pit_mode": "ttc_only", "contract_dates": True}
+    bundle = ReportInputBundle(
+        lineage=lineage,
+        cards={"provisioning_ifrs9": card, "survival": {"n_rows": 10}},
+        tables={},
+        figures={},
+        sections=(),
+        pipeline_params={"provisioning_ifrs9": {"ecl": {"stage3_direct": True}, **columnas}},
+    )
+    return " ".join((*prose._results_survival(bundle), *prose._results_provisioning_ifrs9(bundle)))
+
+
+def test_el_informe_dice_solo_las_fechas_que_se_declararon() -> None:
+    """Codex p1 (medium): con una sola fecha, el capítulo no puede atribuir la otra."""
+    solo_otorgamiento = _capitulo_con({"origination_date_col": "otorgamiento"})
+    assert "antigüedad" in solo_otorgamiento
+    assert "vencimiento" not in solo_otorgamiento
+    solo_vencimiento = _capitulo_con({"maturity_date_col": "vencimiento"})
+    assert "vencimiento" in solo_vencimiento
+    assert "antigüedad" not in solo_vencimiento

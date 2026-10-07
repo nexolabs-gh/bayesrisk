@@ -84,10 +84,13 @@ _PERIODOS_DE_LA_COLA: Final = 3
 #: unidades): una antigüedad o una vida a menos de esto de un entero se toma como ese entero, para
 #: no abrir un último tramo de largo 1e-15.
 _TOLERANCIA_PERIODO: Final = 1e-9
-#: La tasa implícita se busca por bisección en ``[0, 1]`` mensual (hasta 100 % al mes), con las
-#: iteraciones que agotan la precisión de un ``float``; sobre 10.000 operaciones toma milisegundos.
-_TASA_MENSUAL_MAXIMA: Final = 1.0
-_ITERACIONES_TASA: Final = 200
+#: La tasa implícita se busca por bisección en ``[0, max(1, c/B)]`` mensual: con ``i = c/B`` la
+#: anualidad ya supera la cuota (``B·i/(1 - (1 + i)^(-n)) > B·i = c``), así que la raíz queda
+#: siempre encerrada aunque pase del 100 % al mes —una cuota mayor que el saldo— (pasada 1 de Codex:
+#: topada en el 100 %, la EAD caía a cero tras el primer período). Las iteraciones agotan la
+#: precisión de un ``float``; sobre 10.000 operaciones toma milisegundos.
+_TASA_MENSUAL_MINIMA_DEL_TOPE: Final = 1.0
+_ITERACIONES_TASA: Final = 400
 #: ``c · n = B`` a menos de esto (en la moneda de la exposición) es una tabla sin interés.
 _TOLERANCIA_TASA_CERO: Final = 1e-9
 
@@ -393,7 +396,7 @@ def read_curve_by_contract(
         en_tabla = amortiza[fila][curva]
         ead_tramo = numpy.where(
             en_tabla,
-            _saldo_tras(saldo[fila][curva], cuota[fila][curva], tasa[fila][curva], meses, numpy),
+            _saldo_tras(saldo[fila][curva], tasa[fila][curva], plazo[fila][curva], meses, numpy),
             ead_tramo,
         )
 
@@ -594,7 +597,7 @@ def _tasa_implicita(
         return cast("NDArrayFloat", tasa)
     b, c, n = saldo[resolver], cuota[resolver], plazo[resolver]
     bajo = numpy.zeros(b.shape[0], dtype=numpy.float64)
-    alto = numpy.full(b.shape[0], _TASA_MENSUAL_MAXIMA, dtype=numpy.float64)
+    alto = numpy.maximum(_TASA_MENSUAL_MINIMA_DEL_TOPE, c / b)
     for _ in range(_ITERACIONES_TASA):
         medio = (bajo + alto) / 2.0
         cuota_medio = b * medio / (1.0 - (1.0 + medio) ** (-n))
@@ -606,16 +609,22 @@ def _tasa_implicita(
 
 
 def _saldo_tras(
-    saldo: NDArrayFloat, cuota: NDArrayFloat, tasa: NDArrayFloat, meses: NDArrayFloat, numpy: Any
+    saldo: NDArrayFloat, tasa: NDArrayFloat, plazo: NDArrayFloat, meses: NDArrayFloat, numpy: Any
 ) -> NDArrayFloat:
-    """El saldo tras ``meses`` cuotas: ``B(1 + i)^k - c((1 + i)^k - 1)/i``.
+    """El saldo tras ``k = meses`` cuotas de la tabla que paga ``B`` justo en ``n = plazo`` meses.
 
-    Con ``i = 0``, ``B - c·k``; nunca bajo cero.
+    ``B · (1 - (1 + i)^(k - n)) / (1 - (1 + i)^(-n))`` —con ``i = 0``, ``B · (1 - k/n)``—: la
+    misma tabla que ``B(1 + i)^k - c((1 + i)^k - 1)/i`` cuando la cuota ``c`` es la anualidad de
+    ``i``, que es como se resolvió la tasa, pero sin potencias positivas que desborden con una tasa
+    alta ni restas de números grandes; ``expm1``/``log1p`` la mantienen precisa con una tasa casi
+    cero. Nunca bajo cero.
     """
-    crece = (1.0 + tasa) ** meses
     with numpy.errstate(divide="ignore", invalid="ignore"):
-        con_interes = saldo * crece - cuota * (crece - 1.0) / tasa
-    sin_interes = saldo - cuota * meses
+        log_tasa = numpy.log1p(tasa)
+        con_interes = (
+            saldo * numpy.expm1((meses - plazo) * log_tasa) / numpy.expm1(-plazo * log_tasa)
+        )
+        sin_interes = saldo * (1.0 - meses / plazo)
     return cast(
         "NDArrayFloat", numpy.maximum(numpy.where(tasa > 0.0, con_interes, sin_interes), 0.0)
     )
