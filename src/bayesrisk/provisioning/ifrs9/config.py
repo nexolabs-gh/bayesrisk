@@ -1254,6 +1254,22 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
                     ),
                 )
             )
+        if campo is not None and self.pd.pit_mode != "ttc_only":
+            # Pasada 3 de Codex: ajustar a las condiciones actuales la curva leída desde la edad no
+            # está definido —qué factor sistémico corresponde a cada tramo es metodología PIT, que
+            # la enmienda deja para otra fase (§3.2-7)—; se avisa en vez de inventarlo.
+            requisitos.append(
+                Requisito(
+                    path=campo,
+                    declared=f"PD ajustada ({self.pd.pit_mode})",
+                    message=(
+                        "Con las fechas del contrato, la curva de PD se lee desde la edad de cada "
+                        "operación a lo largo del ciclo; ajustar esa lectura a las condiciones "
+                        "actuales todavía no está disponible. Usa la PD a lo largo del ciclo, o "
+                        "quita las fechas."
+                    ),
+                )
+            )
         if self.ead.installment_col is not None and self.maturity_date_col is None:
             requisitos.append(
                 Requisito(

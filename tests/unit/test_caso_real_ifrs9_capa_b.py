@@ -921,3 +921,36 @@ def test_la_cola_promedia_los_ultimos_tres_con_incumplimientos_aunque_no_sean_se
         [cola, (1 - cola) * cola], rel=1e-12
     )
     assert resultado.card.tail_from_period == 6
+
+
+def test_con_fechas_la_curva_se_lee_a_lo_largo_del_ciclo() -> None:
+    """Codex p3 (medium): el ajuste PIT sobre la curva leída desde la edad no está definido
+    —la enmienda lo deja para la lectura PIT de otra fase (§3.2-7)—: con fechas y Vasicek, el
+    preflight lo avisa en la hoja de la fecha y, por código, el motor se detiene con la causa."""
+    avisos = [
+        a
+        for a in _requisitos(
+            **{
+                "provisioning_ifrs9.pd.pit_mode": "apply_vasicek",
+                "provisioning_ifrs9.pd.rho": 0.12,
+                "provisioning_ifrs9.pd.systemic_factor_col": "z",
+            }
+        )
+        if a.path.endswith("origination_date_col")
+    ]
+    assert len(avisos) == 1, avisos
+    assert "a lo largo del ciclo" in avisos[0].message
+    frame = _cartera(days_past_due=[0], otorgamiento=["2024-09-01"], vencimiento=["2027-06-01"])
+    curva = _curva(list(frame.index), _HAZARDS).assign(z=0.5)
+    cfg = _cfg(
+        pd=IfrsPdConfig(
+            term_structure_source="survival",
+            base_pd_source="term_structure",
+            pit_mode="apply_vasicek",
+            rho=0.12,
+            systemic_factor_col="z",
+            horizon_12m_periods=1,
+        )
+    )
+    with pytest.raises(IfrsConfigError, match="a lo largo del ciclo"):
+        _calcular(frame, curva, cfg)

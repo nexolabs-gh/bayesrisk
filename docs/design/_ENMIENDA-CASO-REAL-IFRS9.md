@@ -684,7 +684,9 @@ se declara de la curva recibida —la unidad presumida, la LGD forward descartad
 método de la curva es de otra sección: **`ContextoConfig` gana un cuarto campo, `metodos_de_ajuste`**
 (protocolo `metodo_de_ajuste_declarado`, que declara `SurvivalConfig`), con el mismo molde que
 `identificadores` de la capa A; el gate de los campos del DTO lo registra con su razón. Por código,
-sin preflight, el motor y el paso se detienen con la misma causa.
+sin preflight, el motor y el paso se detienen con la misma causa. Con fechas, además, la PD
+es a lo largo del ciclo (`pit_mode = "ttc_only"`): qué factor sistémico corresponde a cada
+tramo de la curva condicionada es metodología PIT, que §3.2-7 deja fuera (pasada 3 de Codex).
 
 **D-CRE-3.** `provisioning_ifrs9.ead.installment_col` (`installment=` en `Ecl`): la EAD de cada
 período es el saldo al inicio del período en la tabla de cuota fija con la tasa mensual implícita
@@ -730,6 +732,16 @@ tabla, cola desde el período 21 (3.888 de exposición más allá); Freddie Mac:
 ~100 % de la exposición más allá. **Sin las tres columnas**, los 14 artefactos de `survival` y
 `provisioning_ifrs9` del paquete (F4 = `Ecl`), de Lending Club y de Freddie Mac son bit a bit los de
 la capa A (digest de la proyección canónica, salvo los campos nuevos de la card).
+
+**Codex sobre el código** (binario 0.160.1; tope tres; criterio: `approve` o hallazgos que
+dejen de ser reales; lo contractual se eleva). p1: 2 medium —la tasa implícita topada en 100 %
+mensual (29 préstamos de Lending Club con la cuota mayor que su saldo; el oráculo de §3.3 tenía
+el mismo tope: con la raíz encerrada, 2.805.408 en vez de 2.805.331) y el informe que afirmaba
+las dos fechas con una sola—; p2: 1 medium —la cola promediaba los tres períodos contiguos y no
+los tres últimos con incumplimientos (sin efecto en LC ni FM, re-medido)—; p3: 1 medium —con
+fechas y Vasicek la curva condicionada perdía el factor Z: ahora se avisa antes de correr—. Los
+cuatro reales, ninguno contractual, cada uno con su test nacido rojo y su control negativo;
+revisión cerrada en el tope (2 → 1 → 1). Informes en `evidencia/s35/codex_p1.md` … `codex_p3.md`.
 
 **Las cinco cifras.** 21 líneas · `survival` 5 y `provisioning_ifrs9` **10** · perillas **233** (158 +
 24 + 51) · ~1 s al primer resumen · 5 conceptos. `HOJAS_DEL_FORMULARIO` 574 → 577, hojas con

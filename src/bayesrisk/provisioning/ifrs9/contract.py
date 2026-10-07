@@ -163,6 +163,15 @@ def check_contract_config(
             "la PD a 12 meses tiene que salir de esa lectura: la calibración la fija sin mirar "
             "la edad (pd.base_pd_source='term_structure')."
         )
+    if config.pd.pit_mode != "ttc_only":
+        # Pasada 3 de Codex: qué factor sistémico corresponde a cada tramo de la curva condicionada
+        # es metodología PIT, fuera de esta enmienda (§3.2-7); se detiene en vez de inventarlo.
+        raise IfrsConfigError(
+            "Con las fechas del contrato la curva de PD se lee desde la edad de cada operación a "
+            "lo largo del ciclo; ajustar esa lectura a las condiciones actuales "
+            f"(pd.pit_mode='{config.pd.pit_mode}') todavía no está disponible: usa "
+            "pd.pit_mode='ttc_only', o quita las fechas."
+        )
     if events_by_period is None:
         raise IfrsConfigError(
             "Con las fechas del contrato la curva de PD se lee desde la edad de cada operación, y "
