@@ -1176,7 +1176,10 @@ cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en un
    el mismo SHA (rama `vX.Y.Z`): un rojo aislado del runner ahí —H9R, coverage al combinar— tumba
    la Release con «hay runs de CI de <sha> que no terminaron en success». Remedio, en este orden:
    `gh run rerun <run de CI del tag> --failed`, esperar verde, `gh run rerun <run de Release>
-   --failed`. Presupuestar ~30 min por esta vía.
+   --failed`. Presupuestar ~30 min por esta vía. 🔴 **Un run `cancelled` del mismo SHA también la
+   tumba** (S35: se canceló el CI de la rama de trabajo sobre el commit que después fue a `main` y
+   al tag, para liberar runners): no cancelar CI de un SHA que se va a taggear; si ya ocurrió,
+   `gh run rerun <run cancelado>` hasta verde y luego el rerun de la Release.
 4. **Verificar PyPI.** `curl -s https://pypi.org/pypi/bayesrisk/json` → `info.version` y los sha256
    de wheel y sdist, que van al HANDOFF. El índice simple que usa `pip` tarda ~2 min más que el
    JSON en servir la versión («No matching distribution found» transitorio).
