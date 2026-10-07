@@ -65,6 +65,9 @@ IFRS9_PROVISIONING_ARTIFACTS: Final[tuple[str, ...]] = (
     "result",
     "card",
 )
+#: IFRS9-FIRMABLE D-FIR-1 (§3.1): escenario × tramo, sólo con ``pd.pit_mode = "cycle"``.
+CYCLE_BY_PERIOD: Final = "cycle_by_period"
+_CYCLE_MODEL: Final[ArtifactKey] = ("forward", "cycle_model")
 _CALIBRATION_SOURCE: Final = "calibration"
 #: El único método de survival que publica los incumplimientos por período (CASO-REAL-IFRS9 §3.2-7).
 _METODO_POR_PERIODOS: Final = "discrete_hazard"
@@ -85,6 +88,7 @@ class IfrsProvisioningStep(AuditableMixin):
         """Construye el paso desde la sección ``IfrsProvisioningConfig`` y arma ``requires``."""
         self.config = config
         self.requires = _requires_for(config)
+        self.provides = _provides_for(config)
 
     @classmethod
     def from_config(cls, cfg: IfrsProvisioningConfig) -> IfrsProvisioningStep:
@@ -114,6 +118,7 @@ class IfrsProvisioningStep(AuditableMixin):
         ).copy(deep=True)
         calibrated_pd = _calibrated_pd_if_required(study, config=cfg, pd=pd)
         events_by_period = _events_by_period_if_required(study, config=cfg)
+        cycle = _cycle_inputs_if_required(study, config=cfg, frame=frame, as_of_date=as_of_date)
 
         from bayesrisk.provisioning.ifrs9.engine import IfrsProvisioningEngine
 
@@ -125,9 +130,14 @@ class IfrsProvisioningStep(AuditableMixin):
             as_of_date=as_of_date,
             audit=self,
             events_by_period=events_by_period,
+            cycle=cycle,
         )
         self._log_ifrs_decisions(config=cfg, result=result, term_structure=term_structure)
         self._publish_artifacts(study, result)
+        if engine.cycle_by_period_ is not None:
+            study.artifacts.set(
+                "provisioning_ifrs9", CYCLE_BY_PERIOD, engine.cycle_by_period_.copy(deep=True)
+            )
         return result
 
     def _publish_artifacts(self, study: Study, result: IfrsProvisionResult) -> None:
@@ -267,6 +277,30 @@ class IfrsProvisioningStep(AuditableMixin):
             },
             accion="calcular_ecl",
         )
+        ciclo = card.metric_sections.get("cycle")
+        if ciclo is not None:
+            # IFRS9-FIRMABLE D-FIR-1…3: sólo con escenarios, para que una corrida sin ellos
+            # registre exactamente lo de antes.
+            self.log_decision(
+                regla="ifrs9_ciclo",
+                umbral={
+                    "pit_mode": config.pd.pit_mode,
+                    "reversion_months": ciclo.get("reversion_months"),
+                    "first_future_month": ciclo.get("first_future_month"),
+                },
+                valor={
+                    "anchor": ciclo.get("anchor"),
+                    "anchor_values": ciclo.get("anchor_values"),
+                    "long_run_values": ciclo.get("long_run_values"),
+                    "person_periods": ciclo.get("person_periods"),
+                    "person_periods_without_date": ciclo.get("person_periods_without_date"),
+                    "ecl_reported_by_scenario": card.metric_sections.get(
+                        "ecl_reported_by_scenario"
+                    ),
+                    "ecl_reported_ttc": card.metric_sections.get("ecl_reported_ttc"),
+                },
+                accion="desplazar_la_curva_por_tramo_de_calendario",
+            )
         if card.contract_dates:
             # CASO-REAL-IFRS9 D-CRE-2 y D-CRE-3: sólo con las fechas del contrato, para que una
             # corrida sin ellas registre exactamente lo de antes.
@@ -310,11 +344,109 @@ def _requires_for(config: IfrsProvisioningConfig) -> tuple[ArtifactKey, ...]:
     if config.pd.base_pd_source == _CALIBRATION_SOURCE:
         requires.append(("calibration", "calibrated_pd_frame"))
     requires.append((config.pd.term_structure_source, "term_structure"))
-    if config.lee_fechas_del_contrato() and config.pd.term_structure_source == "survival":
+    ciclo = config.pd.pit_mode == "cycle"
+    if (
+        config.lee_fechas_del_contrato() or ciclo
+    ) and config.pd.term_structure_source == "survival":
         # CASO-REAL-IFRS9 §3.2-7: la cola de la curva se extiende desde su último período con
-        # incumplimientos, que publica la card de la curva; el DAG detecta su ausencia antes.
+        # incumplimientos, que publica la card de la curva; el DAG detecta su ausencia antes. Con
+        # escenarios, la card dice además con qué filas se ajustó la curva (el ancla, D-FIR-3).
         requires.append(("survival", "card"))
+    if ciclo:
+        # IFRS9-FIRMABLE D-FIR-1: la sensibilidad, la historia y los escenarios con sus pesos.
+        requires.append(_CYCLE_MODEL)
     return tuple(requires)
+
+
+def _provides_for(config: IfrsProvisioningConfig) -> tuple[ArtifactKey, ...]:
+    """Los seis artefactos de siempre y, con escenarios, la tabla de escenario × tramo."""
+    claves = [("provisioning_ifrs9", key) for key in IFRS9_PROVISIONING_ARTIFACTS]
+    if config.pd.pit_mode == "cycle":
+        claves.append(("provisioning_ifrs9", CYCLE_BY_PERIOD))
+    return tuple(claves)
+
+
+def _cycle_inputs_if_required(
+    study: Study, *, config: IfrsProvisioningConfig, frame: DataFrame, as_of_date: str
+) -> Any:
+    """El modelo del ciclo y la historia de la curva, sólo con ``pd.pit_mode = "cycle"`` (§3.3).
+
+    La historia es el universo con que se ajustó la curva —las filas que ``survival`` usó, con su
+    duración y su fecha de otorgamiento—, reconstruido con la misma regla del ajuste y cotejado
+    contra lo que la card de la curva dice que usó: si no casa, se detiene en vez de anclar en
+    otras filas. Sin fecha de otorgamiento declarada, ``None``: la curva se toma como de largo
+    plazo.
+    """
+    if config.pd.pit_mode != "cycle":
+        return None
+    from bayesrisk.provisioning.ifrs9.cycle import CycleInputs
+
+    modelo = _require_artifact(study, *_CYCLE_MODEL)
+    if config.origination_date_col is None or config.pd.term_structure_source != "survival":
+        return CycleInputs(model=cast(Any, modelo), history=None)
+    return CycleInputs(
+        model=cast(Any, modelo),
+        history=_historia_de_la_curva(study, config=config, frame=frame, as_of_date=as_of_date),
+    )
+
+
+def _historia_de_la_curva(
+    study: Study, *, config: IfrsProvisioningConfig, frame: DataFrame, as_of_date: str
+) -> Any:
+    """Otorgamiento (en meses del calendario) y duración de cada fila del ajuste de la curva."""
+    import numpy as np
+
+    from bayesrisk.provisioning.ifrs9.contract import _fechas
+    from bayesrisk.provisioning.ifrs9.cycle import CurveHistory, calendar_position
+    from bayesrisk.survival.config import SurvivalConfig
+    from bayesrisk.survival.partition import fit_mask
+
+    del as_of_date
+    pd = _import_pandas()
+    bruta = getattr(study.config, "survival", None)
+    if bruta is None:
+        raise IfrsConfigError(
+            "El ajuste por ciclo ancla el desplazamiento en las condiciones de la historia de la "
+            "curva, y la corrida no trae la sección survival que la ajustó."
+        )
+    survival = bruta if isinstance(bruta, SurvivalConfig) else SurvivalConfig.model_validate(bruta)
+    card = _require_artifact(study, "survival", "card")
+    datos = card if isinstance(card, Mapping) else cast(Any, card).model_dump()
+    secciones = dict(datos.get("metric_sections") or {})
+    ajuste = dict(secciones.get("fit_scope") or {})
+    persona_periodo = dict(secciones.get("person_period") or {})
+    universo = frame.copy(deep=True)
+    if survival.input.pd_source == "none" and "partition" in universo.columns:
+        # La misma regla del paso de la curva (survival/step.py): sin PD de entrada, la curva se
+        # ajusta sobre el libro completo aunque la corrida traiga partición.
+        universo = universo.drop(columns=["partition"])
+    mascara, _alcance = fit_mask(universo, np=np)
+    filas = universo.loc[mascara]
+    duracion_col = survival.input.duration_col
+    duracion = pd.to_numeric(filas[duracion_col], errors="coerce").to_numpy(dtype=np.float64)
+    n_filas = int(ajuste.get("n_fit_rows", -1))
+    n_pp = int(persona_periodo.get("n_rows", -1))
+    if (
+        len(filas.index) != n_filas
+        or not np.all(np.isfinite(duracion))
+        or int(duracion.sum()) != n_pp
+    ):
+        raise IfrsConfigError(
+            "El ajuste por ciclo ancla el desplazamiento en la historia con que se ajustó la "
+            f"curva, y no se pudo reconstruir: la curva usó {n_filas} filas y {n_pp} "
+            f"períodos-operación, y la provisión encuentra {len(filas.index)} filas y "
+            f"{int(np.nansum(duracion))} períodos-operación."
+        )
+    column = cast(str, config.origination_date_col)
+    if column not in filas.columns:
+        raise IfrsInputError(f"La columna de otorgamiento '{column}' no está en el frame.")
+    ids = [str(v) for v in filas.index.tolist()]
+    fechas = _fechas(filas, column, "otorgamiento", ids, pd, np)
+    return CurveHistory(
+        origination=calendar_position(fechas),
+        duration_periods=duracion.astype(np.int64),
+        n_rows_without_date=int(np.isnat(fechas).sum()),
+    )
 
 
 def _require_artifact(study: Study, domain: str, key: str) -> object:

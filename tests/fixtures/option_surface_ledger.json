@@ -1390,6 +1390,13 @@
       "classification": "outside_job_form",
       "path": "forward.macro.kind",
       "reason": "Capacidad fuera del formulario por trabajos vigente; permanece alcanzable por API.",
+      "value": "scenario_paths"
+    },
+    {
+      "authority": "SDD-30 D-RDY-ABA-6 / D-JOB-15",
+      "classification": "outside_job_form",
+      "path": "forward.macro.kind",
+      "reason": "Capacidad fuera del formulario por trabajos vigente; permanece alcanzable por API.",
       "value": "var"
     },
     {
@@ -1412,6 +1419,13 @@
       "path": "forward.satellite.mode",
       "reason": "Capacidad fuera del formulario por trabajos vigente; permanece alcanzable por API.",
       "value": "fixed_coefficients"
+    },
+    {
+      "authority": "SDD-30 D-RDY-ABA-6 / D-JOB-15",
+      "classification": "outside_job_form",
+      "path": "forward.satellite.mode",
+      "reason": "Capacidad fuera del formulario por trabajos vigente; permanece alcanzable por API.",
+      "value": "reference_rate"
     },
     {
       "authority": "SDD-30 D-RDY-ABA-6 / D-JOB-15",
@@ -2343,6 +2357,13 @@
       "path": "provisioning_ifrs9.pd.pit_mode",
       "reason": "Par metodológico declarado en el catálogo D-JOB y sujeto a su gate de efecto.",
       "value": "consume_pit"
+    },
+    {
+      "authority": "SDD-30 D-RDY-ABA-1…4",
+      "classification": "methodology_selectable",
+      "path": "provisioning_ifrs9.pd.pit_mode",
+      "reason": "Par metodológico declarado en el catálogo D-JOB y sujeto a su gate de efecto.",
+      "value": "cycle"
     },
     {
       "authority": "SDD-30 D-RDY-ABA-1…4",

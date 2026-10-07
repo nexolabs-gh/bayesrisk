@@ -116,7 +116,11 @@ def _cfg(
 ) -> ForwardConfig:
     return ForwardConfig(
         input=ForwardInputConfig(
-            macro_source=MacroSourceConfig(type="dataframe", variable_cols=("x",)),
+            # IFRS9-FIRMABLE D-FIR-5: `fit` alinea por una columna de calendario que la curva
+            # histórica declara (`calendar`); contra el `period` de la curva —su edad— se detiene.
+            macro_source=MacroSourceConfig(
+                type="dataframe", variable_cols=("x",), time_col="calendar"
+            ),
             pd_basis_assumption=pd_basis_assumption,
             require_pit_consistency=require_pit_consistency,
         ),
@@ -181,6 +185,7 @@ def _term_structure(
         )
         survival_prev = survival
     frame = pd.DataFrame(rows, columns=_TERM_COLUMNS)
+    frame["calendar"] = frame["period"]
     if not include_hazard:
         frame = frame.drop(columns=["hazard"])
     if lgd is not None:
@@ -190,7 +195,7 @@ def _term_structure(
 
 def _macro_history(values: list[float] | None = None) -> pd.DataFrame:
     x_values = [-2.0, -1.0, 0.0, 1.0, 2.0] if values is None else values
-    return pd.DataFrame({"period": range(1, len(x_values) + 1), "x": x_values})
+    return pd.DataFrame({"calendar": range(1, len(x_values) + 1), "x": x_values})
 
 
 def _macro_projection(
@@ -437,7 +442,7 @@ def test_fixed_coefficients_relaja_min_history_con_piso_minimo(tmp_path: Path) -
 
     # 0 obs por factor -> reference_macro indefinido -> error claro (piso mínimo violado).
     empty_macro = pd.DataFrame(
-        {"period": pd.Series([], dtype="int64"), "x": pd.Series([], dtype="float64")}
+        {"calendar": pd.Series([], dtype="int64"), "x": pd.Series([], dtype="float64")}
     )
     with pytest.raises(SatelliteModelError, match="reference_macro"):
         SatelliteModel.from_config(
@@ -613,12 +618,12 @@ def test_validaciones_de_inputs_macro_y_term_structure() -> None:
     with pytest.raises(ForwardInputError, match="macro históricas"):
         SatelliteModel.from_config(cfg).fit(
             _term_structure([0.02] * 3),
-            pd.DataFrame({"period": [1, 2, 3]}),
+            pd.DataFrame({"calendar": [1, 2, 3]}),
         )
     with pytest.raises(ForwardInputError, match="duplicados"):
         SatelliteModel.from_config(cfg).fit(
             _term_structure([0.02] * 3),
-            pd.DataFrame({"period": [1, 1, 2], "x": [0.0, 1.0, 2.0]}),
+            pd.DataFrame({"calendar": [1, 1, 2], "x": [0.0, 1.0, 2.0]}),
         )
     with pytest.raises(SatelliteModelError, match="historia insuficiente"):
         SatelliteModel.from_config(_cfg(min_history_periods=5)).fit(
@@ -628,7 +633,7 @@ def test_validaciones_de_inputs_macro_y_term_structure() -> None:
     with pytest.raises(ForwardInputError, match="no finitos"):
         SatelliteModel.from_config(cfg).fit(
             _term_structure([0.02] * 3),
-            pd.DataFrame({"period": [1, 2, 3], "x": [0.0, math.inf, 2.0]}),
+            pd.DataFrame({"calendar": [1, 2, 3], "x": [0.0, math.inf, 2.0]}),
         )
     with pytest.raises(SatelliteModelError, match="constante"):
         SatelliteModel.from_config(cfg).fit(
@@ -648,7 +653,7 @@ def test_validaciones_de_inputs_macro_y_term_structure() -> None:
     with pytest.raises(ForwardInputError, match="no cubre"):
         SatelliteModel.from_config(cfg).fit(
             _term_structure([0.02, 0.03, 0.04]),
-            pd.DataFrame({"period": [1, 2, 9], "x": [0.0, 1.0, 2.0]}),
+            pd.DataFrame({"calendar": [1, 2, 9], "x": [0.0, 1.0, 2.0]}),
         )
 
 

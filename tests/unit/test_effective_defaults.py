@@ -252,7 +252,13 @@ HOJAS_CON_DEFAULT_EFECTIVO = 461
 #: aparecen una vez cada una (``sections.provisioning_ifrs9.{origination_date_col,
 #: maturity_date_col}``) y la cuota dos —``$defs.provisioning_ifrs9__IfrsEadConfig`` y
 #: ``sections.provisioning_ifrs9.ead``—, por la regla de los precedentes; ningún valor alterado.
-DESCRIPTORES_TOTALES = 1088
+#:
+#: 1088 → 1090 el 2026-10-07 con la capa A de IFRS9-FIRMABLE (S37): la hoja nueva
+#: ``forward.satellite.reference_rate_col`` (default ``"default_rate"``) aparece dos veces
+#: —``$defs.forward__SatelliteConfig`` y ``sections.forward.satellite``—, por la regla de los
+#: precedentes; las tres opciones nuevas de literales existentes no son hojas. Ningún valor
+#: alterado.
+DESCRIPTORES_TOTALES = 1090
 
 
 #: Las 16 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de

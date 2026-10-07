@@ -148,6 +148,7 @@ class SatelliteModel(AuditableMixin):
             self._audit = audit
 
         cfg = self.config
+        _check_no_ajusta_contra_la_edad(historical_term_structure, cfg=cfg)
         prepared_macro = _prepare_macro_history(macro_history, cfg=cfg, pd=pd, np=np)
         prepared_term = _prepare_term_structure(historical_term_structure, cfg=cfg, pd=pd, np=np)
         fit_statistics: dict[str, float | int | str | None]
@@ -252,6 +253,38 @@ class SatelliteModel(AuditableMixin):
                 "warnings": warnings_seen,
             },
             accion="fit_satellite_model",
+        )
+
+
+def _check_no_ajusta_contra_la_edad(term_structure: Any, *, cfg: ForwardConfig) -> None:
+    """IFRS9-FIRMABLE D-FIR-5 (§3.5): ``fit`` contra la edad de la curva se detiene.
+
+    El satélite alinea la serie macro con la curva por ``macro_source.time_col``; si la curva no
+    trae esa columna, por su ``period``, que en la curva de ``survival`` y en la de ``markov`` es la
+    EDAD de la operación, no una fecha: la fila 1 de la macro con la edad 1, la 2 con la 2… Medido
+    en el paquete: coeficiente del desempleo -0,057 (más desempleo, menos riesgo), R² 0,002, sobre
+    6.000 operaciones repetidas cinco veces, y con escenarios adversos la provisión BAJABA un 1,6 %.
+    Una curva con una columna de calendario propia sigue ajustando como antes. ``reference_rate`` no
+    pasa por aquí: su satélite se ajusta sobre la tabla de historia (``forward.cycle``).
+    """
+    if cfg.satellite.mode == "reference_rate":
+        raise SatelliteModelError(
+            "satellite.mode='reference_rate' no se ajusta contra la curva: su sensibilidad se "
+            "estima sobre la tabla de historia de la tasa de referencia (ForwardStep)."
+        )
+    if cfg.satellite.mode != "fit":
+        return
+    columnas = getattr(term_structure, "columns", None)
+    if columnas is None:
+        return  # no es una tabla: la validación de siempre lo dice con su mensaje
+    time_col = cfg.input.macro_source.time_col
+    if time_col == "period" or time_col not in columnas:
+        raise SatelliteModelError(
+            "satellite.mode='fit' alinearía la serie macro con la EDAD de la curva (su columna "
+            "period), no con el calendario: la sensibilidad que estimaría no es la del ciclo. Usa "
+            "satellite.mode='reference_rate' con macro.kind='scenario_paths' —la sensibilidad "
+            "sobre una tasa de incumplimiento de referencia larga y los escenarios de la "
+            "institución— o satellite.mode='fixed_coefficients' con coeficientes documentados."
         )
 
 

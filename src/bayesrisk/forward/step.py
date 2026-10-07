@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
     from bayesrisk.core.study import Study
+    from bayesrisk.forward.cycle import ForwardCycleModel
     from bayesrisk.forward.macro import MacroProjectionModel
     from bayesrisk.forward.results import (
         ForwardCard,
@@ -50,12 +51,13 @@ if TYPE_CHECKING:
     DataFrame: TypeAlias = pd.DataFrame
 else:
     DataFrame: TypeAlias = Any
+    ForwardCycleModel: TypeAlias = Any
     MacroProjectionModel: TypeAlias = Any
     SatelliteModel: TypeAlias = Any
     ScenarioWeighting: TypeAlias = Any
     Study: TypeAlias = Any
 
-__all__ = ["FORWARD_ARTIFACTS", "ForwardStep"]
+__all__ = ["CYCLE_MODEL_ARTIFACT", "FORWARD_ARTIFACTS", "ForwardStep"]
 
 FORWARD_ARTIFACTS: Final[tuple[str, ...]] = (
     "macro_model",
@@ -120,6 +122,8 @@ _WEIGHT_GROUP_COLUMNS: Final[tuple[str, ...]] = (
     "method",
     "pd_source",
 )
+#: IFRS9-FIRMABLE D-FIR-2 y D-FIR-4: la vía de los escenarios de la institución publica sólo esto.
+CYCLE_MODEL_ARTIFACT: Final[ArtifactKey] = ("forward", "cycle_model")
 _MACRO_HISTORY_ARTIFACT: Final[ArtifactKey] = ("forward", "macro_history")
 _PANDAS_EXTRA_MESSAGE: Final = "ForwardStep requiere pandas; instale las dependencias base."
 
@@ -140,6 +144,7 @@ class ForwardStep(AuditableMixin):
         """Construye el paso desde la sección ``ForwardConfig`` ya validada."""
         self.config = config
         self.requires = _requires_from_config(config)
+        self.provides = _provides_from_config(config)
 
     @classmethod
     def from_config(cls, cfg: ForwardConfig) -> ForwardStep:
@@ -150,14 +155,32 @@ class ForwardStep(AuditableMixin):
         """Permite pasar el step como ``AuditSink`` sin exponer el sink interno."""
         self._audit.emit(event)
 
-    def execute(self, study: Study, rng: np.random.Generator) -> ForwardResult:
-        """Ejecuta el flujo forward determinista y publica las diez claves del dominio."""
+    def motivo_sin_proveer(self, consumidor: str, clave: str) -> str | None:
+        """Por qué ``forward`` no produce el modelo del ciclo que pide la provisión (D-FIR-2)."""
+        if clave != CYCLE_MODEL_ARTIFACT[1] or self.config.satellite.mode == "reference_rate":
+            return None
+        return (
+            f"El paso '{consumidor}' ajusta la PD al ciclo con los escenarios de la institución "
+            "y 'forward' está en la vía con modelo macro: usa satellite.mode='reference_rate' y "
+            "macro.kind='scenario_paths', con la tabla de historia y una trayectoria por "
+            "escenario."
+        )
+
+    def execute(self, study: Study, rng: np.random.Generator) -> ForwardResult | ForwardCycleModel:
+        """Ejecuta el flujo forward determinista y publica las claves del dominio.
+
+        En la vía de los escenarios de la institución (D-FIR-2 y D-FIR-4) publica sólo
+        ``("forward", "cycle_model")``; en la vía con modelo macro, las diez de siempre.
+        """
         cfg = _forward_config_from_study(study, fallback=self.config)
         self.requires = _requires_from_config(cfg)
+        self.provides = _provides_from_config(cfg)
         _validate_requires(study, self.requires)
         random_state = _resolve_random_state(cfg, rng)
 
         pd = _import_pandas()
+        if cfg.satellite.mode == "reference_rate":
+            return self._execute_cycle(study, cfg=cfg, pd=pd)
         macro_history, macro_source_context = _macro_history_from_source(study, cfg=cfg, pd=pd)
         base_term_structure, term_context = _term_structures_from_study(study, cfg=cfg, pd=pd)
 
@@ -241,6 +264,74 @@ class ForwardStep(AuditableMixin):
             scenario_weighting=scenario_weighting,
         )
         return result
+
+    def _execute_cycle(self, study: Study, *, cfg: ForwardConfig, pd: Any) -> ForwardCycleModel:
+        """La vía de los escenarios de la institución: satélite y trayectorias (§3.2 y §3.4).
+
+        Sin modelo macro y sin tocar la curva: la historia y las trayectorias se leen, se validan
+        y se publican con la sensibilidad estimada; el desplazamiento por tramo lo aplica la
+        provisión IFRS 9, que conoce el corte y las fechas de cada operación.
+        """
+        from bayesrisk.forward.cycle import build_cycle_model
+
+        historia, contexto = _macro_history_from_source(study, cfg=cfg, pd=pd)
+        trayectorias = {
+            escenario.name: _read_table_path(
+                cast("str", escenario.macro_path_path),
+                pd=pd,
+                field_name=f"macro_scenario_paths[{escenario.name}]",
+            )
+            for escenario in cfg.scenarios.scenarios
+        }
+        modelo = build_cycle_model(
+            historia,
+            trayectorias,
+            {escenario.name: escenario.weight for escenario in cfg.scenarios.scenarios},
+            time_col=cfg.input.macro_source.time_col,
+            reference_rate_col=cfg.satellite.reference_rate_col,
+            factor_cols=cfg.satellite.factor_cols,
+        )
+        self.log_decision(
+            regla="forward_satellite_model",
+            umbral={
+                "mode": cfg.satellite.mode,
+                "factors": cfg.satellite.factor_cols,
+                "reference_rate_col": cfg.satellite.reference_rate_col,
+            },
+            valor={
+                "intercept": modelo.intercept,
+                "coefficients": modelo.coefficients,
+                "std_errors": modelo.std_errors,
+                "r_squared": modelo.r_squared,
+                "n_periods": modelo.n_periods,
+                "frequency_months": modelo.history_frequency_months,
+                "window": (modelo.window_start_month, modelo.window_end_month),
+                "long_run_means": modelo.long_run_means,
+                "source": contexto,
+                "history_hash": _logical_frame_hash(historia, pd=pd),
+            },
+            accion="estimar_sensibilidad_sobre_la_tasa_de_referencia",
+        )
+        self.log_decision(
+            regla="forward_scenarios",
+            umbral={"kind": cfg.macro.kind},
+            valor={
+                "names": tuple(modelo.weights),
+                "weights": modelo.weights,
+                "frequency_months": modelo.scenarios[0].frequency_months,
+                "periods": (
+                    modelo.scenarios[0].start_months[0],
+                    modelo.scenarios[0].start_months[-1],
+                ),
+                "path_hashes": {
+                    nombre: _logical_frame_hash(frame, pd=pd)
+                    for nombre, frame in trayectorias.items()
+                },
+            },
+            accion="leer_escenarios_de_la_institucion",
+        )
+        study.artifacts.set(*CYCLE_MODEL_ARTIFACT, modelo.model_copy(deep=True))
+        return modelo
 
     def _publish_artifacts(
         self,
@@ -407,14 +498,26 @@ class ForwardStep(AuditableMixin):
 
 
 def _requires_from_config(cfg: ForwardConfig) -> tuple[ArtifactKey, ...]:
-    """Deriva las dependencias CT-1 dinámicas desde ``ForwardConfig``."""
+    """Deriva las dependencias CT-1 dinámicas desde ``ForwardConfig``.
+
+    En la vía de los escenarios de la institución el satélite no mira la curva: sólo la tabla de
+    historia, si viene de otro artefacto.
+    """
     requires: list[ArtifactKey] = []
-    for source in cfg.input.term_structure_sources:
-        requires.append((source, "term_structure"))
+    if cfg.satellite.mode != "reference_rate":
+        for source in cfg.input.term_structure_sources:
+            requires.append((source, "term_structure"))
     macro_key = _macro_artifact_key(cfg)
     if macro_key is not None:
         requires.append(macro_key)
     return tuple(dict.fromkeys(requires))
+
+
+def _provides_from_config(cfg: ForwardConfig) -> tuple[ArtifactKey, ...]:
+    """Las claves que publica cada vía: el modelo del ciclo, o las diez de la vía con modelo."""
+    if cfg.satellite.mode == "reference_rate":
+        return (CYCLE_MODEL_ARTIFACT,)
+    return tuple(("forward", key) for key in FORWARD_ARTIFACTS)
 
 
 def _macro_artifact_key(cfg: ForwardConfig) -> ArtifactKey | None:

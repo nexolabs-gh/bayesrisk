@@ -28,8 +28,8 @@ from bayesrisk.forward.exceptions import (
 )
 
 MacroSourceType = Literal["path", "artifact", "dataframe"]
-MacroModelKind = Literal["arima", "sarima", "arimax", "auto_arima", "var", "vecm"]
-SatelliteMode = Literal["fit", "fixed_coefficients"]
+MacroModelKind = Literal["arima", "sarima", "arimax", "auto_arima", "var", "vecm", "scenario_paths"]
+SatelliteMode = Literal["fit", "fixed_coefficients", "reference_rate"]
 TargetComponent = Literal["pd", "lgd"]
 TermStructureSource = Literal["survival", "markov"]
 PdBasisAssumption = Literal["pit", "ttc"]
@@ -192,7 +192,10 @@ class MacroModelConfig(BayesRiskBaseConfig):
     kind: MacroModelKind = Field(
         default="arima",
         title="Tipo de modelo macro",
-        description="Modelo de forecasting: ARIMA/SARIMA/ARIMAX, auto_arima, VAR o VECM.",
+        description=(
+            "Modelo de forecasting: ARIMA/SARIMA/ARIMAX, auto_arima, VAR o VECM; scenario_paths "
+            "toma tal cual las trayectorias de los escenarios de la institución."
+        ),
         json_schema_extra={"ui_widget": "selectbox", "ui_group": "Macro modelo", "ui_order": 1},
     )
     horizon_periods: int = Field(
@@ -308,7 +311,10 @@ class SatelliteConfig(BayesRiskBaseConfig):
     mode: SatelliteMode = Field(
         default="fit",
         title="Modo satellite",
-        description="Ajustar coeficientes desde datos o cargar coeficientes fijos auditados.",
+        description=(
+            "Ajustar coeficientes desde datos, cargar coeficientes fijos auditados o estimar la "
+            "sensibilidad sobre una tasa de incumplimiento de referencia larga (reference_rate)."
+        ),
         json_schema_extra={"ui_widget": "selectbox", "ui_group": "Satellite", "ui_order": 1},
     )
     factor_cols: tuple[str, ...] = Field(
@@ -348,6 +354,28 @@ class SatelliteConfig(BayesRiskBaseConfig):
         title="Historia mínima",
         description="Mínimo de períodos históricos para aceptar el ajuste satellite.",
         json_schema_extra={"ui_widget": "number_input", "ui_group": "Satellite", "ui_order": 7},
+    )
+    # IFRS9-FIRMABLE D-FIR-2 (§3.2): la única hoja nueva de la capa A. Sin una tasa de referencia
+    # larga, la sensibilidad saldría de la historia corta de la cartera: medido, con el signo
+    # invertido en Lending Club y sin identificar en Freddie Mac (§1.3 de la enmienda).
+    reference_rate_col: str = Field(
+        default="default_rate",
+        title="Columna de la tasa de referencia",
+        description=(
+            "Columna de la tabla de historia con la tasa de incumplimiento de referencia, como "
+            "fracción entre 0 y 1 (un 0,9 % va como 0,009). Sólo con mode='reference_rate'."
+        ),
+        json_schema_extra={
+            "ui_help": (
+                "La tasa de incumplimiento de referencia larga —del sistema por cartera o la "
+                "propia, si cruza un ciclo— con que se estima cuánto se mueve el riesgo con la "
+                "macro. Va como fracción: un 0,9 % se escribe 0,009. Puede faltar al principio o "
+                "al final de la tabla; en medio, no."
+            ),
+            "ui_widget": "text_input",
+            "ui_group": "Satellite",
+            "ui_order": 8,
+        },
     )
 
     @model_validator(mode="before")
@@ -463,7 +491,10 @@ class ScenarioConfig(BayesRiskBaseConfig):
     require_at_least_three: bool = Field(
         default=True,
         title="Exigir tres escenarios",
-        description="Exige base, adverse y severe cuando está activo.",
+        description=(
+            "Exige base, adverse y severe cuando está activo. No aplica a los escenarios de la "
+            "institución (macro.kind='scenario_paths'), que se nombran libremente."
+        ),
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "Escenarios", "ui_order": 3},
     )
 
@@ -701,7 +732,12 @@ class ForwardConfig(BayesRiskBaseConfig):
                 "macro.horizon_periods debe ser >= "
                 "ttc_reversion.reasonable_supportable_periods para reversión TTC."
             )
-        _check_scenarios(self.scenarios, self.validation.weight_sum_tol)
+        via_de_escenarios = _check_via_de_escenarios(self)
+        _check_scenarios(
+            self.scenarios,
+            self.validation.weight_sum_tol,
+            nombres_libres=via_de_escenarios,
+        )
         _check_missing_stress_scenarios(self)
         missing_factors = sorted(set(self.satellite.factor_cols) - macro_cols)
         if missing_factors:
@@ -715,8 +751,79 @@ class ForwardConfig(BayesRiskBaseConfig):
         return self
 
 
-def _check_scenarios(scenarios: ScenarioConfig, weight_sum_tol: float) -> None:
-    """Valida unicidad, escenarios requeridos, nombres reservados y suma de pesos."""
+def _check_via_de_escenarios(cfg: ForwardConfig) -> bool:
+    """La vía de los escenarios de la institución (IFRS9-FIRMABLE D-FIR-2 y D-FIR-4, §3.4).
+
+    ``satellite.mode = "reference_rate"`` y ``macro.kind = "scenario_paths"`` van juntos: la
+    sensibilidad sale de la tasa de referencia y la previsión son las trayectorias de la
+    institución, sin modelo macro. En esta vía cada escenario trae su trayectoria y ningún choque,
+    hay al menos dos y todos pesan más que cero; los nombres son libres (no se exigen base, adverse
+    y severe). Devuelve si la corrida va por esta vía.
+    """
+    por_tasa = cfg.satellite.mode == "reference_rate"
+    por_trayectorias = cfg.macro.kind == "scenario_paths"
+    if por_tasa != por_trayectorias:
+        raise ForwardConfigError(
+            "satellite.mode='reference_rate' y macro.kind='scenario_paths' van juntos: la "
+            "sensibilidad se estima sobre la tasa de referencia y los escenarios son las "
+            "trayectorias de la institución, sin modelo macro.",
+            # D-EXI-5: se ancla en la hoja que quedó sola.
+            loc=(*_LOC_SECCION, "macro", "kind")
+            if por_tasa
+            else (*_LOC_SECCION, "satellite", "mode"),
+        )
+    if not por_tasa:
+        return False
+    if not cfg.satellite.reference_rate_col.strip():
+        raise ForwardConfigError(
+            "satellite.reference_rate_col no puede estar vacío.",
+            loc=(*_LOC_SECCION, "satellite", "reference_rate_col"),
+        )
+    source = cfg.input.macro_source
+    if cfg.satellite.reference_rate_col in (*source.variable_cols, source.time_col):
+        raise ForwardConfigError(
+            "satellite.reference_rate_col es la tasa que se explica: no puede ser la fecha ni "
+            "una de las variables macro.",
+            loc=(*_LOC_SECCION, "satellite", "reference_rate_col"),
+        )
+    escenarios = cfg.scenarios.scenarios
+    if len(escenarios) < 2:
+        raise ForwardScenarioError(
+            "Con los escenarios de la institución hacen falta al menos dos: uno solo no es un "
+            "rango (IFRS 9 5.5.17(a)).",
+            loc=(*_LOC_SECCION, "scenarios", "scenarios"),
+        )
+    sin_trayectoria = [e.name for e in escenarios if not e.macro_path_path]
+    if sin_trayectoria:
+        raise ForwardScenarioError(
+            "Con macro.kind='scenario_paths' cada escenario trae su trayectoria "
+            f"(macro_path_path): faltan {sin_trayectoria}.",
+            loc=(*_LOC_SECCION, "scenarios", "scenarios"),
+        )
+    con_choques = [e.name for e in escenarios if e.shocks]
+    if con_choques:
+        raise ForwardScenarioError(
+            "Con macro.kind='scenario_paths' las trayectorias se toman tal cual: los choques "
+            f"constantes son de la vía con modelo macro ({con_choques}).",
+            loc=(*_LOC_SECCION, "scenarios", "scenarios"),
+        )
+    sin_peso = [e.name for e in escenarios if not e.weight > 0.0]
+    if sin_peso:
+        raise ForwardScenarioError(
+            f"Los escenarios {sin_peso} pesan cero: un escenario sin peso no es parte del rango.",
+            loc=(*_LOC_SECCION, "scenarios", "scenarios"),
+        )
+    return True
+
+
+def _check_scenarios(
+    scenarios: ScenarioConfig, weight_sum_tol: float, *, nombres_libres: bool = False
+) -> None:
+    """Valida unicidad, escenarios requeridos, nombres reservados y suma de pesos.
+
+    Con ``nombres_libres`` —la vía de los escenarios de la institución— no se exigen base,
+    adverse y severe: los nombra la institución (§3.4).
+    """
     names = [scenario.name for scenario in scenarios.scenarios]
     if len(set(names)) != len(names):
         raise ForwardScenarioError(
@@ -728,7 +835,7 @@ def _check_scenarios(scenarios: ScenarioConfig, weight_sum_tol: float) -> None:
         )
 
     name_set = set(names)
-    if scenarios.require_at_least_three:
+    if scenarios.require_at_least_three and not nombres_libres:
         missing = sorted(_REQUIRED_SCENARIOS - name_set)
         if missing:
             raise ForwardScenarioError(

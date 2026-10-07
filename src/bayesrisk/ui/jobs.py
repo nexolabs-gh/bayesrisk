@@ -2832,6 +2832,20 @@ _ABANICO_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
                     "motivo": None,
                     "prueba": None,
                 },
+                {
+                    "value": "cycle",
+                    "label": "Ajustarlas con los escenarios de tu institución",
+                    "help": (
+                        "Desplaza la curva de supervivencia tramo a tramo según la fecha de "
+                        "calendario, con la sensibilidad estimada sobre una tasa de "
+                        "incumplimiento de referencia larga y tus escenarios con sus pesos. "
+                        "Necesita el análisis prospectivo con esas dos tablas, que esta interfaz "
+                        "todavía no arma: hoy, por la puerta guiada o el YAML."
+                    ),
+                    "estado": _DISPONIBLE,
+                    "motivo": None,
+                    "prueba": None,
+                },
             ),
         },
         {

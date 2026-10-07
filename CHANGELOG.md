@@ -7,6 +7,66 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **La provisión IFRS 9 con escenarios económicos (experimental).** Dos tablas que entrega la
+  institución —la historia de una tasa de incumplimiento de referencia larga con sus variables
+  macroeconómicas y sus escenarios con pesos— ajustan la curva de PD al ciclo, como pide IFRS 9
+  5.5.17: `bayesrisk.Ecl(..., history=, scenarios=)` o, por la puerta completa, la sección
+  `forward` con `satellite.mode = "reference_rate"` (columna `satellite.reference_rate_col`,
+  `"default_rate"` de fábrica) y `macro.kind = "scenario_paths"`, y la provisión con
+  `pd.pit_mode = "cycle"` y `scenarios.source = "forward"`. El motor estima la sensibilidad por
+  mínimos cuadrados, `logit(tasa) = a + b · (x − x̄)`, con la macro contemporánea; desplaza en logit
+  el riesgo de cada tramo de la curva posterior al corte según la macro de su **fecha de
+  calendario** —la edad sigue decidiendo la forma de la curva, también con las fechas del
+  contrato— y calcula la ECL de cada escenario y la pondera (nunca la de la macro promediada). El
+  desplazamiento se mide contra las condiciones en que se estimó la curva —la macro media de su
+  historia, con sólo los meses observados hasta el corte— o, sin la fecha de otorgamiento, contra
+  el largo plazo de la tabla de historia; más allá de los escenarios vuelve en 24 meses, en línea
+  recta, al largo plazo. Los gatillos del aumento significativo del riesgo por razón de PD leen la
+  PD ponderada. Los escenarios: al menos dos, nombres libres, pesos mayores que cero que suman 1,
+  frecuencia mensual, trimestral o anual sin huecos, que cubran los 12 meses posteriores al corte;
+  la historia, con la tasa como fracción en (0, 1), que puede faltar al principio o al final.
+  Ningún peso ni escenario por defecto, y ningún dato macroeconómico real en el paquete.
+- Medido con el motor, con los escenarios de la Reserva Federal publicados al corte y pesos
+  ilustrativos: la ECL ponderada de la muestra de consumo de Lending Club baja de 2.805.408 a
+  2.754.714 (−1,8 %) y la de hipotecas de Freddie Mac sube de 2.632.095 a 2.971.347 (+12,9 %).
+- La etapa «Escenarios» del resumen dice la tasa de referencia y su ventana, la sensibilidad con su
+  error y su sentido, y los escenarios con sus pesos; «Provisión IFRS 9» dice la ECL ponderada
+  frente a la de la curva sin escenarios, el ancla y la ECL de cada escenario; «Supuestos», el
+  ajuste por ciclo, que la sensibilidad de la tasa de referencia se transfiere uno a uno a la curva
+  de la cartera, y el ancla; «Qué revisar» alerta si la sensibilidad es incierta, si la ventana es
+  corta o si falta la fecha de otorgamiento. La card de la provisión gana, sólo con escenarios, las
+  secciones `ecl_reported_by_scenario` y `ecl_reported_ttc` —sin redondear, con la misma etapa que
+  el total, de modo que la suma ponderada reconcilia con la ECL sin redondear— y `cycle`; la ECL
+  por período gana `cycle_shift`, y la corrida publica `("forward", "cycle_model")` y
+  `("provisioning_ifrs9", "cycle_by_period")` (escenario × tramo, con su ventana de calendario).
+- La guía «La provisión IFRS 9 de punta a punta» gana la sección «Con escenarios económicos», con
+  un bloque ejecutado en CI que genera una historia sintética de sensibilidad conocida.
+
+### Cambiado
+
+- **`forward` con `satellite.mode = "fit"` sobre una curva sin columna de calendario se detiene.**
+  Alineaba la serie macro con la edad de la curva de supervivencia o de Markov, no con el
+  calendario: en la cartera del paquete estimaba un coeficiente del desempleo negativo (R² 0,002) y
+  con escenarios adversos la provisión bajaba. Una curva con columna de calendario propia sigue
+  ajustando como antes. Superficie experimental.
+- **Vasicek (`pd.pit_mode = "apply_vasicek"`) transforma el riesgo de cada período**, no la PD
+  marginal, y recompone la supervivencia: con un factor adverso dejaba operaciones con PD de vida
+  mayor que 1. Cambian las cifras de toda corrida con Vasicek (sólo alcanzable con una curva que
+  traiga el factor `Z`).
+- El `config_hash` de toda corrida con la sección `forward` cambia por la hoja nueva
+  `satellite.reference_rate_col`; el del preset IFRS 9 no, porque no trae `forward`. Sin escenarios
+  la provisión es la misma de antes, bit a bit.
+
+### Sabido
+
+- La pantalla, el informe y el Excel todavía no muestran los escenarios (llegan con la capa
+  siguiente): la etapa «Escenarios» habla en la consola, el notebook y el resumen final, y el
+  trabajo «Provisiones IFRS 9» no arma la sección `forward`.
+
 ## [2.7.0] — 2026-10-07
 
 ### Añadido

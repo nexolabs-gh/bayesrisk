@@ -1,6 +1,6 @@
 # Enmienda SDD — IFRS 9 firmable: escenarios, la PD de tu modelo y el aumento significativo del riesgo
 
-> **Estado: APROBADA por Cami el 2026-10-07** (cierre de S36), de forma interactiva y con la
+> **Estado: APROBADA por Cami el 2026-10-07** (cierre de S36); **capa A implementada en S37 (§9)**, de forma interactiva y con la
 > recomendación de cada uno de los siete puntos de §8: la enmienda entera; la sensibilidad desde una
 > tasa de referencia larga con el supuesto de transferencia declarado y sus cuatro criterios; el
 > ancla en las condiciones de la historia de la curva; el SICR con PD de origen y el escenario en la
@@ -753,6 +753,66 @@ anterior de `forward` ni Vasicek; no implementa stress (IHN-002); no toca CMF; n
 cada uno—. La capa A (D-FIR-1…6, más el bloque de la guía de D-FIR-10) se programa en S37 y sale
 en la 2.8.0; la B (D-FIR-7…9) en la 2.9.0, con la recaptura de la demo que exige el hash de F4; la C
 en la 2.10.0. Cada release y cada recaptura piden su OK aparte.
+
+## 9. Capa A implementada (S37, 2026-10-07)
+
+**Qué se programó** (D-FIR-1…6 y el bloque de la guía de D-FIR-10), sobre `698423a`:
+
+- `forward/cycle.py` (nuevo): la vía de los escenarios de la institución. Tablas de calendario con
+  frecuencia inferida (mensual, trimestral o anual) y sin huecos; el satélite por MCO sobre el logit
+  de la tasa de referencia, con su error, R², ventana y largo plazo; las trayectorias por escenario.
+  Publica `("forward", "cycle_model")` (`ForwardCycleModel`). En esta vía `ForwardStep` no requiere
+  curvas ni proyecta la macro, y publica sólo esa clave; la vía con modelo macro no cambia.
+- `forward/config.py`: `satellite.mode = "reference_rate"`, `macro.kind = "scenario_paths"` (van
+  juntas), la hoja `satellite.reference_rate_col` (`"default_rate"`); en la vía, al menos dos
+  escenarios con trayectoria, sin choques y con peso mayor que cero, nombres libres.
+  `forward/satellite.py`: `fit` contra la edad de la curva se detiene (D-FIR-5); `forward/macro.py`
+  se niega a ajustar `scenario_paths` (la rama `else` lo habría tratado como VECM).
+- `provisioning/ifrs9/cycle.py` (nuevo): el calendario por meses, el ancla (universo del ajuste,
+  meses observados, solape mensual; sin fecha, el largo plazo), el desplazamiento por tramo con la
+  reversión mes a mes en 24 meses, la curva sin fechas desplazada por escenario y la tabla escenario
+  × tramo. `contract.py` arma, con escenarios, una curva por escenario con el desplazamiento de su
+  tramo de calendario sobre los dos períodos que cruza; sin escenarios, la lectura de siempre.
+  `engine.py`: `pit_mode = "cycle"` (exige `survival`, `scenarios.source = "forward"` y la PD a 12
+  meses de la curva), la ECL reportada por escenario y la de desplazamiento cero, sin redondear y con
+  la misma etapa; Vasicek sobre el riesgo del período (D-FIR-6). `step.py` reconstruye el universo
+  del ajuste con la regla de `survival` (`fit_mask`) y lo coteja con la card de la curva; publica
+  `("provisioning_ifrs9", "cycle_by_period")`.
+- `bayesrisk.Ecl(..., history=, scenarios=)` **experimental**: valida las dos tablas antes de correr
+  con las mismas funciones del motor (también la cobertura de 12 meses contra el corte), las copia
+  al proyecto con su huella y arma `forward`; `pit_mode = "cycle"`. Resúmenes: la etapa
+  «Escenarios»; en «Provisión IFRS 9», la ECL ponderada frente a la de la curva, el ancla y la ECL
+  por escenario; «Supuestos» (el ajuste, la transferencia uno a uno, el ancla) y «Qué revisar».
+
+**Dos precisiones de implementación**, sin perilla y declaradas en la guía:
+
+1. **El calendario va por meses: el primer mes posterior al corte es el que contiene el día
+   siguiente al corte.** Con el corte el 1 de marzo de 2019 (Lending Club), marzo —como el
+   oráculo—; con el corte el 30 de junio, julio: un corte a fin de mes no deja un día suelto del mes
+   que cierra ni obliga a entregar un escenario para él.
+2. **La tasa de la tabla de historia puede faltar al principio o al final.** El oráculo estimó el
+   satélite con los trimestres anteriores al del corte y tomó la macro del trimestre del corte para
+   los meses observados del ancla (`ciclo_y_escenarios.py`: `largo.index < corte_balde` y `u` del
+   balde del corte). En el motor eso es una fila del trimestre del corte con la macro y sin la tasa:
+   no entra al satélite y da su macro al ancla. Un hueco en medio sigue deteniendo la corrida.
+
+**Medido con el motor** (`evidencia/s37/oraculo_motor.py`; datos regenerados en `%TEMP%\nkr\s37`
+con `evidencia/s32/`; el oráculo de S36 reproducido antes sobre `698423a` congelado):
+
+| | Oráculo §1.8 | Motor | |
+|---|---|---|---|
+| Lending Club, ponderada | 2.754.713,56 | **2.754.713,56** | al peso (base, adverso y severo idénticos; ancla 4,8158) |
+| Freddie Mac, ponderada | 2.970.951,80 | **2.971.347,34** | +395,54 (0,013 %): el dato, no la regla |
+| Freddie Mac, TTC | 2.632.095,18 | 2.632.095,18 | al peso |
+
+En Freddie Mac, el oráculo usó **dos** fechas de otorgamiento para 267 operaciones vivas: «corte −
+antigüedad» para leer la curva y la del desempeño para el ancla; el motor tiene una columna. Con
+esa misma columna en el oráculo (`evidencia/s37/oraculo_s36_otorgamiento_unico.py`) el oráculo da
+**2.971.347,34** —base 2.632.104,87 y severo 3.762.913,08—, idéntico al motor. El cambio frente a la
+curva sigue siendo +12,9 %.
+
+**Sin escenarios, bit a bit**, y los tests nacidos rojos por regla (§6: 1–7 y 10) con un control
+negativo por regla: ver el HANDOFF de S37.
 
 ## 13. Simplicidad (SDD-31)
 

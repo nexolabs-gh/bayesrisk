@@ -33,6 +33,7 @@ nombre que tengan en tu archivo:
 | La curva de PD | cuánto tiempo se observó cada operación (entero ≥ 1) y si incumplió (0/1); la unidad de ese tiempo (`"month"`, `"quarter"`, `"year"`…) y hasta cuántos períodos se proyecta la curva |
 | Opcional | el identificador de la operación y las covariables que ordenan el riesgo |
 | Opcional, del contrato | la fecha de otorgamiento, la de vencimiento y la cuota mensual de cada operación (ver [Con las fechas y la cuota del contrato](#con-las-fechas-y-la-cuota-del-contrato)) |
+| Opcional, escenarios (experimental) | la historia de una tasa de incumplimiento de referencia con sus variables macroeconómicas y tus escenarios con sus pesos, en dos tablas aparte (ver [Con escenarios económicos](#con-escenarios-economicos-experimental)) |
 
 Dos cosas que conviene saber antes de armar el archivo con datos reales:
 
@@ -218,6 +219,93 @@ otorgamiento —como en este archivo—, y exige la curva de supervivencia por p
 PD a 12 meses de esa misma curva y a lo largo del ciclo: con otra configuración, la verificación
 previa lo avisa antes de correr. Una fila sin fecha o sin cuota se lee como sin ese dato; sin ninguna de las tres
 columnas, la provisión es exactamente la de antes.
+
+## Con escenarios económicos (experimental)
+
+IFRS 9 pide una pérdida ponderada por la probabilidad de varios escenarios, con las condiciones
+actuales y las previsiones (5.5.17): la curva de PD sola es un promedio del ciclo. Con dos tablas
+más, la provisión se ajusta al ciclo:
+
+- **La historia** de una tasa de incumplimiento de referencia larga —que cruce al menos un ciclo—
+  con sus variables macroeconómicas: columnas `date`, `default_rate` (como fracción: un 0,9 % va
+  como 0,009) y las variables, con una fila por mes, trimestre o año, sin huecos. El motor estima
+  cuánto se mueve esa tasa con la macro, `logit(tasa) = a + b · (x − x̄)`, y lo dice con su error.
+- **Los escenarios** de la institución, con sus pesos: columnas `scenario`, `weight`, `date` y las
+  mismas variables, al menos dos escenarios, pesos que suman 1, que cubran como mínimo los 12
+  meses siguientes al corte.
+
+Cada tramo de la curva posterior al corte se desplaza en logit según la macro de su **fecha de
+calendario** —la edad sigue decidiendo la forma de la curva—, se calcula la ECL de cada escenario
+y se pondera. Aquí, sobre la misma cartera de arriba, con una historia sintética de veinte años
+cuya sensibilidad se conoce (el logit de la tasa sube 0,15 por punto de desempleo) y tres
+escenarios ilustrativos:
+
+<!-- provision-ifrs9-escenarios:start -->
+```python
+# Veinte años trimestrales de una tasa de referencia y el desempleo, con un ciclo adentro.
+trimestres = pd.date_range("2005-01-01", "2025-04-01", freq="QS")
+desempleo = 7.0 + 2.0 * np.sin(np.arange(len(trimestres)) / 6.0 + 1.5) + rng.normal(0, 0.3, len(trimestres))
+logit = -4.0 + 0.15 * (desempleo - desempleo.mean()) + rng.normal(0, 0.05, len(trimestres))
+historia = pd.DataFrame({"date": trimestres, "default_rate": 1 / (1 + np.exp(-logit)),
+                         "desempleo": desempleo})
+
+# Tres escenarios para los tres años siguientes al corte, con sus pesos (ilustrativos).
+futuro = pd.date_range("2025-07-01", periods=12, freq="QS")
+escenarios = pd.concat([
+    pd.DataFrame({"scenario": nombre, "weight": peso, "date": futuro,
+                  "desempleo": desempleo[-1] + np.linspace(0.0, alza, 12)})
+    for nombre, peso, alza in (("base", 0.6, 0.0), ("adverso", 0.3, 2.0), ("severo", 0.1, 4.0))
+])
+
+con_escenarios = Ecl(
+    data=cartera, id="loan_id", as_of="as_of_date", portfolio="portfolio", exposure="ead",
+    lgd="lgd", rate="eir", days_past_due="days_past_due", default="is_default",
+    origination="otorgamiento", maturity="vencimiento", installment="cuota",
+    duration="duration", event="event", period="quarter", horizon=16, covariates=["puntaje"],
+    history=historia, scenarios=escenarios,         # las dos tablas
+    name="provision_con_escenarios",
+)
+con_escenarios.run()
+print(con_escenarios.summary("forward"))            # la sensibilidad y los escenarios
+print(con_escenarios.summary("provisioning_ifrs9")) # la ECL de cada escenario frente a la TTC
+```
+<!-- provision-ifrs9-escenarios:end -->
+
+Lo que el motor decide solo, y declara en «Supuestos» y en «Qué revisar»:
+
+- **La sensibilidad se transfiere uno a uno.** Se estima sobre la tasa de referencia y se aplica a
+  la curva de tu cartera: si tu cartera es más o menos cíclica que la referencia, el ajuste queda
+  sesgado en esa proporción. El motor no puede verificar qué mide una tasa externa; quien firma
+  documenta que la referencia es de la misma cartera o producto, mide un evento cercano al de la
+  curva (mora de 90 días o castigo, no de 30), es trimestral o más fina y cruza al menos un ciclo.
+  Cuando ninguna serie pública cumple los cuatro, se usa la más cercana y se declara la excepción.
+  «Qué revisar» alerta si la sensibilidad es incierta (`|b| < 2` errores estándar o R² < 0,1) o
+  si la ventana tiene menos de 20 períodos.
+- **El ancla.** La curva no es «de largo plazo» por decreto: es el promedio de las condiciones de
+  su historia. Con la fecha de otorgamiento, el desplazamiento se mide contra la macro media de
+  los períodos con que se ajustó la curva; sin ella, contra la media de la tabla de historia, y
+  se dice.
+- **Más allá de los escenarios**, el desplazamiento vuelve en 24 meses, en línea recta, hacia las
+  condiciones de largo plazo de la tabla de historia (B5.5.50 y B5.5.52).
+- **El calendario va por meses.** El primer mes futuro es el que contiene el día siguiente al
+  corte; un valor de una tabla vale para todo su período, y el de cada tramo es el promedio de sus
+  meses. La tasa de la historia puede faltar al principio o al final —el trimestre del corte
+  todavía no la tiene—: esos períodos dan sólo su macro al ancla.
+
+Los escenarios y sus pesos son de la institución: el motor no trae ninguno por defecto ni datos
+macroeconómicos reales. Fuentes públicas con licencia abierta: para Chile, la cartera vencida por
+cartera de la [CMF](https://www.cmfchile.cl) (desde 2009) y la desocupación del
+[INE](https://www.ine.gob.cl); para Estados Unidos, el desempleo del
+[BLS](https://www.bls.gov), el PIB del [BEA](https://www.bea.gov), los precios de vivienda de la
+[FHFA](https://www.fhfa.gov) y las tasas de castigo y morosidad del sistema y los escenarios
+supervisores de la [Reserva Federal](https://www.federalreserve.gov). Los escenarios de estrés de
+un supervisor no son, por sí solos, previsiones ponderables: tómalos como insumo de los tuyos.
+
+Medido con el motor sobre las dos carteras públicas de abajo, con los escenarios de la Reserva
+Federal publicados al corte y pesos ilustrativos: la ECL ponderada de los créditos de consumo de
+Lending Club (corte 2019, desempleo bajo el de la historia de su curva) baja un 1,8 % frente a la
+curva sola, y la de las hipotecas de Freddie Mac (corte 2026, con un severo de 10 % de desempleo)
+sube un 12,9 %.
 
 ## La pantalla
 

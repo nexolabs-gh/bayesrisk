@@ -25,6 +25,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -116,6 +117,57 @@ def corrida(datos: Path, tmp_path_factory: pytest.TempPathFactory, _semilla: Non
 
 
 @pytest.fixture(scope="module")
+def corrida_con_escenarios(
+    datos: Path, tmp_path_factory: pytest.TempPathFactory, _semilla: None
+) -> Ecl:
+    """IFRS9-FIRMABLE: la misma cartera con escenarios sintéticos; sin fechas del contrato, el
+    ancla es el largo plazo y «Qué revisar» lo dice."""
+    trimestres = pd.date_range("2005-01-01", "2025-04-01", freq="QS")
+    u = 7.0 + 2.0 * np.sin(np.arange(len(trimestres)) / 6.0)
+    historia = pd.DataFrame(
+        {"date": trimestres, "default_rate": 1 / (1 + np.exp(4.0 - 0.15 * (u - 7.0))), "u": u}
+    )
+    futuro = pd.date_range("2025-07-01", periods=8, freq="QS")
+    escenarios = pd.DataFrame(
+        {
+            "scenario": ["base"] * 8 + ["adverso"] * 8,
+            "weight": [0.7] * 8 + [0.3] * 8,
+            "date": list(futuro) * 2,
+            "u": [7.0] * 8 + list(np.linspace(7.0, 10.0, 8)),
+        }
+    )
+    ecl = Ecl(
+        datos,
+        id="loan_id",
+        as_of="as_of_date",
+        portfolio="portfolio",
+        exposure="ead",
+        lgd="lgd",
+        rate="eir",
+        days_past_due="days_past_due",
+        default="is_default",
+        duration="duration",
+        event="event",
+        period="year",
+        horizon=5,
+        history=historia,
+        scenarios=escenarios,
+        run_dir=tmp_path_factory.mktemp("ecl_escenarios"),
+    )
+    ecl._echo = lambda _texto: None
+    ecl.run()
+    assert ecl.study.run_context.status == "done", ecl.study.run_context.error
+    return ecl
+
+
+#: Las etapas de una corrida sin escenarios (la sección `forward` no corre) y las de una con ellos.
+_SIN_ESCENARIOS = [e for e in STAGE_LABELS_CARTERA if e != "forward"]
+_CASOS = [("corrida", e) for e in _SIN_ESCENARIOS] + [
+    ("corrida_con_escenarios", e) for e in STAGE_LABELS_CARTERA
+]
+
+
+@pytest.fixture(scope="module")
 def f4(datos: Path, tmp_path_factory: pytest.TempPathFactory, _semilla: None) -> Any:
     """El preset F4 por la puerta completa: conserva su target y su partición, inertes."""
     cfg = deepcopy(ifrs9_preset()["config"])
@@ -145,23 +197,31 @@ def test_la_familia_la_decide_el_pipeline_no_la_puerta() -> None:
     assert family_of(None) == "scorecard"
 
 
-def test_cada_etapa_habla_en_palabras_de_provisiones(corrida: Ecl) -> None:
-    assert list(corrida._stage_summaries) == list(STAGE_LABELS_CARTERA)
-    for etapa, resumen in corrida._stage_summaries.items():
-        assert resumen.label == STAGE_LABELS_CARTERA[etapa]
-        assert 1 <= len(resumen.lines) <= 8, (etapa, resumen.lines)
+def test_cada_etapa_habla_en_palabras_de_provisiones(
+    corrida: Ecl, corrida_con_escenarios: Ecl
+) -> None:
+    assert list(corrida._stage_summaries) == _SIN_ESCENARIOS
+    assert list(corrida_con_escenarios._stage_summaries) == list(STAGE_LABELS_CARTERA)
+    for ecl in (corrida, corrida_con_escenarios):
+        for etapa, resumen in ecl._stage_summaries.items():
+            assert resumen.label == STAGE_LABELS_CARTERA[etapa]
+            assert 1 <= len(resumen.lines) <= 8, (etapa, resumen.lines)
 
 
-@pytest.mark.parametrize("etapa", list(STAGE_LABELS_CARTERA))
-def test_ningun_resumen_filtra_codigos_ni_palabras_del_scorecard(corrida: Ecl, etapa: str) -> None:
+@pytest.mark.parametrize(("fixture", "etapa"), _CASOS)
+def test_ningun_resumen_filtra_codigos_ni_palabras_del_scorecard(
+    request: pytest.FixtureRequest, fixture: str, etapa: str
+) -> None:
+    corrida = request.getfixturevalue(fixture)
     resumen = corrida.summary(etapa)
     assert isinstance(resumen, StageSummary)
     for texto in _textos(resumen):
         assert _ofensores(texto) == [], (etapa, _ofensores(texto))
 
 
-def test_el_resumen_final_tampoco(corrida: Ecl) -> None:
-    final = corrida.summary()
+@pytest.mark.parametrize("fixture", ["corrida", "corrida_con_escenarios"])
+def test_el_resumen_final_tampoco(request: pytest.FixtureRequest, fixture: str) -> None:
+    final = request.getfixturevalue(fixture).summary()
     assert isinstance(final, FinalSummary)
     for texto in (
         final.text(),
@@ -171,9 +231,11 @@ def test_el_resumen_final_tampoco(corrida: Ecl) -> None:
         assert _ofensores(texto) == [], _ofensores(texto)
 
 
-@pytest.mark.parametrize("etapa", list(STAGE_LABELS_CARTERA))
-def test_texto_y_html_salen_de_la_misma_fuente(corrida: Ecl, etapa: str) -> None:
-    resumen = corrida.summary(etapa)
+@pytest.mark.parametrize(("fixture", "etapa"), _CASOS)
+def test_texto_y_html_salen_de_la_misma_fuente(
+    request: pytest.FixtureRequest, fixture: str, etapa: str
+) -> None:
+    resumen = request.getfixturevalue(fixture).summary(etapa)
     pagina = resumen._repr_html_()
     for linea in (*resumen.lines, *resumen.alerts):
         assert html.escape(linea) in pagina, linea

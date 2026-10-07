@@ -15,6 +15,7 @@ criterio que el informe (``test_report_codigos_internos``).
 from __future__ import annotations
 
 import html
+import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -132,6 +133,9 @@ STAGE_ORDER: Final[tuple[str, ...]] = tuple(STAGE_LABELS)
 STAGE_LABELS_CARTERA: Final[dict[str, str]] = {
     "data": "Cartera",
     "survival": "Curva de PD",
+    # IFRS9-FIRMABLE §13: sólo habla en una corrida con escenarios (la vía de `forward` con la tasa
+    # de referencia); sin ella no corre y el resumen es el de siempre.
+    "forward": "Escenarios",
     "provisioning_ifrs9": "Provisión IFRS 9",
     "report": "Informe y ficha",
 }
@@ -2359,6 +2363,31 @@ _TABLA_DE_PAGOS: Final = (
     "la exposición sigue la tabla de pagos de la cuota del contrato hasta el vencimiento, con la "
     "tasa implícita en la cuota"
 )
+#: IFRS9-FIRMABLE §3.1 y §3.3: lo que el ajuste por ciclo supone, en palabras.
+_AJUSTE_POR_CICLO: Final = (
+    "La PD se ajusta a las condiciones actuales y a {n} escenarios ponderados: el riesgo de cada "
+    "tramo de la curva se desplaza en logit según la macro de su fecha de calendario —la edad "
+    "sigue decidiendo la forma de la curva— y, más allá de los escenarios, el desplazamiento "
+    "vuelve en {meses} meses, en línea recta, al largo plazo"
+)
+_TRANSFERENCIA: Final = (
+    "La sensibilidad se estimó sobre la tasa de referencia «{tasa}» ({ventana}) y se transfiere "
+    "uno a uno a la curva de la cartera: si la cartera es más o menos cíclica que la referencia, "
+    "el ajuste queda sesgado en esa proporción"
+)
+_ANCLA_HISTORIA: Final = (
+    "El desplazamiento se mide contra las condiciones en que se estimó la curva —la macro media de "
+    "su historia, {valores}—, no contra el largo plazo ({largo})"
+)
+_ANCLA_LARGO_PLAZO: Final = (
+    "Sin la fecha de otorgamiento, la curva se supone estimada en condiciones de largo plazo "
+    "({largo}): el desplazamiento se mide contra ellas"
+)
+_FRECUENCIAS_EN_PALABRAS: Final[dict[int, tuple[str, str]]] = {
+    1: ("mes", "meses"),
+    3: ("trimestre", "trimestres"),
+    12: ("año", "años"),
+}
 
 
 def _horizonte_de_la_curva(study: Study, card: Mapping[str, Any]) -> int | None:
@@ -2884,6 +2913,9 @@ def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
     if card.get("contract_dates") is True:
         lines.append(_linea_de_lectura_por_contrato(ifrs))
     lines.extend(_lineas_de_ead(card, ifrs, n_filas))
+    del_ciclo, alertas_del_ciclo, tabla_del_ciclo = _lineas_del_ciclo(card)
+    lines.extend(del_ciclo)
+    alerts.extend(alertas_del_ciclo)
     if str(card.get("pit_mode") or "") == "ttc_only":
         alerts.append(
             "La provisión usa la PD a lo largo del ciclo (TTC), sin ajuste a las condiciones "
@@ -2914,6 +2946,18 @@ def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
     gatillos = _tabla_de_gatillos(staging, ifrs)
     if gatillos is not None:
         extra.append(("Operaciones por etapa y gatillo", gatillos, {"Operaciones": "int"}))
+    if tabla_del_ciclo is not None:
+        extra.append(
+            (
+                "ECL por escenario",
+                tabla_del_ciclo,
+                {
+                    "Peso": "pct",
+                    "Desplazamiento del primer año": "num3",
+                    "ECL": "int",
+                },
+            )
+        )
     return StageSummary(
         stage="provisioning_ifrs9",
         label=STAGE_LABELS_CARTERA["provisioning_ifrs9"],
@@ -2929,6 +2973,221 @@ def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
         },
         extra_tables=tuple(extra),
     )
+
+
+def _resumen_escenarios(study: Study, context: SummaryContext) -> StageSummary:
+    """«Escenarios»: la sensibilidad estimada sobre la tasa de referencia y los escenarios (§13).
+
+    Lee sólo lo que publicó ``forward`` en su vía de escenarios (``cycle_model``); el ancla, el
+    desplazamiento de cada escenario y la ECL de cada uno los cuenta «Provisión IFRS 9», que es la
+    etapa que los calcula.
+    """
+    del context
+    from bayesrisk.forward.cycle import PERIODOS_SIN_ALERTA, UMBRAL_R2, UMBRAL_T, month_label
+
+    modelo = _card(study, "forward", "cycle_model")
+    if modelo is None:
+        return StageSummary(
+            stage="forward",
+            label=STAGE_LABELS_CARTERA["forward"],
+            lines=("La sección forward no corrió por la vía de los escenarios de la institución.",),
+        )
+    frecuencia = int(modelo["history_frequency_months"])
+    unidad = _FRECUENCIAS_EN_PALABRAS.get(frecuencia, ("período", "períodos"))
+    n = int(modelo["n_periods"])
+    ventana = (
+        f"{month_label(modelo['window_start_month'], frecuencia)} a "
+        f"{month_label(modelo['window_end_month'], frecuencia)}"
+    )
+    lines = [
+        f"Tasa de referencia «{modelo['reference_rate_col']}»: {ventana}, {_miles(n)} "
+        f"{unidad[1] if n != 1 else unidad[0]}"
+    ]
+    inicios = _sequence(modelo.get("history_start_months"))
+    fuera = len(inicios) - n
+    if fuera > 0:
+        lines.append(
+            f"La historia trae {_miles(fuera)} {_plural(fuera, 'período más', 'períodos más')} "
+            "sin la tasa: sólo dan su macro al ancla de la provisión"
+        )
+    alerts: list[str] = []
+    r2 = _float(modelo.get("r_squared"))
+    filas: list[dict[str, Any]] = []
+    for variable in _sequence(modelo.get("factor_cols")):
+        b = _float(_mapping(modelo.get("coefficients")).get(variable)) or 0.0
+        se = _float(_mapping(modelo.get("std_errors")).get(variable))
+        largo = _float(_mapping(modelo.get("long_run_means")).get(variable))
+        sentido = "sube" if b > 0 else "baja"
+        lines.append(
+            f"Sensibilidad a «{variable}»: {_cifra(b, decimales=3)} por unidad en el logit de la "
+            f"tasa (error {_cifra(se, decimales=3)}): con más «{variable}», la tasa de referencia "
+            f"{sentido}"
+        )
+        filas.append(
+            {
+                "Variable": str(variable),
+                "Sensibilidad": b,
+                "Error estándar": se,
+                "Largo plazo": largo,
+            }
+        )
+        if se is not None and se > 0 and abs(b / se) < UMBRAL_T:
+            alerts.append(
+                f"La sensibilidad a «{variable}» es incierta: {_cifra(b, decimales=3)} con error "
+                f"{_cifra(se, decimales=3)}, menos de dos errores estándar"
+            )
+    if r2 is not None:
+        lines.append(f"R² del ajuste: {_cifra(r2, decimales=2)}")
+        if r2 < UMBRAL_R2:
+            alerts.append(
+                f"La macro explica poco de la tasa de referencia (R² {_cifra(r2, decimales=2)}): "
+                "el ajuste por ciclo descansa en una relación débil"
+            )
+    if n < PERIODOS_SIN_ALERTA:
+        alerts.append(
+            f"La ventana de la sensibilidad tiene {_miles(n)} {unidad[1]}, menos de "
+            f"{PERIODOS_SIN_ALERTA}: probablemente no cruza un ciclo completo"
+        )
+    escenarios = [_mapping(e) for e in _sequence(modelo.get("scenarios"))]
+    if escenarios:
+        primero = escenarios[0]
+        f_esc = int(primero.get("frequency_months") or 1)
+        periodos = _sequence(primero.get("start_months"))
+        nombres = ", ".join(
+            f"{e.get('name')} ({_pct(e.get('weight'), decimals=0)})" for e in escenarios
+        )
+        lines.append(
+            f"Escenarios: {nombres}; de {month_label(periodos[0], f_esc)} a "
+            f"{month_label(periodos[-1], f_esc)}. Se ponderan las pérdidas de cada escenario, no "
+            "la macro"
+        )
+    tabla = _tabla_de_escenarios(escenarios, _sequence(modelo.get("factor_cols")))
+    formatos: dict[str, _Kind] = {"Peso": "pct"}
+    for variable in _sequence(modelo.get("factor_cols")):
+        for medida in ("inicio", "máximo", "final"):
+            formatos[f"{variable} ({medida})"] = "num2"
+    extra: list[tuple[str, pd.DataFrame, Mapping[str, _Kind]]] = []
+    if filas:
+        extra.append(
+            (
+                "La sensibilidad estimada",
+                pd.DataFrame(filas),
+                {"Sensibilidad": "num3", "Error estándar": "num3", "Largo plazo": "num2"},
+            )
+        )
+    return StageSummary(
+        stage="forward",
+        label=STAGE_LABELS_CARTERA["forward"],
+        lines=tuple(lines),
+        alerts=tuple(alerts),
+        table=tabla,
+        formats=formatos,
+        extra_tables=tuple(extra),
+    )
+
+
+def _tabla_de_escenarios(
+    escenarios: list[Mapping[str, Any]], variables: tuple[Any, ...]
+) -> pd.DataFrame | None:
+    """Un escenario por fila: su peso y, por variable, el valor al inicio, el máximo y el final."""
+    if not escenarios:
+        return None
+    from bayesrisk.forward.cycle import month_label
+
+    filas: list[dict[str, Any]] = []
+    for escenario in escenarios:
+        frecuencia = int(escenario.get("frequency_months") or 1)
+        periodos = _sequence(escenario.get("start_months"))
+        fila: dict[str, Any] = {
+            "Escenario": str(escenario.get("name")),
+            "Peso": _float(escenario.get("weight")),
+            "Períodos": f"{month_label(periodos[0], frecuencia)} a "
+            f"{month_label(periodos[-1], frecuencia)}",
+        }
+        for variable in variables:
+            serie = [float(v) for v in _sequence(_mapping(escenario.get("values")).get(variable))]
+            if serie:
+                fila[f"{variable} (inicio)"] = serie[0]
+                fila[f"{variable} (máximo)"] = max(serie)
+                fila[f"{variable} (final)"] = serie[-1]
+        filas.append(fila)
+    return pd.DataFrame(filas)
+
+
+def _lineas_del_ciclo(card: Mapping[str, Any]) -> tuple[list[str], list[str], pd.DataFrame | None]:
+    """Lo que «Provisión IFRS 9» cuenta del ajuste por ciclo: ancla, ECL por escenario (§13)."""
+    secciones = _mapping(card.get("metric_sections"))
+    ciclo = _mapping(secciones.get("cycle"))
+    por_escenario = _mapping(secciones.get("ecl_reported_by_scenario"))
+    ttc = _float(secciones.get("ecl_reported_ttc"))
+    if not ciclo or not por_escenario:
+        return [], [], None
+    pesos = _mapping(card.get("scenario_weights"))
+    ponderada = math.fsum(
+        (_float(pesos.get(k)) or 0.0) * (_float(v) or 0.0) for k, v in por_escenario.items()
+    )
+    lines: list[str] = []
+    variacion = f" ({_variacion(ponderada / ttc - 1.0)})" if ttc else ""
+    lines.append(
+        f"ECL ponderada por {_miles(len(por_escenario))} escenarios: {_monto(ponderada)}; a lo "
+        f"largo del ciclo, sin escenarios, sería {_monto(ttc or 0.0)}{variacion}"
+    )
+    anclas = _mapping(ciclo.get("anchor_values"))
+    largos = _mapping(ciclo.get("long_run_values"))
+    if str(ciclo.get("anchor")) == "curve_history":
+        lines.append(
+            "Ancla: la macro media de la historia de la curva, "
+            + ", ".join(f"{v} {_dos_decimales(x)}" for v, x in anclas.items())
+            + "; largo plazo "
+            + ", ".join(f"{v} {_dos_decimales(x)}" for v, x in largos.items())
+        )
+    else:
+        lines.append(
+            "Ancla: el largo plazo de la tabla de historia ("
+            + ", ".join(f"{v} {_dos_decimales(x)}" for v, x in largos.items())
+            + "), porque la provisión no trae la fecha de otorgamiento"
+        )
+    alerts: list[str] = []
+    if str(ciclo.get("anchor")) != "curve_history":
+        alerts.append(
+            "Sin la fecha de otorgamiento, la curva se supone estimada en condiciones de largo "
+            "plazo: si su historia fue de años de bonanza o de crisis, el desplazamiento queda sesgado"
+        )
+    sin_fecha = _int(ciclo.get("rows_without_date")) or 0
+    pp = _int(ciclo.get("person_periods")) or 0
+    pp_sin = _int(ciclo.get("person_periods_without_date")) or 0
+    if sin_fecha and str(ciclo.get("anchor")) == "curve_history":
+        alerts.append(
+            f"{_miles(sin_fecha)} {_plural(sin_fecha, 'fila', 'filas')} de la historia de la curva "
+            f"no {_plural(sin_fecha, 'trae', 'traen')} fecha de otorgamiento y no "
+            f"{_plural(sin_fecha, 'entra', 'entran')} al ancla ({_miles(pp_sin)} períodos, "
+            f"{_pct(pp_sin / pp if pp else None)} de la historia)"
+        )
+    primer_anio = _mapping(ciclo.get("first_year_shift"))
+    filas = [
+        {
+            "Escenario": str(nombre),
+            "Peso": _float(pesos.get(nombre)),
+            "Desplazamiento del primer año": _float(primer_anio.get(nombre)),
+            "ECL": round(_float(valor) or 0.0),
+            "Cambio frente a la TTC": (
+                _variacion((_float(valor) or 0.0) / ttc - 1.0) if ttc else "—"
+            ),
+        }
+        for nombre, valor in por_escenario.items()
+    ]
+    return lines, alerts, pd.DataFrame(filas)
+
+
+def _variacion(valor: float) -> str:
+    """Un cambio relativo con su signo: «+24,4 %», «-1,8 %»."""
+    return ("+" if valor > 0 else "-" if valor < 0 else "") + _pct(abs(valor), decimals=1)
+
+
+def _dos_decimales(valor: Any) -> str:
+    """Un nivel macro con dos decimales y coma: «4,82»."""
+    numero = _float(valor)
+    return "—" if numero is None else f"{numero:.2f}".replace(".", ",")
 
 
 def _por_etapa(detalle: Any) -> dict[int, tuple[int, float, float]]:
@@ -3157,6 +3416,7 @@ _BUILDERS: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
 _BUILDERS_CARTERA: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
     "data": _resumen_cartera,
     "survival": _resumen_curva,
+    "forward": _resumen_escenarios,
     "provisioning_ifrs9": _resumen_provision,
     "report": _resumen_report,
 }
@@ -3419,6 +3679,37 @@ def _cinco_cifras_cartera(study: Study) -> tuple[tuple[str, str], ...]:
     return tuple(cifras)
 
 
+def _supuestos_del_ciclo(study: Study, card: Mapping[str, Any]) -> list[str]:
+    """Lo que supone el ajuste por ciclo (IFRS9-FIRMABLE §3.1 a §3.3), en palabras."""
+    from bayesrisk.forward.cycle import month_label
+
+    secciones = _mapping(card.get("metric_sections"))
+    ciclo = _mapping(secciones.get("cycle"))
+    n = len(_sequence(card.get("scenarios")))
+    supuestos = [
+        _AJUSTE_POR_CICLO.format(
+            n=_miles(n), meses=_miles(_int(ciclo.get("reversion_months")) or 0)
+        )
+    ]
+    modelo = _card(study, "forward", "cycle_model")
+    if modelo is not None:
+        frecuencia = int(modelo["history_frequency_months"])
+        ventana = (
+            f"{month_label(modelo['window_start_month'], frecuencia)} a "
+            f"{month_label(modelo['window_end_month'], frecuencia)}"
+        )
+        supuestos.append(_TRANSFERENCIA.format(tasa=modelo["reference_rate_col"], ventana=ventana))
+    anclas = _mapping(ciclo.get("anchor_values"))
+    largos = _mapping(ciclo.get("long_run_values"))
+    largo = ", ".join(f"{v} {_dos_decimales(x)}" for v, x in largos.items())
+    if str(ciclo.get("anchor")) == "curve_history":
+        valores = ", ".join(f"{v} {_dos_decimales(x)}" for v, x in anclas.items())
+        supuestos.append(_ANCLA_HISTORIA.format(valores=valores, largo=largo))
+    elif ciclo:
+        supuestos.append(_ANCLA_LARGO_PLAZO.format(largo=largo))
+    return supuestos
+
+
 def _supuestos_del_contrato(card: Mapping[str, Any], ifrs: Any) -> list[str]:
     """Lo que supone leer la curva con las fechas del contrato (D-CRE-2, §3.2)."""
     supuestos: list[str] = []
@@ -3452,6 +3743,8 @@ def _supuestos(study: Study) -> tuple[str, ...]:
             "La PD es a lo largo del ciclo (TTC): no se ajusta a las condiciones actuales ni a "
             "escenarios macroeconómicos"
         )
+    elif pit_mode == "cycle":
+        supuestos.extend(_supuestos_del_ciclo(study, card))
     elif pit_mode:
         supuestos.append(f"La PD es {_IFRS9_PIT_MODE_LABELS.get(pit_mode, pit_mode)}")
     escenarios = tuple(str(s) for s in _sequence(card.get("scenarios")))

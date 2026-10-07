@@ -112,12 +112,13 @@ class IfrsPdConfig(BayesRiskBaseConfig):
         ),
         json_schema_extra={"ui_widget": "selectbox", "ui_group": "PD", "ui_order": 2},
     )
-    pit_mode: Literal["consume_pit", "apply_vasicek", "ttc_only"] = Field(
+    pit_mode: Literal["consume_pit", "apply_vasicek", "ttc_only", "cycle"] = Field(
         default="consume_pit",
         title="Cómo obtener la PD PIT",
         description=(
             "consume_pit usa curvas PIT de forward; apply_vasicek transforma TTC con rho y Z; "
-            "ttc_only usa la TTC sin ajuste (solo diagnóstico)."
+            "ttc_only usa la TTC sin ajuste (solo diagnóstico); cycle desplaza la curva por tramo "
+            "de calendario con los escenarios de la institución."
         ),
         json_schema_extra={"ui_widget": "selectbox", "ui_group": "PD", "ui_order": 3},
     )
@@ -1186,6 +1187,7 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
         del columnas  # no depende del dataset; precedente: `performance.partitions`
         requisitos: list[Requisito] = []
         desde_forward = self.pd.term_structure_source == "forward"
+        ciclo = self.pd.pit_mode == "cycle"
         if self.pd.pit_mode == "consume_pit" and not desde_forward:
             requisitos.append(
                 Requisito(
@@ -1199,7 +1201,7 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
                     ),
                 )
             )
-        if self.scenarios.source == "forward" and not desde_forward:
+        if self.scenarios.source == "forward" and not desde_forward and not ciclo:
             requisitos.append(
                 Requisito(
                     path="scenarios.source",
@@ -1212,8 +1214,56 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
                     ),
                 )
             )
+        requisitos.extend(self._requisitos_del_ciclo())
         requisitos.extend(self._requisitos_del_contrato())
         return tuple(requisitos)
+
+    def _requisitos_del_ciclo(self) -> list[Requisito]:
+        """El ajuste por ciclo con los escenarios de la institución (IFRS9-FIRMABLE D-FIR-1).
+
+        Desplaza la curva de supervivencia por tramo de calendario y pondera con los pesos que
+        trae ``forward``: con otra curva, otra fuente de pesos o la PD a 12 meses de la
+        calibración, el motor se detiene; aquí se avisa antes de correr.
+        """
+        if self.pd.pit_mode != "cycle":
+            return []
+        requisitos: list[Requisito] = []
+        if self.pd.term_structure_source != "survival":
+            requisitos.append(
+                Requisito(
+                    path="pd.term_structure_source",
+                    declared=self.pd.term_structure_source,
+                    message=(
+                        "El ajuste por ciclo desplaza la curva de supervivencia según la fecha de "
+                        "calendario de cada tramo; las otras fuentes no son una curva por edad. "
+                        "Toma la curva de supervivencia."
+                    ),
+                )
+            )
+        if self.scenarios.source != "forward":
+            requisitos.append(
+                Requisito(
+                    path="scenarios.source",
+                    declared=self.scenarios.source,
+                    message=(
+                        "El ajuste por ciclo pondera los escenarios de la institución con los "
+                        "pesos que trae el análisis prospectivo: toma los pesos de ahí."
+                    ),
+                )
+            )
+        if self.pd.base_pd_source == "calibration":
+            requisitos.append(
+                Requisito(
+                    path="pd.base_pd_source",
+                    declared=self.pd.base_pd_source,
+                    message=(
+                        "Con el ajuste por ciclo, la PD a 12 meses sale de la curva ajustada por "
+                        "escenario; la calibración la fijaría sin el ciclo. Toma la PD a 12 meses "
+                        "de la curva."
+                    ),
+                )
+            )
+        return requisitos
 
     def _requisitos_del_contrato(self) -> list[Requisito]:
         """Las fechas y la cuota del contrato (CASO-REAL-IFRS9 §3.2-7 y §3.3).
@@ -1254,19 +1304,19 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
                     ),
                 )
             )
-        if campo is not None and self.pd.pit_mode != "ttc_only":
-            # Pasada 3 de Codex: ajustar a las condiciones actuales la curva leída desde la edad no
-            # está definido —qué factor sistémico corresponde a cada tramo es metodología PIT, que
-            # la enmienda deja para otra fase (§3.2-7)—; se avisa en vez de inventarlo.
+        if campo is not None and self.pd.pit_mode not in ("ttc_only", "cycle"):
+            # Pasada 3 de Codex sobre CASO-REAL: qué factor sistémico corresponde a cada tramo lo
+            # resuelve IFRS9-FIRMABLE D-FIR-1 sólo para el ajuste por ciclo (`cycle`); Vasicek y las
+            # curvas de `forward` por edad siguen sin fechas. Se avisa en vez de inventarlo.
             requisitos.append(
                 Requisito(
                     path=campo,
                     declared=f"PD ajustada ({self.pd.pit_mode})",
                     message=(
                         "Con las fechas del contrato, la curva de PD se lee desde la edad de cada "
-                        "operación a lo largo del ciclo; ajustar esa lectura a las condiciones "
-                        "actuales todavía no está disponible. Usa la PD a lo largo del ciclo, o "
-                        "quita las fechas."
+                        "operación; ajustarla así a las condiciones actuales no está disponible. "
+                        "Usa los escenarios de la institución (el ajuste por ciclo) o la PD a lo "
+                        "largo del ciclo, o quita las fechas."
                     ),
                 )
             )

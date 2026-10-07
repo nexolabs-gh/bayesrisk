@@ -38,9 +38,19 @@ from bayesrisk.core.time_units import year_fraction
 from bayesrisk.provisioning.ifrs9.config import IfrsProvisioningConfig
 from bayesrisk.provisioning.ifrs9.contract import (
     ContractReading,
+    _meses_por_periodo,
     check_contract_config,
     read_contract_terms,
     read_curve_by_contract,
+)
+from bayesrisk.provisioning.ifrs9.cycle import (
+    CycleInputs,
+    CycleShifter,
+    check_scenario_coverage,
+    cycle_anchor,
+    first_future_month,
+    require_cycle,
+    shift_term_structure,
 )
 from bayesrisk.provisioning.ifrs9.ead import EadEngine
 from bayesrisk.provisioning.ifrs9.ecl import EclEngine, validate_scenario_weights
@@ -151,6 +161,8 @@ _WARNING_CONSTANT_EAD: str = "FALTA-DATO-IFRS-4"
 # ``results`` (anexo, payload de la UI, consumidor externo).
 # CASO-REAL-IFRS9 D-CRE-2 (§3.2): el tramo de la curva que lee cada período posterior al corte.
 _CURVE_SEGMENT_COLUMNS: tuple[str, ...] = ("curve_start", "curve_end")
+# IFRS9-FIRMABLE D-FIR-1 (§3.1): el desplazamiento en logit de cada tramo, sólo con escenarios.
+_CYCLE_SHIFT_COLUMN: str = "cycle_shift"
 
 _ECL_BY_SCENARIO_BASIS: str = (
     "Diagnóstico auditable de la term-structure, no un desglose de total_ecl_reported: "
@@ -231,6 +243,7 @@ class IfrsProvisioningEngine:
         as_of_date: str,
         audit: AuditSink | None = None,
         events_by_period: Mapping[int, int] | None = None,
+        cycle: CycleInputs | None = None,
     ) -> IfrsProvisionResult:
         """Calcula la ECL IFRS 9 por operación y ensambla el :class:`IfrsProvisionResult`.
 
@@ -254,6 +267,10 @@ class IfrsProvisioningEngine:
             card de ``discrete_hazard``). Sólo se leen con las fechas del contrato
             (CASO-REAL-IFRS9 D-CRE-2): la cola de la curva se extiende desde el último período
             con incumplimientos.
+        cycle
+            El modelo del ciclo que publica ``forward`` y la historia de la curva (IFRS9-FIRMABLE
+            D-FIR-1…3). Sólo con ``pd.pit_mode='cycle'``: la tabla de escenario × tramo queda en
+            ``cycle_by_period_`` tras calcular.
 
         Returns
         -------
@@ -279,6 +296,11 @@ class IfrsProvisioningEngine:
         config = self._config
         _validate_as_of_date(as_of_date)
         check_contract_config(config, events_by_period)
+        ciclo = config.pd.pit_mode == "cycle"
+        self.cycle_by_period_: DataFrame | None = None
+        if ciclo:
+            _check_cycle_config(config)
+            cycle = require_cycle(cycle)
 
         frame = _as_dataframe(frame, pandas, "data.frame").copy(deep=True)
         ts = _as_dataframe(term_structure, pandas, "term_structure").copy(deep=True)
@@ -345,7 +367,25 @@ class IfrsProvisioningEngine:
         sin_unidad = _ts_row_ids_sin_unidad(ts)
         horizonte_inconmensurable = _horizonte_inconmensurable(ts, horizonte_12m, numpy)
 
-        weights = self._resolve_weights(ts, numpy)
+        shifter: CycleShifter | None = None
+        ts_ttc: DataFrame | None = None
+        lectura_ttc: ContractReading | None = None
+        if ciclo:
+            # IFRS9-FIRMABLE D-FIR-1…4: el ancla y el desplazamiento por tramo de calendario, con
+            # los escenarios y sus pesos del modelo de `forward`; antes de leer la curva.
+            assert cycle is not None
+            primer_mes = first_future_month(as_of_date)
+            check_scenario_coverage(cycle.model, first_month=primer_mes)
+            meses = _meses_por_periodo(ts)
+            ancla = cycle_anchor(
+                cycle.model, cycle.history, months_per_period=meses, first_month=primer_mes
+            )
+            shifter = CycleShifter(
+                cycle.model, ancla, months_per_period=meses, first_month=primer_mes
+            )
+            ts_ttc = ts
+        else:
+            weights = self._resolve_weights(ts, numpy)
         lectura: ContractReading | None = None
         if terms is not None:
             lectura = read_curve_by_contract(
@@ -355,7 +395,20 @@ class IfrsProvisioningEngine:
                 ead_by_rid=dict(zip(row_ids, (float(v) for v in ead_arr), strict=True)),
                 events_by_period=cast("Mapping[int, int]", events_by_period),
                 max_lifetime=config.pd.max_lifetime_periods,
+                deltas=None if shifter is None else shifter.deltas,
+                weights=None if shifter is None else shifter.weights,
             )
+            if shifter is not None:
+                # La misma lectura sin desplazamiento: la ECL a lo largo del ciclo (§3.1).
+                lectura_ttc = read_curve_by_contract(
+                    ts,
+                    terms=terms,
+                    row_ids=row_ids,
+                    ead_by_rid=dict(zip(row_ids, (float(v) for v in ead_arr), strict=True)),
+                    events_by_period=cast("Mapping[int, int]", events_by_period),
+                    max_lifetime=config.pd.max_lifetime_periods,
+                )
+                ts_ttc = lectura_ttc.term_structure
             ts = lectura.term_structure
             # D-CRE-3: una operación que sigue la tabla de pagos ya no tiene la EAD constante.
             row_warnings = [
@@ -364,6 +417,12 @@ class IfrsProvisioningEngine:
                 else codes
                 for rid, codes in zip(row_ids, row_warnings, strict=True)
             ]
+        elif shifter is not None:
+            ts = shift_term_structure(ts, shifter, months_per_period=shifter.months_per_period)
+        if shifter is not None:
+            # Los pesos son los del modelo (`scenario_weight` en la curva), con las mismas
+            # validaciones que los de `forward`: positivos, que suman 1, sin escenario medio.
+            weights = self._resolve_weights(ts, numpy)
         pit_marginal = self._resolve_pit_marginal(ts, config, numpy)
         ts = ts.assign(pd_marginal=pit_marginal)
 
@@ -413,8 +472,26 @@ class IfrsProvisioningEngine:
             weights=weights,
             horizon_12m=horizonte_12m,
         )
-        if lectura is not None:
+        if lectura is not None or shifter is not None:
             ecl_ts = _con_tramo_de_la_curva(ecl_ts, components)
+        seccion_ciclo: dict[str, Any] | None = None
+        if shifter is not None:
+            assert ts_ttc is not None
+            seccion_ciclo = _ecl_del_ciclo(
+                config=config,
+                shifter=shifter,
+                components=components,
+                ts_ttc=ts_ttc,
+                lectura_ttc=lectura_ttc,
+                row_ids=row_ids,
+                lgd_by_rid=lgd_by_rid,
+                ead_by_rid=ead_by_rid,
+                eir_arr=eir_arr,
+                stage_arr=stage_arr,
+                horizonte_12m=horizonte_12m,
+                pandas=pandas,
+            )
+            self.cycle_by_period_ = shifter.by_period(int(components["period"].max()))
 
         pd_basis = "ttc" if config.pd.pit_mode == "ttc_only" else "pit"
         origination = _origination_pd_life(frame, config, numpy)
@@ -442,6 +519,7 @@ class IfrsProvisioningEngine:
             n_rows_without_exposure=n_sin_exposicion,
             lectura=lectura,
             pandas=pandas,
+            seccion_ciclo=seccion_ciclo,
         )
 
     # --- Etapas económicas (reutilizan los motores puros de bloques previos) -------------------
@@ -495,7 +573,8 @@ class IfrsProvisioningEngine:
         """Resuelve la PD marginal PIT según ``pit_mode`` (consume_pit/apply_vasicek/ttc_only)."""
         marginal = numpy.asarray(ts["pd_marginal"].to_numpy(), dtype=numpy.float64)
         pit_mode = config.pd.pit_mode
-        if pit_mode == "ttc_only":
+        if pit_mode in ("ttc_only", "cycle"):
+            # `cycle`: la curva ya viene desplazada por escenario (D-FIR-1).
             return cast("NDArrayFloat", marginal)
         if pit_mode == "consume_pit":
             _require_pit_basis(ts)
@@ -553,6 +632,7 @@ class IfrsProvisioningEngine:
         n_rows_without_exposure: int,
         lectura: ContractReading | None,
         pandas: Any,
+        seccion_ciclo: dict[str, Any] | None = None,
     ) -> IfrsProvisionResult:
         """Construye ``staging``/``detail``/``summary``, los registros y la card (SDD-16 §4/§6)."""
         ecl_by_rid = {
@@ -682,6 +762,7 @@ class IfrsProvisioningEngine:
             ecl_term_structure=ecl_term_structure,
             n_rows_without_exposure=n_rows_without_exposure,
             lectura=lectura,
+            seccion_ciclo=seccion_ciclo,
         )
         return IfrsProvisionResult(
             staging=staging,
@@ -703,6 +784,7 @@ class IfrsProvisioningEngine:
         ecl_term_structure: DataFrame,
         n_rows_without_exposure: int,
         lectura: ContractReading | None,
+        seccion_ciclo: dict[str, Any] | None = None,
     ) -> IfrsProvisionCard:
         """Construye la ``IfrsProvisionCard`` CT-2 con totales, conteos y secciones métricas."""
         stages = [int(row["stage"]) for row in detail_rows]
@@ -740,6 +822,9 @@ class IfrsProvisioningEngine:
                 "policy": self._config.ecl.rounding,
                 "total_difference": sum(float(row["rounding_difference"]) for row in detail_rows),
             },
+            # IFRS9-FIRMABLE D-FIR-1 (§3.1): sólo con escenarios, para que una corrida sin ellos
+            # publique exactamente la card de antes.
+            **({} if seccion_ciclo is None else seccion_ciclo),
         }
         return IfrsProvisionCard(
             as_of_date=as_of_date,
@@ -1136,7 +1221,15 @@ def _forbid_pit_basis(ts: DataFrame) -> None:
 def _apply_vasicek(
     ts: DataFrame, config: IfrsProvisioningConfig, marginal: NDArrayFloat, numpy: Any
 ) -> NDArrayFloat:
-    """Transforma la PD TTC a PIT con Vasicek monofactorial (``rho`` escalar, ``Z``) (SDD-16 §3)."""
+    """Transforma la PD TTC a PIT con Vasicek monofactorial (``rho`` escalar, ``Z``) (SDD-16 §3).
+
+    IFRS9-FIRMABLE D-FIR-6 (§3.6): la transformación de Vasicek está definida para la
+    probabilidad condicional del período —el riesgo ``h``—, no para la PD marginal, que es
+    incondicional. Por curva ``(row_id, escenario)`` se recupera ``h_t = m_t / S_{t-1}``, se
+    transforma con el ``Z`` de su fila y se recompone ``m'_t = S'_{t-1} · h'_t``. Sobre la marginal,
+    con ``Z = -1`` y ``rho = 0,10``, 126 operaciones del paquete quedaban con PD de vida mayor
+    que 1.
+    """
     _forbid_pit_basis(ts)
     rho = config.pd.rho
     if rho is None:
@@ -1150,7 +1243,36 @@ def _apply_vasicek(
             "(pd.systemic_factor_col) en la term-structure."
         )
     z = _ts_float(ts, column, numpy)
-    return vasicek_pit(marginal, rho=rho, z=z)
+    pandas = _import_pandas()
+    curvas = [
+        f"{rid}\x1f{escenario}"
+        for rid, escenario in zip(
+            (str(v) for v in ts["row_id"].tolist()),
+            (str(v) for v in ts[_TS_SCENARIO_COLUMN].tolist()),
+            strict=True,
+        )
+    ]
+    periodo = _ts_float(ts, "period", numpy)
+    orden = numpy.lexsort((periodo, numpy.asarray(curvas, dtype=object)))
+    claves = numpy.asarray(curvas, dtype=object)[orden]
+    esperado = pandas.Series(periodo[orden]).groupby(claves).cumcount().to_numpy() + 1
+    if bool(numpy.any(periodo[orden] != esperado)):
+        raise IfrsTermStructureError(
+            "pit_mode='apply_vasicek' transforma el riesgo de cada período, y la curva de cada "
+            "operación tiene que ir del período 1 al último sin saltos para recuperarlo."
+        )
+    m = marginal[orden]
+    acumulada = pandas.Series(m).groupby(claves).cumsum().to_numpy()
+    previa = 1.0 - (acumulada - m)
+    with numpy.errstate(divide="ignore", invalid="ignore"):
+        riesgo = numpy.clip(numpy.where(previa > 0.0, m / previa, 0.0), 0.0, 1.0)
+    pit = vasicek_pit(riesgo, rho=rho, z=z[orden])
+    log_s = numpy.log1p(-numpy.minimum(pit, 1.0))
+    acumulado = pandas.Series(log_s).groupby(claves).cumsum().to_numpy()
+    nueva = numpy.maximum(numpy.exp(acumulado - log_s) - numpy.exp(acumulado), 0.0)
+    salida = numpy.empty_like(nueva)
+    salida[orden] = nueva
+    return cast("NDArrayFloat", numpy.where(salida == 0.0, 0.0, salida))
 
 
 def _forward_weights(ts: DataFrame, scenarios_present: list[str], numpy: Any) -> dict[str, float]:
@@ -1249,7 +1371,7 @@ def _components_frame(
             [ead_by_rid[rid] for rid in ts_row_ids] if ead_por_periodo is None else ead_por_periodo
         ),
     }
-    for tramo in _CURVE_SEGMENT_COLUMNS:
+    for tramo in (*_CURVE_SEGMENT_COLUMNS, _CYCLE_SHIFT_COLUMN):
         if tramo in ts.columns:
             columnas[tramo] = ts[tramo].to_numpy()
     columnas["_order"] = [order[rid] for rid in ts_row_ids]
@@ -1263,6 +1385,9 @@ def _components_frame(
 def _con_tramo_de_la_curva(ecl_ts: DataFrame, components: DataFrame) -> DataFrame:
     """Añade a la ``ecl_term_structure`` el tramo de la curva de cada período (§3.2, aditivo).
 
+    Y, con escenarios, el desplazamiento de cada tramo (IFRS9-FIRMABLE D-FIR-1): copia las
+    columnas de la malla que estén.
+
     ``EclEngine`` arma su salida fila a fila de la malla, en el mismo orden y sin filtrar (el motor
     no le pasa ``max_lifetime``): el tramo se copia por posición, y se comprueba.
     """
@@ -1275,9 +1400,92 @@ def _con_tramo_de_la_curva(ecl_ts: DataFrame, components: DataFrame) -> DataFram
             "La term-structure de ECL no se alinea con la malla de componentes."
         )
     salida = ecl_ts.copy(deep=True)
-    for tramo in _CURVE_SEGMENT_COLUMNS:
-        salida[tramo] = components[tramo].to_numpy()
+    for tramo in (*_CURVE_SEGMENT_COLUMNS, _CYCLE_SHIFT_COLUMN):
+        if tramo in components.columns:
+            salida[tramo] = components[tramo].to_numpy()
     return salida
+
+
+def _check_cycle_config(config: IfrsProvisioningConfig) -> None:
+    """Lo que el ajuste por ciclo exige de la sección (D-FIR-1), comprobado también por código.
+
+    Raises
+    ------
+    IfrsConfigError
+        Si la curva no es la de ``survival``, los pesos no vienen de ``forward`` o la PD a 12
+        meses se toma de la calibración.
+    """
+    if config.pd.term_structure_source != "survival":
+        raise IfrsConfigError(
+            "pd.pit_mode='cycle' desplaza el riesgo de la curva de supervivencia por tramo de "
+            f"calendario; la de {config.pd.term_structure_source} no es una curva por edad."
+        )
+    if config.scenarios.source != "forward":
+        raise IfrsConfigError(
+            "pd.pit_mode='cycle' pondera con los pesos de los escenarios de la institución, que "
+            "trae la sección forward: usa scenarios.source='forward'."
+        )
+    if config.pd.base_pd_source == "calibration":
+        raise IfrsConfigError(
+            "pd.pit_mode='cycle': la PD a 12 meses sale de la curva ajustada por escenario; la "
+            "calibración la fijaría sin el ciclo. Usa pd.base_pd_source='term_structure'."
+        )
+
+
+def _ecl_del_ciclo(
+    *,
+    config: IfrsProvisioningConfig,
+    shifter: CycleShifter,
+    components: DataFrame,
+    ts_ttc: DataFrame,
+    lectura_ttc: ContractReading | None,
+    row_ids: list[str],
+    lgd_by_rid: dict[str, float],
+    ead_by_rid: dict[str, float],
+    eir_arr: NDArrayFloat,
+    stage_arr: Any,
+    horizonte_12m: int,
+    pandas: Any,
+) -> dict[str, Any]:
+    """La ECL reportada de cada escenario y la de desplazamiento cero, sin redondear (§3.1).
+
+    Con la MISMA etapa y el mismo horizonte por etapa que el total ponderado: así
+    ``Σ_k w_k · ecl_reported_by_scenario[k]`` es la suma de ``detail.ecl_reported_unrounded``; el
+    redondeo se aplica después de ponderar y su puente es ``rounding.total_difference``. La de
+    desplazamiento cero es la curva sin escenarios —la de la 2.7.0— con esa misma etapa.
+    """
+    motor = EclEngine.from_config(config.ecl)
+    eir = pandas.Series(eir_arr, index=row_ids)
+    etapas = pandas.Series(stage_arr, index=row_ids)
+    por_escenario: dict[str, float] = {}
+    for nombre in shifter.names:
+        malla = components.loc[components["scenario"].astype(str) == nombre].reset_index(drop=True)
+        _ts, detalle = motor.compute(
+            malla, eir=eir, stages=etapas, weights={nombre: 1.0}, horizon_12m=horizonte_12m
+        )
+        por_escenario[nombre] = float(detalle["ecl_reported_unrounded"].sum())
+    malla_ttc = _components_frame(
+        ts_ttc,
+        row_ids,
+        lgd_by_rid,
+        ead_by_rid,
+        pandas,
+        ead_por_periodo=None if lectura_ttc is None else lectura_ttc.ead,
+    )
+    etiqueta = str(malla_ttc["scenario"].iloc[0])
+    _ts, detalle_ttc = motor.compute(
+        malla_ttc, eir=eir, stages=etapas, weights={etiqueta: 1.0}, horizon_12m=horizonte_12m
+    )
+    return {
+        "ecl_reported_by_scenario": por_escenario,
+        "ecl_reported_ttc": float(detalle_ttc["ecl_reported_unrounded"].sum()),
+        "cycle": {
+            **shifter.anchor.as_section(),
+            "first_future_month": shifter.first_month,
+            "reversion_months": int(shifter.model.reversion_months),
+            "first_year_shift": shifter.first_year_shift(),
+        },
+    }
 
 
 def _campos_del_contrato(lectura: ContractReading) -> dict[str, Any]:

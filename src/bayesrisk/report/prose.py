@@ -2538,6 +2538,7 @@ _IFRS9_PIT_MODE_LABELS: Final[dict[str, str]] = {
     "ttc_only": "through-the-cycle (TTC)",
     "apply_vasicek": "point-in-time por ajuste de Vasicek",
     "consume_pit": "point-in-time provista en los datos",
+    "cycle": "ajustada al ciclo con los escenarios de la institución",
 }
 # Las claves espejan el enum ``IfrsPdConfig.term_structure_source`` ({survival, markov, forward});
 # un valor fuera del dict cae al fallback genérico "la fuente '<slug>'" en quien lo consume.

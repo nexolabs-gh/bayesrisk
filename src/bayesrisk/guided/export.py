@@ -64,7 +64,9 @@ def stage_books(family: str = "scorecard") -> dict[str, str]:
     qué etapas corrieron: una corrida parcial deja los primeros libros y los números no se mueven.
     """
     rotulos = stage_labels(family)
-    etapas = [stage for stage in rotulos if stage != "report"]
+    # «Escenarios» (IFRS9-FIRMABLE) entra al Excel con la capa C de la enmienda: numerarla aquí
+    # movería «03 Provisión IFRS 9.xlsx» en toda provisión, también en las que no tienen escenarios.
+    etapas = [stage for stage in rotulos if stage not in ("report", "forward")]
     return {stage: f"{numero:02d} {rotulos[stage]}.xlsx" for numero, stage in enumerate(etapas, 1)}
 
 

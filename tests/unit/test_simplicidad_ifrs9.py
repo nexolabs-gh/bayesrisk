@@ -4,15 +4,18 @@ Gemelo de ``test_simplicidad_scorecard.py``: cada cifra es un golden con la regl
 ``HOJAS_DEL_FORMULARIO`` —moverla es legítimo; moverla sin actualizar el número y decir por qué,
 no—. Línea base medida sobre ``3cc9654`` (S28, ``privado/evidencia/s28/ifrs9-mediciones.md``) y
 el después, en la capa A (S30, 2026-10-04) y la B (S31, 2026-10-05); la capa B de CASO-REAL-IFRS9
-(S35, 2026-10-06) suma las tres columnas opcionales del contrato (§13 de esa enmienda):
+(S35, 2026-10-06) suma las tres columnas opcionales del contrato (§13 de esa enmienda), y la capa A
+de IFRS9-FIRMABLE (S37, 2026-10-07; línea base medida sobre ``698423a``: 21 · 5 y 10 · 233 · 0,74 s
+· 5) suma a la puerta las dos tablas de escenarios, experimentales, que escriben la sección
+``forward`` —fuera de las tres secciones del trabajo, cuyas perillas no cambian—:
 
-| Cifra | ``3cc9654`` | Capas A y B | CASO-REAL-IFRS9 B | Objetivo |
-|---|---|---|---|---|
-| Líneas de usuario | YAML de 268 líneas | 21 | 21 | ≤ 25 |
-| Esenciales por sección | 0 (enteras) | 5 y 7 (firma y schema) | 5 y 10 | 5 y 10 |
-| Perillas de las tres secciones | 230 (158 + 24 + 48) | 230 | 233 (+ 3) | las de la enmienda |
-| Segundos al primer resumen | ECL a los 4,8 a 6,4 s | ≈ 1 s («Cartera») | ≈ 1 s | ≤ 30 s |
-| Conceptos antes del primer resultado | ≥ 8 | 5 | 5 | ≤ 5 |
+| Cifra | ``3cc9654`` | Capas A y B | CASO-REAL-IFRS9 B | IFRS9-FIRMABLE A | Objetivo |
+|---|---|---|---|---|---|
+| Líneas de usuario | YAML de 268 líneas | 21 | 21 | 21 | ≤ 25 |
+| Esenciales por sección | 0 (enteras) | 5 y 7 | 5 y 10 | 5, 10 y 2 (``forward``) | 5, 12 y 3 |
+| Perillas de las tres secciones | 230 (158 + 24 + 48) | 230 | 233 (+ 3) | 233 | la enmienda |
+| Segundos al primer resumen | ECL a los 4,8 a 6,4 s | ≈ 1 s («Cartera») | ≈ 1 s | ≈ 1 s | ≤ 30 s |
+| Conceptos antes del primer resultado | ≥ 8 | 5 | 5 | 5 | ≤ 5 |
 
 La capa A ancló los esenciales en la firma de ``Ecl``; la B los marca en el schema
 (``ui_essential``) y la pantalla los pinta abiertos: el mismo mapeo, atado aquí a los dos.
@@ -67,6 +70,13 @@ ESENCIALES: Final[dict[str, dict[str, str]]] = {
         "origination": "provisioning_ifrs9.origination_date_col",
         "maturity": "provisioning_ifrs9.maturity_date_col",
         "installment": "provisioning_ifrs9.ead.installment_col",
+    },
+    # IFRS9-FIRMABLE D-FIR-11 (§8-5): las dos tablas de los escenarios, experimentales en la capa A.
+    # Escriben la sección `forward` (la historia, su fuente; los escenarios, una trayectoria por
+    # escenario con su peso); sus marcas en el schema llegan con la pantalla (capa C).
+    "forward": {
+        "history": "forward.input.macro_source.path",
+        "scenarios": "forward.scenarios.scenarios",
     },
 }
 #: Los argumentos que no son esenciales de una sección de cálculo: los de `governance`, `report` y
@@ -134,6 +144,7 @@ def test_cifra_2_cada_argumento_de_la_puerta_es_un_esencial_o_de_infraestructura
     assert {s: len(a) for s, a in ESENCIALES.items() if s != "data"} == {
         "survival": 5,
         "provisioning_ifrs9": 10,
+        "forward": 2,
     }
     for seccion, args in ESENCIALES.items():
         tope = EXCEPCION_AL_TOPE.get(seccion, TOPE_ESENCIALES_POR_SECCION)
@@ -183,6 +194,56 @@ def test_cifra_2_cada_argumento_escribe_su_hoja(tmp_path: Path) -> None:
     assert (ifrs.ead.ead_col, ifrs.lgd.lgd_col, ifrs.ecl.eir_col) == ("ead", "lgd", "eir")
     assert ifrs.staging.days_past_due_col == "days_past_due"
     assert ifrs.staging.is_default_col == "is_default"
+
+
+def test_cifra_2_las_tablas_de_escenarios_escriben_su_hoja(tmp_path: Path) -> None:
+    """IFRS9-FIRMABLE §3.11: ``history=`` y ``scenarios=`` arman la sección ``forward`` y el ajuste
+    por ciclo de la provisión; sin ellas, la sección no existe (sin escenarios, nada cambia)."""
+    import numpy as np
+    import pandas as pd
+
+    from bayesrisk.guided import Ecl
+    from bayesrisk.ui.datasets import materialize
+
+    datos = materialize("ifrs9_retail_latam", workdir=tmp_path / "datos")
+    trimestres = pd.date_range("2010-01-01", "2025-04-01", freq="QS")
+    u = 7.0 + np.sin(np.arange(len(trimestres)) / 5.0)
+    historia = pd.DataFrame({"date": trimestres, "default_rate": 0.02 + 0.002 * (u - 7.0), "u": u})
+    futuro = pd.date_range("2025-07-01", periods=8, freq="QS")
+    escenarios = pd.DataFrame(
+        {
+            "scenario": ["base"] * 8 + ["adverso"] * 8,
+            "weight": [0.7] * 8 + [0.3] * 8,
+            "date": list(futuro) * 2,
+            "u": [7.0] * 8 + [9.0] * 8,
+        }
+    )
+    argumentos = dict(
+        id="loan_id",
+        as_of="as_of_date",
+        portfolio="portfolio",
+        exposure="ead",
+        lgd="lgd",
+        rate="eir",
+        days_past_due="days_past_due",
+        duration="duration",
+        event="event",
+        period="year",
+        horizon=5,
+        run_dir=tmp_path / "corridas",
+    )
+    cfg = Ecl(datos, history=historia, scenarios=escenarios, **argumentos).config
+    assert cfg.forward is not None
+    assert cfg.forward.input.macro_source.path.endswith(".parquet")
+    assert [(e.name, e.weight) for e in cfg.forward.scenarios.scenarios] == [
+        ("base", 0.7),
+        ("adverso", 0.3),
+    ]
+    assert cfg.forward.satellite.mode == "reference_rate"
+    assert cfg.provisioning_ifrs9.pd.pit_mode == "cycle"
+    sin = Ecl(datos, name="sin_escenarios", **argumentos).config
+    assert sin.forward is None
+    assert sin.provisioning_ifrs9.pd.pit_mode == "ttc_only"
 
 
 def test_cifra_3_las_perillas_de_las_tres_secciones_no_crecen() -> None:

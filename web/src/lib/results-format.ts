@@ -1242,7 +1242,7 @@ export function ifrs9TermSourceLabel(source: string): string {
 
 /**
  * Etiqueta legible del modo PIT/TTC de la PD (`pd.pit_mode`, un `Literal["consume_pit",
- * "apply_vasicek","ttc_only"]` del motor). Fallback: el propio slug. Presentación pura.
+ * "apply_vasicek","ttc_only","cycle"]` del motor). Fallback: el propio slug. Presentación pura.
  */
 export function ifrs9PitModeLabel(mode: string): string {
   switch (mode) {
@@ -1252,6 +1252,8 @@ export function ifrs9PitModeLabel(mode: string): string {
       return "PIT · Vasicek"
     case "ttc_only":
       return "TTC (through-the-cycle)"
+    case "cycle":
+      return "PIT · escenarios de la institución"
     default:
       return mode
   }

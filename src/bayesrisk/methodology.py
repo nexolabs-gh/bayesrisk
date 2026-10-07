@@ -36,6 +36,7 @@ _PIT_MODE_LABELS: Final[dict[str, str]] = {
     "ttc_only": "TTC (through-the-cycle)",
     "consume_pit": "PIT (point-in-time)",
     "apply_vasicek": "PIT por ajuste de Vasicek",
+    "cycle": "PIT por los escenarios de la institución (ajuste por ciclo)",
 }
 _TIME_UNIT_LABELS: Final[dict[str, tuple[str, str]]] = {
     "year": ("año", "años"),

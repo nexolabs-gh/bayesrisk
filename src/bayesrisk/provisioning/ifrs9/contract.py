@@ -43,7 +43,7 @@ arrastrarlas.
 from __future__ import annotations
 
 import importlib
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final, TypeAlias, cast
 
@@ -163,14 +163,16 @@ def check_contract_config(
             "la PD a 12 meses tiene que salir de esa lectura: la calibración la fija sin mirar "
             "la edad (pd.base_pd_source='term_structure')."
         )
-    if config.pd.pit_mode != "ttc_only":
-        # Pasada 3 de Codex: qué factor sistémico corresponde a cada tramo de la curva condicionada
-        # es metodología PIT, fuera de esta enmienda (§3.2-7); se detiene en vez de inventarlo.
+    if config.pd.pit_mode not in ("ttc_only", "cycle"):
+        # Pasada 3 de Codex sobre CASO-REAL: qué factor sistémico corresponde a cada tramo de la
+        # curva condicionada lo resuelve IFRS9-FIRMABLE D-FIR-1 sólo para el ajuste por ciclo
+        # (`cycle`: el desplazamiento por tramo de calendario); Vasicek y las curvas de `forward`
+        # por edad siguen sin fechas.
         raise IfrsConfigError(
-            "Con las fechas del contrato la curva de PD se lee desde la edad de cada operación a "
-            "lo largo del ciclo; ajustar esa lectura a las condiciones actuales "
-            f"(pd.pit_mode='{config.pd.pit_mode}') todavía no está disponible: usa "
-            "pd.pit_mode='ttc_only', o quita las fechas."
+            "Con las fechas del contrato la curva de PD se lee desde la edad de cada operación; "
+            f"ajustar esa lectura con pd.pit_mode='{config.pd.pit_mode}' no está disponible: usa "
+            "pd.pit_mode='cycle' (los escenarios de la institución, por tramo de calendario) o la "
+            "PD a lo largo del ciclo (pd.pit_mode='ttc_only'), o quita las fechas."
         )
     if events_by_period is None:
         raise IfrsConfigError(
@@ -279,8 +281,16 @@ def read_curve_by_contract(
     ead_by_rid: Mapping[str, float],
     events_by_period: Mapping[int, int],
     max_lifetime: int | None,
+    deltas: Callable[[NDArrayFloat, NDArrayFloat], Mapping[str, NDArrayFloat]] | None = None,
+    weights: Mapping[str, float] | None = None,
 ) -> ContractReading:
     """Arma la curva condicionada de cada operación, con los períodos contados desde el corte.
+
+    Con ``deltas`` (IFRS9-FIRMABLE D-FIR-1, ``pd.pit_mode = "cycle"``) arma una curva por
+    escenario: ``deltas(inicio, largo)`` recibe la ventana de calendario de cada tramo en meses
+    desde el primer mes posterior al corte y devuelve su desplazamiento en logit por escenario; el
+    riesgo desplazado vale para los dos períodos de la curva que el tramo cruza. La salida lleva
+    entonces el peso de cada escenario (``scenario_weight``, de ``weights``) y ``cycle_shift``.
 
     ``term_structure`` es la curva publicada y ya preparada por el motor (escenario normalizado,
     sin truncar por ``max_lifetime``), con su ``hazard`` por período: el riesgo condicionado que
@@ -376,19 +386,40 @@ def read_curve_by_contract(
 
     unidad = _unidad(term_structure)
     fraccion_anio = cast("float", year_fraction(unidad))
-    condicionada = pandas.DataFrame(
-        {
-            "row_id": [claves[int(c)][0] for c in curva],
-            "scenario": [claves[int(c)][1] for c in curva],
-            "period": periodo,
-            "time_value": periodo.astype(numpy.float64),
-            "time_unit": unidad,
-            "time_value_years": periodo.astype(numpy.float64) * fraccion_anio,
-            "pd_marginal": pd_tramo,
-            "curve_start": desde_curva,
-            "curve_end": hasta_curva,
-        }
-    )
+    columnas_base = {
+        "row_id": [claves[int(c)][0] for c in curva],
+        "scenario": [claves[int(c)][1] for c in curva],
+        "period": periodo,
+        "time_value": periodo.astype(numpy.float64),
+        "time_unit": unidad,
+        "time_value_years": periodo.astype(numpy.float64) * fraccion_anio,
+        "pd_marginal": pd_tramo,
+        "curve_start": desde_curva,
+        "curve_end": hasta_curva,
+    }
+    if deltas is None:
+        condicionada = pandas.DataFrame(columnas_base)
+        repeticiones = 1
+    else:
+        from bayesrisk.provisioning.ifrs9.cycle import shifted_tranche_pd
+
+        # D-FIR-1: una curva por escenario, con el desplazamiento de su tramo de calendario.
+        por_escenario = deltas(
+            (periodo - 1).astype(numpy.float64) * meses_por_periodo,
+            (hasta_curva - desde_curva) * meses_por_periodo,
+        )
+        bloques = []
+        for nombre, delta in por_escenario.items():
+            bloque = dict(columnas_base)
+            bloque["scenario"] = nombre
+            bloque["pd_marginal"] = shifted_tranche_pd(
+                extendidos, relleno, curva=curva, desde=desde_curva, hasta=hasta_curva, delta=delta
+            )
+            bloque["scenario_weight"] = float((weights or {})[nombre])
+            bloque["cycle_shift"] = delta
+            bloques.append(pandas.DataFrame(bloque))
+        condicionada = pandas.concat(bloques, ignore_index=True)
+        repeticiones = len(bloques)
 
     # La tabla de pagos (D-CRE-3), en el mismo orden plano.
     saldo = numpy.array([float(ead_by_rid[rid]) for rid in row_ids], dtype=numpy.float64)
@@ -411,6 +442,8 @@ def read_curve_by_contract(
             ead_tramo,
         )
 
+    if repeticiones > 1:
+        ead_tramo = numpy.tile(ead_tramo, repeticiones)
     mas_alla = None
     if ultimo is not None:
         lejos = edad + vida > float(ultimo) + _TOLERANCIA_PERIODO

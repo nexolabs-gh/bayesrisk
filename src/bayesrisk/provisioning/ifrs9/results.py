@@ -87,6 +87,9 @@ _ECL_TERM_STRUCTURE_COLUMNS: tuple[str, ...] = (
 # publique exactamente las mismas tablas que antes (bit a bit, §4).
 _DETAIL_CONTRACT_COLUMNS: tuple[str, ...] = ("age_periods", "life_periods")
 _ECL_TERM_STRUCTURE_CONTRACT_COLUMNS: tuple[str, ...] = ("curve_start", "curve_end")
+# IFRS9-FIRMABLE D-FIR-1 (§3.1, aditiva): el desplazamiento en logit de cada tramo, sólo con
+# escenarios (``pd.pit_mode = "cycle"``), al final y detrás del tramo de la curva si lo hay.
+_ECL_TERM_STRUCTURE_CYCLE_COLUMNS: tuple[str, ...] = ("cycle_shift",)
 _SUMMARY_COLUMNS: tuple[str, ...] = (
     "portfolio",
     "stage",
@@ -493,6 +496,7 @@ class IfrsProvisionResult(BaseModel):
             expected_columns=_ECL_TERM_STRUCTURE_COLUMNS,
             field_name="ecl_term_structure",
             additive_columns=_ECL_TERM_STRUCTURE_CONTRACT_COLUMNS,
+            cycle_columns=_ECL_TERM_STRUCTURE_CYCLE_COLUMNS,
         )
 
     @field_validator("summary", mode="before")
@@ -542,13 +546,19 @@ def _copy_and_validate_dataframe(
     expected_columns: tuple[str, ...],
     field_name: str,
     additive_columns: tuple[str, ...] = (),
+    cycle_columns: tuple[str, ...] = (),
 ) -> Any:
     if not _is_dataframe_like(value):
         raise ValueError(f"{field_name} debe ser un pandas.DataFrame.")
 
     copied = _copy_dataframe(value)
     observed_columns = tuple(str(column) for column in copied.columns)
-    admitted = (expected_columns, expected_columns + additive_columns)
+    admitted = (
+        expected_columns,
+        expected_columns + additive_columns,
+        expected_columns + cycle_columns,
+        expected_columns + additive_columns + cycle_columns,
+    )
     if observed_columns not in admitted:
         raise ValueError(
             f"{field_name} debe tener exactamente las columnas canónicas de SDD-16 §6."

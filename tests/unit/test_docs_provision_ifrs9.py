@@ -109,6 +109,59 @@ def test_el_bloque_del_contrato_lee_la_curva_con_fechas_y_cuota(
     assert any("tabla de pagos" in linea for linea in lineas), lineas
 
 
+def test_el_bloque_de_escenarios_recupera_la_sensibilidad_y_pondera(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """IFRS9-FIRMABLE §3.10 y §13: el bloque genera una historia sintética con una sensibilidad
+    conocida (0,15 por punto) y tres escenarios, sobre la cartera del bloque anterior. Se comprueba
+    lo que la guía afirma: el motor recupera la sensibilidad dentro de su error, la ECL es la
+    ponderada de los escenarios —y reconcilia sin redondear—, la de desplazamiento cero es la del
+    bloque sin escenarios, y los resúmenes cuentan la sensibilidad, el ancla y los supuestos."""
+    pytest.importorskip("statsmodels", reason="la curva de PD exige el extra scoring")
+    codigo = (
+        _bloque(
+            "provision-ifrs9-contrato",
+            ("origination=", "maturity=", "installment=", "contrato.run()"),
+        )
+        + "\n"
+        + _bloque(
+            "provision-ifrs9-escenarios",
+            ("history=historia", "scenarios=escenarios", "con_escenarios.run()", "0.15 *"),
+        )
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PYTHONHASHSEED", "0")
+    espacio: dict[str, Any] = {"__name__": "__main__"}
+    exec(compile(codigo, str(_GUIA), "exec"), espacio)
+
+    ecl = espacio["con_escenarios"]
+    assert ecl.study.run_context.status == "done", ecl.study.run_context.error
+    modelo = ecl.study.artifacts.get("forward", "cycle_model")
+    assert abs(modelo.coefficients["desempleo"] - 0.15) < 3 * modelo.std_errors["desempleo"]
+    card = ecl.study.artifacts.get("provisioning_ifrs9", "card")
+    secciones = card.metric_sections
+    por_escenario = secciones["ecl_reported_by_scenario"]
+    assert set(por_escenario) == {"base", "adverso", "severo"}
+    assert por_escenario["base"] < por_escenario["adverso"] < por_escenario["severo"]
+    total = float(
+        ecl.study.artifacts.get("provisioning_ifrs9", "detail")["ecl_reported_unrounded"].sum()
+    )
+    pesos = {"base": 0.6, "adverso": 0.3, "severo": 0.1}
+    assert sum(pesos[k] * v for k, v in por_escenario.items()) == pytest.approx(total, rel=1e-12)
+    sin_escenarios = espacio["contrato"].study.artifacts.get("provisioning_ifrs9", "detail")
+    assert secciones["ecl_reported_ttc"] == float(sin_escenarios["ecl_reported_unrounded"].sum())
+    assert secciones["cycle"]["anchor"] == "curve_history"
+    assert ecl.study.artifacts.has("provisioning_ifrs9", "cycle_by_period")
+    escenarios = ecl.summary("forward")
+    assert any("Sensibilidad a «desempleo»" in linea for linea in escenarios.lines)
+    provision = ecl.summary("provisioning_ifrs9").lines
+    assert any(linea.startswith("ECL ponderada por 3 escenarios") for linea in provision)
+    assert any(linea.startswith("Ancla: la macro media de la historia") for linea in provision)
+    supuestos = ecl.summary().assumptions
+    assert any("uno a uno" in s for s in supuestos), supuestos
+    assert not any("a lo largo del ciclo (TTC)" in s for s in supuestos), supuestos
+
+
 def test_la_guia_esta_en_la_navegacion_y_empezar_la_enlaza() -> None:
     nav = (_RAIZ / "mkdocs.yml").read_text(encoding="utf-8")
     assert "guias/provision-ifrs9.md" in nav

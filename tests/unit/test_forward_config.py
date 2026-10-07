@@ -146,6 +146,8 @@ def test_forwardconfig_defaults_golden() -> None:
         "reference_scenario": "base",
         "coefficient_table_path": None,
         "min_history_periods": 12,
+        # IFRS9-FIRMABLE D-FIR-2: la hoja nueva de la capa A (sólo con mode="reference_rate").
+        "reference_rate_col": "default_rate",
     }
     assert ScenarioConfig().model_dump(mode="json") == {
         "scenarios": [

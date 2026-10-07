@@ -746,6 +746,10 @@
           "has_default": true,
           "value": "fit"
         },
+        "reference_rate_col": {
+          "has_default": true,
+          "value": "default_rate"
+        },
         "reference_scenario": {
           "has_default": true,
           "value": "base"
@@ -3044,6 +3048,10 @@
             "mode": {
               "has_default": true,
               "value": "fit"
+            },
+            "reference_rate_col": {
+              "has_default": true,
+              "value": "default_rate"
             },
             "reference_scenario": {
               "has_default": true,
@@ -6788,14 +6796,15 @@
           },
           "kind": {
             "default": "arima",
-            "description": "Modelo de forecasting: ARIMA/SARIMA/ARIMAX, auto_arima, VAR o VECM.",
+            "description": "Modelo de forecasting: ARIMA/SARIMA/ARIMAX, auto_arima, VAR o VECM; scenario_paths toma tal cual las trayectorias de los escenarios de la institución.",
             "enum": [
               "arima",
               "sarima",
               "arimax",
               "auto_arima",
               "var",
-              "vecm"
+              "vecm",
+              "scenario_paths"
             ],
             "title": "Tipo de modelo macro",
             "type": "string",
@@ -7079,16 +7088,27 @@
           },
           "mode": {
             "default": "fit",
-            "description": "Ajustar coeficientes desde datos o cargar coeficientes fijos auditados.",
+            "description": "Ajustar coeficientes desde datos, cargar coeficientes fijos auditados o estimar la sensibilidad sobre una tasa de incumplimiento de referencia larga (reference_rate).",
             "enum": [
               "fit",
-              "fixed_coefficients"
+              "fixed_coefficients",
+              "reference_rate"
             ],
             "title": "Modo satellite",
             "type": "string",
             "ui_group": "Satellite",
             "ui_order": 1,
             "ui_widget": "selectbox"
+          },
+          "reference_rate_col": {
+            "default": "default_rate",
+            "description": "Columna de la tabla de historia con la tasa de incumplimiento de referencia, como fracción entre 0 y 1 (un 0,9 % va como 0,009). Sólo con mode='reference_rate'.",
+            "title": "Columna de la tasa de referencia",
+            "type": "string",
+            "ui_group": "Satellite",
+            "ui_help": "La tasa de incumplimiento de referencia larga —del sistema por cartera o la propia, si cruza un ciclo— con que se estima cuánto se mueve el riesgo con la macro. Va como fracción: un 0,9 % se escribe 0,009. Puede faltar al principio o al final de la tabla; en medio, no.",
+            "ui_order": 8,
+            "ui_widget": "text_input"
           },
           "reference_scenario": {
             "default": "base",
@@ -7155,7 +7175,7 @@
           },
           "require_at_least_three": {
             "default": true,
-            "description": "Exige base, adverse y severe cuando está activo.",
+            "description": "Exige base, adverse y severe cuando está activo. No aplica a los escenarios de la institución (macro.kind='scenario_paths'), que se nombran libremente.",
             "title": "Exigir tres escenarios",
             "type": "boolean",
             "ui_group": "Escenarios",
@@ -8997,11 +9017,12 @@
           },
           "pit_mode": {
             "default": "consume_pit",
-            "description": "consume_pit usa curvas PIT de forward; apply_vasicek transforma TTC con rho y Z; ttc_only usa la TTC sin ajuste (solo diagnóstico).",
+            "description": "consume_pit usa curvas PIT de forward; apply_vasicek transforma TTC con rho y Z; ttc_only usa la TTC sin ajuste (solo diagnóstico); cycle desplaza la curva por tramo de calendario con los escenarios de la institución.",
             "enum": [
               "consume_pit",
               "apply_vasicek",
-              "ttc_only"
+              "ttc_only",
+              "cycle"
             ],
             "title": "Cómo obtener la PD PIT",
             "type": "string",

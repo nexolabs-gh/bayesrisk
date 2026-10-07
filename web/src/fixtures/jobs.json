@@ -3346,6 +3346,14 @@
               "label": "Dejarlas como están, sin ajuste de ciclo",
               "motivo": null,
               "value": "ttc_only"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Desplaza la curva de supervivencia tramo a tramo según la fecha de calendario, con la sensibilidad estimada sobre una tasa de incumplimiento de referencia larga y tus escenarios con sus pesos. Necesita el análisis prospectivo con esas dos tablas, que esta interfaz todavía no arma: hoy, por la puerta guiada o el YAML.",
+              "label": "Ajustarlas con los escenarios de tu institución",
+              "motivo": null,
+              "value": "cycle"
             }
           ],
           "path": "provisioning_ifrs9.pd.pit_mode",

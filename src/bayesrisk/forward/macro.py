@@ -130,6 +130,13 @@ class MacroProjectionModel(AuditableMixin):
             self._audit = audit
 
         cfg = self.config
+        if cfg.macro.kind == "scenario_paths":
+            # IFRS9-FIRMABLE D-FIR-4: las trayectorias de la institución se toman tal cual; sin
+            # esta guarda, la rama de abajo las ajustaría como un VECM.
+            raise MacroProjectionError(
+                "macro.kind='scenario_paths' no ajusta un modelo macro: las trayectorias de los "
+                "escenarios se toman tal cual (ForwardStep, vía satellite.mode='reference_rate')."
+            )
         prepared = _prepare_macro_frame(macro_frame, cfg=cfg, pd=pd, np=np)
         _validate_model_shape(prepared, cfg=cfg)
         if cfg.macro.kind in _UNIVARIATE_KINDS:
