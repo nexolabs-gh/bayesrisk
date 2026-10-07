@@ -73,6 +73,8 @@ def _ifrs9_defaults() -> dict[str, Any]:
             "systemic_factor_col": None,
             "horizon_12m_periods": 12,
             "max_lifetime_periods": None,
+            # IFRS9-FIRMABLE D-FIR-7 (capa B): la PD a 12 meses del modelo, opcional.
+            "pd_12m_col": None,
         },
         "lgd": {
             "method": "provided",
@@ -108,6 +110,8 @@ def _ifrs9_defaults() -> dict[str, Any]:
             "stage_override_col": None,
             "low_credit_risk_exemption": False,
             "low_credit_risk_col": None,
+            # IFRS9-FIRMABLE D-FIR-8 (capa B): la PD a 12 meses al otorgar, opcional.
+            "origination_pd_12m_col": None,
         },
         "scenarios": {
             "source": "forward",

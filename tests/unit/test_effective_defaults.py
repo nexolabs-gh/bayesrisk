@@ -119,7 +119,12 @@ from bayesrisk.ui.routes import schema_payload
 #: las tres hojas opcionales del contrato en ``provisioning_ifrs9`` —``origination_date_col``,
 #: ``maturity_date_col`` y ``ead.installment_col``—, cada una con su evidencia de que el default
 #: falla en un caso real. Tres hojas de texto, tres nodos. Hojas resueltas 458 → 461.
-HOJAS_DEL_FORMULARIO = 577
+#:
+#: 577 → 579 el 2026-10-07 con la capa B de IFRS9-FIRMABLE (D-FIR-7/8, §3.11; Cami, 2026-10-07):
+#: las dos PD del modelo en ``provisioning_ifrs9`` —``pd.pd_12m_col`` y
+#: ``staging.origination_pd_12m_col``—, cada una con su evidencia de que el default falla en un
+#: caso real. Dos hojas de texto, dos nodos. Hojas resueltas 461 → 463.
+HOJAS_DEL_FORMULARIO = 579
 
 #: Hojas que el barrido de PARIDAD contra el catálogo de defaults efectivos resuelve.
 #:
@@ -155,7 +160,8 @@ HOJAS_DEL_FORMULARIO = 577
 #: 459 → 458 el 2026-09-28 con D-NOV-2: ``binning.cat_unknown`` sale del formulario (``hidden``).
 #: 458 → 461 el 2026-10-06 con la capa B de CASO-REAL-IFRS9: las tres hojas del contrato, sin
 #: unión discriminada y con default ``None``, resuelven con default efectivo.
-HOJAS_CON_DEFAULT_EFECTIVO = 461
+#: 461 → 463 el 2026-10-07 con la capa B de IFRS9-FIRMABLE: las dos PD del modelo, igual.
+HOJAS_CON_DEFAULT_EFECTIVO = 463
 
 #: Descriptores de hoja que el barrido de paridad compara, en las DOS coordenadas (`$defs` y
 #: `sections`). Segundo golden, por la misma razón que el de 394: un barrido que recorra menos
@@ -258,7 +264,13 @@ HOJAS_CON_DEFAULT_EFECTIVO = 461
 #: —``$defs.forward__SatelliteConfig`` y ``sections.forward.satellite``—, por la regla de los
 #: precedentes; las tres opciones nuevas de literales existentes no son hojas. Ningún valor
 #: alterado.
-DESCRIPTORES_TOTALES = 1090
+#:
+#: 1090 → 1094 el 2026-10-07 con la capa B de IFRS9-FIRMABLE (S38): las dos PD del modelo
+#: aparecen dos veces cada una —``$defs.provisioning_ifrs9__IfrsPdConfig`` y
+#: ``sections.provisioning_ifrs9.pd``; ``$defs.provisioning_ifrs9__IfrsStagingConfig`` y
+#: ``sections.provisioning_ifrs9.staging``—, por la regla de los precedentes. Ningún valor
+#: alterado.
+DESCRIPTORES_TOTALES = 1094
 
 
 #: Las 16 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de

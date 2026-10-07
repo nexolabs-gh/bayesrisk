@@ -315,7 +315,7 @@ def test_provisiones_preset_activa_las_tres_secciones_y_la_regla_real() -> None:
 # silencio.
 # Actualizado en S34 por CASO-REAL-IFRS9 D-CRE-1: el preset escribe `stage3_direct: true` (Stage 3
 # = LGD × EAD); antes 013e69dc…. La demo se recaptura sólo con el OK de esa recaptura.
-_EXPECTED_F4_CONFIG_HASH = "f688fce704ad36414a7c4e5f4e7c10e9455c9d50a0802b3f3ec90bb97ff4b9c7"
+_EXPECTED_F4_CONFIG_HASH = "7de7a6829e85107303df2cfb9f4d09a40513bc8ea855ed9e3214d5182e88870c"
 
 
 def test_ifrs9_preset_config_valida_y_hash_estable() -> None:
@@ -367,7 +367,9 @@ def test_correccion_anti_fuga_no_mueve_bytes_hashes_ni_candidatas_de_presets() -
         # S35, CASO-REAL-IFRS9 D-CRE-2/3: el F4 escribe las tres hojas del contrato en `null` y
         # mueven los dos lados otra vez —la sección entra al hash con sus claves nuevas—; la cifra
         # no (antes f0a41f56…).
-        F4_IFRS9_PRESET_ID: "f9f8887a93e3af8a1ffe5eb9753b8562ad2b0ef841144044a1ea825b028c9c4a",
+        # S38, IFRS9-FIRMABLE D-FIR-7/8: el F4 escribe las dos PD del modelo en `null`, y mueven
+        # los dos lados por la misma razón; la cifra no (antes f9f8887a…).
+        F4_IFRS9_PRESET_ID: "7c3bc5a6592d8c2f9dd98220a248e89c32cb7f3a8f640723cd4b4b62d954d805",
     }
     for preset_id, expected_hash in expected_hashes.items():
         preset = get_preset(preset_id)

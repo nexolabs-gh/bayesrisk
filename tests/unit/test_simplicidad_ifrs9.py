@@ -7,15 +7,20 @@ el después, en la capa A (S30, 2026-10-04) y la B (S31, 2026-10-05); la capa B 
 (S35, 2026-10-06) suma las tres columnas opcionales del contrato (§13 de esa enmienda), y la capa A
 de IFRS9-FIRMABLE (S37, 2026-10-07; línea base medida sobre ``698423a``: 21 · 5 y 10 · 233 · 0,74 s
 · 5) suma a la puerta las dos tablas de escenarios, experimentales, que escriben la sección
-``forward`` —fuera de las tres secciones del trabajo, cuyas perillas no cambian—:
+``forward`` —fuera de las tres secciones del trabajo, cuyas perillas no cambian—, y la capa B (S38,
+2026-10-07; línea base sobre ``48f5350``, la 2.8.0: 21 · 5, 10 y 2 · 233 · 0,86 s · 5) suma las dos
+PD del modelo, opcionales, como esenciales de la provisión (§8-5) y dos hojas (§3.11):
 
-| Cifra | ``3cc9654`` | Capas A y B | CASO-REAL-IFRS9 B | IFRS9-FIRMABLE A | Objetivo |
-|---|---|---|---|---|---|
-| Líneas de usuario | YAML de 268 líneas | 21 | 21 | 21 | ≤ 25 |
-| Esenciales por sección | 0 (enteras) | 5 y 7 | 5 y 10 | 5, 10 y 2 (``forward``) | 5, 12 y 3 |
-| Perillas de las tres secciones | 230 (158 + 24 + 48) | 230 | 233 (+ 3) | 233 | la enmienda |
-| Segundos al primer resumen | ECL a los 4,8 a 6,4 s | ≈ 1 s («Cartera») | ≈ 1 s | ≈ 1 s | ≤ 30 s |
-| Conceptos antes del primer resultado | ≥ 8 | 5 | 5 | 5 | ≤ 5 |
+| Cifra | ``3cc9654`` | H2 A y B | CASO-REAL B | FIRMABLE A | FIRMABLE B | Objetivo |
+|---|---|---|---|---|---|---|
+| Líneas de usuario | YAML de 268 | 21 | 21 | 21 | 21 | ≤ 25 |
+| Esenciales por sección | 0 (enteras) | 5 y 7 | 5 y 10 | 5, 10 y 2 | 5, 12 y 2 | 5, 12 y 3 |
+| Perillas de las tres secciones | 230 (158 + 24 + 48) | 230 | 233 | 233 | 235 | la enmienda |
+| Segundos al primer resumen | 4,8 a 6,4 s (ECL) | ≈ 1 s | ≈ 1 s | ≈ 1 s | ≈ 1 s | ≤ 30 s |
+| Conceptos antes del primer resultado | ≥ 8 | 5 | 5 | 5 | 5 | ≤ 5 |
+
+Los 2 de ``forward`` son las dos tablas de escenarios de la puerta; sus marcas en el schema, y el
+tercero, llegan con la pantalla (capa C).
 
 La capa A ancló los esenciales en la firma de ``Ecl``; la B los marca en el schema
 (``ui_essential``) y la pantalla los pinta abiertos: el mismo mapeo, atado aquí a los dos.
@@ -70,6 +75,9 @@ ESENCIALES: Final[dict[str, dict[str, str]]] = {
         "origination": "provisioning_ifrs9.origination_date_col",
         "maturity": "provisioning_ifrs9.maturity_date_col",
         "installment": "provisioning_ifrs9.ead.installment_col",
+        # IFRS9-FIRMABLE D-FIR-11 (§8-5): las dos PD del modelo, opcionales (capa B).
+        "pd": "provisioning_ifrs9.pd.pd_12m_col",
+        "origination_pd": "provisioning_ifrs9.staging.origination_pd_12m_col",
     },
     # IFRS9-FIRMABLE D-FIR-11 (§8-5): las dos tablas de los escenarios, experimentales en la capa A.
     # Escriben la sección `forward` (la historia, su fuente; los escenarios, una trayectoria por
@@ -84,18 +92,20 @@ ESENCIALES: Final[dict[str, dict[str, str]]] = {
 ARGUMENTOS_DE_INFRAESTRUCTURA: Final = frozenset(
     {"name", "run_dir", "purpose", "owner", "review_every", "track", "document", "formats"}
 )
-#: El tope de SDD-31 §12.1 y su única excepción, aprobada por Cami el 2026-10-03 (§8-4) con 7 y
-#: ampliada a 10 el 2026-10-05 (CASO-REAL-IFRS9 §8-3).
+#: El tope de SDD-31 §12.1 y su única excepción, aprobada por Cami el 2026-10-03 (§8-4) con 7,
+#: ampliada a 10 el 2026-10-05 (CASO-REAL-IFRS9 §8-3) y a 12 el 2026-10-07 (IFRS9-FIRMABLE §8-5).
 TOPE_ESENCIALES_POR_SECCION: Final = 6
-EXCEPCION_AL_TOPE: Final = {"provisioning_ifrs9": 10}
+EXCEPCION_AL_TOPE: Final = {"provisioning_ifrs9": 12}
 
 #: Cifra 3: perillas de las tres secciones de cálculo con el barrido del formulario. 230 el
 #: 2026-10-02 (S28) y el 2026-10-04: la capa A no añade ni retira hojas (D-ECL-15, presupuesto
 #: cero; `rebut_backstops` es una acción de `decisions`, fuera del formulario y del hash). 233 desde
 #: la capa B de CASO-REAL-IFRS9 (S35, 2026-10-06): las tres hojas del contrato, con su evidencia
-#: de que el default falla en un caso real (§3.8 de esa enmienda); 48 → 51 en la provisión.
+#: de que el default falla en un caso real (§3.8 de esa enmienda); 48 → 51 en la provisión. 235
+#: desde la capa B de IFRS9-FIRMABLE (S38, 2026-10-07): las dos PD del modelo —``pd.pd_12m_col`` y
+#: ``staging.origination_pd_12m_col``—, con su evidencia (§3.11 de esa enmienda); 51 → 53.
 SECCIONES_DE_CALCULO: Final[tuple[str, ...]] = ("data", "survival", "provisioning_ifrs9")
-PERILLAS_DE_LAS_TRES_SECCIONES: Final = 233
+PERILLAS_DE_LAS_TRES_SECCIONES: Final = 235
 
 #: Cifra 4: segundos hasta el primer resumen («Cartera») con el dataset del paquete.
 TOPE_SEGUNDOS_PRIMER_RESUMEN: Final = 30.0
@@ -143,7 +153,7 @@ def test_cifra_2_cada_argumento_de_la_puerta_es_un_esencial_o_de_infraestructura
     )
     assert {s: len(a) for s, a in ESENCIALES.items() if s != "data"} == {
         "survival": 5,
-        "provisioning_ifrs9": 10,
+        "provisioning_ifrs9": 12,
         "forward": 2,
     }
     for seccion, args in ESENCIALES.items():

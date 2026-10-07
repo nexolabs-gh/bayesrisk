@@ -6,10 +6,11 @@ esenciales sin decirlo aquí) y **una entrada del golden sin marca** también (n
 silencio). El tope vigente es **6 por sección** (Cami, 2026-09-18, SDD-31 §12.1) y se mide sobre lo
 que la pantalla muestra a la vez: en una unión discriminada —la estrategia de partición— cuenta
 la rama con más esenciales, no la suma de todas, porque el formulario pinta una rama por vez. Su
-única excepción es ``provisioning_ifrs9`` con **10** (FLUJO-GUIADO-IFRS9 §8-4, Cami, 2026-10-03, con
+única excepción es ``provisioning_ifrs9`` con **12** (FLUJO-GUIADO-IFRS9 §8-4, Cami, 2026-10-03, con
 7: las siete columnas de la entrada mínima de la provisión, la marca de incumplimiento incluida;
 ampliada a 10 por CASO-REAL-IFRS9 §8-3, Cami, 2026-10-05: las tres columnas opcionales del contrato,
-otorgamiento, vencimiento y cuota).
+otorgamiento, vencimiento y cuota; y a 12 por IFRS9-FIRMABLE §8-5, Cami, 2026-10-07: las dos PD del
+modelo, la de hoy y la del otorgamiento).
 """
 
 from __future__ import annotations
@@ -22,14 +23,15 @@ from bayesrisk.ui.routes import schema_payload
 
 TOPE_ESENCIALES_POR_SECCION: Final = 6
 #: La única excepción al tope, sólo para esta sección (FLUJO-GUIADO-IFRS9 §8-4; 7 → 10 por
-#: CASO-REAL-IFRS9 §8-3).
-EXCEPCION_AL_TOPE: Final[dict[str, int]] = {"provisioning_ifrs9": 10}
+#: CASO-REAL-IFRS9 §8-3; 10 → 12 por IFRS9-FIRMABLE §8-5).
+EXCEPCION_AL_TOPE: Final[dict[str, int]] = {"provisioning_ifrs9": 12}
 
 #: Los caminos marcados, por sección, tal como los pinta la tabla §3.8 de la enmienda del
 #: scorecard (39 marcas en sus 12 secciones; ``eda`` no tiene ninguna: todo default, el resumen lo
 #: muestra) y la §3.7 de FLUJO-GUIADO-IFRS9 (``survival`` 5 y ``provisioning_ifrs9`` 7, 10 desde
-#: CASO-REAL-IFRS9 §8-3): 54 marcas y 52 caminos en 14 secciones. Un mismo camino puede vivir en
-#: varias ramas de una unión (``holdout_fraction``) y se lista una vez.
+#: CASO-REAL-IFRS9 §8-3 y 12 desde IFRS9-FIRMABLE §8-5): 56 marcas y 54 caminos en 14 secciones.
+#: Un mismo camino puede vivir en varias ramas de una unión (``holdout_fraction``) y se lista una
+#: vez.
 ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
     "data": (
         "data.load.source",
@@ -97,6 +99,9 @@ ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
         "provisioning_ifrs9.origination_date_col",
         "provisioning_ifrs9.maturity_date_col",
         "provisioning_ifrs9.ead.installment_col",
+        # IFRS9-FIRMABLE D-FIR-11 (§8-5): las dos PD del modelo, opcionales.
+        "provisioning_ifrs9.pd.pd_12m_col",
+        "provisioning_ifrs9.staging.origination_pd_12m_col",
     ),
 }
 
@@ -116,7 +121,7 @@ ESENCIALES_VISIBLES_A_LA_VEZ: Final[dict[str, int]] = {
     "report": 5,
     "governance": 3,
     "survival": 5,
-    "provisioning_ifrs9": 10,
+    "provisioning_ifrs9": 12,
 }
 
 
@@ -198,9 +203,9 @@ def test_el_golden_cubre_las_catorce_secciones() -> None:
     """Las doce del scorecard y las dos de cálculo de IFRS 9: survival y provisioning_ifrs9."""
     assert len(ESENCIALES_POR_SECCION) == 14
     assert set(_secciones()) == set(ESENCIALES_POR_SECCION)
-    # 37 caminos del scorecard (39 marcas: un camino de la partición vive en varias ramas) y 15
-    # de IFRS 9 (12 hasta CASO-REAL-IFRS9 §8-3).
-    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 52
+    # 37 caminos del scorecard (39 marcas: un camino de la partición vive en varias ramas) y 17
+    # de IFRS 9 (12 hasta CASO-REAL-IFRS9 §8-3; 15 hasta IFRS9-FIRMABLE §8-5).
+    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 54
 
 
 def test_cada_marca_del_schema_esta_en_el_golden_y_cada_entrada_del_golden_esta_marcada() -> None:
@@ -216,7 +221,7 @@ def test_cada_marca_del_schema_esta_en_el_golden_y_cada_entrada_del_golden_esta_
 
 
 def test_ninguna_seccion_muestra_mas_de_seis_esenciales_a_la_vez() -> None:
-    """Salvo ``provisioning_ifrs9``, con siete: la excepción vale para ella y para ninguna otra."""
+    """Salvo ``provisioning_ifrs9``, con doce: la excepción vale para ella y para ninguna otra."""
     _, defs = _schema()
     for seccion, nodo in _secciones().items():
         visibles = _visibles_a_la_vez(nodo, defs, ())

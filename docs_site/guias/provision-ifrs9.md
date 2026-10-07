@@ -307,6 +307,68 @@ Lending Club (corte 2019, desempleo bajo el de la historia de su curva) baja un 
 curva sola, y la de las hipotecas de Freddie Mac (corte 2026, con un severo de 10 % de desempleo)
 sube un 12,9 %.
 
+## Con la PD de tu modelo (experimental)
+
+La curva de PD sale de la historia de incumplimientos de la cartera; tu scorecard o tu modelo de
+rating ya dice cuánto riesgo tiene cada operación hoy. Con dos columnas más, la provisión los usa:
+
+- **La PD a 12 meses de hoy** (`pd=`): la curva de cada operación se desplaza para que su PD de los
+  12 meses siguientes al corte —leída desde su antigüedad— sea la de tu modelo. Conserva su forma
+  por edad y toma el nivel de tu modelo, también en la pérdida de por vida; con escenarios, su
+  desplazamiento va encima. Con `bayesrisk`, es la PD calibrada del scorecard aplicado a la cartera
+  con `bayesrisk.apply`.
+- **La PD a 12 meses al otorgar** (`origination_pd=`, que exige `pd=` y `origination=`): el
+  aumento significativo del riesgo compara, para los 12 meses siguientes al corte, la PD de hoy
+  —ponderada por los escenarios, si los hay— con la que se esperaba al otorgar para ese mismo tramo
+  de vida (IFRS 9 5.5.9; la PD a 12 meses como aproximación de la de por vida, B5.5.13). Si llega al
+  doble, la operación pasa a Stage 2. Comparar sin el tramo escondería un deterioro: en una
+  hipoteca de diez años, el riesgo de hoy es más bajo que el del primer año aunque la operación
+  haya empeorado.
+
+Aquí, sobre la misma cartera, con una PD de origen y una de hoy sintéticas —la de hoy, peor en un
+10 % de las operaciones—:
+
+<!-- provision-ifrs9-pd:start -->
+```python
+# La PD a 12 meses al otorgar sale del puntaje con que se otorgó; la de hoy, de un puntaje que se
+# movió desde entonces y, en un 10 % de la cartera, a peor.
+deterioro = np.where(rng.random(n) < 0.10, -1.5, 0.0)
+puntaje_hoy = puntaje + rng.normal(0.0, 0.3, n) + deterioro
+cartera["pd_origen"] = 1 - (1 - 0.006 * np.exp(-0.6 * puntaje)) ** 12
+cartera["pd_hoy"] = 1 - (1 - 0.006 * np.exp(-0.6 * puntaje_hoy)) ** 12
+
+con_pd = Ecl(
+    data=cartera, id="loan_id", as_of="as_of_date", portfolio="portfolio", exposure="ead",
+    lgd="lgd", rate="eir", days_past_due="days_past_due", default="is_default",
+    origination="otorgamiento", maturity="vencimiento", installment="cuota",
+    duration="duration", event="event", period="quarter", horizon=16, covariates=["puntaje"],
+    history=historia, scenarios=escenarios,
+    pd="pd_hoy", origination_pd="pd_origen",         # las dos PD de tu modelo
+    name="provision_con_pd",
+)
+con_pd.run()
+print(con_pd.summary("provisioning_ifrs9"))         # tu PD frente a la curva y el SICR
+```
+<!-- provision-ifrs9-pd:end -->
+
+Lo que el motor supone, y declara en «Supuestos» y en «Qué revisar»:
+
+- **Tu PD mide el mismo incumplimiento a 12 meses que la curva y es a lo largo del ciclo** —si ya
+  fuera de las condiciones actuales, los escenarios contarían el ciclo dos veces—. El motor no puede
+  verificarlo: el resumen compara la PD media de tu modelo con la de la curva, ponderadas por la
+  exposición, y avisa si difieren en más de un 25 %.
+- **Una fila sin PD** usa la curva sin anclar, y sin PD de origen su aumento significativo del
+  riesgo es sólo la mora y la marca; una PD de 0, de 1 o fuera de ese rango se acota. Las dos se
+  cuentan.
+- La mora y la marca siguen como presunciones (5.5.11, B5.5.19–20), y la comparación de la PD de
+  por vida de origen con la de hoy sigue en la puerta completa: con las fechas del contrato, la de
+  hoy es la de la vida que le queda, y esa comparación no es por tramo.
+
+Medido con el motor: la PD del scorecard del paquete sube la provisión de la cartera de ejemplo un
+18,5 % —y la alerta salta: su incumplimiento sintético no es el de la curva, 9,99 % frente a
+6,31 %—; con la PD de hoy, la de los créditos de consumo de Lending Club sube un 11,2 % y la de las
+hipotecas de Freddie Mac baja un 12,3 %.
+
 ## La pantalla
 
 ```bash
@@ -316,8 +378,9 @@ bayesrisk-ui
 El trabajo «Provisiones IFRS 9 / ECL» pregunta lo mismo que la puerta guiada y nada más: no pide
 qué es un cliente malo ni cómo separar muestras —los muestra como «No aplica en una corrida de
 cartera»— y sí la duración, el evento, la unidad y el horizonte de la curva. La curva abre sus
-cinco campos esenciales y la provisión sus diez —las tres columnas opcionales del contrato van
-juntas bajo «Si tienes las fechas y la cuota del contrato»—; el resto queda en «Avanzado». Los
+cinco campos esenciales y la provisión sus doce —las tres columnas opcionales del contrato van
+juntas bajo «Si tienes las fechas y la cuota del contrato», y las dos PD de tu modelo bajo «Si
+tienes la PD de tu modelo»—; el resto queda en «Avanzado». Los
 12 meses del Stage 1 se infieren de la unidad, como en la puerta guiada. Resultados pinta el mismo
 resumen, con sus supuestos, la curva de PD por cartera y la ECL por cartera y etapa.
 
@@ -346,7 +409,7 @@ paquete —créditos de consumo de Lending Club (2013–2016) e hipotecas de Fre
 | La vida es la de la curva | no se corta en el vencimiento de cada operación | −16 % en consumo (vence antes que la curva); +6 % en hipotecas (la vida se alarga) |
 | Las dos juntas | la curva leída desde la edad de cada operación hasta su vencimiento | +2 % en consumo; −21 % en hipotecas |
 | Exposición constante | la EAD no amortiza a lo largo de la vida | −25 % en consumo de cuota fija y −6 % en hipotecas, sobre la vida contractual |
-| El aumento significativo del riesgo, sólo por mora y marca | sin PD de origen no hay comparación con lo esperado al originar | con el FICO actual, un 2,7 % de las operaciones en Stage 1 de Lending Club pasaría a Stage 2; evaluar la curva con las covariables actuales mueve la ECL +13 % en consumo y −30 % en hipotecas |
+| El aumento significativo del riesgo, sólo por mora y marca | sin la PD de origen (`origination_pd=`) no hay comparación con lo esperado al otorgar | con la PD de hoy y la de origen, 256 de las 9.308 operaciones en Stage 1 de Lending Club (2,8 %) pasan a Stage 2 y ninguna en hipotecas; la PD de hoy (`pd=`) mueve la ECL +11,2 % en consumo y −12,3 % en hipotecas |
 
 Las cifras de consumo y de hipotecas leen la curva desde la edad de cada operación con riesgo
 constante dentro de cada período y, más allá del último período con incumplimientos observados,

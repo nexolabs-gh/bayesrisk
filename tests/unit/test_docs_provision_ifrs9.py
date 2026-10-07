@@ -165,6 +165,62 @@ def test_el_bloque_de_escenarios_recupera_la_sensibilidad_y_pondera(
     assert not any("a lo largo del ciclo (TTC)" in s for s in supuestos), supuestos
 
 
+def test_el_bloque_de_la_pd_del_modelo_ancla_y_compara_por_tramo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """IFRS9-FIRMABLE §3.10 y §13 (capa B): el bloque genera una PD de origen y una de hoy, peor en
+    un 10 % de la cartera, sobre la cartera y las tablas de los dos bloques anteriores. Se
+    comprueba lo que la guía afirma: la curva de cada operación se ancla a la PD de hoy, el resumen
+    compara las dos medias, y las que pasan a Stage 2 por la PD de origen son las que empeoraron."""
+    pytest.importorskip("statsmodels", reason="la curva de PD exige el extra scoring")
+    codigo = "\n".join(
+        (
+            _bloque(
+                "provision-ifrs9-contrato",
+                ("origination=", "maturity=", "installment=", "contrato.run()"),
+            ),
+            _bloque(
+                "provision-ifrs9-escenarios",
+                ("history=historia", "scenarios=escenarios", "con_escenarios.run()"),
+            ),
+            _bloque(
+                "provision-ifrs9-pd",
+                ('pd="pd_hoy"', 'origination_pd="pd_origen"', "con_pd.run()", "deterioro"),
+            ),
+        )
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PYTHONHASHSEED", "0")
+    espacio: dict[str, Any] = {"__name__": "__main__"}
+    exec(compile(codigo, str(_GUIA), "exec"), espacio)
+
+    ecl = espacio["con_pd"]
+    assert ecl.study.run_context.status == "done", ecl.study.run_context.error
+    card = ecl.study.artifacts.get("provisioning_ifrs9", "card")
+    anclaje = card.metric_sections["pd_model_anchor"]
+    assert anclaje["n_rows_anchored"] == card.n_rows
+    assert anclaje["n_rows_without_pd"] == 0
+    sicr = card.metric_sections["sicr_origination_12m"]
+    assert sicr["with_scenarios"] is True
+    assert sicr["n_rows_moved_to_stage2"] > 0
+    staging = ecl.study.artifacts.get("provisioning_ifrs9", "staging")
+    cartera = espacio["cartera"].set_index("loan_id")
+    peores = cartera.loc[espacio["deterioro"] < 0].index
+    movidas = staging.loc[
+        staging["sicr_triggers"].map(lambda g: g == ("sicr_pd_origination_12m",)), "row_id"
+    ]
+    assert len(movidas) == sicr["n_rows_moved_to_stage2"]
+    assert movidas.isin(peores).mean() >= 0.9
+    lineas = ecl.summary("provisioning_ifrs9").lines
+    assert any(ln.startswith("PD a 12 meses de tu modelo en") for ln in lineas), lineas
+    assert any(
+        ln.startswith("Aumento significativo del riesgo por la PD de origen") for ln in lineas
+    )
+    supuestos = ecl.summary().assumptions
+    assert any("es la de tu modelo" in s for s in supuestos), supuestos
+    assert any("mismo tramo de vida" in s for s in supuestos), supuestos
+
+
 def test_la_guia_esta_en_la_navegacion_y_empezar_la_enlaza() -> None:
     nav = (_RAIZ / "mkdocs.yml").read_text(encoding="utf-8")
     assert "guias/provision-ifrs9.md" in nav

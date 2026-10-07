@@ -122,6 +122,18 @@ class Ecl(_PuertaGuiada):
         al corte. El motor estima cuánto se mueve la tasa con la macro y desplaza en logit el riesgo
         de cada tramo de la curva según su fecha de calendario; la ECL es la ponderada de los
         escenarios. Se copian al proyecto con su huella, como ``data``.
+    pd, origination_pd
+        La PD a 12 meses de **hoy** de cada operación, de tu scorecard o de tu modelo de rating
+        (con ``bayesrisk``, el bundle del scorecard aplicado a la cartera con ``bayesrisk.apply``),
+        y la del **otorgamiento** —tu score de admisión—, opcionales. Con ``pd`` la curva de cada
+        operación se ancla a esa PD: conserva su forma por edad y su PD de los 12 meses siguientes
+        al corte es la de tu modelo, también en la pérdida de por vida. Tiene que medir el mismo
+        incumplimiento a 12 meses que la curva y ser a lo largo del ciclo: el resumen compara las
+        dos medias y avisa si difieren en más de un 25 %. Con ``origination_pd`` (exige ``pd`` y
+        ``origination``) el aumento significativo del riesgo compara, para los 12 meses
+        siguientes al corte, la PD de hoy —ponderada por escenario, si los hay— con la que se
+        esperaba al otorgar para ese mismo tramo de vida. Una fila vacía es «sin dato»; una PD de
+        0, de 1 o fuera de ese rango se acota y se cuenta.
     duration, event
         La historia de incumplimientos que alimenta la curva de PD: cuánto tiempo se observó cada
         operación (entero ≥ 1, en la unidad de ``period``) y si incumplió (0/1).
@@ -167,6 +179,8 @@ class Ecl(_PuertaGuiada):
         installment: str | None = None,
         history: str | Path | pd.DataFrame | None = None,
         scenarios: str | Path | pd.DataFrame | None = None,
+        pd: str | None = None,
+        origination_pd: str | None = None,
         duration: str,
         event: str,
         period: str,
@@ -208,6 +222,7 @@ class Ecl(_PuertaGuiada):
                     "installment": installment,
                 },
                 escenarios=(history, scenarios),
+                del_modelo={"pd": pd, "origination_pd": origination_pd},
                 period=period,
                 horizon=horizon,
                 covariates=covariates,
@@ -233,6 +248,7 @@ class Ecl(_PuertaGuiada):
         default: str | None,
         contrato: Mapping[str, str | None],
         escenarios: tuple[Any, Any] = (None, None),
+        del_modelo: Mapping[str, str | None] | None = None,
         period: str,
         horizon: int | None,
         covariates: Sequence[str] | None,
@@ -284,11 +300,24 @@ class Ecl(_PuertaGuiada):
                 "tabla de pagos hasta el vencimiento de cada operación, y sin vencimiento no hay "
                 "plazo."
             )
+        modelo = dict(del_modelo or {"pd": None, "origination_pd": None})
+        if modelo["origination_pd"] is not None and modelo["pd"] is None:
+            raise EclInputError(
+                f"origination_pd={modelo['origination_pd']!r} necesita pd=: lo que se esperaba al "
+                "otorgar se compara con la PD de hoy de los mismos 12 meses."
+            )
+        if modelo["origination_pd"] is not None and contrato["origination"] is None:
+            raise EclInputError(
+                f"origination_pd={modelo['origination_pd']!r} necesita origination=: lo que se "
+                "esperaba al otorgar para los próximos 12 meses se lee desde la antigüedad de cada "
+                "operación."
+            )
         del_contrato = [c for c in contrato.values() if c is not None]
         declaradas = [
             *columnas.values(),
             *([default] if default is not None else []),
             *del_contrato,
+            *(c for c in modelo.values() if c is not None),
             *covariables,
         ]
         faltan = [c for c in dict.fromkeys(declaradas) if c not in frame.columns]
@@ -428,6 +457,9 @@ class Ecl(_PuertaGuiada):
         ifrs["origination_date_col"] = contrato["origination"]
         ifrs["maturity_date_col"] = contrato["maturity"]
         ifrs["ead"]["installment_col"] = contrato["installment"]
+        # IFRS9-FIRMABLE D-FIR-7 y D-FIR-8: las dos PD del modelo, opcionales.
+        ifrs["pd"]["pd_12m_col"] = modelo["pd"]
+        ifrs["staging"]["origination_pd_12m_col"] = modelo["origination_pd"]
         if ciclo is not None:
             # IFRS9-FIRMABLE D-FIR-1…4: la vía de los escenarios de la institución.
             cfg["forward"] = ciclo["forward"]

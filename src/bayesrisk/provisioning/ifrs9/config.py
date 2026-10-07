@@ -194,6 +194,34 @@ class IfrsPdConfig(BayesRiskBaseConfig):
         ),
         json_schema_extra={"ui_widget": "number_input", "ui_group": "PD", "ui_order": 8},
     )
+    # IFRS9-FIRMABLE D-FIR-7 (§3.7): la PD a 12 meses de hoy del modelo del banco, opcional y por
+    # fila. Con ella la curva de cada operación se desplaza en logit para que su PD de los 12 meses
+    # posteriores al corte sea la del modelo: conserva su forma por edad y toma el nivel del modelo.
+    pd_12m_col: str | None = Field(
+        default=None,
+        title="PD a 12 meses de tu modelo",
+        description=(
+            "Columna con la PD a 12 meses de hoy de cada operación, de tu scorecard o de tu modelo "
+            "de rating; con ella la curva de cada operación se ancla a esa PD."
+        ),
+        json_schema_extra={
+            "ui_help": (
+                "Opcional. La curva de cada operación se desplaza para que su PD de los 12 meses "
+                "siguientes al corte —leída desde su antigüedad— sea la de tu modelo: conserva su "
+                "forma por edad y toma el nivel de tu modelo, también en la pérdida de por vida. "
+                "Tiene que medir el mismo incumplimiento a 12 meses que la curva y ser a lo largo "
+                "del ciclo; el resumen compara su media con la de la curva y avisa si difieren en "
+                "más de un 25 %. Una fila vacía usa la curva sin anclar; una PD de 0, de 1 o "
+                "fuera de ese rango se acota y se cuenta."
+            ),
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "PD",
+            "ui_order": 9,
+            "ui_essential": True,
+            "ui_essential_group": "Si tienes la PD de tu modelo",
+        },
+    )
 
     @model_validator(mode="after")
     def _check_pd(self) -> Self:
@@ -205,7 +233,11 @@ class IfrsPdConfig(BayesRiskBaseConfig):
         conserva por compatibilidad de schema/UI; su consumo real queda diferido (P0 roadmap).
         """
         _require_non_empty_if_set(
-            {"rho_col": self.rho_col, "systemic_factor_col": self.systemic_factor_col},
+            {
+                "rho_col": self.rho_col,
+                "systemic_factor_col": self.systemic_factor_col,
+                "pd_12m_col": self.pd_12m_col,
+            },
             context="pd",
         )
         if self.rho_col is not None:
@@ -622,10 +654,45 @@ class IfrsStagingConfig(BayesRiskBaseConfig):
         title="PD lifetime en origen",
         description="Columna con la PD lifetime en origen para el gatillo cuantitativo de SICR.",
         json_schema_extra={
+            # D-CRE-4 lo prometió e IFRS9-FIRMABLE §3.8 lo absorbe: con las fechas del contrato,
+            # la PD de vida actual es la de la vida que le queda a la operación.
+            "ui_help": (
+                "La PD de por vida de cada operación al otorgarse, frente a la de por vida de hoy: "
+                "si la razón llega al umbral, pasa a Stage 2. Con las fechas del contrato, la de "
+                "hoy es la de la vida que le queda, y esta comparación no es por tramo de vida: "
+                "para comparar lo esperado al otorgar con lo de hoy en los mismos 12 meses, usa "
+                "«PD a 12 meses al otorgar»."
+            ),
             "column_role": "input",
             "ui_widget": "text_input",
             "ui_group": "Staging",
             "ui_order": 7,
+        },
+    )
+    # IFRS9-FIRMABLE D-FIR-8 (§3.8; resuelve D-CRE-4): la PD a 12 meses al otorgar, opcional y por
+    # fila. El SICR compara, para los 12 meses posteriores al corte, la PD de hoy (ponderada por
+    # escenario) con la que se esperaba al otorgar para ese mismo tramo de vida.
+    origination_pd_12m_col: str | None = Field(
+        default=None,
+        title="PD a 12 meses al otorgar",
+        description=(
+            "Columna con la PD a 12 meses de cada operación al otorgarse (tu score de admisión), "
+            "para el aumento significativo del riesgo por tramo de vida."
+        ),
+        json_schema_extra={
+            "ui_help": (
+                "Opcional; exige la PD a 12 meses de tu modelo y la fecha de otorgamiento. La "
+                "curva anclada a esta PD en la edad cero dice qué se esperaba al otorgar para los "
+                "12 meses siguientes al corte; si la PD de hoy de esos mismos 12 meses "
+                "—ponderada por escenario, si los hay— llega al umbral del ratio, la operación "
+                "pasa a Stage 2. La mora y la marca siguen como presunciones."
+            ),
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Staging",
+            "ui_order": 14,
+            "ui_essential": True,
+            "ui_essential_group": "Si tienes la PD de tu modelo",
         },
     )
     rating_col: str | None = Field(
@@ -699,6 +766,7 @@ class IfrsStagingConfig(BayesRiskBaseConfig):
             {
                 "is_default_col": self.is_default_col,
                 "origination_pd_life_col": self.origination_pd_life_col,
+                "origination_pd_12m_col": self.origination_pd_12m_col,
                 "rating_col": self.rating_col,
                 "origination_rating_col": self.origination_rating_col,
                 "stage_override_col": self.stage_override_col,
@@ -888,11 +956,12 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
     Motor experimental: fuera de la garantía SemVer 2.x.
     """
 
-    # Diez esenciales (FLUJO-GUIADO-IFRS9 D-ECL-6, §8-4: la única excepción al tope de 6; ampliada
-    # de 7 a 10 por CASO-REAL-IFRS9 D-CRE-8, §8-3): las columnas de la entrada mínima —fecha de
-    # corte, cartera, EAD, LGD, tasa, mora y la marca de incumplimiento— y, opcionales, las tres del
-    # contrato —otorgamiento, vencimiento y cuota—, que son dato institucional y no perillas; el
-    # resto, en «Avanzado».
+    # Doce esenciales (FLUJO-GUIADO-IFRS9 D-ECL-6, §8-4: la única excepción al tope de 6; ampliada
+    # de 7 a 10 por CASO-REAL-IFRS9 D-CRE-8, §8-3, y a 12 por IFRS9-FIRMABLE D-FIR-11, §8-5): las
+    # columnas de la entrada mínima —fecha de corte, cartera, EAD, LGD, tasa, mora y la marca de
+    # incumplimiento— y, opcionales, las tres del contrato —otorgamiento, vencimiento y cuota— y las
+    # dos PD del modelo —la de hoy y la del otorgamiento—, que son dato institucional y no perillas;
+    # el resto, en «Avanzado».
     model_config = ConfigDict(json_schema_extra=declara_esenciales)
 
     schema_version: str = Field(
@@ -1216,7 +1285,84 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
             )
         requisitos.extend(self._requisitos_del_ciclo())
         requisitos.extend(self._requisitos_del_contrato())
+        requisitos.extend(self._requisitos_de_la_pd_del_modelo())
         return tuple(requisitos)
+
+    def _requisitos_de_la_pd_del_modelo(self) -> list[Requisito]:
+        """La PD de 12 meses del modelo y la de origen (IFRS9-FIRMABLE D-FIR-7 y D-FIR-8).
+
+        Anclar la curva a la PD del modelo la desplaza por edad: sólo con la curva de
+        supervivencia, con la PD a 12 meses de esa misma curva y a lo largo del ciclo o con los
+        escenarios de la institución —Vasicek o una curva ya ajustada contarían el ciclo otra vez—.
+        La PD de origen se compara con la de hoy en el mismo tramo de vida: exige la PD de hoy y
+        la fecha de otorgamiento. El motor se detiene igual (:func:`check_model_pd_config`); aquí se
+        avisa antes de correr, anclado en la hoja nueva.
+        """
+        requisitos: list[Requisito] = []
+        if self.pd.pd_12m_col is not None:
+            if self.pd.term_structure_source != "survival":
+                requisitos.append(
+                    Requisito(
+                        path="pd.pd_12m_col",
+                        declared=f"curva de {self.pd.term_structure_source}",
+                        message=(
+                            "La PD de tu modelo ancla la curva de cada operación desde su edad, y "
+                            "eso sólo se puede con la curva de supervivencia. Toma la curva de "
+                            "supervivencia, o quita la PD de tu modelo."
+                        ),
+                    )
+                )
+            if self.pd.base_pd_source == "calibration":
+                requisitos.append(
+                    Requisito(
+                        path="pd.pd_12m_col",
+                        declared="PD a 12 meses de la calibración",
+                        message=(
+                            "La PD a 12 meses ya la entrega tu modelo, y la calibración la "
+                            "reemplazaría sin anclar la curva. Toma la PD a 12 meses de la curva, "
+                            "o quita la PD de tu modelo."
+                        ),
+                    )
+                )
+            if self.pd.pit_mode not in ("ttc_only", "cycle"):
+                requisitos.append(
+                    Requisito(
+                        path="pd.pd_12m_col",
+                        declared=f"PD ajustada ({self.pd.pit_mode})",
+                        message=(
+                            "La PD de tu modelo es a lo largo del ciclo y el ciclo lo ponen los "
+                            "escenarios de la institución; ajustar la curva anclada de otra forma "
+                            "contaría el ciclo dos veces. Usa los escenarios de la institución o "
+                            "la PD a lo largo del ciclo, o quita la PD de tu modelo."
+                        ),
+                    )
+                )
+        if self.staging.origination_pd_12m_col is not None:
+            if self.pd.pd_12m_col is None:
+                requisitos.append(
+                    Requisito(
+                        path="staging.origination_pd_12m_col",
+                        declared="(sin la PD a 12 meses de hoy)",
+                        message=(
+                            "La PD al otorgar se compara con la de hoy en los mismos 12 meses, y "
+                            "no declaraste la PD a 12 meses de tu modelo. Declárala, o quita la PD "
+                            "al otorgar."
+                        ),
+                    )
+                )
+            if self.origination_date_col is None:
+                requisitos.append(
+                    Requisito(
+                        path="staging.origination_pd_12m_col",
+                        declared="(sin fecha de otorgamiento)",
+                        message=(
+                            "Lo que se esperaba al otorgar para los próximos 12 meses se lee desde "
+                            "la antigüedad de cada operación, y no declaraste la fecha de "
+                            "otorgamiento. Declárala, o quita la PD al otorgar."
+                        ),
+                    )
+                )
+        return requisitos
 
     def _requisitos_del_ciclo(self) -> list[Requisito]:
         """El ajuste por ciclo con los escenarios de la institución (IFRS9-FIRMABLE D-FIR-1).

@@ -7,6 +7,63 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **La PD de tu modelo en la provisión IFRS 9 (experimental).** Una columna opcional con la PD a 12
+  meses de hoy de cada operación —de tu scorecard o de tu modelo de rating; con `bayesrisk`, la PD
+  calibrada del scorecard aplicado a la cartera con `bayesrisk.apply`— ancla la curva de PD:
+  `bayesrisk.Ecl(..., pd=)` o, por la puerta completa, `provisioning_ifrs9.pd.pd_12m_col`. La curva
+  de cada operación se desplaza en logit para que su PD de los 12 meses siguientes al corte —leída
+  desde su antigüedad, sin cortar por el vencimiento— sea la del modelo; conserva su forma por edad
+  y toma el nivel del modelo, también en la pérdida de por vida, y con escenarios su desplazamiento
+  va encima. La PD tiene que medir el mismo incumplimiento a 12 meses que la curva y ser a lo largo
+  del ciclo: el resumen compara su media con la de la curva, ponderadas por la exposición, y «Qué
+  revisar» avisa si difieren en más de un 25 %. Una fila sin PD usa la curva sin anclar; una PD de
+  0, de 1 o fuera de ese rango se acota a `[10⁻⁹, 1 − 10⁻⁹]`; las dos se cuentan. Exige la curva de
+  supervivencia, la PD a 12 meses de esa curva y la PD a lo largo del ciclo o los escenarios de la
+  institución; la verificación previa lo avisa antes de correr.
+- **El aumento significativo del riesgo por tramo de vida (experimental).** Una columna opcional con
+  la PD a 12 meses al otorgar (`Ecl(..., origination_pd=)`; `staging.origination_pd_12m_col`), que
+  exige la PD de hoy y la fecha de otorgamiento: la operación pasa a Stage 2 si su PD de los 12
+  meses siguientes al corte —ponderada por los escenarios, si los hay— llega a
+  `staging.sicr_pd_ratio_threshold` (2,0) veces la que se esperaba al otorgar para ese mismo tramo
+  de vida (la curva anclada a la PD de origen en la edad 0, leída desde la antigüedad de hoy). Es el
+  gatillo nuevo `sicr_pd_origination_12m`; la mora y la marca siguen como presunciones, y la alerta
+  «el aumento significativo del riesgo se detecta sólo por la mora y la marca» deja de salir.
+- Medido con el motor: la PD del scorecard del paquete anclando la curva sube la ECL de la cartera
+  de ejemplo de 4.786.739 a 5.669.963 (+18,5 %, al centavo con el oráculo de la enmienda), y la
+  alerta de la reconciliación salta (9,99 % frente a 6,31 %); con la PD de hoy, la muestra de
+  consumo de Lending Club sube de 2.805.408 a 3.120.619 (+11,2 %) y la de hipotecas de Freddie Mac
+  baja de 2.632.095 a 2.309.487 (−12,3 %). Con la PD de origen, 256 de las 9.308 operaciones de
+  Stage 1 de Lending Club pasan a Stage 2 (240 con los escenarios de la Reserva Federal en la razón)
+  y ninguna de Freddie Mac.
+- El detalle por operación gana, sólo con esas columnas, `pd_12m_model` y
+  `pd_12m_origination_expected` con `sicr_pd_ratio_12m`; la card, las secciones `pd_model_anchor`
+  y `sicr_origination_12m`. «Provisión IFRS 9» dice la PD de tu modelo frente a la de la curva y
+  cuántas operaciones movió a Stage 2 la comparación por tramo; «Supuestos», lo que supone cada
+  una; y la guía gana la sección «Con la PD de tu modelo», con un bloque ejecutado en CI.
+- «Supuestos» dice cómo se obtuvo la LGD también cuando no es la del archivo (regresión beta, de
+  respuesta fraccional o de recuperación), y «Qué revisar» avisa que una LGD modelada dentro de la
+  provisión se ajustó sobre la cartera viva, que no tiene LGD realizada.
+
+### Cambiado
+
+- La ayuda de «¿De dónde sale la probabilidad de incumplir a doce meses?» decía que esa cifra
+  decide la etapa de cada operación; sólo reemplaza la PD a 12 meses del detalle y la que compara
+  el gatillo de respaldo con la de origen. La ayuda de la PD de por vida en origen dice que, con las
+  fechas del contrato, esa comparación no es por tramo.
+- El `config_hash` del preset IFRS 9 y de toda corrida con la provisión cambia por las dos hojas
+  nuevas vacías; sin ellas, la provisión es la misma de antes, bit a bit.
+
+### Sabido
+
+- La pantalla abre las dos columnas como esenciales de la provisión, bajo «Si tienes la PD de tu
+  modelo», y Resultados pinta el mismo resumen; el informe y el Excel todavía no las presentan
+  —llegan con la capa siguiente, con los escenarios—: el informe las lleva sólo en su anexo de
+  auditoría.
+
 ## [2.8.0] — 2026-10-07
 
 ### Añadido

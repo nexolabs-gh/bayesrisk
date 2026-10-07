@@ -120,9 +120,10 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
   it("los esenciales visibles a la vez respetan el tope de 6 y suman 35 en el scorecard (cifra 2)", () => {
     // La estrategia de partición es UNA unión atómica: cuenta como un campo abierto aunque su
     // rama más cargada pinte cuatro esenciales; el golden de Python cuenta por rama (6 en data).
-    // `provisioning_ifrs9` es la única excepción al tope, con diez (FLUJO-GUIADO-IFRS9 §8-4; de
-    // siete a diez por CASO-REAL-IFRS9 §8-3: las tres columnas opcionales del contrato).
-    const EXCEPCION_AL_TOPE: Record<string, number> = { provisioning_ifrs9: 10 }
+    // `provisioning_ifrs9` es la única excepción al tope, con doce (FLUJO-GUIADO-IFRS9 §8-4; de
+    // siete a diez por CASO-REAL-IFRS9 §8-3: las tres columnas opcionales del contrato; de diez a
+    // doce por IFRS9-FIRMABLE §8-5: las dos PD del modelo).
+    const EXCEPCION_AL_TOPE: Record<string, number> = { provisioning_ifrs9: 12 }
     const DE_IFRS9 = new Set(["survival", "provisioning_ifrs9"])
     let total = 0
     let deIfrs9 = 0
@@ -137,7 +138,7 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
       else total += porRama
     }
     expect(total).toBe(35)
-    expect(deIfrs9).toBe(15)
+    expect(deIfrs9).toBe(17)
   })
 
   it("las tres columnas del contrato van juntas bajo su subtítulo, también la cuota de EAD", () => {
@@ -146,7 +147,10 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
     // bloque EAD/CCF sin llevarse la columna de la EAD.
     const schema = seccion("provisioning_ifrs9")
     const grupos = essentialGroups(schema, DEFS)
-    expect(grupos.map((g) => g.etiqueta)).toEqual(["Si tienes las fechas y la cuota del contrato"])
+    expect(grupos.map((g) => g.etiqueta)).toEqual([
+      "Si tienes las fechas y la cuota del contrato",
+      "Si tienes la PD de tu modelo",
+    ])
     const [contrato] = grupos
     const nombres = contrato.campos.map(([nombre]) => nombre)
     expect(nombres).toEqual(["origination_date_col", "maturity_date_col", "ead"])
@@ -156,11 +160,31 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
     expect(Object.keys(sueltos)).not.toContain("origination_date_col")
     expect(Object.keys(sueltos)).not.toContain("maturity_date_col")
     expect(Object.keys(sueltos.ead.properties ?? {})).toEqual(["ead_col"])
-    // Sin pedir grupo, la poda de siempre: los diez esenciales juntos.
+    // Sin pedir grupo, la poda de siempre: los doce esenciales juntos.
     const todos = Object.fromEntries(essentialFields(schema, DEFS))
     expect(Object.keys(todos.ead.properties ?? {}).sort()).toEqual(["ead_col", "installment_col"])
     // Las secciones sin subtítulos no cambian.
     expect(essentialGroups(seccion("survival"), DEFS)).toEqual([])
+  })
+
+  it("las dos PD del modelo van juntas bajo su subtítulo, sin llevarse la mora ni la marca", () => {
+    // IFRS9-FIRMABLE §8-5: la PD de hoy cuelga de `pd` y la de origen de `staging`; las dos se
+    // muestran bajo «Si tienes la PD de tu modelo», y la mora y la marca siguen sin subtítulo.
+    const schema = seccion("provisioning_ifrs9")
+    const modelo = essentialGroups(schema, DEFS).find(
+      (g) => g.etiqueta === "Si tienes la PD de tu modelo",
+    )
+    expect(modelo).toBeDefined()
+    const campos = Object.fromEntries(modelo?.campos ?? [])
+    expect(Object.keys(campos)).toEqual(["pd", "staging"])
+    expect(Object.keys(campos.pd.properties ?? {})).toEqual(["pd_12m_col"])
+    expect(Object.keys(campos.staging.properties ?? {})).toEqual(["origination_pd_12m_col"])
+    const sueltos = Object.fromEntries(essentialFields(schema, DEFS, null))
+    expect(Object.keys(sueltos)).not.toContain("pd")
+    expect(Object.keys(sueltos.staging.properties ?? {}).sort()).toEqual([
+      "days_past_due_col",
+      "is_default_col",
+    ])
   })
 
   it("eda declara cero esenciales: nada abierto y todo plegado", () => {

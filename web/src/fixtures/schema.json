@@ -1385,6 +1385,10 @@
           "has_default": true,
           "value": null
         },
+        "pd_12m_col": {
+          "has_default": true,
+          "value": null
+        },
         "pit_mode": {
           "has_default": true,
           "value": "consume_pit"
@@ -1446,6 +1450,10 @@
           "value": false
         },
         "notch_downgrade_threshold": {
+          "has_default": true,
+          "value": null
+        },
+        "origination_pd_12m_col": {
           "has_default": true,
           "value": null
         },
@@ -3953,6 +3961,10 @@
             "has_default": true,
             "value": null
           },
+          "pd_12m_col": {
+            "has_default": true,
+            "value": null
+          },
           "pit_mode": {
             "has_default": true,
             "value": "consume_pit"
@@ -4030,6 +4042,10 @@
             "value": false
           },
           "notch_downgrade_threshold": {
+            "has_default": true,
+            "value": null
+          },
+          "origination_pd_12m_col": {
             "has_default": true,
             "value": null
           },
@@ -9015,6 +9031,26 @@
             "ui_order": 8,
             "ui_widget": "number_input"
           },
+          "pd_12m_col": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "column_role": "input",
+            "default": null,
+            "description": "Columna con la PD a 12 meses de hoy de cada operación, de tu scorecard o de tu modelo de rating; con ella la curva de cada operación se ancla a esa PD.",
+            "title": "PD a 12 meses de tu modelo",
+            "ui_essential": true,
+            "ui_essential_group": "Si tienes la PD de tu modelo",
+            "ui_group": "PD",
+            "ui_help": "Opcional. La curva de cada operación se desplaza para que su PD de los 12 meses siguientes al corte —leída desde su antigüedad— sea la de tu modelo: conserva su forma por edad y toma el nivel de tu modelo, también en la pérdida de por vida. Tiene que medir el mismo incumplimiento a 12 meses que la curva y ser a lo largo del ciclo; el resumen compara su media con la de la curva y avisa si difieren en más de un 25 %. Una fila vacía usa la curva sin anclar; una PD de 0, de 1 o fuera de ese rango se acota y se cuenta.",
+            "ui_order": 9,
+            "ui_widget": "text_input"
+          },
           "pit_mode": {
             "default": "consume_pit",
             "description": "consume_pit usa curvas PIT de forward; apply_vasicek transforma TTC con rho y Z; ttc_only usa la TTC sin ajuste (solo diagnóstico); cycle desplaza la curva por tramo de calendario con los escenarios de la institución.",
@@ -9238,6 +9274,26 @@
             "ui_order": 10,
             "ui_widget": "number_input"
           },
+          "origination_pd_12m_col": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "column_role": "input",
+            "default": null,
+            "description": "Columna con la PD a 12 meses de cada operación al otorgarse (tu score de admisión), para el aumento significativo del riesgo por tramo de vida.",
+            "title": "PD a 12 meses al otorgar",
+            "ui_essential": true,
+            "ui_essential_group": "Si tienes la PD de tu modelo",
+            "ui_group": "Staging",
+            "ui_help": "Opcional; exige la PD a 12 meses de tu modelo y la fecha de otorgamiento. La curva anclada a esta PD en la edad cero dice qué se esperaba al otorgar para los 12 meses siguientes al corte; si la PD de hoy de esos mismos 12 meses —ponderada por escenario, si los hay— llega al umbral del ratio, la operación pasa a Stage 2. La mora y la marca siguen como presunciones.",
+            "ui_order": 14,
+            "ui_widget": "text_input"
+          },
           "origination_pd_life_col": {
             "anyOf": [
               {
@@ -9252,6 +9308,7 @@
             "description": "Columna con la PD lifetime en origen para el gatillo cuantitativo de SICR.",
             "title": "PD lifetime en origen",
             "ui_group": "Staging",
+            "ui_help": "La PD de por vida de cada operación al otorgarse, frente a la de por vida de hoy: si la razón llega al umbral, pasa a Stage 2. Con las fechas del contrato, la de hoy es la de la vida que le queda, y esta comparación no es por tramo de vida: para comparar lo esperado al otorgar con lo de hoy en los mismos 12 meses, usa «PD a 12 meses al otorgar».",
             "ui_order": 7,
             "ui_widget": "text_input"
           },

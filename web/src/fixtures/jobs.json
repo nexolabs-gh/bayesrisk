@@ -3295,7 +3295,7 @@
           "when": null
         },
         {
-          "help": "Esta cifra no cambia los flujos de la pérdida —ésos salen siempre de la curva—, pero sí decide en qué etapa queda cada operación, y la etapa manda si se provisionan doce meses o toda la vida del crédito.",
+          "help": "Es la probabilidad a doce meses que publica el detalle de cada operación y la que compara el gatillo de respaldo con la de origen, si el archivo la trae. No cambia la pérdida, que sale siempre de la curva: para que la probabilidad de tu modelo la mueva, declárala en «PD a 12 meses de tu modelo», que ancla la curva.",
           "multiple": false,
           "options": [
             {

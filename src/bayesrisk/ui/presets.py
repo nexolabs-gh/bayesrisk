@@ -895,6 +895,8 @@ _IFRS9_PROVISIONING_SECTION: dict[str, Any] = {
         "systemic_factor_col": None,
         "horizon_12m_periods": 1,
         "max_lifetime_periods": None,
+        # IFRS9-FIRMABLE D-FIR-7: el paquete no trae la PD de un modelo; la curva va sin anclar.
+        "pd_12m_col": None,
     },
     "lgd": {
         "method": "provided",
@@ -930,6 +932,8 @@ _IFRS9_PROVISIONING_SECTION: dict[str, Any] = {
         "stage_override_col": None,
         "low_credit_risk_exemption": False,
         "low_credit_risk_col": None,
+        # IFRS9-FIRMABLE D-FIR-8: ni PD de origen; el SICR es la mora y la marca.
+        "origination_pd_12m_col": None,
     },
     "scenarios": {"source": "single", "weights": {}, "forbid_mean_scenario": True},
     "ecl": {

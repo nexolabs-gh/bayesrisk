@@ -22,6 +22,7 @@ Nomenclatura IFRS 9 (regla dura D-CONV-1): ``pd``/``lgd``/``ead``.
 from __future__ import annotations
 
 import copy
+import itertools
 import math
 from collections.abc import Mapping
 from numbers import Real
@@ -86,6 +87,11 @@ _ECL_TERM_STRUCTURE_COLUMNS: tuple[str, ...] = (
 # fechas del contrato. Van al final y únicamente entonces, para que una corrida sin las fechas
 # publique exactamente las mismas tablas que antes (bit a bit, §4).
 _DETAIL_CONTRACT_COLUMNS: tuple[str, ...] = ("age_periods", "life_periods")
+# IFRS9-FIRMABLE D-FIR-7 y D-FIR-8 (§4, aditivas): la PD a 12 meses del modelo con que se ancló la
+# curva y, con la PD de origen, lo que se esperaba al otorgar para los 12 meses de hoy y la razón
+# del SICR por tramo. Sólo cuando se declaran sus columnas, al final y en este orden.
+_DETAIL_MODEL_PD_COLUMNS: tuple[str, ...] = ("pd_12m_model",)
+_DETAIL_ORIGINATION_COLUMNS: tuple[str, ...] = ("pd_12m_origination_expected", "sicr_pd_ratio_12m")
 _ECL_TERM_STRUCTURE_CONTRACT_COLUMNS: tuple[str, ...] = ("curve_start", "curve_end")
 # IFRS9-FIRMABLE D-FIR-1 (§3.1, aditiva): el desplazamiento en logit de cada tramo, sólo con
 # escenarios (``pd.pit_mode = "cycle"``), al final y detrás del tramo de la curva si lo hay.
@@ -484,7 +490,11 @@ class IfrsProvisionResult(BaseModel):
             value,
             expected_columns=_DETAIL_COLUMNS,
             field_name="detail",
-            additive_columns=_DETAIL_CONTRACT_COLUMNS,
+            optional_groups=(
+                _DETAIL_CONTRACT_COLUMNS,
+                _DETAIL_MODEL_PD_COLUMNS,
+                _DETAIL_ORIGINATION_COLUMNS,
+            ),
         )
 
     @field_validator("ecl_term_structure", mode="before")
@@ -495,8 +505,10 @@ class IfrsProvisionResult(BaseModel):
             value,
             expected_columns=_ECL_TERM_STRUCTURE_COLUMNS,
             field_name="ecl_term_structure",
-            additive_columns=_ECL_TERM_STRUCTURE_CONTRACT_COLUMNS,
-            cycle_columns=_ECL_TERM_STRUCTURE_CYCLE_COLUMNS,
+            optional_groups=(
+                _ECL_TERM_STRUCTURE_CONTRACT_COLUMNS,
+                _ECL_TERM_STRUCTURE_CYCLE_COLUMNS,
+            ),
         )
 
     @field_validator("summary", mode="before")
@@ -545,20 +557,29 @@ def _copy_and_validate_dataframe(
     *,
     expected_columns: tuple[str, ...],
     field_name: str,
-    additive_columns: tuple[str, ...] = (),
-    cycle_columns: tuple[str, ...] = (),
+    optional_groups: tuple[tuple[str, ...], ...] = (),
 ) -> Any:
+    """Copia la tabla y exige sus columnas canónicas, más grupos aditivos opcionales en orden.
+
+    Cada grupo aditivo existe sólo con la capacidad que lo publica (las fechas del contrato, los
+    escenarios, la PD del modelo…) y va al final, en el orden declarado: una corrida sin ninguna
+    publica exactamente las columnas de siempre.
+    """
     if not _is_dataframe_like(value):
         raise ValueError(f"{field_name} debe ser un pandas.DataFrame.")
 
     copied = _copy_dataframe(value)
     observed_columns = tuple(str(column) for column in copied.columns)
-    admitted = (
-        expected_columns,
-        expected_columns + additive_columns,
-        expected_columns + cycle_columns,
-        expected_columns + additive_columns + cycle_columns,
-    )
+    admitted = {
+        expected_columns
+        + tuple(
+            column
+            for incluido, grupo in zip(mascara, optional_groups, strict=True)
+            if incluido
+            for column in grupo
+        )
+        for mascara in itertools.product((False, True), repeat=len(optional_groups))
+    }
     if observed_columns not in admitted:
         raise ValueError(
             f"{field_name} debe tener exactamente las columnas canónicas de SDD-16 §6."

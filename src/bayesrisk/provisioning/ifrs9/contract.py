@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
 
+    from bayesrisk.provisioning.ifrs9.anchor import AnchorReading, ModelPd, OriginationReading
     from bayesrisk.provisioning.ifrs9.config import IfrsProvisioningConfig
 
     NDArrayFloat: TypeAlias = np.ndarray[Any, np.dtype[np.float64]]
@@ -126,6 +127,9 @@ class ContractReading:
     ead_beyond_observed_curve: float | None
     n_installment_not_amortizing: int
     ead_installment_not_amortizing: float
+    #: IFRS9-FIRMABLE D-FIR-7 y D-FIR-8: sólo con la PD del modelo y la de origen.
+    anchor: AnchorReading | None = None
+    origination: OriginationReading | None = None
 
 
 def check_contract_config(
@@ -283,6 +287,9 @@ def read_curve_by_contract(
     max_lifetime: int | None,
     deltas: Callable[[NDArrayFloat, NDArrayFloat], Mapping[str, NDArrayFloat]] | None = None,
     weights: Mapping[str, float] | None = None,
+    anchor_pd: ModelPd | None = None,
+    origination_pd: ModelPd | None = None,
+    window_periods: int | None = None,
 ) -> ContractReading:
     """Arma la curva condicionada de cada operación, con los períodos contados desde el corte.
 
@@ -291,6 +298,11 @@ def read_curve_by_contract(
     desde el primer mes posterior al corte y devuelve su desplazamiento en logit por escenario; el
     riesgo desplazado vale para los dos períodos de la curva que el tramo cruza. La salida lleva
     entonces el peso de cada escenario (``scenario_weight``, de ``weights``) y ``cycle_shift``.
+
+    Con ``anchor_pd`` (D-FIR-7) la curva de cada operación con PD del modelo se ancla: el
+    desplazamiento ``s_i`` con que la PD de ``[A, A + window_periods]`` —la curva extendida, sin
+    cortar por el vencimiento— es la del modelo se suma en logit a todos sus tramos, debajo del de
+    los escenarios. Con ``origination_pd`` (D-FIR-8), además, la razón del SICR por tramo de vida.
 
     ``term_structure`` es la curva publicada y ya preparada por el motor (escenario normalizado,
     sin truncar por ``max_lifetime``), con su ``hazard`` por período: el riesgo condicionado que
@@ -384,6 +396,39 @@ def read_curve_by_contract(
             0.0,
         )
 
+    # IFRS9-FIRMABLE D-FIR-7: el desplazamiento de cada curva anclada a la PD del modelo.
+    anclaje = None
+    s_curva = None
+    if anchor_pd is not None:
+        from bayesrisk.provisioning.ifrs9.anchor import bounded_risk
+        from bayesrisk.provisioning.ifrs9.cycle import shifted_tranche_pd
+
+        anclaje, s_curva = _anclar(
+            extendidos,
+            relleno,
+            anchor_pd,
+            a=a,
+            fila=fila,
+            n_filas=len(row_ids),
+            ventana=float(cast("int", window_periods)),
+        )
+        anclada_t = ~numpy.isnan(s_curva)[curva]
+        s_tramo = numpy.nan_to_num(s_curva)[curva]
+        acotados, relleno_acotado = bounded_risk(extendidos), bounded_risk(relleno)
+        if deltas is None:
+            pd_tramo = numpy.where(
+                anclada_t,
+                shifted_tranche_pd(
+                    acotados,
+                    relleno_acotado,
+                    curva=curva,
+                    desde=desde_curva,
+                    hasta=hasta_curva,
+                    delta=s_tramo,
+                ),
+                pd_tramo,
+            )
+
     unidad = _unidad(term_structure)
     fraccion_anio = cast("float", year_fraction(unidad))
     columnas_base = {
@@ -427,6 +472,20 @@ def read_curve_by_contract(
                 ),
                 0.0,
             )
+            if s_curva is not None:
+                # D-FIR-7: con la PD del modelo, el escenario se suma al anclaje (§3.7).
+                bloque["pd_marginal"] = numpy.where(
+                    anclada_t,
+                    shifted_tranche_pd(
+                        acotados,
+                        relleno_acotado,
+                        curva=curva,
+                        desde=desde_curva,
+                        hasta=hasta_curva,
+                        delta=delta + s_tramo,
+                    ),
+                    bloque["pd_marginal"],
+                )
             bloque["scenario_weight"] = float((weights or {})[nombre])
             bloque["cycle_shift"] = delta
             bloques.append(pandas.DataFrame(bloque))
@@ -460,6 +519,22 @@ def read_curve_by_contract(
     if ultimo is not None:
         lejos = edad + vida > float(ultimo) + _TOLERANCIA_PERIODO
         mas_alla = float(saldo[lejos].sum())
+    origen = None
+    if origination_pd is not None and s_curva is not None:
+        origen = _sicr_por_tramo(
+            extendidos,
+            relleno,
+            origination_pd,
+            s_curva=s_curva,
+            pd_hoy=cast("AnchorReading", anclaje).pd_model[fila],
+            a=a,
+            fila=fila,
+            n_filas=len(row_ids),
+            ventana=float(cast("int", window_periods)),
+            meses_por_periodo=meses_por_periodo,
+            deltas=deltas,
+            weights=weights,
+        )
     return ContractReading(
         term_structure=condicionada,
         ead=cast("NDArrayFloat", ead_tramo),
@@ -472,6 +547,147 @@ def read_curve_by_contract(
         ead_beyond_observed_curve=mas_alla,
         n_installment_not_amortizing=int(no_alcanza.sum()),
         ead_installment_not_amortizing=float(saldo[no_alcanza].sum()),
+        anchor=anclaje,
+        origination=origen,
+    )
+
+
+# --- La PD del modelo (IFRS9-FIRMABLE D-FIR-7 y D-FIR-8) ----------------------------------------
+
+
+def _anclar(
+    extendidos: NDArrayFloat,
+    relleno: NDArrayFloat,
+    anchor_pd: ModelPd,
+    *,
+    a: NDArrayFloat,
+    fila: Any,
+    n_filas: int,
+    ventana: float,
+) -> tuple[AnchorReading, NDArrayFloat]:
+    """El desplazamiento de cada curva y lo que se contó (§3.7), por curva y por operación.
+
+    La ventana es ``[A, A + 12 meses]`` de la curva extendida con su cola, sin cortar por el
+    vencimiento: la PD del modelo mide los 12 meses siguientes, no la vida que le queda.
+    """
+    from bayesrisk.provisioning.ifrs9.anchor import (
+        AnchorReading,
+        edge_curves,
+        solve_shift,
+        window_pd,
+    )
+
+    numpy = _import_numpy()
+    if fila.shape[0] != n_filas:
+        raise IfrsTermStructureError(
+            "La PD de tu modelo es una por operación, y la curva trae más de un escenario por "
+            "operación: ancla una curva por operación."
+        )
+    curvas = numpy.arange(fila.shape[0])
+    objetivo = anchor_pd.values[fila]
+    hasta = a + ventana
+    s_curva = solve_shift(extendidos, relleno, curva=curvas, desde=a, hasta=hasta, target=objetivo)
+    pd_curva = window_pd(extendidos, relleno, curva=curvas, desde=a, hasta=hasta)
+    borde = ~numpy.isnan(objetivo) & edge_curves(
+        extendidos, relleno, curva=curvas, desde=a, hasta=hasta
+    )
+
+    def _por_fila(valores: Any) -> Any:
+        salida = numpy.empty(n_filas, dtype=numpy.asarray(valores).dtype)
+        salida[fila] = valores
+        return salida
+
+    return (
+        AnchorReading(
+            shift=_por_fila(s_curva),
+            pd_model=anchor_pd.values,
+            pd_curve=_por_fila(pd_curva),
+            edge=_por_fila(borde),
+            n_missing=anchor_pd.n_missing,
+            n_clipped=anchor_pd.n_clipped,
+        ),
+        s_curva,
+    )
+
+
+def _sicr_por_tramo(
+    extendidos: NDArrayFloat,
+    relleno: NDArrayFloat,
+    origination_pd: ModelPd,
+    *,
+    s_curva: NDArrayFloat,
+    pd_hoy: NDArrayFloat,
+    a: NDArrayFloat,
+    fila: Any,
+    n_filas: int,
+    ventana: float,
+    meses_por_periodo: float,
+    deltas: Callable[[NDArrayFloat, NDArrayFloat], Mapping[str, NDArrayFloat]] | None,
+    weights: Mapping[str, float] | None,
+) -> OriginationReading:
+    """Lo esperado al otorgar y lo de hoy, en los mismos 12 meses posteriores al corte (§3.8).
+
+    Lo esperado: la curva anclada a la PD de origen **en la edad 0**, leída en ``[A, A + 12
+    meses]``. Lo de hoy: la PD del modelo —la curva anclada en la edad ``A``— y, con escenarios, la
+    PD de esos 12 meses ponderada por escenario, con el desplazamiento de cada tramo de calendario
+    encima del anclaje.
+    """
+    from bayesrisk.provisioning.ifrs9.anchor import (
+        OriginationReading,
+        bounded_risk,
+        solve_shift,
+        window_pd,
+    )
+    from bayesrisk.provisioning.ifrs9.cycle import shifted_tranche_pd
+
+    numpy = _import_numpy()
+    curvas = numpy.arange(fila.shape[0])
+    objetivo = origination_pd.values[fila]
+    cero = numpy.zeros(curvas.shape[0], dtype=numpy.float64)
+    s_origen = solve_shift(
+        extendidos, relleno, curva=curvas, desde=cero, hasta=cero + ventana, target=objetivo
+    )
+    esperado = window_pd(
+        extendidos, relleno, curva=curvas, desde=a, hasta=a + ventana, shift=s_origen
+    )
+    if deltas is None:
+        actual = numpy.asarray(pd_hoy, dtype=numpy.float64)
+    else:
+        # Los tramos de la ventana de 12 meses, uno por período posterior al corte (el último,
+        # parcial si la ventana no es un número entero de períodos), sin cortar por el vencimiento.
+        n_tramos = int(numpy.ceil(ventana - _TOLERANCIA_PERIODO))
+        curva_v = numpy.repeat(curvas, n_tramos)
+        t = numpy.tile(numpy.arange(1, n_tramos + 1, dtype=numpy.float64), curvas.shape[0])
+        desde = a[curva_v] + t - 1.0
+        hasta = a[curva_v] + numpy.minimum(t, ventana)
+        por_escenario = deltas((t - 1.0) * meses_por_periodo, (hasta - desde) * meses_por_periodo)
+        actual = numpy.zeros(curvas.shape[0], dtype=numpy.float64)
+        for nombre, delta in por_escenario.items():
+            tramos = shifted_tranche_pd(
+                bounded_risk(extendidos),
+                bounded_risk(relleno),
+                curva=curva_v,
+                desde=desde,
+                hasta=hasta,
+                delta=delta + numpy.nan_to_num(s_curva)[curva_v],
+            )
+            ventana_k = numpy.bincount(curva_v, weights=tramos, minlength=curvas.shape[0])
+            actual = actual + float((weights or {})[nombre]) * ventana_k
+        actual = numpy.where(numpy.isnan(s_curva), numpy.nan, actual)
+    with numpy.errstate(divide="ignore", invalid="ignore"):
+        razon = actual / esperado
+
+    def _por_fila(valores: Any) -> Any:
+        salida = numpy.empty(n_filas, dtype=numpy.float64)
+        salida[fila] = valores
+        return salida
+
+    return OriginationReading(
+        expected=_por_fila(numpy.where(numpy.isnan(razon), numpy.nan, esperado)),
+        current=_por_fila(numpy.where(numpy.isnan(razon), numpy.nan, actual)),
+        ratio=_por_fila(razon),
+        n_missing=origination_pd.n_missing,
+        n_clipped=origination_pd.n_clipped,
     )
 
 

@@ -35,6 +35,15 @@ from typing import TYPE_CHECKING, Any, ClassVar, Self, TypeAlias, cast
 from bayesrisk.core.exceptions import MissingDependencyError
 from bayesrisk.core.markers import governable_warnings, is_declared_warning
 from bayesrisk.core.time_units import year_fraction
+from bayesrisk.provisioning.ifrs9.anchor import (
+    UMBRAL_RECONCILIACION,
+    AnchorReading,
+    ModelPd,
+    OriginationReading,
+    anchor_term_structure,
+    check_model_pd_config,
+    read_model_pd,
+)
 from bayesrisk.provisioning.ifrs9.config import IfrsProvisioningConfig
 from bayesrisk.provisioning.ifrs9.contract import (
     ContractReading,
@@ -206,6 +215,26 @@ _DETAIL_COLUMNS: tuple[str, ...] = (
 )
 # CASO-REAL-IFRS9 D-CRE-2 (§3.2): sólo con las fechas del contrato (espejo de ``results.py``).
 _DETAIL_CONTRACT_COLUMNS: tuple[str, ...] = ("age_periods", "life_periods")
+# IFRS9-FIRMABLE D-FIR-7 y D-FIR-8 (§4): sólo con la PD del modelo y con la de origen.
+_DETAIL_MODEL_PD_COLUMNS: tuple[str, ...] = ("pd_12m_model",)
+_DETAIL_ORIGINATION_COLUMNS: tuple[str, ...] = (
+    "pd_12m_origination_expected",
+    "sicr_pd_ratio_12m",
+)
+# Los gatillos que llevan a Stage 2 o 3 además del SICR por tramo: una operación «pasó a Stage 2
+# por la PD de origen» si ése es el único que disparó (§3.8, el conteo del resumen).
+_OTROS_GATILLOS: frozenset[str] = frozenset(
+    {
+        "sicr_pd_ratio",
+        "sicr_pd_pit_backstop",
+        "notch_downgrade",
+        "stage_override",
+        "dpd_sicr_backstop",
+        "dpd_default_backstop",
+        "is_default",
+    }
+)
+_GATILLO_ORIGEN_12M: str = "sicr_pd_origination_12m"
 _SUMMARY_COLUMNS: tuple[str, ...] = (
     "portfolio",
     "stage",
@@ -297,6 +326,7 @@ class IfrsProvisioningEngine:
         config = self._config
         _validate_as_of_date(as_of_date)
         check_contract_config(config, events_by_period)
+        check_model_pd_config(config)
         ciclo = config.pd.pit_mode == "cycle"
         self.cycle_by_period_: DataFrame | None = None
         if ciclo:
@@ -344,6 +374,13 @@ class IfrsProvisioningEngine:
             if config.lee_fechas_del_contrato()
             else None
         )
+        # IFRS9-FIRMABLE D-FIR-7 y D-FIR-8: las dos PD del modelo, también sólo en las activas.
+        pd_modelo = _pd_del_modelo(
+            frame, config.pd.pd_12m_col, row_ids, "PD a 12 meses de tu modelo"
+        )
+        pd_origen = _pd_del_modelo(
+            frame, config.staging.origination_pd_12m_col, row_ids, "PD a 12 meses al otorgar"
+        )
 
         if sin_exposicion and "row_id" in ts.columns:
             # D-CRE-5: la curva de una fila sin exposición tampoco se valida ni decide el horizonte
@@ -367,6 +404,14 @@ class IfrsProvisioningEngine:
         lgd_forward = _ts_lgd_present(ts)
         sin_unidad = _ts_row_ids_sin_unidad(ts)
         horizonte_inconmensurable = _horizonte_inconmensurable(ts, horizonte_12m, numpy)
+
+        anclaje: AnchorReading | None = None
+        if pd_modelo is not None and terms is None:
+            # D-FIR-7 sin fechas: cada operación lee su curva desde el período 1 y se ancla antes
+            # de todo lo demás —los escenarios se suman encima (§3.7)—.
+            ts, anclaje = anchor_term_structure(
+                ts, row_ids, pd_modelo, window_periods=horizonte_12m
+            )
 
         shifter: CycleShifter | None = None
         ts_ttc: DataFrame | None = None
@@ -398,9 +443,14 @@ class IfrsProvisioningEngine:
                 max_lifetime=config.pd.max_lifetime_periods,
                 deltas=None if shifter is None else shifter.deltas,
                 weights=None if shifter is None else shifter.weights,
+                anchor_pd=pd_modelo,
+                origination_pd=pd_origen,
+                window_periods=horizonte_12m,
             )
+            anclaje = lectura.anchor
             if shifter is not None:
-                # La misma lectura sin desplazamiento: la ECL a lo largo del ciclo (§3.1).
+                # La misma lectura sin desplazamiento: la ECL a lo largo del ciclo (§3.1), con el
+                # mismo anclaje a la PD del modelo, que no es del ciclo (§3.7).
                 lectura_ttc = read_curve_by_contract(
                     ts,
                     terms=terms,
@@ -408,6 +458,8 @@ class IfrsProvisioningEngine:
                     ead_by_rid=dict(zip(row_ids, (float(v) for v in ead_arr), strict=True)),
                     events_by_period=cast("Mapping[int, int]", events_by_period),
                     max_lifetime=config.pd.max_lifetime_periods,
+                    anchor_pd=pd_modelo,
+                    window_periods=horizonte_12m,
                 )
                 ts_ttc = lectura_ttc.term_structure
             ts = lectura.term_structure
@@ -452,7 +504,14 @@ class IfrsProvisioningEngine:
         # no lo sea, y la marca la gobierna `fail_on_falta_dato` para la corrida entera.
         if horizonte_inconmensurable:
             row_warnings = [(*codes, _WARNING_HORIZON_MISMATCH) for codes in row_warnings]
-        stage_arr, triggers, exempt = self._assign_staging(frame, pd_life_arr, pd_pit_arr, pandas)
+        origen = None if lectura is None else lectura.origination
+        stage_arr, triggers, exempt = self._assign_staging(
+            frame,
+            pd_life_arr,
+            pd_pit_arr,
+            pandas,
+            pd_ratio_12m=None if origen is None else origen.ratio,
+        )
 
         lgd_by_rid = dict(zip(row_ids, (float(value) for value in lgd_arr), strict=True))
         ead_by_rid = dict(zip(row_ids, (float(value) for value in ead_arr), strict=True))
@@ -523,6 +582,9 @@ class IfrsProvisioningEngine:
             lectura=lectura,
             pandas=pandas,
             seccion_ciclo=seccion_ciclo,
+            anclaje=anclaje,
+            origen=origen,
+            ventana_12m=horizonte_12m,
         )
 
     # --- Etapas económicas (reutilizan los motores puros de bloques previos) -------------------
@@ -609,12 +671,17 @@ class IfrsProvisioningEngine:
         pd_life_arr: NDArrayFloat,
         pd_pit_arr: NDArrayFloat,
         pandas: Any,
+        *,
+        pd_ratio_12m: NDArrayFloat | None = None,
     ) -> tuple[Any, list[tuple[str, ...]], list[bool]]:
         """Asigna el Stage IFRS 9 por operación con :class:`StagingEngine` (SICR/backstops)."""
         staging = StagingEngine.from_config(self._config.staging).assign(
             frame,
             pd_life=pandas.Series(pd_life_arr, index=frame.index),
             pd_pit=pandas.Series(pd_pit_arr, index=frame.index),
+            pd_ratio_12m=(
+                None if pd_ratio_12m is None else pandas.Series(pd_ratio_12m, index=frame.index)
+            ),
         )
         stages = staging["stage"].to_numpy()
         triggers = [
@@ -636,6 +703,9 @@ class IfrsProvisioningEngine:
         lectura: ContractReading | None,
         pandas: Any,
         seccion_ciclo: dict[str, Any] | None = None,
+        anclaje: AnchorReading | None = None,
+        origen: OriginationReading | None = None,
+        ventana_12m: int = 1,
     ) -> IfrsProvisionResult:
         """Construye ``staging``/``detail``/``summary``, los registros y la card (SDD-16 §4/§6)."""
         ecl_by_rid = {
@@ -720,6 +790,15 @@ class IfrsProvisioningEngine:
                             "life_periods": lectura.life_periods[rid],
                         }
                     ),
+                    **({} if anclaje is None else {"pd_12m_model": float(anclaje.pd_model[index])}),
+                    **(
+                        {}
+                        if origen is None
+                        else {
+                            "pd_12m_origination_expected": float(origen.expected[index]),
+                            "sicr_pd_ratio_12m": float(origen.ratio[index]),
+                        }
+                    ),
                 }
             )
             stage_records.append(
@@ -754,9 +833,27 @@ class IfrsProvisioningEngine:
         staging = pandas.DataFrame(staging_rows, columns=list(_STAGING_COLUMNS))
         detail = pandas.DataFrame(
             detail_rows,
-            columns=[*_DETAIL_COLUMNS, *(() if lectura is None else _DETAIL_CONTRACT_COLUMNS)],
+            columns=[
+                *_DETAIL_COLUMNS,
+                *(() if lectura is None else _DETAIL_CONTRACT_COLUMNS),
+                *(() if anclaje is None else _DETAIL_MODEL_PD_COLUMNS),
+                *(() if origen is None else _DETAIL_ORIGINATION_COLUMNS),
+            ],
         )
         summary = _summary_frame(detail_rows, pandas)
+        secciones_del_modelo: dict[str, Any] = {}
+        if anclaje is not None:
+            secciones_del_modelo["pd_model_anchor"] = _seccion_del_anclaje(
+                anclaje, context.ead, context.row_ids, ventana_12m
+            )
+        if origen is not None:
+            secciones_del_modelo["sicr_origination_12m"] = _seccion_del_sicr_por_tramo(
+                origen,
+                context,
+                [int(row["stage"]) for row in detail_rows],
+                umbral=self._config.staging.sicr_pd_ratio_threshold,
+                con_escenarios=self._config.pd.pit_mode == "cycle",
+            )
         card = self._build_card(
             detail_rows=detail_rows,
             weights=context.weights,
@@ -765,7 +862,7 @@ class IfrsProvisioningEngine:
             ecl_term_structure=ecl_term_structure,
             n_rows_without_exposure=n_rows_without_exposure,
             lectura=lectura,
-            seccion_ciclo=seccion_ciclo,
+            seccion_ciclo={**(seccion_ciclo or {}), **secciones_del_modelo} or None,
         )
         return IfrsProvisionResult(
             staging=staging,
@@ -933,6 +1030,82 @@ def _frame_float_column(frame: DataFrame, column: str, label: str, numpy: Any) -
 def _frame_int_column(frame: DataFrame, column: str, numpy: Any) -> NDArrayFloat:
     """Extrae una columna entera finita (días de mora) validada aguas arriba por el staging."""
     return _to_float_array(frame[column].to_numpy(), column, numpy)
+
+
+def _pd_del_modelo(
+    frame: DataFrame, column: str | None, row_ids: list[str], label: str
+) -> ModelPd | None:
+    """Una columna de PD del modelo (IFRS9-FIRMABLE D-FIR-7/8), o ``None`` si no se declaró."""
+    if column is None:
+        return None
+    return read_model_pd(frame, column, row_ids=row_ids, label=label)
+
+
+def _media_ponderada(valores: list[float], pesos: list[float]) -> float | None:
+    """La media de ``valores`` ponderada por ``pesos``; ``None`` sin peso."""
+    total = math.fsum(pesos)
+    if not total:
+        return None
+    return math.fsum(v * p for v, p in zip(valores, pesos, strict=True)) / total
+
+
+def _seccion_del_anclaje(
+    anclaje: AnchorReading, ead: Mapping[str, float], row_ids: list[str], ventana: int
+) -> dict[str, Any]:
+    """La sección ``pd_model_anchor`` de la card: cuántas se anclaron y la reconciliación (§3.7).
+
+    Las medias son las de las operaciones ancladas, ponderadas por su exposición: la PD de tu
+    modelo y la de la misma ventana de la curva sin anclar. La diferencia relativa es la de la
+    primera frente a la segunda; el resumen avisa si pasa del 25 %.
+    """
+    modelo_pd = [float(v) for v in anclaje.pd_model]
+    con = [i for i, v in enumerate(modelo_pd) if not math.isnan(v)]
+    sin = [i for i, v in enumerate(modelo_pd) if math.isnan(v)]
+    pesos = [float(ead[row_ids[i]]) for i in con]
+    modelo = _media_ponderada([modelo_pd[i] for i in con], pesos)
+    curva = _media_ponderada([float(anclaje.pd_curve[i]) for i in con], pesos)
+    return {
+        "n_rows_anchored": len(con),
+        "n_rows_without_pd": len(sin),
+        "ead_without_pd": math.fsum(float(ead[row_ids[i]]) for i in sin),
+        "n_rows_clipped": int(anclaje.n_clipped),
+        "n_rows_at_risk_bound": sum(1 for i in con if bool(anclaje.edge[i])),
+        "pd_model_mean": modelo,
+        "pd_curve_mean": curva,
+        "relative_difference": (None if modelo is None or not curva else modelo / curva - 1.0),
+        "reconciliation_threshold": UMBRAL_RECONCILIACION,
+        "window_periods": int(ventana),
+    }
+
+
+def _seccion_del_sicr_por_tramo(
+    origen: OriginationReading,
+    context: _OperationContext,
+    etapas: list[int],
+    *,
+    umbral: float,
+    con_escenarios: bool,
+) -> dict[str, Any]:
+    """La sección ``sicr_origination_12m`` de la card: evaluadas y movidas a Stage 2 (§3.8).
+
+    Una operación «pasó a Stage 2 por la PD de origen» si quedó en Stage 2 y ningún otro gatillo
+    de Stage 2 o 3 disparó: es lo que la comparación por tramo agregó a la mora y la marca.
+    """
+    evaluadas = [i for i, r in enumerate(origen.ratio) if not math.isnan(float(r))]
+    disparadas = [i for i in range(len(etapas)) if _GATILLO_ORIGEN_12M in context.triggers[i]]
+    movidas = [
+        i for i in disparadas if etapas[i] == 2 and not set(context.triggers[i]) & _OTROS_GATILLOS
+    ]
+    return {
+        "n_rows_evaluated": len(evaluadas),
+        "n_rows_without_origination_pd": int(origen.n_missing),
+        "n_rows_clipped": int(origen.n_clipped),
+        "threshold": float(umbral),
+        "with_scenarios": bool(con_escenarios),
+        "n_rows_triggered": len(disparadas),
+        "n_rows_moved_to_stage2": len(movidas),
+        "ead_moved_to_stage2": math.fsum(float(context.ead[context.row_ids[i]]) for i in movidas),
+    }
 
 
 def _origination_pd_life(

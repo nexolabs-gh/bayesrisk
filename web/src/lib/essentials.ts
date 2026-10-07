@@ -103,9 +103,9 @@ export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
     "governance.purpose",
     "governance.review_period_months",
   ],
-  // FLUJO-GUIADO-IFRS9 D-ECL-6: las columnas de la curva y de la provisión (la de IFRS 9 trae diez,
+  // FLUJO-GUIADO-IFRS9 D-ECL-6: las columnas de la curva y de la provisión (la de IFRS 9 trae doce,
   // la única excepción al tope de seis, §8-4; de siete a diez por CASO-REAL-IFRS9 §8-3: las tres
-  // del contrato, opcionales).
+  // del contrato, opcionales; y a doce por IFRS9-FIRMABLE §8-5: las dos PD del modelo, opcionales).
   survival: [
     "survival.input.covariate_cols",
     "survival.input.duration_col",
@@ -121,9 +121,11 @@ export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
     "provisioning_ifrs9.lgd.lgd_col",
     "provisioning_ifrs9.maturity_date_col",
     "provisioning_ifrs9.origination_date_col",
+    "provisioning_ifrs9.pd.pd_12m_col",
     "provisioning_ifrs9.portfolio_col",
     "provisioning_ifrs9.staging.days_past_due_col",
     "provisioning_ifrs9.staging.is_default_col",
+    "provisioning_ifrs9.staging.origination_pd_12m_col",
   ],
 }
 

@@ -2320,6 +2320,7 @@ _P_SIN_EFECTO: Final = 0.05
 #: canónicos de ``sicr_triggers``). Los de mora llevan el umbral de ESA corrida.
 _GATILLOS_STAGE_2: Final[tuple[str, ...]] = (
     "sicr_pd_ratio",
+    "sicr_pd_origination_12m",
     "sicr_pd_pit_backstop",
     "notch_downgrade",
     "stage_override",
@@ -2332,6 +2333,9 @@ _GATILLOS_STAGE_3: Final[tuple[str, ...]] = (
 )
 _ROTULO_GATILLO: Final[dict[str, str]] = {
     "sicr_pd_ratio": "aumento de la PD de por vida frente a la de origen",
+    "sicr_pd_origination_12m": (
+        "aumento de la PD de los próximos 12 meses frente a la esperada al otorgar"
+    ),
     "sicr_pd_pit_backstop": "aumento de la PD point-in-time frente a la de origen",
     "notch_downgrade": "bajada de rating",
     "stage_override": "decisión cualitativa (override por operación)",
@@ -2383,6 +2387,23 @@ _ANCLA_LARGO_PLAZO: Final = (
     "Sin la fecha de otorgamiento, la curva se supone estimada en condiciones de largo plazo "
     "({largo}): el desplazamiento se mide contra ellas"
 )
+#: IFRS9-FIRMABLE D-FIR-7 y D-FIR-8 (§3.7 y §3.8): lo que suponen las dos PD del modelo.
+_PD_DEL_MODELO: Final = (
+    "La PD de los 12 meses siguientes al corte es la de tu modelo (columna «{columna}»): la curva "
+    "de cada operación conserva su forma por edad y toma ese nivel, también en la pérdida de por "
+    "vida; se supone que mide el mismo incumplimiento a 12 meses que la curva y que es a lo largo "
+    "del ciclo"
+)
+_SICR_POR_TRAMO: Final = (
+    "El aumento significativo del riesgo compara la PD de los 12 meses siguientes al corte"
+    "{escenarios} con la que se esperaba al otorgar para ese mismo tramo de vida, con umbral "
+    "{umbral}: la PD a 12 meses como aproximación de la de por vida (IFRS 9 B5.5.13){nota}"
+)
+#: D-FIR-9 (§3.9): cómo se obtuvo la LGD de ESA corrida, y la alerta de la modelada en la cartera.
+_LGD_POR_METODO: Final[dict[str, str]] = {
+    "beta_regression": "una regresión beta",
+    "fractional_response": "una regresión de respuesta fraccional",
+}
 _FRECUENCIAS_EN_PALABRAS: Final[dict[int, tuple[str, str]]] = {
     1: ("mes", "meses"),
     3: ("trimestre", "trimestres"),
@@ -2916,6 +2937,10 @@ def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
     del_ciclo, alertas_del_ciclo, tabla_del_ciclo = _lineas_del_ciclo(card)
     lines.extend(del_ciclo)
     alerts.extend(alertas_del_ciclo)
+    del_modelo, alertas_del_modelo = _lineas_de_la_pd_del_modelo(card)
+    lines.extend(del_modelo)
+    alerts.extend(alertas_del_modelo)
+    alerts.extend(_alertas_de_la_lgd(ifrs))
     if str(card.get("pit_mode") or "") == "ttc_only":
         alerts.append(
             "La provisión usa la PD a lo largo del ciclo (TTC), sin ajuste a las condiciones "
@@ -3181,6 +3206,102 @@ def _lineas_del_ciclo(card: Mapping[str, Any]) -> tuple[list[str], list[str], pd
     return lines, alerts, pd.DataFrame(filas)
 
 
+def _lineas_de_la_pd_del_modelo(card: Mapping[str, Any]) -> tuple[list[str], list[str]]:
+    """Lo que «Provisión IFRS 9» cuenta de las dos PD del modelo (IFRS9-FIRMABLE §3.7, §3.8, §13).
+
+    La PD de tu modelo frente a la de la curva —la reconciliación, con su alerta sobre el 25 %— y
+    cuántas operaciones movió a Stage 2 la comparación por tramo con la PD de origen.
+    """
+    secciones = _mapping(card.get("metric_sections"))
+    anclaje = _mapping(secciones.get("pd_model_anchor"))
+    origen = _mapping(secciones.get("sicr_origination_12m"))
+    lines: list[str] = []
+    alerts: list[str] = []
+    if anclaje:
+        n = _int(anclaje.get("n_rows_anchored")) or 0
+        total = n + (_int(anclaje.get("n_rows_without_pd")) or 0)
+        modelo = _float(anclaje.get("pd_model_mean"))
+        curva = _float(anclaje.get("pd_curve_mean"))
+        lines.append(
+            f"PD a 12 meses de tu modelo en {_miles(n)} de {_miles(total)} "
+            f"{_plural(total, 'operación', 'operaciones')}: media {_pct(modelo)} frente a "
+            f"{_pct(curva)} de la curva, ponderadas por la exposición; la curva de cada una toma "
+            "el nivel de tu modelo"
+        )
+        diferencia = _float(anclaje.get("relative_difference"))
+        umbral = _float(anclaje.get("reconciliation_threshold")) or 0.0
+        if diferencia is not None and abs(diferencia) > umbral:
+            alerts.append(
+                f"La PD media de tu modelo ({_pct(modelo)}) y la de la curva ({_pct(curva)}) "
+                f"difieren un {_pct(abs(diferencia), decimals=0)}, más del "
+                f"{_pct(umbral, decimals=0)}: tienen que medir el mismo incumplimiento a 12 "
+                "meses; si miden otro, la provisión toma el nivel de otro evento"
+            )
+        sin = _int(anclaje.get("n_rows_without_pd")) or 0
+        if sin:
+            alerts.append(
+                f"{_miles(sin)} {_plural(sin, 'operación', 'operaciones')} sin PD de tu modelo "
+                f"(exposición {_monto(_float(anclaje.get('ead_without_pd')) or 0.0)}) "
+                f"{_plural(sin, 'usa', 'usan')} la curva sin anclar"
+            )
+        acotadas = _int(anclaje.get("n_rows_clipped")) or 0
+        if acotadas:
+            alerts.append(
+                f"{_miles(acotadas)} {_plural(acotadas, 'PD', 'PD')} de tu modelo en 0, en 1 o "
+                f"fuera de ese rango {_plural(acotadas, 'se acotó', 'se acotaron')} a lo más "
+                "cercano dentro de él: revisa si la columna viene en porcentaje o trae errores"
+            )
+        borde = _int(anclaje.get("n_rows_at_risk_bound")) or 0
+        if borde:
+            tiene = _plural(borde, "operación anclada tiene", "operaciones ancladas tienen")
+            alerts.append(
+                f"{_miles(borde)} {tiene} "
+                "un período de la curva con riesgo 0 o 1 en sus 12 meses: su forma por edad la "
+                "decide el acotamiento del riesgo, no la curva"
+            )
+    if origen:
+        movidas = _int(origen.get("n_rows_moved_to_stage2")) or 0
+        evaluadas = _int(origen.get("n_rows_evaluated")) or 0
+        ponderada = " ponderada por escenario" if origen.get("with_scenarios") is True else ""
+        lines.append(
+            "Aumento significativo del riesgo por la PD de origen: "
+            f"{_miles(movidas)} de {_miles(evaluadas)} "
+            f"{_plural(evaluadas, 'operación comparada', 'operaciones comparadas')} "
+            f"{_plural(movidas, 'pasó', 'pasaron')} a Stage 2 sólo por este gatillo (exposición "
+            f"{_monto(_float(origen.get('ead_moved_to_stage2')) or 0.0)}): su PD de los próximos "
+            f"12 meses{ponderada} llega al menos a "
+            f"{_cifra(_float(origen.get('threshold')), decimales=1)} veces la que se esperaba al "
+            "otorgar para ese mismo tramo de vida"
+        )
+        sin = _int(origen.get("n_rows_without_origination_pd")) or 0
+        if sin:
+            alerts.append(
+                f"{_miles(sin)} {_plural(sin, 'operación', 'operaciones')} sin PD al otorgar no "
+                f"{_plural(sin, 'se compara', 'se comparan')} por tramo de vida: su aumento "
+                "significativo del riesgo es sólo la mora y la marca"
+            )
+        acotadas = _int(origen.get("n_rows_clipped")) or 0
+        if acotadas:
+            alerts.append(
+                f"{_miles(acotadas)} {_plural(acotadas, 'PD', 'PD')} al otorgar en 0, en 1 o fuera "
+                f"de ese rango {_plural(acotadas, 'se acotó', 'se acotaron')} a lo más cercano "
+                "dentro de él"
+            )
+    return lines, alerts
+
+
+def _alertas_de_la_lgd(ifrs: Any) -> list[str]:
+    """D-FIR-9 (§3.9): la LGD modelada dentro de la provisión se ajusta sobre la cartera viva."""
+    metodo = _hoja(ifrs, "lgd", "method")
+    if metodo not in _LGD_POR_METODO:
+        return []
+    return [
+        f"La LGD se ajustó dentro de la provisión con {_LGD_POR_METODO[str(metodo)]} sobre la "
+        f"cartera viva, cuya columna «{_hoja(ifrs, 'lgd', 'lgd_col')}» no es una LGD realizada: "
+        "entrega la LGD de tu modelo de LGD como columna"
+    ]
+
+
 def _variacion(valor: float) -> str:
     """Un cambio relativo con su signo: «+24,4 %», «-1,8 %»."""
     return ("+" if valor > 0 else "-" if valor < 0 else "") + _pct(abs(valor), decimals=1)
@@ -3321,6 +3442,7 @@ def _staging_solo_por_mora(study: Study, ifrs: Any) -> bool:
     columnas = set(frame.columns) if isinstance(frame, pd.DataFrame) else set()
     return (
         _hoja(ifrs, "staging", "origination_pd_life_col") is None
+        and _hoja(ifrs, "staging", "origination_pd_12m_col") is None
         and _COLUMNA_PD_PIT_ORIGEN not in columnas
         and _hoja(ifrs, "staging", "notch_downgrade_threshold") is None
         and _hoja(ifrs, "staging", "stage_override_col") is None
@@ -3749,6 +3871,24 @@ def _supuestos(study: Study) -> tuple[str, ...]:
         supuestos.extend(_supuestos_del_ciclo(study, card))
     elif pit_mode:
         supuestos.append(f"La PD es {_IFRS9_PIT_MODE_LABELS.get(pit_mode, pit_mode)}")
+    columna_del_modelo = _hoja(ifrs, "pd", "pd_12m_col")
+    if columna_del_modelo is not None:
+        supuestos.append(_PD_DEL_MODELO.format(columna=columna_del_modelo))
+    if _hoja(ifrs, "staging", "origination_pd_12m_col") is not None:
+        con_escenarios = pit_mode == "cycle"
+        supuestos.append(
+            _SICR_POR_TRAMO.format(
+                escenarios=" —ponderada por los escenarios—" if con_escenarios else "",
+                umbral=_cifra(
+                    _float(_hoja(ifrs, "staging", "sicr_pd_ratio_threshold")), decimales=1
+                ),
+                nota=(
+                    "; el escenario entra en esos 12 meses, no en los años siguientes"
+                    if con_escenarios
+                    else ""
+                ),
+            )
+        )
     escenarios = tuple(str(s) for s in _sequence(card.get("scenarios")))
     pesos = _mapping(card.get("scenario_weights"))
     if len(escenarios) > 1:
@@ -3811,9 +3951,33 @@ def _supuestos(study: Study) -> tuple[str, ...]:
     elif directo is False and _int(card.get("n_stage3")):
         supuestos.append(_STAGE3_CON_CURVA)
     supuestos.extend(_lineas_de_ead(card, ifrs, _int(card.get("n_rows")) or 0))
-    if _hoja(ifrs, "lgd", "method") == "provided":
-        supuestos.append("La LGD es la del archivo de cartera, la misma en cada período")
+    supuestos.extend(_supuesto_de_la_lgd(ifrs))
     return tuple(supuestos)
+
+
+def _supuesto_de_la_lgd(ifrs: Any) -> list[str]:
+    """Cómo se obtuvo la LGD de ESA corrida, también cuando no es la del archivo (D-FIR-9, §3.9)."""
+    metodo = _hoja(ifrs, "lgd", "method")
+    if metodo == "provided":
+        return ["La LGD es la del archivo de cartera, la misma en cada período"]
+    if metodo in _LGD_POR_METODO:
+        covariables = tuple(_sequence(_hoja(ifrs, "lgd", "covariate_cols")))
+        return [
+            f"La LGD se estima dentro de la provisión con {_LGD_POR_METODO[str(metodo)]} sobre "
+            f"{_miles(len(covariables))} {_plural(len(covariables), 'covariable', 'covariables')} "
+            "de la cartera, la misma en cada período"
+        ]
+    if metodo == "workout":
+        tasa = (
+            "la tasa efectiva de cada operación"
+            if _hoja(ifrs, "lgd", "workout_discount") == "eir"
+            else "la tasa contractual"
+        )
+        return [
+            "La LGD es la de la recuperación de cada operación: 1 menos el valor presente de lo "
+            f"recuperado, neto de costos, sobre la exposición, descontado a {tasa}"
+        ]
+    return []
 
 
 def _archivos(study: Study | None, context: SummaryContext) -> tuple[tuple[str, str], ...]:

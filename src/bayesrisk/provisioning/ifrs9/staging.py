@@ -78,6 +78,9 @@ _ORIGINATION_PD_PIT_COLUMN: str = "pd_pit_origination"
 
 # Nombres canónicos y auditables de los gatillos SICR publicados en ``sicr_triggers`` (§3).
 _TRIGGER_PD_RATIO: str = "sicr_pd_ratio"
+# IFRS9-FIRMABLE D-FIR-8 (§3.8): la PD de 12 meses de hoy frente a la esperada al otorgar para el
+# mismo tramo de vida. Exime como el ratio de vida (la exención de bajo riesgo lo rescata).
+_TRIGGER_PD_ORIGINATION_12M: str = "sicr_pd_origination_12m"
 _TRIGGER_PIT_BACKSTOP: str = "sicr_pd_pit_backstop"
 _TRIGGER_NOTCH: str = "notch_downgrade"
 _TRIGGER_OVERRIDE: str = "stage_override"
@@ -101,7 +104,14 @@ class StagingEngine:
         """Construye el motor de staging desde ``IfrsStagingConfig`` (molde hermano)."""
         return cls(cfg)
 
-    def assign(self, frame: DataFrame, *, pd_life: Series, pd_pit: Series) -> DataFrame:
+    def assign(
+        self,
+        frame: DataFrame,
+        *,
+        pd_life: Series,
+        pd_pit: Series,
+        pd_ratio_12m: Series | None = None,
+    ) -> DataFrame:
         """Asigna el Stage 1/2/3 por operación evaluando los gatillos SICR de SDD-16 §3.
 
         Parameters
@@ -113,6 +123,10 @@ class StagingEngine:
             Serie con la PD lifetime **actual** por operación, alineada por posición al ``frame``.
         pd_pit
             Serie con la PD PIT **actual** por operación, alineada por posición al ``frame``.
+        pd_ratio_12m
+            La razón entre la PD de 12 meses de hoy y la esperada al otorgar para ese mismo tramo
+            de vida (IFRS9-FIRMABLE D-FIR-8), alineada por posición; ``NaN`` donde no se puede
+            evaluar. ``None`` apaga el gatillo.
 
         Returns
         -------
@@ -141,6 +155,10 @@ class StagingEngine:
         exemptible_entries = [
             (_TRIGGER_PD_RATIO, numpy.where(self._fired_pd_ratio(frame, pd_life_arr, numpy), 2, 1)),
             (
+                _TRIGGER_PD_ORIGINATION_12M,
+                numpy.where(self._fired_pd_origination_12m(pd_ratio_12m, n, numpy), 2, 1),
+            ),
+            (
                 _TRIGGER_PIT_BACKSTOP,
                 numpy.where(self._fired_pit_backstop(frame, pd_pit_arr, numpy), 2, 1),
             ),
@@ -168,6 +186,25 @@ class StagingEngine:
                 "El gatillo de ratio SICR exige PD lifetime en origen estrictamente positiva."
             )
         return cast("NDArrayBool", pd_life_arr / origen >= self._config.sicr_pd_ratio_threshold)
+
+    def _fired_pd_origination_12m(
+        self, pd_ratio_12m: Series | None, n: int, numpy: Any
+    ) -> NDArrayBool:
+        """Gatillo 1b: la razón de la PD de 12 meses del mismo tramo ``>= sicr_pd_ratio_threshold``.
+
+        IFRS9-FIRMABLE D-FIR-8 (§3.8): el motor calcula la razón con la curva —lo esperado al
+        otorgar frente a lo de hoy, en los 12 meses posteriores al corte—; aquí sólo se compara con
+        el umbral. Una razón ``NaN`` (sin la PD de hoy o la de origen) no dispara.
+        """
+        if pd_ratio_12m is None:
+            return cast("NDArrayBool", numpy.zeros(n, dtype=bool))
+        razon = numpy.asarray(pd_ratio_12m.to_numpy(), dtype=numpy.float64)
+        if razon.shape[0] != n:
+            raise IfrsStagingError(
+                f"La razón de la PD de 12 meses debe alinear su longitud con el frame ({n} filas)."
+            )
+        with numpy.errstate(invalid="ignore"):
+            return cast("NDArrayBool", razon >= self._config.sicr_pd_ratio_threshold)
 
     def _fired_pit_backstop(
         self, frame: DataFrame, pd_pit_arr: NDArrayFloat, numpy: Any

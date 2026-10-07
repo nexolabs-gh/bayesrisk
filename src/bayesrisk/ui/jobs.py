@@ -2750,10 +2750,14 @@ _ABANICO_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
         {
             "path": "provisioning_ifrs9.pd.base_pd_source",
             "question": "¿De dónde sale la probabilidad de incumplir a doce meses?",
+            # IFRS9-FIRMABLE §0-5 y §3.7: decía que esta cifra «decide en qué etapa queda cada
+            # operación»; sólo reemplaza la PD a 12 meses del detalle y alimenta el gatillo de
+            # respaldo de la PD a 12 meses, con una columna de nombre fijo.
             "help": (
-                "Esta cifra no cambia los flujos de la pérdida —ésos salen siempre de la curva—, "
-                "pero sí decide en qué etapa queda cada operación, y la etapa manda si se "
-                "provisionan doce meses o toda la vida del crédito."
+                "Es la probabilidad a doce meses que publica el detalle de cada operación y la que "
+                "compara el gatillo de respaldo con la de origen, si el archivo la trae. No cambia "
+                "la pérdida, que sale siempre de la curva: para que la probabilidad de tu modelo "
+                "la mueva, declárala en «PD a 12 meses de tu modelo», que ancla la curva."
             ),
             "multiple": False,
             "options": (
