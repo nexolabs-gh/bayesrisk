@@ -10,7 +10,7 @@ pública de alto nivel (`run`, `check_pipeline`, `assemble_run`) se re-exporta d
 
 from typing import TYPE_CHECKING, Any
 
-__version__ = "2.7.0"
+__version__ = "2.8.0"
 
 __all__ = [
     "DatasetCheck",
