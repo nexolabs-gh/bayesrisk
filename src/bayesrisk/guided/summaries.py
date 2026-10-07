@@ -3259,6 +3259,13 @@ def _lineas_de_la_pd_del_modelo(card: Mapping[str, Any]) -> tuple[list[str], lis
                 "un período de la curva con riesgo 0 o 1 en sus 12 meses: su forma por edad la "
                 "decide el acotamiento del riesgo, no la curva"
             )
+        lejos = _int(anclaje.get("n_rows_not_reached")) or 0
+        if lejos:
+            alerts.append(
+                f"En {_miles(lejos)} {_plural(lejos, 'operación', 'operaciones')}, la curva no "
+                "alcanza la PD de tu modelo con el desplazamiento máximo —sus riesgos de los 12 "
+                "meses están en el borde—: queda con la PD más cercana posible, no con la tuya"
+            )
     if origen:
         movidas = _int(origen.get("n_rows_moved_to_stage2")) or 0
         evaluadas = _int(origen.get("n_rows_evaluated")) or 0
@@ -3279,6 +3286,13 @@ def _lineas_de_la_pd_del_modelo(card: Mapping[str, Any]) -> tuple[list[str], lis
                 f"{_miles(sin)} {_plural(sin, 'operación', 'operaciones')} sin PD al otorgar no "
                 f"{_plural(sin, 'se compara', 'se comparan')} por tramo de vida: su aumento "
                 "significativo del riesgo es sólo la mora y la marca"
+            )
+        lejos = _int(origen.get("n_rows_not_reached")) or 0
+        if lejos:
+            alerts.append(
+                f"En {_miles(lejos)} {_plural(lejos, 'operación', 'operaciones')}, la curva no "
+                "alcanza la PD al otorgar con el desplazamiento máximo: no se comparan por tramo "
+                "de vida"
             )
         acotadas = _int(origen.get("n_rows_clipped")) or 0
         if acotadas:

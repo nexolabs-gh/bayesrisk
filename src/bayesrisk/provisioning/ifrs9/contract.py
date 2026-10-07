@@ -586,7 +586,9 @@ def _anclar(
     curvas = numpy.arange(fila.shape[0])
     objetivo = anchor_pd.values[fila]
     hasta = a + ventana
-    s_curva = solve_shift(extendidos, relleno, curva=curvas, desde=a, hasta=hasta, target=objetivo)
+    s_curva, encerrada = solve_shift(
+        extendidos, relleno, curva=curvas, desde=a, hasta=hasta, target=objetivo
+    )
     pd_curva = window_pd(extendidos, relleno, curva=curvas, desde=a, hasta=hasta)
     borde = ~numpy.isnan(objetivo) & edge_curves(
         extendidos, relleno, curva=curvas, desde=a, hasta=hasta
@@ -605,6 +607,7 @@ def _anclar(
             edge=_por_fila(borde),
             n_missing=anchor_pd.n_missing,
             n_clipped=anchor_pd.n_clipped,
+            not_reached=_por_fila(~numpy.isnan(objetivo) & ~encerrada),
         ),
         s_curva,
     )
@@ -644,7 +647,7 @@ def _sicr_por_tramo(
     curvas = numpy.arange(fila.shape[0])
     objetivo = origination_pd.values[fila]
     cero = numpy.zeros(curvas.shape[0], dtype=numpy.float64)
-    s_origen = solve_shift(
+    s_origen, encerrada = solve_shift(
         extendidos, relleno, curva=curvas, desde=cero, hasta=cero + ventana, target=objetivo
     )
     esperado = window_pd(
@@ -676,6 +679,10 @@ def _sicr_por_tramo(
         actual = numpy.where(numpy.isnan(s_curva), numpy.nan, actual)
     with numpy.errstate(divide="ignore", invalid="ignore"):
         razon = actual / esperado
+    # Pasada 1 de Codex sobre el código: si la PD de origen queda fuera del alcance del intervalo,
+    # lo esperado al otorgar no la reproduce y la comparación no se hace (se cuenta).
+    fuera = ~numpy.isnan(objetivo) & ~encerrada
+    razon = numpy.where(fuera, numpy.nan, razon)
 
     def _por_fila(valores: Any) -> Any:
         salida = numpy.empty(n_filas, dtype=numpy.float64)
@@ -688,6 +695,7 @@ def _sicr_por_tramo(
         ratio=_por_fila(razon),
         n_missing=origination_pd.n_missing,
         n_clipped=origination_pd.n_clipped,
+        n_not_reached=int(fuera.sum()),
     )
 
 

@@ -453,3 +453,75 @@ def test_las_ayudas_de_base_pd_source_y_de_la_pd_de_vida_de_origen() -> None:
     ayuda = IfrsStagingConfig.model_fields["origination_pd_life_col"].json_schema_extra
     assert isinstance(ayuda, dict)
     assert "no es por tramo" in str(ayuda["ui_help"])
+
+
+# ─────────────────────────────── Pasada 1 de Codex sobre el código ───────────────────────────────
+
+
+def _curva_mensual(row_ids: list[str], hazards: list[float]) -> pd.DataFrame:
+    curva = _curva(row_ids, hazards, unidad="month")
+    return curva
+
+
+def test_codex_p1_sin_fechas_el_tope_de_vida_no_recorta_la_ventana_del_anclaje() -> None:
+    """Pasada 1 (high): con ``max_lifetime_periods`` menor que los 12 meses, el anclaje se resolvía
+    sobre la curva ya recortada y concentraba la PD anual en seis meses (ECL 60 en vez de 30,96).
+    Se ancla sobre la curva entera y el tope recorta después la pérdida."""
+    cfg = _cfg_b(
+        origination_date_col=None,
+        maturity_date_col=None,
+        pd=_pd_cfg(horizon_12m_periods=12, max_lifetime_periods=6),
+    )
+    resultado = IfrsProvisioningEngine.from_config(cfg).calculate(
+        _cartera(pd_modelo=[0.12]),
+        term_structure=_curva_mensual(["op0"], [0.02] * 24),
+        as_of_date=_CORTE,
+    )
+    mensual = 1.0 - 0.88 ** (1.0 / 12.0)
+    esperada = (1.0 - (1.0 - mensual) ** 6) * 0.5 * 1_000.0
+    assert resultado.card.total_ecl_reported == pytest.approx(esperada, abs=1e-9)
+
+
+def test_codex_p1_la_razon_en_el_umbral_exacto_dispara_el_gatillo() -> None:
+    """Pasada 1 (high): curva plana de riesgo 0,10, PD de origen 0,05 y de hoy 0,10: la razón es 2
+    exacta y el umbral es inclusivo; reconstruida por bisección daba 1,9999999999999998."""
+    cfg = _cfg_b(
+        staging=_cfg_b().staging.model_copy(update={"origination_pd_12m_col": "pd_origen"})
+    )
+    resultado = IfrsProvisioningEngine.from_config(cfg).calculate(
+        _cartera(
+            otorgamiento=["2025-03-01"],
+            vencimiento=["2029-03-01"],
+            pd_modelo=[0.10],
+            pd_origen=[0.05],
+        ),
+        term_structure=_curva(["op0"], [0.10] * 6),
+        as_of_date=_CORTE,
+        events_by_period={p: 5 for p in range(1, 7)},
+    )
+    assert resultado.detail["sicr_pd_ratio_12m"].iloc[0] == pytest.approx(2.0, abs=1e-12)
+    assert resultado.staging["stage"].iloc[0] == 2
+
+
+def test_codex_p1_una_pd_que_el_intervalo_no_alcanza_se_cuenta() -> None:
+    """Pasada 1 (medium): con la lectura por contrato y doce riesgos mensuales de 1, la PD de la
+    ventana en ``s = -50`` sigue sobre 1e-9: el intervalo de §3.7 no encierra la raíz. La operación
+    queda en el extremo y se cuenta, en vez de publicarse como anclada a su PD."""
+    cfg = _cfg_b(pd=_pd_cfg(horizon_12m_periods=12))
+    resultado = IfrsProvisioningEngine.from_config(cfg).calculate(
+        _cartera(
+            otorgamiento=["2026-02-01", "2026-02-01"],
+            vencimiento=["2028-03-01", "2028-03-01"],
+            pd_modelo=[1e-9, 0.10],
+        ),
+        term_structure=_curva_mensual(["op0", "op1"], [1.0] * 24),
+        as_of_date=_CORTE,
+        events_by_period={p: 5 for p in range(1, 25)},
+    )
+    seccion = resultado.card.metric_sections["pd_model_anchor"]
+    assert seccion["n_rows_not_reached"] == 1
+    assert seccion["n_rows_at_risk_bound"] == 2
+    from bayesrisk.guided.summaries import _lineas_de_la_pd_del_modelo
+
+    _lineas, alertas = _lineas_de_la_pd_del_modelo(resultado.card.model_dump())
+    assert any("no alcanza" in a for a in alertas), alertas

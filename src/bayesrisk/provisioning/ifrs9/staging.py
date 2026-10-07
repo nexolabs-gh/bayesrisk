@@ -81,6 +81,11 @@ _TRIGGER_PD_RATIO: str = "sicr_pd_ratio"
 # IFRS9-FIRMABLE D-FIR-8 (§3.8): la PD de 12 meses de hoy frente a la esperada al otorgar para el
 # mismo tramo de vida. Exime como el ratio de vida (la exención de bajo riesgo lo rescata).
 _TRIGGER_PD_ORIGINATION_12M: str = "sicr_pd_origination_12m"
+# La razón del SICR por tramo se reconstruye con una bisección y funciones trascendentes: una razón
+# que vale el umbral exacto puede salir 1,9999999999999998 (pasada 1 de Codex sobre el código). El
+# umbral es inclusivo, así que se compara con esta tolerancia relativa, la del error numérico —seis
+# órdenes por encima del de la bisección y muy por debajo de cualquier diferencia de riesgo—.
+_TOLERANCIA_RAZON: float = 1e-9
 _TRIGGER_PIT_BACKSTOP: str = "sicr_pd_pit_backstop"
 _TRIGGER_NOTCH: str = "notch_downgrade"
 _TRIGGER_OVERRIDE: str = "stage_override"
@@ -203,8 +208,9 @@ class StagingEngine:
             raise IfrsStagingError(
                 f"La razón de la PD de 12 meses debe alinear su longitud con el frame ({n} filas)."
             )
+        umbral = self._config.sicr_pd_ratio_threshold * (1.0 - _TOLERANCIA_RAZON)
         with numpy.errstate(invalid="ignore"):
-            return cast("NDArrayBool", razon >= self._config.sicr_pd_ratio_threshold)
+            return cast("NDArrayBool", razon >= umbral)
 
     def _fired_pit_backstop(
         self, frame: DataFrame, pd_pit_arr: NDArrayFloat, numpy: Any

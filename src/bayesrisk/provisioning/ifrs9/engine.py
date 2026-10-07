@@ -396,6 +396,7 @@ class IfrsProvisioningEngine:
         horizonte_12m = effective_horizon_12m(config.pd.horizon_12m_periods, ts)
         # Con las fechas, la vida de cada operación la corta el contrato y `max_lifetime_periods`
         # la acota desde el corte (§3.2-3): la curva publicada no se trunca, que la cola la lee.
+        ts_recibida = ts
         ts = _prepare_term_structure(ts, config, numpy, truncar_vida=terms is None)
         _check_row_coverage(row_ids, [str(value) for value in ts["row_id"].to_numpy()])
         # Lo que se declara de la curva RECIBIDA —la LGD forward descartada, la unidad presumida y
@@ -408,10 +409,14 @@ class IfrsProvisioningEngine:
         anclaje: AnchorReading | None = None
         if pd_modelo is not None and terms is None:
             # D-FIR-7 sin fechas: cada operación lee su curva desde el período 1 y se ancla antes
-            # de todo lo demás —los escenarios se suman encima (§3.7)—.
-            ts, anclaje = anchor_term_structure(
-                ts, row_ids, pd_modelo, window_periods=horizonte_12m
+            # de todo lo demás —los escenarios se suman encima (§3.7)—, sobre la curva ENTERA: el
+            # tope de vida recorta la pérdida después, no la ventana de 12 meses (pasada 1 de Codex
+            # sobre el código: con el tope bajo los 12 meses, la PD anual se concentraba en él).
+            completa = _prepare_term_structure(ts_recibida, config, numpy, truncar_vida=False)
+            anclada, anclaje = anchor_term_structure(
+                completa, row_ids, pd_modelo, window_periods=horizonte_12m
             )
+            ts = _recortar_vida(anclada, config.pd.max_lifetime_periods, numpy)
 
         shifter: CycleShifter | None = None
         ts_ttc: DataFrame | None = None
@@ -1070,6 +1075,11 @@ def _seccion_del_anclaje(
         "ead_without_pd": math.fsum(float(ead[row_ids[i]]) for i in sin),
         "n_rows_clipped": int(anclaje.n_clipped),
         "n_rows_at_risk_bound": sum(1 for i in con if bool(anclaje.edge[i])),
+        "n_rows_not_reached": (
+            0
+            if anclaje.not_reached is None
+            else sum(1 for i in con if bool(anclaje.not_reached[i]))
+        ),
         "pd_model_mean": modelo,
         "pd_curve_mean": curva,
         "relative_difference": (None if modelo is None or not curva else modelo / curva - 1.0),
@@ -1100,6 +1110,7 @@ def _seccion_del_sicr_por_tramo(
         "n_rows_evaluated": len(evaluadas),
         "n_rows_without_origination_pd": int(origen.n_missing),
         "n_rows_clipped": int(origen.n_clipped),
+        "n_rows_not_reached": int(origen.n_not_reached),
         "threshold": float(umbral),
         "with_scenarios": bool(con_escenarios),
         "n_rows_triggered": len(disparadas),
@@ -1233,15 +1244,22 @@ def _prepare_term_structure(
     prepared = ts.copy(deep=True)
     prepared[_TS_SCENARIO_COLUMN] = scenario
     prepared[_TS_YEARS_COLUMN] = years
-    max_lifetime = config.pd.max_lifetime_periods
-    if max_lifetime is not None and truncar_vida:
-        prepared = prepared.loc[period <= max_lifetime].copy(deep=True)
-        if prepared.shape[0] == 0:
-            raise IfrsTermStructureError(
-                f"No quedan períodos con period <= max_lifetime={max_lifetime} en la "
-                "term-structure."
-            )
+    if truncar_vida:
+        prepared = _recortar_vida(prepared, config.pd.max_lifetime_periods, numpy)
     return prepared
+
+
+def _recortar_vida(ts: DataFrame, max_lifetime: int | None, numpy: Any) -> DataFrame:
+    """Recorta la curva preparada en ``max_lifetime_periods`` (sin tope, la deja tal cual)."""
+    if max_lifetime is None:
+        return ts
+    period = _ts_float(ts, "period", numpy)
+    recortada = ts.loc[period <= max_lifetime].copy(deep=True)
+    if recortada.shape[0] == 0:
+        raise IfrsTermStructureError(
+            f"No quedan períodos con period <= max_lifetime={max_lifetime} en la term-structure."
+        )
+    return recortada
 
 
 def _is_missing(value: Any) -> bool:

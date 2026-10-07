@@ -120,6 +120,7 @@ class OriginationReading:
     ratio: NDArrayFloat
     n_missing: int
     n_clipped: int
+    n_not_reached: int = 0
 
 
 @dataclass(frozen=True)
@@ -137,6 +138,7 @@ class AnchorReading:
     edge: NDArrayBool
     n_missing: int
     n_clipped: int
+    not_reached: NDArrayBool | None = None
 
 
 def check_model_pd_config(config: IfrsProvisioningConfig) -> None:
@@ -263,10 +265,14 @@ def solve_shift(
     desde: NDArrayFloat,
     hasta: NDArrayFloat,
     target: NDArrayFloat,
-) -> NDArrayFloat:
+) -> tuple[NDArrayFloat, NDArrayBool]:
     """El desplazamiento en logit con que la PD de cada ventana es ``target`` (§3.7).
 
     Bisección en ``[-50, 50]`` sobre el riesgo acotado; ``NaN`` donde ``target`` es ``NaN``.
+    Devuelve también si la raíz quedó encerrada: con una ventana larga y todos sus riesgos en el
+    borde de arriba, la PD en ``s = -50`` puede seguir sobre ``10⁻⁹`` (doce riesgos mensuales de 1:
+    2,3·10⁻⁹, pasada 1 de Codex sobre el código). Entonces la bisección termina en el extremo —la PD
+    más cercana que el intervalo alcanza— y quien llama la cuenta en vez de darla por reproducida.
     """
     numpy = _import_numpy()
     objetivo = numpy.asarray(target, dtype=numpy.float64)
@@ -279,7 +285,16 @@ def solve_shift(
         mayor = pd_medio > objetivo
         alto = numpy.where(mayor, medio, alto)
         bajo = numpy.where(mayor, bajo, medio)
-    return cast("NDArrayFloat", numpy.where(con_dato, (bajo + alto) / 2.0, numpy.nan))
+    extremo = numpy.full(objetivo.shape[0], _DESPLAZAMIENTO_MINIMO, dtype=numpy.float64)
+    en_el_minimo = window_pd(riesgos, relleno, curva=curva, desde=desde, hasta=hasta, shift=extremo)
+    en_el_maximo = window_pd(
+        riesgos, relleno, curva=curva, desde=desde, hasta=hasta, shift=-extremo
+    )
+    encerrada = con_dato & (en_el_minimo <= objetivo) & (en_el_maximo >= objetivo)
+    return (
+        cast("NDArrayFloat", numpy.where(con_dato, (bajo + alto) / 2.0, numpy.nan)),
+        cast("NDArrayBool", encerrada),
+    )
 
 
 def edge_curves(
@@ -374,7 +389,7 @@ def anchor_term_structure(
     desde = numpy.zeros(len(row_ids), dtype=numpy.float64)
     hasta = numpy.minimum(float(window_periods), ultimo)
     objetivo = pd_model.values
-    desplazamiento = solve_shift(
+    desplazamiento, encerrada = solve_shift(
         matriz, None, curva=filas, desde=desde, hasta=hasta, target=objetivo
     )
     pd_curva = window_pd(matriz, None, curva=filas, desde=desde, hasta=hasta)
@@ -414,6 +429,7 @@ def anchor_term_structure(
         edge=borde,
         n_missing=pd_model.n_missing,
         n_clipped=pd_model.n_clipped,
+        not_reached=anclada & ~encerrada,
     )
 
 
