@@ -3,6 +3,14 @@
 > **Estado: PROPUESTA** (S36, 2026-10-07). Diseño sin código: nada se programa hasta el OK de Cami
 > a §8. Es el primer eslabón de la cadena del banco que Cami puso primero el 2026-10-07 («lo que un
 > banco necesita de punta a punta»; después, H5 y H4; H2b al final).
+> **Corregida tras la pasada 1 de Codex** (cinco high y dos medium, los siete reales; dos
+> contractuales, elevados): la etapa también la mueve el escenario —la razón del SICR usa la PD
+> ponderada; dejarla fuera contradecía 5.5.11 y B5.5.17(f)— (§3.1, §3.8, §8-4); el supuesto de
+> transferir la sensibilidad de una tasa externa se declara y sus criterios van a §8-2; el ancla
+> define su universo, sus períodos en riesgo y las filas sin fecha (§3.3); la tasa de referencia va
+> sólo como fracción (§4); el anclaje a la PD tiene solución única con el riesgo acotado (§3.7); la
+> ECL por escenario es una clave nueva que reconcilia con el total (§3.1); y las tablas exigen
+> frecuencia regular y sin huecos (§3.4). Informe: `evidencia/s36/codex_p1_raw.txt`.
 >
 > **Base medida:** `main` = `0e5e46f` (bayesrisk 2.7.0). Las cifras de la 2.7.0 se **reprodujeron
 > al peso** con el script de S35 sobre las tres carteras (paquete 4.786.739; Lending Club 3.254.890 /
@@ -71,15 +79,17 @@ Se propone, en tres capas:
    PD de tu scorecard y comparan, para el mismo tramo de vida, el riesgo de hoy con el que se
    esperaba al otorgar. Medido: la PD del scorecard del paquete sube la ECL **+18,5 %** (y destapa
    que su incumplimiento no es el de la curva: lo dice «Qué revisar»); con la PD de hoy, Lending
-   Club **+11,2 %** y Freddie Mac **−12,3 %**; el SICR relativo pasa **269 de 9.308** operaciones de
-   Lending Club a Stage 2 (+12,1 % con la PD de hoy) y ninguna de Freddie Mac. La LGD sigue siendo
+   Club **+11,2 %** y Freddie Mac **−12,3 %**; el SICR relativo, con la PD ponderada por escenario
+   en la razón (la norma pide que la información prospectiva también mueva la etapa), pasa **252 de
+   9.308** operaciones de Lending Club a Stage 2 (269 sin el escenario) y una de Freddie Mac. La LGD sigue siendo
    una columna: una LGD modelada sobre 206.216 castigos de Lending Club mueve la ECL −0,03 %.
 3. **Pantalla, informe y Excel** (capa C), con la curva consumida en Resultados.
 
-Presupuesto: **tres hojas nuevas** y cuatro opciones nuevas en literales existentes; dos argumentos
-nuevos de `Ecl` en la capa A y dos en la B. Sin escenarios ni columnas nuevas, todo queda **bit a
-bit** como en la 2.7.0. Cami decide seis cosas (§8): la fuente de la sensibilidad, el ancla, el
-SICR, los esenciales, los datos del ejemplo y las releases.
+Presupuesto: **tres hojas nuevas**, tres opciones nuevas en literales existentes y un gatillo del
+SICR; dos argumentos nuevos de `Ecl` en la capa A y dos en la B. Sin escenarios ni columnas nuevas,
+todo queda **bit a bit** como en la 2.7.0 en las tres puertas. Cami decide seis cosas (§8): la
+fuente de la sensibilidad y su condición de transferencia, el ancla, el SICR y si el escenario
+mueve la etapa, los esenciales, los datos del ejemplo y las releases.
 
 ## 0. Qué corrige de lo ya escrito
 
@@ -274,7 +284,7 @@ hipotecaria anual 1991–2025 en Freddie Mac, b = 0,273). Ancla y reversión de 
 
 En Lending Club, Stage 1 pesa casi toda la ECL y su ventana de 12 meses cae entera dentro del
 escenario: la reversión no mueve nada. En Freddie Mac, la reversión lineal en dos años mueve +0,3
-puntos, y revertir hacia el largo plazo en vez de hacia la ventana de la curva, +1,4 puntos más.
+puntos, y revertir hacia el largo plazo en vez de hacia la ventana de la curva, +1,1 puntos más.
 
 ## 2. Lo que ya está construido y no hay que inventar
 
@@ -306,24 +316,34 @@ lineal en la macro, ITG §49).
 la ventana de calendario `(corte + (t−1)·u, corte + t·u]` —`u` los meses de un período de la
 curva— y el tramo de vida `[A + t − 1, A + min(t, L)]` de CASO-REAL §3.2. **La edad decide el
 riesgo base** (la forma de la curva, la cola, el vencimiento); **el calendario decide el
-desplazamiento**: `x_k(t)` es el promedio de los valores del escenario cuyas fechas caen en esa
-ventana, o el del período del escenario que la contiene si el escenario es más grueso que la curva.
+desplazamiento**: cada fila del escenario vale para su **período** (la fecha marca el período
+mensual, trimestral o anual que la contiene, según la frecuencia de la tabla, §3.4), y `x_k(t)` es
+el promedio de los valores de los períodos del escenario que se solapan con la ventana del tramo,
+ponderado por los meses de solape. Un tramo que pasa el fin del último período del escenario usa
+la parte cubierta para esos meses y la reversión (§3.3) para el resto.
 Sin fechas del contrato, `A = 0` y la regla es la misma. Dentro del tramo, el riesgo desplazado se
 aplica a los dos períodos de la curva que el tramo cruza (riesgo constante dentro del período, como
 hoy). Así la lectura por contrato admite escenarios: el requisito de S35 (`ttc_only` con fechas) se
 levanta **para esta vía** y se mantiene para Vasicek y para las curvas de `forward` por edad.
 
 **Qué se desplaza y qué no.** Stage 1 y Stage 2 (y Stage 3 con `stage3_direct = False`); Stage 3
-con PD = 1 no cambia. La **etapa no la decide el escenario**: la razón del SICR (§3.8) compara PD
-sin el desplazamiento macro, que entra como ajuste del importe de la cartera y no de la operación
-(IHN-001: la macro por cartera es un ajuste, no un sustituto de la PD individual); «Supuestos» lo
-dice; vale para los dos gatillos por razón de PD (`origination_pd_life_col` y el de §3.8), que
-hoy leen la PD ponderada por escenario. La LGD y la EAD son las mismas en todos los escenarios
-(FALTA-DATO-IFRS-6 sigue declarando que la LGD de `forward` se descarta).
+con PD = 1 no cambia. **La etapa también la mueve el escenario** (recomendación de §8-4, tras la
+pasada 1 de Codex): los gatillos por razón de PD comparan la PD **ponderada por escenario** —como
+hoy hace `origination_pd_life_col` con `pd_life`— con la esperada al otorgar (§3.8). IFRS 9 5.5.11
+pide usar la información prospectiva disponible para el SICR y B5.5.17(f) lista los cambios
+económicos adversos previstos entre sus indicadores; dejar la macro sólo en el importe dejaría en
+Stage 1 operaciones cuyo riesgo el mismo motor ya subió. No cuenta el ciclo dos veces: la etapa es
+una clasificación y la ECL se calcula una vez, con la PD ponderada. La LGD y la EAD son las mismas
+en todos los escenarios (FALTA-DATO-IFRS-6 sigue declarando que la LGD de `forward` se descarta).
 
 **Salidas (aditivas).** `ecl_term_structure` con una fila por escenario (como hoy con varias curvas)
 y la columna `cycle_shift` (`δ_k(t)`); `detail.scenario_weights` con los pesos; la card de la
-provisión gana `ecl_by_scenario` y `ecl_ttc` (la de `δ = 0`, para comparar); `("forward",
+provisión gana `ecl_reported_by_scenario` —la ECL **reportada** de cada escenario, con la misma
+etapa y el mismo horizonte por etapa que el total ponderado, de modo que `Σ_k w_k ·
+ecl_reported_by_scenario[k] = total_ecl_reported`— y `ecl_reported_ttc` (la de `δ = 0`). La clave
+existente `ecl_by_scenario` (`engine.py:155-160`: suma la vida entera sin el corte de 12 meses de
+Stage 1 y no reconcilia con el total) **no cambia** y no se muestra como «ECL por escenario»
+(pasada 1 de Codex); `("forward",
 "cycle_model")` (§3.2) y `("provisioning_ifrs9", "cycle_by_period")`: escenario × tramo con
 ventana de calendario, `x`, `δ` y el estado (`escenario`, `reversión`, `largo plazo`).
 
@@ -341,6 +361,18 @@ y las mismas variables macro de los escenarios— por mínimos cuadrados:
 `logit(r_c) = a + Σ_j b_j · (x_{c,j} − x̄_j)`, con la macro **contemporánea** y en niveles. La tasa
 de referencia la elige la institución: la del sistema por cartera (lo que se midió) o la propia, si
 su historia cruza un ciclo. `x̄_j` es la media de la ventana de la tabla (el largo plazo).
+
+**Supuesto de transferencia, declarado** (pasada 1 de Codex): la pendiente se estima sobre la tasa
+de referencia y se aplica a la curva de la cartera, es decir, se supone que el logit del riesgo de
+la cartera se mueve **uno a uno** con el de la referencia. El R² y el error estándar miden el ajuste
+de la referencia, no la validez de transferirlo; si la cartera es más o menos cíclica que la
+referencia, el desplazamiento queda sesgado en la misma proporción. «Supuestos» lo dice siempre que
+hay escenarios, con la columna y la ventana de la referencia. Los criterios de correspondencia
+—la misma cartera o producto, un evento cercano al incumplimiento de la curva (mora de 90 días o
+castigo, no mora de 30), frecuencia trimestral o más fina, al menos un ciclo— los decide Cami (§8-2)
+y los aplica quien firma: el motor no puede verificar qué mide una tasa externa. En la evidencia de
+esta enmienda, Lending Club usa castigos (su evento es el castigo) y Freddie Mac la morosidad de 30
+días (su evento es la mora de 90): esa diferencia es parte de la incertidumbre de su cifra.
 
 **El motor dice lo que estimó** en el resumen de la etapa: `b_j` con su error, R², `n`, la ventana
 y, en palabras, el sentido («con más desempleo, la tasa de referencia sube»). «Qué revisar» alerta
@@ -363,10 +395,26 @@ Los coeficientes declarados por la institución siguen en la puerta completa
 ### 3.3 D-FIR-3 — El ancla: las condiciones que la curva lleva dentro (§8-3)
 
 **Contrato.** La curva TTC no es «de largo plazo» por decreto: es el promedio de las condiciones de
-la ventana de su historia. Con la fecha de otorgamiento (CASO-REAL D-CRE-2), el motor pone cada
-período de vida de la historia de la curva en su período de calendario y calcula `x̄_W`, el promedio
-de la macro de la tabla de historia ponderado por cuántos períodos-operación hubo en cada período de
-calendario. Entonces:
+la ventana de su historia. Con la fecha de otorgamiento (CASO-REAL D-CRE-2), el motor calcula
+`x̄_W`, la macro media de los períodos-operación con que se ajustó la curva, con esta regla
+(pasada 1 de Codex):
+
+1. **Universo:** las filas con que se ajustó la curva (`fit_mask` de `discrete_hazard`: todas en
+   una corrida de cartera; Desarrollo si la curva tiene partición), incluidas las filas de historia
+   con EAD = 0 (D-CRE-5: son las que alimentan la curva).
+2. **Períodos en riesgo:** los mismos de la expansión persona-período del ajuste —del 1 a la
+   duración de la fila, termine en evento o en censura—; nada más allá de la censura.
+3. **Calendario:** el período de vida `a` de una fila otorgada en `o` cubre la ventana
+   `(o + (a − 1)·u, o + a·u]` (la duración cuenta desde el otorgamiento: el supuesto de D-CRE-2,
+   declarado); su valor macro es el promedio de los períodos de la tabla de historia que se solapan
+   con esa ventana, ponderado por los meses de solape.
+4. **`x̄_W`** es el promedio simple de esos valores sobre todos los períodos-operación.
+5. **Filas sin fecha de otorgamiento:** no entran al ancla y se cuentan (períodos-operación y
+   proporción) en «Qué revisar»; si ninguna fila trae fecha, rige el caso sin fechas de abajo.
+
+Las cifras de §1.8 usan esta regla (`ciclo_y_escenarios.py`: universo completo, sin partición; la
+macro del trimestre o año de calendario del último mes de cada período de vida, una aproximación a
+la del punto 3 dentro del mismo período de la tabla). Entonces:
 
 - dentro del horizonte del escenario: `δ_k(t) = b · (x_k(t) − x̄_W)`;
 - después: **reversión lineal en dos años** hacia `δ_LP = b · (x̄_LP − x̄_W)`, las condiciones de
@@ -375,8 +423,8 @@ calendario. Entonces:
 **Sin fecha de otorgamiento** no hay calendario para la historia: la curva se toma como de largo
 plazo (`x̄_W = x̄_LP`), la reversión va a `δ = 0` y «Qué revisar» lo dice («sin la fecha de
 otorgamiento, la curva se supone estimada en condiciones de largo plazo»). Si la tabla de historia
-no cubre la ventana de la curva, la corrida se detiene con los años que faltan (IHN-010: un ancla
-material no se rellena con un neutro).
+no tiene valor para algún período-operación del universo, la corrida se detiene con los años que
+faltan (un ancla material no se rellena con un neutro).
 
 **Por qué importa** (§1.8): en Lending Club la curva se estimó con 4,77 % de desempleo, no con el
 5,96 % de largo plazo; tomarla como de largo plazo resta 9,4 puntos a la ECL ponderada (−10,0 %
@@ -392,10 +440,14 @@ forma (lineal en logit, la de `forward/scenarios.py`).
 (las mismas de la historia). Reglas: al menos **dos** escenarios (un rango, 5.5.17(a); un solo
 escenario no basta si la pérdida no es lineal); pesos **mayores que cero que suman 1** (la provisión
 ya rechaza el peso 0); nombres libres (no se exige base/adverse/severe:
-`require_at_least_three = False` en esta vía); todos los escenarios con las mismas fechas; la
-primera fecha a más tardar en el primer período posterior al corte, y la tabla cubre **al menos los
-12 meses** posteriores al corte (la ventana de Stage 1; si no, la corrida se detiene antes de
-correr). El horizonte del escenario es el de la tabla (B5.5.50: el de la institución).
+`require_at_least_three = False` en esta vía); **una frecuencia regular** —mensual, trimestral o
+anual, inferida de las fechas y declarada— y **sin huecos**: cada escenario trae un valor por
+período, sin saltos, y todos los escenarios los mismos períodos; el primer período contiene el
+primer mes posterior al corte (o es anterior: los períodos enteramente anteriores al corte se
+ignoran), y la tabla cubre **al menos los 12 meses** posteriores al corte (la ventana de Stage 1).
+Cualquier falla de estas reglas detiene la corrida antes de correr, con el escenario y el período.
+El horizonte del escenario es el fin de su último período (B5.5.50: el de la institución). La
+tabla de historia sigue las mismas reglas de regularidad y huecos.
 
 **Sin modelo macro en esta vía.** Los escenarios **son** la previsión de la institución (B5.5.51):
 `forward.macro.kind = "scenario_paths"` (opción nueva) toma las trayectorias tal cual; ARIMA, VAR y
@@ -439,6 +491,12 @@ edad, sin cortar por el vencimiento— sea esa PD, y todos sus tramos usan `logi
 conserva su forma por edad y su nivel es el de tu modelo. La ECL de Stage 1 es entonces la de la PD
 de tu modelo. Con escenarios, `δ_k(t)` se suma encima. Una operación sin PD usa la curva sin anclar
 (contada en «Qué revisar»); una PD de 0 o 1 se acota a `[10⁻⁹, 1 − 10⁻⁹]` y se cuenta.
+**Existencia y unicidad** (pasada 1 de Codex): antes del logit, el riesgo de cada período se acota
+a `[10⁻¹², 1 − 10⁻¹²]` (el mismo épsilon de `pd_pit.py`); así la PD de 12 meses de la curva
+desplazada es continua y estrictamente creciente en `s` y va de casi 0 a casi 1, y para toda PD
+acotada existe un único `s_i`, que se resuelve por bisección en `[−50, 50]`. Una operación cuyo
+riesgo de la ventana estaba en el borde (un período de la curva con riesgo 0 o 1) se cuenta en «Qué
+revisar»: su forma por edad la decide el acotamiento.
 
 **Contrato del dato** (se dice en «Supuestos» y en la guía): la PD tiene que medir **el mismo
 incumplimiento a 12 meses** que la curva y estar calibrada a lo largo del ciclo (si ya fuera PIT,
@@ -470,13 +528,15 @@ meses (pierde la forma de la curva).
 
 - **lo que se esperaba al otorgar** para los próximos 12 meses de hoy: la curva anclada a la PD de
   origen **en la edad 0**, leída en el tramo `[A, A + 12 meses]`;
-- **lo de hoy**: la curva anclada a la PD de hoy en la edad `A` (por construcción, la PD de hoy);
+- **lo de hoy**: la curva anclada a la PD de hoy en la edad `A` (por construcción, la PD de hoy) y,
+  con escenarios, la PD de esos 12 meses **ponderada por escenario** con el desplazamiento de §3.1;
 - si la razón es ≥ `sicr_pd_ratio_threshold` (2,0, la hoja que ya existe), pasa a Stage 2 con el
   gatillo nuevo `sicr_pd_origination_12m`.
 
 Comparar el mismo tramo de vida es lo que pide 5.5.9 (B5.5.11: el riesgo esperado para esa vida); la
-PD a 12 meses es el atajo de B5.5.13, que «Supuestos» declara (con la excepción de B5.5.14: el
-desplazamiento macro no entra a la comparación, §3.1). La mora y la marca siguen como presunciones
+PD a 12 meses es el atajo de B5.5.13, que «Supuestos» declara; la excepción de B5.5.14 (factores
+macro que la PD a 12 meses no recoge) queda cubierta porque el numerador lleva el escenario de los
+12 meses, aunque no el de los años siguientes, y eso también se declara. La mora y la marca siguen como presunciones
 (5.5.11, B5.5.19–20). La alerta «el aumento significativo del riesgo se detecta sólo por la mora y
 la marca» deja de salir cuando hay PD de origen. **Resuelve D-CRE-4.** `origination_pd_life_col`
 (la PD de por vida de origen frente a la actual) sigue en la puerta completa; su ayuda dice que, con
@@ -486,13 +546,20 @@ las fechas, la PD actual es la de la vida remanente y que esa comparación no es
 otorgamiento y con el actual, que es exactamente esta regla con las dos columnas llenas así):
 **269 de 9.308** operaciones de Stage 1 pasan a Stage 2 (EAD 1.210.222); la ECL sube **+0,5 %**
 sólo por la etapa y **+12,1 %** con la PD de hoy anclada; con umbral 3,0, 20 operaciones. Freddie
-Mac: ninguna (las viviendas se valorizaron). S33 había medido 255 con las reglas anteriores.
+Mac: ninguna (las viviendas se valorizaron). S33 había medido 255 con las reglas anteriores. **Con
+el escenario en la razón** (`sicr_con_macro.py`, escenarios y pesos de §1.8): Lending Club **252**
+(el escenario base de 2019 baja el riesgo; las 17 que dejan de pasar vencen antes de 12 meses y su
+ECL no cambia: 3.130.066 en las dos reglas, +11,6 % sobre la base con la PD de hoy y los
+escenarios) y Freddie Mac **1** (el severo de 2026). En una recesión la diferencia sería de carteras
+enteras: es lo que la norma pide.
 
 **Alternativas descartadas.** Comparar la PD de 12 meses de origen con la de hoy sin el tramo (en
 una hipoteca de diez años, la caída natural del riesgo con la edad escondería un deterioro).
 Inferir la PD de origen evaluando la curva con las covariables del otorgamiento (S33: es una lectura
-PIT por validar, y la PD de origen la tiene el banco). Incluir el escenario en la razón (pasaría
-carteras enteras a Stage 2 por la macro: candidata si un caso real lo pide, B5.5.17(f)).
+PIT por validar, y la PD de origen la tiene el banco). Dejar el escenario fuera de la razón (la
+primera versión; pasada 1 de Codex: contradice 5.5.11 y B5.5.17(f); queda como opción (b) de
+§8-4). Una evaluación colectiva por cartera (B5.5.36): la razón por operación con la PD ponderada ya
+lleva el escenario a cada una; candidata si una cartera sin PD de origen lo pide.
 
 ### 3.9 D-FIR-9 — La LGD es una columna; la LGD modelada dentro de la provisión se declara (capa B)
 
@@ -525,7 +592,7 @@ paquete y no trae una sensibilidad conocida para el test.
 
 | Capa | Qué | Mueve | Gate de cierre |
 |---|---|---|---|
-| **A** | D-FIR-1…6: `forward` modo `reference_rate` y `scenario_paths`, `("forward", "cycle_model")`, `pit_mode = "cycle"`, el desplazamiento por tramo, el ancla, la reversión; `fit` contra la edad se detiene; Vasicek sobre el riesgo. `Ecl(..., scenarios=, history=)` **experimental** (D-SIM-1); resumen de la etapa «Escenarios»; «Supuestos» y «Qué revisar»; el bloque de la guía | sin escenarios, nada (bit a bit); el `config_hash` de toda corrida con `forward`, por la hoja nueva; **F4 no se mueve** (no trae `forward`); `HOJAS_DEL_FORMULARIO` y el ledger de opciones, medidos al implementar | las cifras de §1.8 **con el motor** (las de esta enmienda son el oráculo); la sensibilidad sintética recuperada; sin escenarios, bit a bit |
+| **A** | D-FIR-1…6: `forward` modo `reference_rate` y `scenario_paths`, `("forward", "cycle_model")`, `pit_mode = "cycle"`, el desplazamiento por tramo, el ancla, la reversión; `fit` contra la edad se detiene; Vasicek sobre el riesgo. `Ecl(..., scenarios=, history=)` **experimental** (D-SIM-1); resumen de la etapa «Escenarios»; «Supuestos» y «Qué revisar»; el bloque de la guía | sin escenarios, nada en las tres puertas (bit a bit); en la puerta completa, `fit` sobre una curva sin calendario se detiene y `apply_vasicek` cambia sus cifras; el `config_hash` de toda corrida con `forward`, por la hoja nueva; **F4 no se mueve** (no trae `forward`); `HOJAS_DEL_FORMULARIO` y el ledger de opciones, medidos al implementar | las cifras de §1.8 **con el motor** (las de esta enmienda son el oráculo); la sensibilidad sintética recuperada; sin escenarios, bit a bit |
 | **B** | D-FIR-7…9: las dos columnas de PD, el anclaje, el SICR por tramo, la reconciliación, la LGD en «Supuestos»; `Ecl(..., pd=, origination_pd=)`; esenciales de `provisioning_ifrs9` 10 → 12 | esenciales (golden y espejo), `HOJAS_DEL_FORMULARIO` (+2), textos de ayuda; **el `config_hash` de F4** por las dos claves nuevas vacías (como en S35): el gate de identidad de la demo obliga a recapturar con la 2.9.0 | las cifras de §3.7 y §3.8 con el motor; sin las columnas, bit a bit |
 | **C** | la pantalla (`forward` en el trabajo `provisiones_ifrs9`, con sus esenciales y la carga de las dos tablas; las columnas de PD), el informe (sección «Escenarios y ajuste por ciclo»: satélite, ancla, escenarios con pesos, ECL por escenario), el Excel y Resultados (la ECL por escenario y el desplazamiento por tramo: la curva consumida, abierto desde S32); `Ecl` estable | cinco censos de la sección nueva del formulario; la demo IFRS 9 si se le agregan escenarios (recaptura con su OK) | las tres puertas con el mismo `config_hash` y resultados |
 
@@ -546,7 +613,7 @@ C en la 2.10.0; cada una y cada recaptura con su OK aparte.
 
 **Qué NO se configura:** el rezago, la forma y el estimador del satélite; el ancla y la reversión
 (dos años, lineal en logit); el umbral de cobertura de 12 meses de la tabla de escenarios; la
-regla del tramo de calendario; que la etapa no la decide el escenario; la cota de la PD anclada; el
+regla del tramo de calendario; que la razón del SICR use la PD ponderada; la cota de la PD anclada; el
 umbral de la reconciliación (25 %) y los de «Qué revisar» del satélite. Constantes con su razón en
 el código.
 
@@ -558,10 +625,12 @@ capa C.
 
 ## 4. Contratos de datos (I/O)
 
-- **Tabla de historia:** `date` (fechas legibles sin ambigüedad, una por período, regulares),
-  `default_rate` (tasa en (0, 1) o en porcentaje (0, 100): se declara por la escala que traiga; una
-  columna con valores > 1 se lee como porcentaje y se dice), y una o más variables macro numéricas
-  finitas. Al menos 20 períodos para no alertar; al menos `variables + 2` para correr.
+- **Tabla de historia:** `date` (fechas legibles sin ambigüedad, una por período, regulares, sin
+  huecos), `default_rate` **como fracción en (0, 1)**, como toda probabilidad de la librería —un
+  0,9 % va como 0,009—, sin inferir la escala por la magnitud (pasada 1 de Codex: una serie de
+  0,3–0,8 % escrita en porcentaje se leería como 30–80 %); un valor fuera de (0, 1) detiene la
+  corrida con la fila y el recordatorio de la unidad; y una o más variables macro numéricas finitas.
+  Al menos 20 períodos para no alertar; al menos `variables + 2` para correr.
 - **Tabla de escenarios:** `scenario`, `weight` (constante por escenario), `date` y las mismas
   variables; frecuencia igual o más gruesa que la de la historia.
 - **Cartera:** lo de FLUJO-GUIADO-IFRS9 §4 y CASO-REAL §4 más, opcionales, `pd_12m` y
@@ -623,7 +692,7 @@ Codex sobre el código de cada capa, con tope de tres pasadas y criterio declara
 
 No estima la sensibilidad desde la historia de la propia cartera (§3.2, candidata); no elige
 variables ni rezagos; no trae datos macro reales al paquete; no fija pesos ni escenarios; no
-modela la LGD ni la EAD por escenario; no deja que la macro decida la etapa; no cambia la curva de
+modela la LGD ni la EAD por escenario; no evalúa el SICR por grupos; no cambia la curva de
 supervivencia, Stage 3, la tabla de pagos, el descuento ni la mora y la marca; no retira la vía
 anterior de `forward` ni Vasicek; no implementa stress (IHN-002); no toca CMF; no programa nada.
 
@@ -632,9 +701,9 @@ anterior de `forward` ni Vasicek; no implementa stress (IHN-002); no toca CMF; n
 | # | Decisión | Opciones | Recomendación |
 |---|---|---|---|
 | 8-1 | La enmienda en su conjunto (D-FIR-1…11) | (a) **aprobar y programar la capa A en la sesión siguiente**; (b) aprobar con cambios; (c) no aprobar | **(a)** |
-| 8-2 | De dónde sale la sensibilidad al ciclo (D-FIR-2) | (a) **una tasa de referencia larga que entrega la institución** (sistema o propia); (b) la historia de la propia cartera; (c) un coeficiente que declara la institución | **(a)**: (b) falla medido en las dos carteras reales; (c) sigue disponible en la puerta completa |
+| 8-2 | De dónde sale la sensibilidad al ciclo (D-FIR-2) y con qué condición se transfiere a la cartera | (a) **una tasa de referencia larga que entrega la institución** (sistema o propia), con el supuesto de transferencia uno a uno declarado en «Supuestos» y cuatro criterios en la guía que aplica quien firma —la misma cartera o producto, un evento cercano al de la curva (mora de 90 días o castigo), frecuencia trimestral o más fina, al menos un ciclo—; (b) la historia de la propia cartera; (c) un coeficiente que declara la institución | **(a)**: (b) falla medido en las dos carteras reales; (c) sigue disponible en la puerta completa; el motor no puede verificar qué mide una tasa externa |
 | 8-3 | El ancla (D-FIR-3) | (a) **con fechas, las condiciones de la ventana de la curva y reversión al largo plazo; sin fechas, el largo plazo declarado**; (b) siempre el largo plazo | **(a)**: (b) resta 9–12 puntos en las dos carteras reales cuando la curva se estimó en años buenos |
-| 8-4 | El SICR con PD de origen (D-FIR-8; resuelve D-CRE-4) | (a) **adoptarlo en la capa B**; (b) seguir difiriéndolo | **(a)**: es lo que pide 5.5.9 y el dato lo tiene el banco |
+| 8-4 | El SICR con PD de origen (D-FIR-8; resuelve D-CRE-4) y si el escenario mueve la etapa | (a) **adoptarlo en la capa B con la PD ponderada por escenario en la razón** (Lending Club 252, Freddie Mac 1); (b) adoptarlo sin el escenario en la razón (269 y 0: la macro sólo en el importe); (c) seguir difiriéndolo | **(a)**: es lo que piden 5.5.9, 5.5.11 y B5.5.17(f), y el dato lo tiene el banco |
 | 8-5 | Esenciales y argumentos | (a) **`provisioning_ifrs9` 10 → 12 (las dos PD) y `forward` con 3 en el trabajo de la pantalla; `Ecl` gana `scenarios`, `history`, `pd`, `origination_pd`**; (b) las dos PD sólo en «Avanzado» y en la puerta completa | **(a)**: sin ellas en la puerta, la PD del modelo y el SICR no llegan al usuario de `Ecl` |
 | 8-6 | Los datos del ejemplo (D-FIR-10) | (a) **sintéticos generados en el bloque de la guía, con sensibilidad conocida**; (b) tablas sintéticas en el catálogo del paquete; (c) un extracto real de la CMF por cartera (CC BY 4.0) y de la desocupación del INE (CC BY-SA 4.0) | **(a)**: cero licencias, reproducible, y es el precedente de S35 |
 | 8-7 | Releases (D-FIR-11) | (a) **A en 2.8.0, B en 2.9.0, C en 2.10.0**; (b) A + B en 2.8.0 y C en 2.9.0 | **(a)**: la capa A es la que falta para 5.5.17 y es la más grande |
@@ -644,19 +713,19 @@ anterior de `forward` ni Vasicek; no implementa stress (IHN-002); no toca CMF; n
 - **Entrada mínima:** la de CASO-REAL más, opcionales, dos tablas (historia de la tasa de referencia
   con su macro; escenarios con pesos) y dos columnas de la cartera (PD a 12 meses de hoy y de
   origen). Se infieren y se declaran: las variables macro (las columnas comunes a las dos tablas),
-  la escala de la tasa, la frecuencia de cada tabla, el tramo de calendario de cada período
+  la frecuencia de cada tabla, el tramo de calendario de cada período
   posterior al corte, el ancla, el horizonte del escenario y la reversión, y el desplazamiento de
   cada operación para anclarla a su PD.
 - **Qué NO se configura (§3.11):** el rezago, la forma y el estimador del satélite; el ancla; el
   largo y la forma de la reversión; la cobertura mínima de los escenarios; la regla del tramo de
-  calendario; que la etapa no la decide el escenario; la cota de la PD; los umbrales de «Qué
+  calendario; que la razón del SICR use la PD ponderada; la cota de la PD; los umbrales de «Qué
   revisar» y de la reconciliación; ningún peso por defecto.
 - **Campos esenciales:** `survival` 5 (sin cambio); `provisioning_ifrs9` **12** en la capa B (la
   excepción al tope de 6 de SDD-31 §12.1 se amplía, §8-5); `forward` **3** en el trabajo de la
   pantalla (la tabla de historia, la columna de la tasa —con su default— y los escenarios), capa C;
   el resto en «Avanzado».
-- **Presupuesto de perillas:** **tres** hojas (§3.11), cada una con su evidencia; cuatro opciones
-  nuevas en literales existentes.
+- **Presupuesto de perillas:** **tres** hojas (§3.11), cada una con su evidencia; tres opciones
+  nuevas en literales existentes y un gatillo nuevo del SICR.
 - **Resumen por etapa:** una etapa nueva, **«Escenarios»**, entre «Curva de PD» y «Provisión IFRS
   9»: qué tasa de referencia y qué ventana, la sensibilidad con su error y su sentido en palabras,
   el ancla (ventana de la curva o largo plazo) y la tabla de escenarios con sus pesos, el
