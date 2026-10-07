@@ -16,6 +16,13 @@
 > Mac) (§4); las cifras de §1.8 y §3.8 se re-midieron con la regla exacta de solape mensual y con
 > sólo los meses observados (§3.3), y son el oráculo; la ECL por escenario reconcilia sin redondear
 > con el puente de redondeo aparte (§3.1). Informe: `evidencia/s36/codex_p2_raw.txt`.
+> **Pasada 3** (un high, real; su parte contractual ya estaba en §8-2): el oráculo de Freddie Mac
+> usaba una referencia anual y de mora a 30 días, que los criterios de §8-2 excluían. Se re-midió
+> con la trimestral (+12,9 % en vez de +15,5 %) y se declara la excepción del evento: en hipotecas
+> de EE.UU. ninguna serie pública cumple los cuatro criterios (§3.2). **Con esto se cierra la
+> revisión de diseño en el tope declarado de tres pasadas** —cada una encontró menos y más acotado
+> (7 → 3 → 1)—; las dos decisiones contractuales que elevó Codex están en §8-2 y §8-4. Informe:
+> `evidencia/s36/codex_p3_raw.txt`.
 >
 > **Base medida:** `main` = `0e5e46f` (bayesrisk 2.7.0). Las cifras de la 2.7.0 se **reprodujeron
 > al peso** con el script de S35 sobre las tres carteras (paquete 4.786.739; Lending Club 3.254.890 /
@@ -77,8 +84,8 @@ Se propone, en tres capas:
    con la lectura por contrato), calcula la ECL de cada escenario y la pondera. Medido con los
    escenarios oficiales de la Reserva Federal publicados al corte y pesos ilustrativos: **Lending
    Club −1,8 %** (2019: desempleo de 3,6 %, bajo el de la historia de la curva) y **Freddie Mac
-   +15,5 %** (2026, con un severo de 10 % de desempleo); por escenario, de −9,6 % a +21,3 % en
-   consumo y de +0,1 % a +51,4 % en hipotecas.
+   +12,9 %** (2026, con un severo de 10 % de desempleo); por escenario, de −9,6 % a +21,3 % en
+   consumo y de 0,0 % a +42,9 % en hipotecas.
 2. **La PD de tu modelo y el aumento significativo del riesgo** (D-FIR-7…9, capa B). Dos columnas
    opcionales —la PD a 12 meses de hoy y la del otorgamiento— anclan la curva de cada operación a la
    PD de tu scorecard y comparan, para el mismo tramo de vida, el riesgo de hoy con el que se
@@ -272,21 +279,22 @@ Escenarios: los de la Reserva Federal **publicados al corte** de cada cartera (2
 Club, 2026 para Freddie Mac), desempleo trimestral. Pesos **ilustrativos** —no los publica nadie y
 son decisión de la institución—: 60/30/10 base/adverso/severo en Lending Club y 70/30 base/severo en
 Freddie Mac. Satélite del sistema de §1.4 (castigos de consumo en Lending Club; morosidad
-hipotecaria anual 1991–2025 en Freddie Mac, b = 0,273). Ancla y reversión de §3.3, y el tramo de
+hipotecaria trimestral 1991–2025 en Freddie Mac, b = 0,243). Ancla y reversión de §3.3, y el tramo de
 calendario de §3.1, con la regla **exacta** de solape mensual (pasada 2 de Codex; bloque 7 de
 `ciclo_y_escenarios.py`): son el oráculo de la capa A.
 
 | | Lending Club (2.805.408) | Freddie Mac (2.632.095) |
 |---|---|---|
-| Desempleo en la ventana de la historia de la curva (el ancla) | 4,82 % | 4,67 % |
+| Desempleo en la ventana de la historia de la curva (el ancla) | 4,82 % | 4,68 % |
 | Desempleo medio de largo plazo (serie de referencia) | 5,96 % | 5,68 % |
-| Base | 2.535.920 (**−9,6 %**) | 2.634.501 (+0,1 %) |
+| Base | 2.535.920 (**−9,6 %**) | 2.631.812 (0,0 %) |
 | Adverso | 2.976.059 (+6,1 %) | — |
-| Severo | 3.403.439 (**+21,3 %**) | 3.985.282 (**+51,4 %**) |
-| **Ponderada** | **2.754.714 (−1,8 %)** | **3.039.735 (+15,5 %)** |
-| Ponderada, con la curva tomada como de largo plazo (§3.3, alternativa) | 2.501.988 (−10,8 %) | 2.723.036 (+3,5 %) |
+| Severo | 3.403.439 (**+21,3 %**) | 3.762.279 (**+42,9 %**) |
+| **Ponderada** | **2.754.714 (−1,8 %)** | **2.970.952 (+12,9 %)** |
+| Ponderada, con la curva tomada como de largo plazo (§3.3, alternativa) | 2.501.988 (−10,8 %) | 2.701.710 (+2,6 %) |
 | Ponderada, con la morosidad de consumo en vez de los castigos | 2.774.786 (−1,1 %) | — |
-| Ponderada, con la sensibilidad de la propia historia (§1.3) | 2.939.013 (+4,8 %; el severo **−23,8 %**) | 2.632.506 (0,0 %) |
+| Ponderada, con la sensibilidad de la propia historia (§1.3) | 2.939.013 (+4,8 %; el severo **−23,8 %**) | 2.632.501 (0,0 %) |
+| Ponderada, con la historia de referencia anual (b = 0,273) | — | 3.039.735 (+15,5 %) |
 | Un desplazamiento uniforme de +0,25 en logit | +25,8 % | +9,9 % |
 
 En Lending Club, Stage 1 pesa casi toda la ECL y su ventana de 12 meses cae entera dentro del
@@ -383,9 +391,15 @@ referencia, el desplazamiento queda sesgado en la misma proporción. «Supuestos
 hay escenarios, con la columna y la ventana de la referencia. Los criterios de correspondencia
 —la misma cartera o producto, un evento cercano al incumplimiento de la curva (mora de 90 días o
 castigo, no mora de 30), frecuencia trimestral o más fina, al menos un ciclo— los decide Cami (§8-2)
-y los aplica quien firma: el motor no puede verificar qué mide una tasa externa. En la evidencia de
-esta enmienda, Lending Club usa castigos (su evento es el castigo) y Freddie Mac la morosidad de 30
-días (su evento es la mora de 90): esa diferencia es parte de la incertidumbre de su cifra.
+como **condiciones que la guía pide y quien firma documenta**, no como reglas del motor: el motor no
+puede verificar qué mide una tasa externa. Cuando ninguna serie pública las cumple, se usa la más
+cercana y se declara la excepción con su efecto (pasada 3 de Codex). Es el caso de las hipotecas de
+EE.UU.: los castigos netos del sistema (`CORSFRMACBS`) son cero o negativos en 31 de los 34
+trimestres desde 2018 —las recuperaciones superan a los castigos; no admiten logit— y la mora de 90
+días no es pública; el oráculo de Freddie Mac usa la morosidad de 30 días **trimestral** (cumple la
+frecuencia; con la anual la ponderada daba +15,5 % en vez de +12,9 %) y declara la excepción del
+evento: la de 30 días es más amplia que la de 90 y su sensibilidad puede no ser la del evento de
+la curva. Lending Club usa castigos de consumo y cumple los cuatro.
 
 **El motor dice lo que estimó** en el resumen de la etapa: `b_j` con su error, R², `n`, la ventana
 y, en palabras, el sentido («con más desempleo, la tasa de referencia sube»). «Qué revisar» alerta
@@ -445,7 +459,7 @@ faltan (un ancla material no se rellena con un neutro).
 
 **Por qué importa** (§1.8): en Lending Club la curva se estimó con 4,82 % de desempleo, no con el
 5,96 % de largo plazo; tomarla como de largo plazo resta 9,0 puntos a la ECL ponderada (−10,8 %
-frente a −1,8 %). En Freddie Mac, 12,0 puntos (+3,5 % frente a +15,5 %).
+frente a −1,8 %). En Freddie Mac, 10,3 puntos (+2,6 % frente a +12,9 %).
 
 **Qué NO se configura:** el ancla (la ventana de la curva si hay fechas; el largo plazo si no), el
 largo de la reversión (24 meses; del orden de +0,3 puntos en Freddie Mac, nada en Lending Club) ni su
@@ -567,8 +581,8 @@ Mac: ninguna (las viviendas se valorizaron). S33 había medido 255 con las regla
 el escenario en la razón** (`sicr_con_macro.py`, escenarios, pesos y regla exacta de §1.8):
 Lending Club **235** (el escenario base de 2019 baja el riesgo: 34 operaciones dejan de pasar; con
 la PD de hoy y los escenarios la ECL ponderada es 3.089.719, +10,1 %, frente a 3.092.168 sin el
-escenario en la razón) y Freddie Mac **ninguna** (con el ELTV de hoy y los escenarios, 2.580.805,
-−1,9 %). En una recesión la diferencia sería de carteras enteras: es lo que la norma pide.
+escenario en la razón) y Freddie Mac **ninguna** (con el ELTV de hoy y los escenarios, 2.534.865,
+−3,7 %). En una recesión la diferencia sería de carteras enteras: es lo que la norma pide.
 
 **Alternativas descartadas.** Comparar la PD de 12 meses de origen con la de hoy sin el tramo (en
 una hipoteca de diez años, la caída natural del riesgo con la edad escondería un deterioro).
@@ -649,8 +663,8 @@ capa C.
   corrida con la fila y el recordatorio de la unidad; y una o más variables macro numéricas finitas.
   Al menos 20 períodos para no alertar; al menos `variables + 2` para correr.
 - **Tabla de escenarios:** `scenario`, `weight` (constante por escenario), `date` y las mismas
-  variables. Su frecuencia es **independiente** de la de la historia (pasada 2 de Codex: Freddie
-  Mac usa historia anual y escenarios trimestrales): la historia estima la sensibilidad en su propia
+  variables. Su frecuencia es **independiente** de la de la historia (pasada 2 de Codex: la primera
+  medición de Freddie Mac usaba historia anual y escenarios trimestrales): la historia estima la sensibilidad en su propia
   frecuencia —y la sensibilidad depende de ella: en Freddie Mac, 0,273 con la anual y 0,243 con la
   trimestral; se declara— y cada tabla se lleva a los meses del tramo por solape (§3.1, §3.3).
 - **Cartera:** lo de FLUJO-GUIADO-IFRS9 §4 y CASO-REAL §4 más, opcionales, `pd_12m` y
@@ -721,8 +735,8 @@ anterior de `forward` ni Vasicek; no implementa stress (IHN-002); no toca CMF; n
 | # | Decisión | Opciones | Recomendación |
 |---|---|---|---|
 | 8-1 | La enmienda en su conjunto (D-FIR-1…11) | (a) **aprobar y programar la capa A en la sesión siguiente**; (b) aprobar con cambios; (c) no aprobar | **(a)** |
-| 8-2 | De dónde sale la sensibilidad al ciclo (D-FIR-2) y con qué condición se transfiere a la cartera | (a) **una tasa de referencia larga que entrega la institución** (sistema o propia), con el supuesto de transferencia uno a uno declarado en «Supuestos» y cuatro criterios en la guía que aplica quien firma —la misma cartera o producto, un evento cercano al de la curva (mora de 90 días o castigo), frecuencia trimestral o más fina, al menos un ciclo—; (b) la historia de la propia cartera; (c) un coeficiente que declara la institución | **(a)**: (b) falla medido en las dos carteras reales; (c) sigue disponible en la puerta completa; el motor no puede verificar qué mide una tasa externa |
-| 8-3 | El ancla (D-FIR-3) | (a) **con fechas, las condiciones de la ventana de la curva y reversión al largo plazo; sin fechas, el largo plazo declarado**; (b) siempre el largo plazo | **(a)**: (b) resta 9–12 puntos en las dos carteras reales cuando la curva se estimó en años buenos |
+| 8-2 | De dónde sale la sensibilidad al ciclo (D-FIR-2) y con qué condición se transfiere a la cartera | (a) **una tasa de referencia larga que entrega la institución** (sistema o propia), con el supuesto de transferencia uno a uno declarado en «Supuestos» y cuatro criterios que la guía pide y quien firma documenta —la misma cartera o producto, un evento cercano al de la curva (mora de 90 días o castigo), frecuencia trimestral o más fina, al menos un ciclo—, con la excepción declarada cuando ninguna serie pública los cumple (Freddie Mac); (b) la historia de la propia cartera; (c) un coeficiente que declara la institución | **(a)**: (b) falla medido en las dos carteras reales; (c) sigue disponible en la puerta completa; el motor no puede verificar qué mide una tasa externa |
+| 8-3 | El ancla (D-FIR-3) | (a) **con fechas, las condiciones de la ventana de la curva y reversión al largo plazo; sin fechas, el largo plazo declarado**; (b) siempre el largo plazo | **(a)**: (b) resta 9–10 puntos en las dos carteras reales cuando la curva se estimó en años buenos |
 | 8-4 | El SICR con PD de origen (D-FIR-8; resuelve D-CRE-4) y si el escenario mueve la etapa | (a) **adoptarlo en la capa B con la PD ponderada por escenario en la razón** (Lending Club 235, Freddie Mac 0, en 2019 y 2026); (b) adoptarlo sin el escenario en la razón (269 y 0: la macro sólo en el importe); (c) seguir difiriéndolo | **(a)**: es lo que piden 5.5.9, 5.5.11 y B5.5.17(f), y el dato lo tiene el banco |
 | 8-5 | Esenciales y argumentos | (a) **`provisioning_ifrs9` 10 → 12 (las dos PD) y `forward` con 3 en el trabajo de la pantalla; `Ecl` gana `scenarios`, `history`, `pd`, `origination_pd`**; (b) las dos PD sólo en «Avanzado» y en la puerta completa | **(a)**: sin ellas en la puerta, la PD del modelo y el SICR no llegan al usuario de `Ecl` |
 | 8-6 | Los datos del ejemplo (D-FIR-10) | (a) **sintéticos generados en el bloque de la guía, con sensibilidad conocida**; (b) tablas sintéticas en el catálogo del paquete; (c) un extracto real de la CMF por cartera (CC BY 4.0) y de la desocupación del INE (CC BY-SA 4.0) | **(a)**: cero licencias, reproducible, y es el precedente de S35 |
