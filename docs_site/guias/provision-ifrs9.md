@@ -214,9 +214,9 @@ declara:
   «Qué revisar» la cuenta con su monto.
 
 La lectura desde la edad supone que la duración de la historia de la curva cuenta desde el
-otorgamiento —como en este archivo—, y exige la curva de supervivencia por períodos discretos y
-la PD a 12 meses de esa misma curva: con otra configuración, la verificación previa lo avisa antes
-de correr. Una fila sin fecha o sin cuota se lee como sin ese dato; sin ninguna de las tres
+otorgamiento —como en este archivo—, y exige la curva de supervivencia por períodos discretos, la
+PD a 12 meses de esa misma curva y a lo largo del ciclo: con otra configuración, la verificación
+previa lo avisa antes de correr. Una fila sin fecha o sin cuota se lee como sin ese dato; sin ninguna de las tres
 columnas, la provisión es exactamente la de antes.
 
 ## La pantalla

@@ -7,7 +7,7 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
-## [No publicado]
+## [2.7.0] — 2026-10-07
 
 ### Añadido
 
@@ -23,8 +23,8 @@ entradas anteriores conservan el nombre con el que se publicaron.
   cada operación se extiende con la media de sus tres últimos períodos con incumplimientos: una
   curva por períodos sólo estima riesgo donde hubo incumplimientos, y su último período sin
   ninguno decía «ningún riesgo más allá». Sólo con la curva de supervivencia por períodos
-  discretos y la PD a 12 meses de esa misma curva; con otra configuración, la verificación previa
-  lo avisa antes de correr.
+  discretos, la PD a 12 meses de esa misma curva y a lo largo del ciclo; con otra configuración, la
+  verificación previa lo avisa antes de correr.
 - **La exposición amortiza con la cuota del contrato.** Una columna opcional con la cuota mensual
   (`provisioning_ifrs9.ead.installment_col`; `installment=` en `bayesrisk.Ecl`), que exige el
   vencimiento y la exposición entregada. La exposición de cada período es el saldo al inicio del
