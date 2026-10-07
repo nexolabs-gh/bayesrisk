@@ -670,7 +670,10 @@ que publica `discrete_hazard`; Stage 1 con `min(12 meses, L)` (el corte de 12 me
 los períodos contados desde el corte); vencida con saldo, un período; `max_lifetime_periods` acota
 la vida desde el corte y, con fechas, ya no trunca la curva publicada (la cola la lee); la cola
 desde el último período con incumplimientos de `events_by_period` (la card de la curva, que el paso
-pasa a requerir con fechas), con la media de los tres últimos. Las fechas se validan sólo en las
+pasa a requerir con fechas), con la media de los tres últimos períodos **con** incumplimientos,
+aunque no sean seguidos (pasada 2 de Codex: la primera versión promediaba los tres contiguos hasta
+el último; en Lending Club y Freddie Mac coinciden, porque todos sus períodos hasta ahí tienen
+incumplimientos). Las fechas se validan sólo en las
 operaciones con exposición (D-CRE-5): ilegible, otorgamiento posterior al corte y vencimiento
 anterior al otorgamiento detienen con la columna y la operación; una vacía es «sin fecha». Lo que
 se declara de la curva recibida —la unidad presumida, la LGD forward descartada y el horizonte de

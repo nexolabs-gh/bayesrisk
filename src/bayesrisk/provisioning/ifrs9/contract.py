@@ -302,8 +302,10 @@ def read_curve_by_contract(
         # DATO-INSTITUCIONAL-SUR-2): más allá de la curva, ningún riesgo.
         relleno = numpy.zeros(riesgos.shape[0], dtype=numpy.float64)
     else:
-        desde = max(ultimo - _PERIODOS_DE_LA_COLA, 0)
-        relleno = riesgos[:, desde:ultimo].mean(axis=1)
+        # Los tres últimos períodos CON incumplimientos, aunque no sean seguidos (pasada 2 de
+        # Codex): un período intermedio sin ninguno tiene su riesgo ≈ 0 y no entra al promedio.
+        ultimos = [p - 1 for p in con_eventos[-_PERIODOS_DE_LA_COLA:]]
+        relleno = riesgos[:, ultimos].mean(axis=1)
         extendidos[:, ultimo:] = relleno[:, None]
     with numpy.errstate(divide="ignore"):
         log_sobrevive = numpy.log1p(-extendidos)

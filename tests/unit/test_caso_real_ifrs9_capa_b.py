@@ -900,3 +900,24 @@ def test_el_informe_dice_solo_las_fechas_que_se_declararon() -> None:
     solo_vencimiento = _capitulo_con({"maturity_date_col": "vencimiento"})
     assert "vencimiento" in solo_vencimiento
     assert "antigüedad" not in solo_vencimiento
+
+
+def test_la_cola_promedia_los_ultimos_tres_con_incumplimientos_aunque_no_sean_seguidos() -> None:
+    """Codex p2 (medium): con incumplimientos en 1, 3 y 5, la cola es la media de esos tres
+    —0,10, 0,20 y 0,30—, no la de 3, 4 y 5, donde el 4 no tuvo ninguno."""
+    hazards = [0.10, 0.001, 0.20, 0.001, 0.30, 0.0005]
+    frame = _cartera(
+        days_past_due=[45],
+        otorgamiento=["2020-03-01"],  # 72 meses: 6 años, toda la vida en la cola
+        vencimiento=["2028-03-01"],  # 24 meses: 2 años
+    )
+    resultado = _calcular(
+        frame,
+        _curva(list(frame.index), hazards),
+        eventos={1: 5, 2: 0, 3: 4, 4: 0, 5: 3, 6: 0},
+    )
+    cola = (0.10 + 0.20 + 0.30) / 3
+    assert resultado.ecl_term_structure["pd_marginal"].tolist() == pytest.approx(
+        [cola, (1 - cola) * cola], rel=1e-12
+    )
+    assert resultado.card.tail_from_period == 6
