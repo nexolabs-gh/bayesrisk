@@ -1171,6 +1171,16 @@ por módulo bajo SDD-31, la primera
 > PD de la curva a LGD × EAD sube la ECL +39,8 % en el paquete y +98,0 % en Freddie Mac; la cola de
 > la curva sin incumplimientos decidía la cifra de las hipotecas que midió S32.
 
+> **IFRS 9 firmable (2026-10-07; propuesta en S36; primer eslabón de la cadena del banco; sin
+> programar).** [`_ENMIENDA-IFRS9-FIRMABLE.md`](_ENMIENDA-IFRS9-FIRMABLE.md), D-FIR-1…11, enmienda a
+> SDD-20, SDD-16, D-ECL-5 y D-CRE-4: escenarios ponderados con un ajuste por ciclo en logit por tramo
+> de calendario (la edad decide la forma de la curva, el calendario el desplazamiento), la
+> sensibilidad desde una tasa de referencia larga, el ancla en las condiciones de la ventana de la
+> curva, la PD del modelo del banco que ancla la curva y el SICR por tramo con la PD de origen.
+> 🔴 **Medido**: el satélite de `forward` ajusta contra la forma de la curva por edad (coeficiente
+> negativo, R² 0,002) y deja el escenario base igual a la TTC; Vasicek se aplica sobre la PD marginal;
+> la historia propia no identifica el ciclo en Lending Club ni en Freddie Mac.
+
 ## Tandas de producción
 
 | Tanda | SDDs | Foco | Pre-requisito |
