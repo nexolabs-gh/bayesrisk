@@ -201,7 +201,11 @@ describe("guardrail estático: esenciales abiertos y «Avanzado» plegado (D-FLU
   it("divide sólo las secciones que declaran esenciales y pinta el resto entero", () => {
     expect(cuerpo).toMatch(/if \(!declaresEssentials\(schema\)\) \{/)
     expect(cuerpo).toMatch(/<GroupedFields schema=\{schema\} inner=\{false\}/)
-    expect(cuerpo).toMatch(/essentialFields\(schema, defs\)/)
+    // Los esenciales sin subtítulo y, aparte, los que van juntos bajo el suyo (CASO-REAL-IFRS9
+    // §13: «Si tienes las fechas y la cuota del contrato»).
+    expect(cuerpo).toMatch(/essentialFields\(schema, defs, null\)/)
+    expect(cuerpo).toMatch(/essentialGroups\(schema, defs\)/)
+    expect(cuerpo).toMatch(/data-essential-group=\{etiqueta\}/)
     expect(cuerpo).toMatch(/advancedSchema\(schema, defs\)/)
   })
 

@@ -2651,7 +2651,15 @@ def _results_survival(bundle: ReportInputBundle) -> tuple[str, ...]:
     if provision is not None:
         term_source = str(provision.get("term_structure_source") or "")
         pit_mode = str(provision.get("pit_mode") or "")
-        if term_source == "survival" and pit_mode == "ttc_only":
+        if provision.get("contract_dates") is True:
+            # CASO-REAL-IFRS9 D-CRE-2 (§3.2-8): la lectura condicionada no es «tal cual».
+            paragraphs.append(
+                "La provisión de este capítulo no usa esta curva tal cual: la lee con las fechas "
+                "del contrato de cada operación —desde su antigüedad y hasta su vencimiento— y, "
+                "más allá del último período con incumplimientos observados, extiende el riesgo "
+                "con la media de los tres últimos."
+            )
+        elif term_source == "survival" and pit_mode == "ttc_only":
             atribucion = (
                 "La provisión de este capítulo parte de esta curva tal cual, a lo largo del ciclo."
             )
@@ -2673,6 +2681,39 @@ def _results_survival(bundle: ReportInputBundle) -> tuple[str, ...]:
                 f"proviene de {fuente}, en modalidad {pit}."
             )
     return tuple(paragraphs)
+
+
+def _lectura_por_contrato(bundle: ReportInputBundle, card: Mapping[str, Any]) -> str:
+    """La lectura de la curva con las fechas del contrato, en prosa (CASO-REAL-IFRS9 §3.2-3.3)."""
+    ifrs = _mapping(bundle.pipeline_params.get("provisioning_ifrs9"))
+    frases: list[str] = []
+    if ifrs.get("origination_date_col") is not None:
+        frases.append(
+            "la curva se lee desde la antigüedad de cada operación —los meses desde su "
+            "otorgamiento, sin redondear, con el riesgo constante dentro de cada período— y la PD "
+            "de cada período es la de incumplir en ese tramo dado que la operación sobrevivió "
+            "hasta hoy"
+        )
+    if ifrs.get("maturity_date_col") is not None:
+        frases.append(
+            "la vida de cada operación termina en su vencimiento contractual, y Stage 1 suma 12 "
+            "meses o la vida si es menor"
+        )
+    texto = f"Con las fechas del contrato, {'; '.join(frases)}."
+    cola = _int(card.get("tail_from_period"))
+    if cola is not None and _float(card.get("ead_beyond_observed_curve")):
+        texto += (
+            f" Más allá del período {_miles(cola - 1)} de la curva, el último con incumplimientos "
+            "observados, el riesgo de cada operación se extiende con la media de sus tres últimos "
+            "períodos con incumplimientos."
+        )
+    if _mapping(ifrs.get("ead")).get("installment_col") is not None:
+        texto += (
+            " La exposición de cada período es el saldo al inicio del período en la tabla de "
+            "pagos de la cuota del contrato, con la tasa implícita en la cuota; la operación sin "
+            "cuota, o cuya cuota no paga el saldo al vencimiento, la mantiene constante."
+        )
+    return texto
 
 
 def _results_provisioning_ifrs9(bundle: ReportInputBundle) -> tuple[str, ...]:
@@ -2704,6 +2745,8 @@ def _results_provisioning_ifrs9(bundle: ReportInputBundle) -> tuple[str, ...]:
         "La ECL de cada operación multiplica PD marginal, LGD y EAD periodo a periodo y descuenta "
         f"cada pérdida al presente; {horizontes}"
     )
+    if card.get("contract_dates") is True:
+        paragraphs.append(_lectura_por_contrato(bundle, card))
 
     # Mecanismo PD→lifetime (la pregunta que un validador hace primero): se describe desde la
     # card del survival —lo que la corrida ajustó de verdad—, no desde el preset. Solo aplica si

@@ -148,6 +148,14 @@ CASOS: tuple[tuple[str, str, dict[str, object], dict[str, object]], ...] = (
         {"method": "ccf", "limit_col": FANTASMA, "ccf_value": 0.4},
     ),
     (
+        # CASO-REAL-IFRS9 D-CRE-3: la tabla de pagos parte de la EAD entregada; con CCF el motor no
+        # abre la cuota (y el requisito de la sección raíz lo avisa, sin nombrar la columna).
+        "ead.installment_col",
+        "ead",
+        {"method": "ccf", "installment_col": FANTASMA, "ccf_value": 0.4},
+        {"method": "provided", "installment_col": FANTASMA},
+    ),
+    (
         # 🔴 Su condición NO es el `method`, y ahí estaba la trampa: dos de las tres ramas leen
         # `lgd_col` **sólo si `recovery_col is None`** (`lgd.py:128-132` y `:193-197`), y la tercera
         # (`workout`) no lo toca — con su validador exigiendo `recovery_col`, de modo que la

@@ -761,7 +761,7 @@ _HASHES_ANTES_DEL_ABANICO: dict[str, str] = {
     "f1-estandar-consumo": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
     "f3-provisiones-consumo": "857b06eef5aff267c36076641ffbdbf2fb17836511c206ea04fc5c160983886d",
     # CASO-REAL-IFRS9 D-CRE-1 (S34): el preset escribe Stage 3 = LGD × EAD; antes 013e69dc…
-    "f4-ifrs9-retail": "a3b7cf9b485cb194807b94017915ddc76df2fd7680aeb79bd501a03c05320ee9",
+    "f4-ifrs9-retail": "f688fce704ad36414a7c4e5f4e7c10e9455c9d50a0802b3f3ec90bb97ff4b9c7",
 }
 
 

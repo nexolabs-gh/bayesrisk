@@ -1307,6 +1307,10 @@
           "has_default": true,
           "value": null
         },
+        "installment_col": {
+          "has_default": true,
+          "value": null
+        },
         "limit_col": {
           "has_default": true,
           "value": "credit_limit"
@@ -3855,6 +3859,10 @@
             "has_default": true,
             "value": null
           },
+          "installment_col": {
+            "has_default": true,
+            "value": null
+          },
           "limit_col": {
             "has_default": true,
             "value": "credit_limit"
@@ -3915,6 +3923,14 @@
             "has_default": true,
             "value": "eir"
           }
+        },
+        "maturity_date_col": {
+          "has_default": true,
+          "value": null
+        },
+        "origination_date_col": {
+          "has_default": true,
+          "value": null
         },
         "pd": {
           "base_pd_source": {
@@ -8723,6 +8739,26 @@
             "ui_group": "EAD",
             "ui_help": "Reservada: el perfil de exposición EAD(t) por período aún no está implementado. Informar esta columna detiene la corrida con error, porque una columna escalar no puede representar la EAD período a período.",
             "ui_order": 7,
+            "ui_widget": "text_input"
+          },
+          "installment_col": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "column_role": "input",
+            "default": null,
+            "description": "Columna con la cuota mensual del contrato; con ella la exposición sigue la tabla de pagos hasta el vencimiento.",
+            "title": "Cuota del contrato",
+            "ui_essential": true,
+            "ui_essential_group": "Si tienes las fechas y la cuota del contrato",
+            "ui_group": "EAD",
+            "ui_help": "Opcional; exige la fecha de vencimiento y la EAD entregada. La exposición de cada período es el saldo al inicio del período en la tabla de cuota fija que paga el saldo de hoy justo al vencimiento, con la tasa implícita en la cuota (no la tasa efectiva). Si la cuota no alcanza a pagar el saldo en el plazo, la exposición queda constante hasta el vencimiento y se cuenta en «Qué revisar». Una fila sin cuota conserva la exposición constante.",
+            "ui_order": 8,
             "ui_widget": "text_input"
           },
           "limit_col": {
@@ -14441,6 +14477,46 @@
                 "ui_group": "LGD",
                 "ui_order": 1,
                 "ui_widget": "section"
+              },
+              "maturity_date_col": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "column_role": "input",
+                "default": null,
+                "description": "Columna con la fecha de vencimiento contractual; con ella la vida de cada operación termina en su vencimiento.",
+                "title": "Fecha de vencimiento",
+                "ui_essential": true,
+                "ui_essential_group": "Si tienes las fechas y la cuota del contrato",
+                "ui_group": "Columnas",
+                "ui_help": "Opcional. La vida de cada operación termina en su vencimiento contractual y el Stage 1 suma 12 meses o la vida, si es menor. Una operación ya vencida con saldo se provisiona con un período. Una fila sin fecha vive el horizonte de la curva. Más allá del último período de la curva con incumplimientos observados, el riesgo de cada operación se extiende con la media de sus tres últimos períodos con incumplimientos.",
+                "ui_order": 5,
+                "ui_widget": "text_input"
+              },
+              "origination_date_col": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "column_role": "input",
+                "default": null,
+                "description": "Columna con la fecha en que se otorgó cada operación; con ella la curva de PD se lee desde la antigüedad de la operación.",
+                "title": "Fecha de otorgamiento",
+                "ui_essential": true,
+                "ui_essential_group": "Si tienes las fechas y la cuota del contrato",
+                "ui_group": "Columnas",
+                "ui_help": "Opcional. Con esta fecha, la curva de PD se lee desde la antigüedad de cada operación —los meses desde el otorgamiento, sin redondear— y no desde su primer período. Supone que la duración de la historia de la curva cuenta desde el otorgamiento. Una fila sin fecha se lee desde el primer período. Exige la curva de supervivencia por períodos discretos.",
+                "ui_order": 4,
+                "ui_widget": "text_input"
               },
               "pd": {
                 "$ref": "#/$defs/provisioning_ifrs9__IfrsPdConfig",

@@ -79,7 +79,16 @@ def test_el_contexto_expone_exactamente_los_campos_declarados() -> None:
     # detiene antes de correr con un requisito por contexto». Lo llena la sección que publica
     # artefactos por operación (`identificador_de_filas_declarado`) y el núcleo lo transporta sin
     # interpretarlo, como `direccion_del_score`.
-    assert campos == {"secciones_activas", "direccion_del_score", "identificadores"}, (
+    # El cuarto, `metodos_de_ajuste`, entró por CASO-REAL-IFRS9 D-CRE-2 (§3.2-7, misma enmienda):
+    # «con otro método de supervivencia, la corrida se detiene antes de correr con un requisito por
+    # contexto». Lo llena la sección que ajusta una curva (`metodo_de_ajuste_declarado`) y el
+    # núcleo lo transporta sin interpretarlo, con el mismo molde que `identificadores`.
+    assert campos == {
+        "secciones_activas",
+        "direccion_del_score",
+        "identificadores",
+        "metodos_de_ajuste",
+    }, (
         f"ContextoConfig expone {sorted(campos)}. Un campo nuevo amplía lo que CADA sección puede "
         "saber del resto del config: se decide en el SDD (D-ABA-8), no al programar."
     )
@@ -258,7 +267,8 @@ def test_los_declarantes_del_protocolo_estan_inventariados() -> None:
     """
     # D-ECL-2 (S29): `data` avisa de una corrida de cartera con una etapa que modela.
     # CASO-REAL-IFRS9 D-CRE-6 (S34): `provisioning_ifrs9` avisa de una curva y una provisión que
-    # identifican las operaciones por columnas distintas (§3.6 de la enmienda).
+    # identifican las operaciones por columnas distintas (§3.6 de la enmienda); desde D-CRE-2
+    # (S35), también de las fechas del contrato con una curva que no es por períodos discretos.
     esperados = {"data", "performance", "provisioning_ifrs9", "stability"}
     for preset_id in _PRESETS:
         config = _config_de(preset_id)

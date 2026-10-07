@@ -70,6 +70,7 @@ import {
   declaresEssentials,
   errorsInsideAdvanced,
   essentialFields,
+  essentialGroups,
   insideAdvanced,
 } from "@/lib/essentials"
 import {
@@ -825,7 +826,8 @@ function ConfigSectionForm(props: {
     return <GroupedFields schema={schema} inner={false} renderField={renderField} />
   }
 
-  const esenciales = essentialFields(schema, defs)
+  const esenciales = essentialFields(schema, defs, null)
+  const grupos = essentialGroups(schema, defs)
   const avanzado = advancedSchema(schema, defs)
   const hojas = advancedLeaves(avanzado, defs, [sectionKey])
   const cambiados = countChangedAdvanced(hojas, config, effectiveDefaults)
@@ -840,7 +842,7 @@ function ConfigSectionForm(props: {
         className="space-y-5 rounded-xl border border-border bg-card p-5 shadow-card"
         data-essentials={sectionKey}
       >
-        {esenciales.length === 0 ? (
+        {esenciales.length === 0 && grupos.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Esta sección corre con sus valores de fábrica y no pide ninguna decisión tuya. Lo que
             quieras ajustar está en «{AVANZADO}».
@@ -848,6 +850,19 @@ function ConfigSectionForm(props: {
         ) : (
           esenciales.map((field) => renderField(field))
         )}
+        {/* CASO-REAL-IFRS9 §13: los esenciales opcionales que van juntos, bajo su subtítulo. El
+            sub-modelo que aporta una hoja (la cuota, en EAD) no repite su título: lo da el
+            subtítulo. */}
+        {grupos.map(({ etiqueta, campos }) => (
+          <div
+            key={etiqueta}
+            className="space-y-4 border-t border-border pt-4"
+            data-essential-group={etiqueta}
+          >
+            <p className="font-display text-sm font-medium text-foreground">{etiqueta}</p>
+            {campos.map((field) => renderField(field, true))}
+          </div>
+        ))}
       </div>
       {avanzado ? (
         <Accordion

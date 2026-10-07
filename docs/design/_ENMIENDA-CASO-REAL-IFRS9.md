@@ -9,7 +9,9 @@
 > controles negativos y revisión del código; la B después. Cada release y cada recaptura piden su OK
 > aparte.
 > **Capa A implementada en S34 (2026-10-06) y publicada en la 2.6.0** con la demo
-> recapturada: §9.
+> recapturada: §9. **Capa B implementada en S35 (2026-10-06)**, sin publicar: §10 —las cifras de
+> §3.2 y §3.3 salen con el motor al peso, y sin las tres columnas las tres carteras quedan bit a
+> bit—.
 > **Corregida tras la pasada 1 de Codex** (tres high y un medium, los cuatro reales y ninguno
 > contractual): la lectura condicionada se limita a curvas de supervivencia, de las que se conoce la
 > historia (§3.2-7); la EAD amortiza con la **cuota del contrato** y no con una tabla deducida de la
@@ -654,6 +656,77 @@ motivo esperado. Codex sobre el código (tope tres; criterio: `approve` o hallaz
 reales; lo contractual se eleva): p1 1 high + 1 medium, p2 1 medium, p3 2 medium; los cinco reales,
 ninguno contractual, todos corregidos con su test; revisión cerrada en el tope. Publicada en la
 **2.6.0** con la demo recapturada (OK de Cami del 2026-10-06).
+
+## 10. Capa B implementada (S35, 2026-10-06)
+
+**D-CRE-2.** `provisioning_ifrs9.origination_date_col` y `maturity_date_col` (y `origination=`,
+`maturity=` en `Ecl`), opcionales, con `column_role` de entrada y la marca de esencial. El módulo
+nuevo `provisioning/ifrs9/contract.py` arma la curva condicionada de cada operación y el resto del
+motor la consume como la de la fuente —descuento, ponderación por escenario y staging sin cambio—:
+la antigüedad y la vida en **meses de calendario** (fechas alineadas al mes dan meses enteros; las
+demás, la fracción del mes en curso) divididos por los meses de un período de la curva, sin
+redondear; la supervivencia por tramos con riesgo constante dentro del período, sobre el `hazard`
+que publica `discrete_hazard`; Stage 1 con `min(12 meses, L)` (el corte de 12 meses del motor sobre
+los períodos contados desde el corte); vencida con saldo, un período; `max_lifetime_periods` acota
+la vida desde el corte y, con fechas, ya no trunca la curva publicada (la cola la lee); la cola
+desde el último período con incumplimientos de `events_by_period` (la card de la curva, que el paso
+pasa a requerir con fechas), con la media de los tres últimos. Las fechas se validan sólo en las
+operaciones con exposición (D-CRE-5): ilegible, otorgamiento posterior al corte y vencimiento
+anterior al otorgamiento detienen con la columna y la operación; una vacía es «sin fecha». Lo que
+se declara de la curva recibida —la unidad presumida, la LGD forward descartada y el horizonte de
+12 meses (D-ECL-0)— se mide sobre la curva publicada, antes de leerla por contrato (§3.2-8).
+
+**Requisitos por contexto.** En la sección: fechas con `forward`/`markov` y con la base
+`calibration`, y la cuota sin vencimiento o con `ead.method = "ccf"` (anclados a la hoja nueva). El
+método de la curva es de otra sección: **`ContextoConfig` gana un cuarto campo, `metodos_de_ajuste`**
+(protocolo `metodo_de_ajuste_declarado`, que declara `SurvivalConfig`), con el mismo molde que
+`identificadores` de la capa A; el gate de los campos del DTO lo registra con su razón. Por código,
+sin preflight, el motor y el paso se detienen con la misma causa.
+
+**D-CRE-3.** `provisioning_ifrs9.ead.installment_col` (`installment=` en `Ecl`): la EAD de cada
+período es el saldo al inicio del período en la tabla de cuota fija con la tasa mensual implícita
+(bisección en `[0, 1]`); con `c · n < B`, constante y contada; sin cuota en una fila, constante.
+`FALTA-DATO-IFRS-4` se retira de las operaciones que siguen la tabla y la card lo declara sólo si
+alguna la conserva. `columnas_inactivas` de `IfrsEadConfig` gana la cuota con `method != provided`
+(oráculo bidireccional en `test_columna_en_rama_inactiva.py`).
+
+**Salidas aditivas.** La card gana `contract_dates`, `n_matured_with_balance`,
+`ead_matured_with_balance`, `tail_from_period`, `ead_beyond_observed_curve`, `n_amortizing`,
+`n_installment_not_amortizing` y `ead_installment_not_amortizing` (las tres de §3.2 y lo que
+«Supuestos», «Qué revisar» y la pantalla necesitan leer con su monto); con fechas, y sólo entonces,
+`detail` gana `age_periods`/`life_periods` y `ecl_term_structure` gana `curve_start`/`curve_end`,
+para que una corrida sin las fechas publique las mismas tablas bit a bit.
+
+**Copy.** «Provisión IFRS 9» dice cómo se leyó la curva y la exposición; «Supuestos», la
+antigüedad, la vida contractual, la cola y la tabla de pagos; «Qué revisar», las vencidas con saldo,
+la exposición más allá de lo observado y las cuotas que no alcanzan, cada una con su monto. El
+capítulo IFRS 9 del informe trata la lectura condicionada como «no tal cual» y la describe; la ficha
+metodológica dice la tabla de pagos; la pantalla deja de pintar la curva de supervivencia como la
+consumida, y la nota del runoff y la salvedad de la landing dicen la tabla.
+
+**Pantalla.** Esenciales de `provisioning_ifrs9` 7 → 10 (golden de catorce secciones, su espejo y
+`essentials.test.ts`). Las tres van juntas bajo «Si tienes las fechas y la cuota del contrato»: una
+clave de presentación nueva, `ui_essential_group`, con el subtítulo en el schema; la poda por vista
+admite un grupo, y la cuota sale de su bloque EAD sin llevarse la columna de la EAD. Verificado en
+vivo (`evidencia/s35/cap_pantalla_contrato*.jpg`).
+
+**Medido con el motor** (`evidencia/s35/medir_capa_b.py`, los parquet de `evidencia/s32/`):
+
+| | Capa A (2.6.0) | D-CRE-2 | D-CRE-2 + 3 | Oráculo de §3.2/§3.3 |
+|---|---|---|---|---|
+| Lending Club | 3.254.890 | **3.315.758** (S1 3.102.159, S2 213.599) | **2.805.331** | 3.315.758 / 2.805.331 |
+| Freddie Mac | 3.028.897 | **2.706.204** (S1 750.410, S2 270.512) | **2.632.095** | 1.207.403 + Stage 3 = 2.706.204 / 2.632.095 |
+
+Al peso en las cuatro. Lending Club: 221 vencidas con saldo, 1.055 cuotas que no alcanzan, 8.538 en
+tabla, cola desde el período 21 (3.888 de exposición más allá); Freddie Mac: cola desde el 11, el
+~100 % de la exposición más allá. **Sin las tres columnas**, los 14 artefactos de `survival` y
+`provisioning_ifrs9` del paquete (F4 = `Ecl`), de Lending Club y de Freddie Mac son bit a bit los de
+la capa A (digest de la proyección canónica, salvo los campos nuevos de la card).
+
+**Las cinco cifras.** 21 líneas · `survival` 5 y `provisioning_ifrs9` **10** · perillas **233** (158 +
+24 + 51) · ~1 s al primer resumen · 5 conceptos. `HOJAS_DEL_FORMULARIO` 574 → 577, hojas con
+default efectivo 458 → 461, descriptores 1084 → 1088 (medido contra el HEAD: 4 apariciones, 0
+desapariciones, 0 alterados). El ledger de opciones no se mueve (sólo registra `Literal`).
 
 ## 13. Simplicidad (SDD-31)
 

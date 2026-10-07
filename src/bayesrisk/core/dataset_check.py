@@ -98,6 +98,16 @@ METODO_CONVENCION_SCORE = "direccion_del_score_declarada"
 #: ``survival.input.id_col``. La sección lo declara; el núcleo lo transporta sin interpretarlo.
 METODO_IDENTIFICADOR_DE_FILAS = "identificador_de_filas_declarado"
 
+#: Nombre del método con que una sección que **ajusta una curva** declara con qué método la ajusta
+#: (CASO-REAL-IFRS9, D-CRE-2, §3.2-7). Lo consume :func:`_metodos_de_ajuste` para llenar
+#: :attr:`ContextoConfig.metodos_de_ajuste`.
+#:
+#: Existe por la misma razón que :data:`METODO_IDENTIFICADOR_DE_FILAS`: la provisión sólo puede leer
+#: la curva desde la edad de cada operación si la curva publica sus incumplimientos por período, y
+#: eso lo hace un único método. El núcleo no debe conocer ``survival.method``: la sección lo
+#: declara y el núcleo lo transporta sin interpretarlo.
+METODO_METODO_DE_AJUSTE = "metodo_de_ajuste_declarado"
+
 #: Igual que el anterior, pero para las invariantes que necesitan **estadísticas** del dataset y no
 #: sólo sus nombres de columna (enmienda PERFIL-DE-COLUMNAS, D-PERF-4). Va por un método propio y no
 #: ampliando el de arriba: aquel lo implementan cuatro secciones, y añadirle un parámetro obligaría
@@ -296,6 +306,15 @@ class ContextoConfig:
     archivo»; una sección ausente es que no corre o no lo declara, y quien lo lea no supone nada
     de ella. Lo llena :func:`_identificadores` vía :data:`METODO_IDENTIFICADOR_DE_FILAS`; quien no
     lo lea sigue funcionando igual.
+    """
+
+    metodos_de_ajuste: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
+    """Con qué método ajusta su curva cada sección ACTIVA que lo declara (D-CRE-2, §3.2-7).
+
+    Cuarto campo, con el mismo molde que :attr:`identificadores`: la provisión que lee la curva
+    desde la edad de cada operación necesita sus incumplimientos por período, que sólo publica un
+    método. Lo llena :func:`_metodos_de_ajuste` vía :data:`METODO_METODO_DE_AJUSTE`; el valor es
+    un ``str`` opaco que el núcleo no interpreta, y quien no lo lea sigue funcionando igual.
     """
 
 
@@ -568,6 +587,24 @@ def _identificadores(config: BayesRiskConfig, activas: frozenset[str]) -> Mappin
         if callable(metodo):
             declarado = metodo()
             declarados[nombre] = None if declarado is None else str(declarado)
+    return MappingProxyType(declarados)
+
+
+def _metodos_de_ajuste(config: BayesRiskConfig, activas: frozenset[str]) -> Mapping[str, str]:
+    """El método de ajuste que declara cada sección raíz ACTIVA y tipada (D-CRE-2, §3.2-7).
+
+    Mismo recorrido que :func:`_identificadores`.
+    """
+    declarados: dict[str, str] = {}
+    for nombre in type(config).model_fields:
+        if nombre not in activas:
+            continue
+        seccion = getattr(config, nombre, None)
+        if not isinstance(seccion, BaseModel):
+            continue
+        metodo = getattr(seccion, METODO_METODO_DE_AJUSTE, None)
+        if callable(metodo):
+            declarados[nombre] = str(metodo())
     return MappingProxyType(declarados)
 
 
@@ -857,6 +894,7 @@ def check_dataset(
         secciones_activas=activas,
         direccion_del_score=_direccion_del_score(config, activas),
         identificadores=_identificadores(config, activas),
+        metodos_de_ajuste=_metodos_de_ajuste(config, activas),
     )
     for ruta, requisito in _requisitos(
         config, frozenset(presentes), perfil=column_profile, contexto=contexto

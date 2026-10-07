@@ -87,6 +87,19 @@ class Ecl(_PuertaGuiada):
     default
         La marca de incumplimiento (verdadero/falso), opcional: sin ella el Stage 3 lo asigna sólo
         la mora, y se declara.
+    origination, maturity
+        Las fechas de otorgamiento y de vencimiento contractual de cada operación, opcionales
+        (fechas AAAA-MM-DD o columnas de tipo fecha; una fila vacía es «sin fecha»). Con ellas la
+        curva de PD se lee desde la antigüedad de cada operación —sin redondear— y la vida termina
+        en su vencimiento (IFRS 9 5.5.19); el Stage 1 suma 12 meses o la vida, si es menor. Una
+        operación ya vencida con saldo se provisiona con un período. Más allá del último período de
+        la curva con incumplimientos observados, el riesgo se extiende con la media de los tres
+        últimos. Supone que ``duration`` cuenta desde el otorgamiento.
+    installment
+        La cuota mensual del contrato, opcional; exige ``maturity``. La exposición de cada período
+        sigue la tabla de pagos de esa cuota hasta el vencimiento, con la tasa implícita en la
+        cuota (no ``rate``). Si la cuota no alcanza a pagar el saldo en el plazo, la exposición
+        queda constante y se cuenta en «Qué revisar».
     duration, event
         La historia de incumplimientos que alimenta la curva de PD: cuánto tiempo se observó cada
         operación (entero ≥ 1, en la unidad de ``period``) y si incumplió (0/1).
@@ -127,6 +140,9 @@ class Ecl(_PuertaGuiada):
         rate: str,
         days_past_due: str,
         default: str | None = None,
+        origination: str | None = None,
+        maturity: str | None = None,
+        installment: str | None = None,
         duration: str,
         event: str,
         period: str,
@@ -160,6 +176,11 @@ class Ecl(_PuertaGuiada):
                 },
                 id=id,
                 default=default,
+                contrato={
+                    "origination": origination,
+                    "maturity": maturity,
+                    "installment": installment,
+                },
                 period=period,
                 horizon=horizon,
                 covariates=covariates,
@@ -183,6 +204,7 @@ class Ecl(_PuertaGuiada):
         columnas: Mapping[str, str],
         id: str | None,
         default: str | None,
+        contrato: Mapping[str, str | None],
         period: str,
         horizon: int | None,
         covariates: Sequence[str] | None,
@@ -228,7 +250,19 @@ class Ecl(_PuertaGuiada):
                 f"covariates= incluye {', '.join(fugas)}, que es la historia de la curva "
                 "(duration= o event=): entraría como predictora de sí misma."
             )
-        declaradas = [*columnas.values(), *([default] if default is not None else []), *covariables]
+        if contrato["installment"] is not None and contrato["maturity"] is None:
+            raise EclInputError(
+                f"installment={contrato['installment']!r} necesita maturity=: la cuota arma la "
+                "tabla de pagos hasta el vencimiento de cada operación, y sin vencimiento no hay "
+                "plazo."
+            )
+        del_contrato = [c for c in contrato.values() if c is not None]
+        declaradas = [
+            *columnas.values(),
+            *([default] if default is not None else []),
+            *del_contrato,
+            *covariables,
+        ]
         faltan = [c for c in dict.fromkeys(declaradas) if c not in frame.columns]
         if faltan:
             raise EclInputError(
@@ -358,6 +392,10 @@ class Ecl(_PuertaGuiada):
         ifrs["ecl"]["eir_col"] = columnas["rate"]
         ifrs["staging"]["days_past_due_col"] = columnas["days_past_due"]
         ifrs["staging"]["is_default_col"] = default
+        # CASO-REAL-IFRS9 D-CRE-2 y D-CRE-3: las tres columnas del contrato, opcionales.
+        ifrs["origination_date_col"] = contrato["origination"]
+        ifrs["maturity_date_col"] = contrato["maturity"]
+        ifrs["ead"]["installment_col"] = contrato["installment"]
         report = cfg["report"]
         report["output_dir"] = str(self._reports_dir)
         if document:

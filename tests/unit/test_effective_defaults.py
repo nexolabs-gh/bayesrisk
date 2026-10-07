@@ -114,7 +114,12 @@ from bayesrisk.ui.routes import schema_payload
 #: 576 → 574 el 2026-09-28 con D-NOV-2 (CATEGORIAS-NO-VISTAS): ``binning.cat_unknown`` pasa a
 #: ``hidden`` —sólo admite el vacío y se rechaza otro valor al validar—. Un campo, dos nodos: el
 #: formulario lo pintaba como número o texto. Hojas resueltas 459 → 458.
-HOJAS_DEL_FORMULARIO = 574
+#:
+#: 574 → 577 el 2026-10-06 con la capa B de CASO-REAL-IFRS9 (D-CRE-2/3, §3.8; Cami, 2026-10-05):
+#: las tres hojas opcionales del contrato en ``provisioning_ifrs9`` —``origination_date_col``,
+#: ``maturity_date_col`` y ``ead.installment_col``—, cada una con su evidencia de que el default
+#: falla en un caso real. Tres hojas de texto, tres nodos. Hojas resueltas 458 → 461.
+HOJAS_DEL_FORMULARIO = 577
 
 #: Hojas que el barrido de PARIDAD contra el catálogo de defaults efectivos resuelve.
 #:
@@ -148,7 +153,9 @@ HOJAS_DEL_FORMULARIO = 574
 #: consume_stability`` del golden de arriba: un ``bool`` con default ``True``, sin unión
 #: discriminada, resuelve con default efectivo.
 #: 459 → 458 el 2026-09-28 con D-NOV-2: ``binning.cat_unknown`` sale del formulario (``hidden``).
-HOJAS_CON_DEFAULT_EFECTIVO = 458
+#: 458 → 461 el 2026-10-06 con la capa B de CASO-REAL-IFRS9: las tres hojas del contrato, sin
+#: unión discriminada y con default ``None``, resuelven con default efectivo.
+HOJAS_CON_DEFAULT_EFECTIVO = 461
 
 #: Descriptores de hoja que el barrido de paridad compara, en las DOS coordenadas (`$defs` y
 #: `sections`). Segundo golden, por la misma razón que el de 394: un barrido que recorra menos
@@ -240,7 +247,12 @@ HOJAS_CON_DEFAULT_EFECTIVO = 458
 #: ``usuario``, ``value``)—, **0 desapariciones** y **0 valores alterados**. El formulario no
 #: la pinta (no está en ``CONFIG_SECTIONS``): sus censos de hojas, perillas y esenciales no se
 #: mueven.
-DESCRIPTORES_TOTALES = 1084
+#:
+#: 1084 → 1088 el 2026-10-06 con la capa B de CASO-REAL-IFRS9: las dos fechas de la sección raíz
+#: aparecen una vez cada una (``sections.provisioning_ifrs9.{origination_date_col,
+#: maturity_date_col}``) y la cuota dos —``$defs.provisioning_ifrs9__IfrsEadConfig`` y
+#: ``sections.provisioning_ifrs9.ead``—, por la regla de los precedentes; ningún valor alterado.
+DESCRIPTORES_TOTALES = 1088
 
 
 #: Las 16 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de

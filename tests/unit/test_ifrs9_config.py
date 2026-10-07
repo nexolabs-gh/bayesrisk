@@ -61,6 +61,9 @@ def _ifrs9_defaults() -> dict[str, Any]:
         "row_id_col": None,
         "portfolio_col": "portfolio",
         "portfolio_scheme": None,
+        # CASO-REAL-IFRS9 D-CRE-2 (capa B): las fechas del contrato, opcionales.
+        "origination_date_col": None,
+        "maturity_date_col": None,
         "pd": {
             "term_structure_source": "survival",
             "base_pd_source": "term_structure",
@@ -88,6 +91,8 @@ def _ifrs9_defaults() -> dict[str, Any]:
             "ccf_col": None,
             "ccf_value": None,
             "exposure_profile_col": None,
+            # CASO-REAL-IFRS9 D-CRE-3 (capa B): la cuota del contrato, opcional.
+            "installment_col": None,
         },
         "staging": {
             "sicr_pd_ratio_threshold": 2.0,

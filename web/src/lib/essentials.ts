@@ -103,8 +103,9 @@ export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
     "governance.purpose",
     "governance.review_period_months",
   ],
-  // FLUJO-GUIADO-IFRS9 D-ECL-6: las columnas de la curva y de la provisión (la de IFRS 9 trae siete,
-  // la única excepción al tope de seis, §8-4).
+  // FLUJO-GUIADO-IFRS9 D-ECL-6: las columnas de la curva y de la provisión (la de IFRS 9 trae diez,
+  // la única excepción al tope de seis, §8-4; de siete a diez por CASO-REAL-IFRS9 §8-3: las tres
+  // del contrato, opcionales).
   survival: [
     "survival.input.covariate_cols",
     "survival.input.duration_col",
@@ -115,8 +116,11 @@ export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
   provisioning_ifrs9: [
     "provisioning_ifrs9.as_of_date_col",
     "provisioning_ifrs9.ead.ead_col",
+    "provisioning_ifrs9.ead.installment_col",
     "provisioning_ifrs9.ecl.eir_col",
     "provisioning_ifrs9.lgd.lgd_col",
+    "provisioning_ifrs9.maturity_date_col",
+    "provisioning_ifrs9.origination_date_col",
     "provisioning_ifrs9.portfolio_col",
     "provisioning_ifrs9.staging.days_past_due_col",
     "provisioning_ifrs9.staging.is_default_col",
@@ -218,6 +222,16 @@ function isSubmodel(target: JsonSchema): boolean {
   )
 }
 
+/**
+ * ¿El esencial va en el bloque pedido? ``grupo`` sin declarar (``undefined``) es «todos»: la
+ * poda de siempre. ``null`` es «los sin subtítulo»; un texto, los de ese subtítulo
+ * (``ui_essential_group``, CASO-REAL-IFRS9 §13).
+ */
+function enGrupo(schema: JsonSchema, grupo: string | null | undefined): boolean {
+  if (grupo === undefined) return true
+  return (schema.ui_essential_group ?? null) === grupo
+}
+
 /** Las claves del campo declarado que viajan con él aunque se copie el sub-modelo. */
 function outerKeys(schema: JsonSchema): JsonSchema {
   const rest: Record<string, unknown> = {}
@@ -243,9 +257,12 @@ export function pruneForView(
   defs: Defs,
   vista: Vista,
   visited: readonly string[] = [],
+  grupo?: string | null,
 ): JsonSchema | null {
   if (isHiddenField(schema)) return null
-  if (schema.ui_essential === true) return vista === "essential" ? schema : null
+  if (schema.ui_essential === true) {
+    return vista === "essential" && enGrupo(schema, grupo) ? schema : null
+  }
   const { schema: base, nullable } = unwrapNullable(schema)
   const ref = refKey(base)
   if (ref !== undefined && visited.includes(ref)) {
@@ -253,16 +270,20 @@ export function pruneForView(
   }
   const seen = ref === undefined ? visited : [...visited, ref]
   const target = resolveRef(base, defs)
-  if (target.ui_essential === true) return vista === "essential" ? schema : null
+  if (target.ui_essential === true) {
+    return vista === "essential" && enGrupo(base, grupo) ? schema : null
+  }
   if (!isSubmodel(target)) {
     const essential = hasEssentialInside(target, defs, seen)
-    return (vista === "essential") === essential ? schema : null
+    // Una unión o lista atómica con marcas dentro va con los esenciales sin subtítulo.
+    const enSuGrupo = vista !== "essential" || grupo === undefined || grupo === null
+    return (vista === "essential") === essential && enSuGrupo ? schema : null
   }
   const kept: Record<string, JsonSchema> = {}
   let intact = true
   const props = target.properties ?? {}
   for (const [name, child] of Object.entries(props)) {
-    const part = pruneForView(child, defs, vista, seen)
+    const part = pruneForView(child, defs, vista, seen, grupo)
     if (part === null) {
       // Un campo `hidden` no cuenta: la vista lo omite igual que el formulario entero.
       if (!isHiddenField(child)) intact = false
@@ -302,15 +323,65 @@ function campoDeSeccion(sectionSchema: JsonSchema, name: string, schema: JsonSch
  * Los esenciales de la sección, planos y en el orden en que el formulario los pintaría (grupo de
  * declaración, luego `ui_order`), cada uno podado a sus hojas marcadas.
  */
-export function essentialFields(sectionSchema: JsonSchema, defs: Defs): SectionField[] {
+export function essentialFields(
+  sectionSchema: JsonSchema,
+  defs: Defs,
+  grupo?: string | null,
+): SectionField[] {
   const out: SectionField[] = []
   for (const group of groupedFields(sectionSchema)) {
     for (const [name, schema] of group.fields) {
-      const part = pruneForView(campoDeSeccion(sectionSchema, name, schema), defs, "essential")
+      const part = pruneForView(
+        campoDeSeccion(sectionSchema, name, schema),
+        defs,
+        "essential",
+        [],
+        grupo,
+      )
       if (part !== null) out.push([name, part])
     }
   }
   return out
+}
+
+/** Un bloque de esenciales opcionales que van juntos bajo su subtítulo (CASO-REAL-IFRS9 §13). */
+export interface EssentialGroup {
+  etiqueta: string
+  campos: SectionField[]
+}
+
+/**
+ * Los subtítulos (`ui_essential_group`) que declaran los esenciales de la sección, en el orden en
+ * que aparecen, cada uno con sus campos podados a las hojas de ese subtítulo —también las que
+ * cuelgan de un sub-modelo, como la cuota en `ead`—. Los esenciales sin subtítulo los da
+ * `essentialFields(schema, defs, null)`.
+ */
+export function essentialGroups(sectionSchema: JsonSchema, defs: Defs): EssentialGroup[] {
+  const etiquetas: string[] = []
+  const recorrer = (schema: JsonSchema, visited: readonly string[]): void => {
+    if (isHiddenField(schema)) return
+    const { schema: base } = unwrapNullable(schema)
+    const etiqueta = schema.ui_essential_group ?? base.ui_essential_group
+    if ((schema.ui_essential === true || base.ui_essential === true) && etiqueta) {
+      if (!etiquetas.includes(etiqueta)) etiquetas.push(etiqueta)
+      return
+    }
+    const ref = refKey(base)
+    if (ref !== undefined && visited.includes(ref)) return
+    const target = resolveRef(base, defs)
+    if (!isSubmodel(target)) return
+    const seen = ref === undefined ? visited : [...visited, ref]
+    for (const group of groupedFields(target)) {
+      for (const [, child] of group.fields) recorrer(child, seen)
+    }
+  }
+  for (const group of groupedFields(sectionSchema)) {
+    for (const [, schema] of group.fields) recorrer(schema, [])
+  }
+  return etiquetas.map((etiqueta) => ({
+    etiqueta,
+    campos: essentialFields(sectionSchema, defs, etiqueta),
+  }))
 }
 
 /**

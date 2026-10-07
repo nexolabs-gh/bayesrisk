@@ -1161,7 +1161,8 @@ por módulo bajo SDD-31, la primera
 > sale el doble sin aviso (6,86 M frente a 3,42 M).
 
 > **El caso real de IFRS 9 (2026-10-05; tres pasadas de Codex; **aprobada por Cami** el
-> 2026-10-05; capa A implementada en S34 y publicada en la 2.6.0; B en la 2.7.0).**
+> 2026-10-05; capa A implementada en S34 y publicada en la 2.6.0; capa B implementada en S35,
+> para la 2.7.0).**
 > [`_ENMIENDA-CASO-REAL-IFRS9.md`](_ENMIENDA-CASO-REAL-IFRS9.md), D-CRE-1…8, enmienda a SDD-16,
 > SDD-18 y [`_ENMIENDA-FLUJO-GUIADO-IFRS9.md`](_ENMIENDA-FLUJO-GUIADO-IFRS9.md) con lo que midieron
 > Lending Club y Freddie Mac: Stage 3 con PD = 1, vida contractual y antigüedad con dos fechas

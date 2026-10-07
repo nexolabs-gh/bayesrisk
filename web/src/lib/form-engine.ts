@@ -51,6 +51,12 @@ export interface JsonSchema {
    */
   ui_essential?: boolean
   /**
+   * Subtítulo bajo el que la pantalla agrupa esenciales OPCIONALES que van juntos (CASO-REAL-IFRS9
+   * §13: «Si tienes las fechas y la cuota del contrato»). El texto viene del schema, como el
+   * título del campo; sin la clave, el esencial va con los demás. Se copia en `unwrapNullable`.
+   */
+  ui_essential_group?: string
+  /**
    * Marca de SECCIÓN (`json_schema_extra` del modelo, `declara_esenciales` en el core): la sección
    * ya declaró sus esenciales, aunque sean cero (`eda`). Sólo con ella el formulario divide
    * esenciales/«Avanzado»; sin ella —un módulo que aún no pasó por su enmienda— se pinta entera.
@@ -296,6 +302,7 @@ export function unwrapNullable(schema: JsonSchema): {
         ui_order: schema.ui_order ?? base.ui_order,
         ui_help: schema.ui_help ?? base.ui_help,
         ui_essential: schema.ui_essential ?? base.ui_essential,
+        ui_essential_group: schema.ui_essential_group ?? base.ui_essential_group,
         column_role: schema.column_role ?? base.column_role,
         column_values_from: schema.column_values_from ?? base.column_values_from,
       },

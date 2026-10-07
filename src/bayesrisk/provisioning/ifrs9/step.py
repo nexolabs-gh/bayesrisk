@@ -26,6 +26,7 @@ Nomenclatura IFRS 9 (regla dura D-CONV-1): ``pd``/``lgd``/``ead``.
 from __future__ import annotations
 
 import importlib
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Final, TypeAlias, cast
 
 from bayesrisk.core.audit import AuditEvent
@@ -65,6 +66,8 @@ IFRS9_PROVISIONING_ARTIFACTS: Final[tuple[str, ...]] = (
     "card",
 )
 _CALIBRATION_SOURCE: Final = "calibration"
+#: El único método de survival que publica los incumplimientos por período (CASO-REAL-IFRS9 §3.2-7).
+_METODO_POR_PERIODOS: Final = "discrete_hazard"
 _IFRS9_EXTRA_MESSAGE: Final = "IfrsProvisioningStep requiere pandas; instale bayesrisk[scoring]."
 
 
@@ -110,6 +113,7 @@ class IfrsProvisioningStep(AuditableMixin):
             f"{cfg.pd.term_structure_source}.term_structure",
         ).copy(deep=True)
         calibrated_pd = _calibrated_pd_if_required(study, config=cfg, pd=pd)
+        events_by_period = _events_by_period_if_required(study, config=cfg)
 
         from bayesrisk.provisioning.ifrs9.engine import IfrsProvisioningEngine
 
@@ -120,6 +124,7 @@ class IfrsProvisioningStep(AuditableMixin):
             calibrated_pd=None if calibrated_pd is None else calibrated_pd.copy(deep=True),
             as_of_date=as_of_date,
             audit=self,
+            events_by_period=events_by_period,
         )
         self._log_ifrs_decisions(config=cfg, result=result, term_structure=term_structure)
         self._publish_artifacts(study, result)
@@ -262,6 +267,25 @@ class IfrsProvisioningStep(AuditableMixin):
             },
             accion="calcular_ecl",
         )
+        if card.contract_dates:
+            # CASO-REAL-IFRS9 D-CRE-2 y D-CRE-3: sólo con las fechas del contrato, para que una
+            # corrida sin ellas registre exactamente lo de antes.
+            self.log_decision(
+                regla="ifrs9_vida_contractual",
+                umbral={
+                    "origination_date_col": config.origination_date_col,
+                    "maturity_date_col": config.maturity_date_col,
+                    "installment_col": config.ead.installment_col,
+                },
+                valor={
+                    "tail_from_period": card.tail_from_period,
+                    "ead_beyond_observed_curve": card.ead_beyond_observed_curve,
+                    "n_matured_with_balance": card.n_matured_with_balance,
+                    "n_amortizing": card.n_amortizing,
+                    "n_installment_not_amortizing": card.n_installment_not_amortizing,
+                },
+                accion="leer_la_curva_desde_la_edad_de_cada_operacion",
+            )
         # D-HOR-0: `ifrs9_ecl` registra la CONVENCIÓN configurada; esta decisión registra lo
         # OBSERVADO en la curva que llegó, que es lo que decide el exponente del descuento. Sin
         # ella, un auditor no puede distinguir una curva declarada en años de una que se presumió.
@@ -286,6 +310,10 @@ def _requires_for(config: IfrsProvisioningConfig) -> tuple[ArtifactKey, ...]:
     if config.pd.base_pd_source == _CALIBRATION_SOURCE:
         requires.append(("calibration", "calibrated_pd_frame"))
     requires.append((config.pd.term_structure_source, "term_structure"))
+    if config.lee_fechas_del_contrato() and config.pd.term_structure_source == "survival":
+        # CASO-REAL-IFRS9 §3.2-7: la cola de la curva se extiende desde su último período con
+        # incumplimientos, que publica la card de la curva; el DAG detecta su ausencia antes.
+        requires.append(("survival", "card"))
     return tuple(requires)
 
 
@@ -310,6 +338,32 @@ def _calibrated_pd_if_required(
         pd,
         "calibration.calibrated_pd_frame",
     ).copy(deep=True)
+
+
+def _events_by_period_if_required(
+    study: Study, *, config: IfrsProvisioningConfig
+) -> dict[int, int] | None:
+    """Los incumplimientos por período de la curva, sólo con las fechas del contrato (§3.2-5).
+
+    Los publica ``discrete_hazard`` en la sección ``person_period`` de su card; con otro método no
+    hay de dónde extender la cola y se detiene con la causa (por código no pasa por el preflight,
+    que lo avisa antes de correr). Con otra fuente de curva no se leen: el motor detiene la
+    corrida con su propio mensaje.
+    """
+    if not config.lee_fechas_del_contrato() or config.pd.term_structure_source != "survival":
+        return None
+    card = _require_artifact(study, "survival", "card")
+    datos = card if isinstance(card, Mapping) else cast(Any, card).model_dump()
+    if datos.get("method") != _METODO_POR_PERIODOS:
+        raise IfrsConfigError(
+            "Con las fechas del contrato la curva de PD se lee desde la edad de cada operación, y "
+            "la cola de la curva se extiende desde su último período con incumplimientos: sólo la "
+            "supervivencia por períodos discretos los publica "
+            f"(la curva usó {datos.get('method')!r})."
+        )
+    seccion = dict(datos.get("metric_sections") or {}).get("person_period") or {}
+    eventos = dict(seccion).get("events_by_period") or {}
+    return {int(periodo): int(n) for periodo, n in dict(eventos).items()}
 
 
 def _ifrs_config_from_study(

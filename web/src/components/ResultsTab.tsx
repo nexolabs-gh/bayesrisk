@@ -370,8 +370,12 @@ export function ResultsPanel({
   // leyó de `survival` y no la transformó (TTC): con escenarios prospectivos (`forward`) o con el
   // ajuste Vasicek consumió OTRA curva, y atribuirle ésta sería falso (pasada 2 de Codex sobre la
   // capa B). Entonces se queda en su etapa, plegada en el resumen, y no junto al bloque IFRS 9.
+  // Tampoco con las fechas del contrato (CASO-REAL-IFRS9 D-CRE-2): la provisión la leyó desde la
+  // antigüedad de cada operación y hasta su vencimiento, con la cola extendida, no tal cual.
   const curvaConsumida =
-    ifrs9?.term_structure_source === "survival" && ifrs9?.pit_mode === "ttc_only"
+    ifrs9?.term_structure_source === "survival" &&
+    ifrs9?.pit_mode === "ttc_only" &&
+    ifrs9?.contract_dates !== true
   const curvaDePd = curvaConsumida
     ? (results.summaries?.stages.find((etapa) => etapa.stage === "survival")?.extra_tables ?? [])
     : []
@@ -519,7 +523,7 @@ export function ResultsPanel({
               description="La forma del riesgo en el tiempo: la pérdida esperada (ECL) período a período (marginal) y su acumulada. Es distinta de la provisión contable reportada arriba."
             >
               <Ifrs9TermStructureChart points={ifrs9Term} />
-              <Ifrs9RunoffNote headline={ifrs9Head} />
+              <Ifrs9RunoffNote headline={ifrs9Head} amortizing={ifrs9?.n_amortizing ?? 0} />
             </ResultsSection>
           ) : null}
 
@@ -2914,16 +2918,25 @@ function Ifrs9StageCard({ stage }: { stage: Ifrs9StageRow }) {
  * motor lo declara (`FALTA-DATO-IFRS-4`), que la curva asume EAD constante por período — una
  * simplificación conocida, no una amortización modelada. Sobria, sin letra chica ni alarmismo.
  */
-function Ifrs9RunoffNote({ headline }: { headline: Ifrs9Headline }) {
+function Ifrs9RunoffNote({
+  headline,
+  amortizing,
+}: {
+  headline: Ifrs9Headline
+  /** Operaciones cuya exposición sigue la tabla de pagos de su cuota (CASO-REAL-IFRS9 D-CRE-3). */
+  amortizing: number
+}) {
   const eadConstant = headline.faltaDato.includes("FALTA-DATO-IFRS-4")
   return (
     <p className="text-[0.7rem] leading-relaxed text-muted-foreground">
       Runoff <span className="font-medium text-foreground">lifetime</span> de la cartera: la ECL
       acumulada del último período NO iguala la ECL reportada ({formatMoney(headline.reportedEcl)}),
       que trunca por stage (12 meses en Stage 1).{" "}
-      {eadConstant
-        ? "La curva asume exposición (EAD) constante por período: una simplificación conocida, no una amortización modelada."
-        : null}
+      {eadConstant && amortizing > 0
+        ? "La exposición sigue la tabla de pagos de la cuota del contrato; las operaciones sin cuota, o cuya cuota no paga el saldo al vencimiento, la mantienen constante."
+        : eadConstant
+          ? "La curva asume exposición (EAD) constante por período: una simplificación conocida, no una amortización modelada."
+          : null}
     </p>
   )
 }

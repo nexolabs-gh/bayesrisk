@@ -6,8 +6,10 @@ esenciales sin decirlo aquí) y **una entrada del golden sin marca** también (n
 silencio). El tope vigente es **6 por sección** (Cami, 2026-09-18, SDD-31 §12.1) y se mide sobre lo
 que la pantalla muestra a la vez: en una unión discriminada —la estrategia de partición— cuenta
 la rama con más esenciales, no la suma de todas, porque el formulario pinta una rama por vez. Su
-única excepción es ``provisioning_ifrs9`` con **7** (FLUJO-GUIADO-IFRS9 §8-4, Cami, 2026-10-03): las
-siete columnas de la entrada mínima de la provisión, la marca de incumplimiento incluida.
+única excepción es ``provisioning_ifrs9`` con **10** (FLUJO-GUIADO-IFRS9 §8-4, Cami, 2026-10-03, con
+7: las siete columnas de la entrada mínima de la provisión, la marca de incumplimiento incluida;
+ampliada a 10 por CASO-REAL-IFRS9 §8-3, Cami, 2026-10-05: las tres columnas opcionales del contrato,
+otorgamiento, vencimiento y cuota).
 """
 
 from __future__ import annotations
@@ -19,14 +21,15 @@ from typing import Any, Final
 from bayesrisk.ui.routes import schema_payload
 
 TOPE_ESENCIALES_POR_SECCION: Final = 6
-#: La única excepción al tope, sólo para esta sección (FLUJO-GUIADO-IFRS9 §8-4).
-EXCEPCION_AL_TOPE: Final[dict[str, int]] = {"provisioning_ifrs9": 7}
+#: La única excepción al tope, sólo para esta sección (FLUJO-GUIADO-IFRS9 §8-4; 7 → 10 por
+#: CASO-REAL-IFRS9 §8-3).
+EXCEPCION_AL_TOPE: Final[dict[str, int]] = {"provisioning_ifrs9": 10}
 
 #: Los caminos marcados, por sección, tal como los pinta la tabla §3.8 de la enmienda del
 #: scorecard (39 marcas en sus 12 secciones; ``eda`` no tiene ninguna: todo default, el resumen lo
-#: muestra) y la §3.7 de FLUJO-GUIADO-IFRS9 (``survival`` 5 y ``provisioning_ifrs9`` 7): 51 marcas
-#: y 49 caminos en 14 secciones. Un mismo camino puede vivir en varias ramas de una unión
-#: (``holdout_fraction``) y se lista una vez.
+#: muestra) y la §3.7 de FLUJO-GUIADO-IFRS9 (``survival`` 5 y ``provisioning_ifrs9`` 7, 10 desde
+#: CASO-REAL-IFRS9 §8-3): 54 marcas y 52 caminos en 14 secciones. Un mismo camino puede vivir en
+#: varias ramas de una unión (``holdout_fraction``) y se lista una vez.
 ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
     "data": (
         "data.load.source",
@@ -90,6 +93,10 @@ ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
         "provisioning_ifrs9.portfolio_col",
         "provisioning_ifrs9.staging.days_past_due_col",
         "provisioning_ifrs9.staging.is_default_col",
+        # CASO-REAL-IFRS9 D-CRE-8 (§8-3): las tres del contrato, opcionales.
+        "provisioning_ifrs9.origination_date_col",
+        "provisioning_ifrs9.maturity_date_col",
+        "provisioning_ifrs9.ead.installment_col",
     ),
 }
 
@@ -109,7 +116,7 @@ ESENCIALES_VISIBLES_A_LA_VEZ: Final[dict[str, int]] = {
     "report": 5,
     "governance": 3,
     "survival": 5,
-    "provisioning_ifrs9": 7,
+    "provisioning_ifrs9": 10,
 }
 
 
@@ -191,9 +198,9 @@ def test_el_golden_cubre_las_catorce_secciones() -> None:
     """Las doce del scorecard y las dos de cálculo de IFRS 9: survival y provisioning_ifrs9."""
     assert len(ESENCIALES_POR_SECCION) == 14
     assert set(_secciones()) == set(ESENCIALES_POR_SECCION)
-    # 37 caminos del scorecard (39 marcas: un camino de la partición vive en varias ramas) y 12
-    # de IFRS 9.
-    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 49
+    # 37 caminos del scorecard (39 marcas: un camino de la partición vive en varias ramas) y 15
+    # de IFRS 9 (12 hasta CASO-REAL-IFRS9 §8-3).
+    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 52
 
 
 def test_cada_marca_del_schema_esta_en_el_golden_y_cada_entrada_del_golden_esta_marcada() -> None:

@@ -1666,7 +1666,13 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     const f4 = demoF4 as unknown as ResultsResponse
     expect(f4.provisioning_ifrs9?.term_structure_source).toBe("survival")
     expect(f4.provisioning_ifrs9?.pit_mode).toBe("ttc_only")
-    for (const cambio of [{ term_structure_source: "forward" }, { pit_mode: "apply_vasicek" }]) {
+    // Tampoco con las fechas del contrato: la provisión leyó la curva desde la antigüedad de cada
+    // operación y hasta su vencimiento (CASO-REAL-IFRS9 D-CRE-2).
+    for (const cambio of [
+      { term_structure_source: "forward" },
+      { pit_mode: "apply_vasicek" },
+      { contract_dates: true },
+    ]) {
       const otra = render({
         ...f4,
         provisioning_ifrs9: { ...f4.provisioning_ifrs9!, ...cambio },
@@ -1681,6 +1687,21 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     const sc = render({ ...minima(null), summaries: resumenes })
     expect(sc).toContain("Validación técnica")
     expect(sc).not.toContain("Curva de PD por cartera")
+  })
+
+  it("la nota del runoff dice la tabla de pagos cuando alguna operación la sigue", () => {
+    // CASO-REAL-IFRS9 D-CRE-3: con la cuota del contrato, «EAD constante» deja de ser cierto para
+    // las operaciones que siguen su tabla de pagos.
+    const f4 = demoF4 as unknown as ResultsResponse
+    expect(f4.provisioning_ifrs9?.falta_dato).toContain("FALTA-DATO-IFRS-4")
+    const constante = render(f4)
+    expect(constante).toContain("La curva asume exposición (EAD) constante por período")
+    const conCuota = render({
+      ...f4,
+      provisioning_ifrs9: { ...f4.provisioning_ifrs9!, n_amortizing: 5 },
+    })
+    expect(conCuota).toContain("sigue la tabla de pagos de la cuota del contrato")
+    expect(conCuota).not.toContain("La curva asume exposición (EAD) constante por período")
   })
 
   it("guardrail estático: el bloque lee `summaries` y no calcula ni formatea nada", () => {

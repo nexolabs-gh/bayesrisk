@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import importlib
 import math
+from collections.abc import Mapping
 from importlib import metadata
 from typing import TYPE_CHECKING, Any, ClassVar, Self, TypeAlias, cast
 
@@ -35,6 +36,12 @@ from bayesrisk.core.exceptions import MissingDependencyError
 from bayesrisk.core.markers import governable_warnings, is_declared_warning
 from bayesrisk.core.time_units import year_fraction
 from bayesrisk.provisioning.ifrs9.config import IfrsProvisioningConfig
+from bayesrisk.provisioning.ifrs9.contract import (
+    ContractReading,
+    check_contract_config,
+    read_contract_terms,
+    read_curve_by_contract,
+)
 from bayesrisk.provisioning.ifrs9.ead import EadEngine
 from bayesrisk.provisioning.ifrs9.ecl import EclEngine, validate_scenario_weights
 from bayesrisk.provisioning.ifrs9.exceptions import (
@@ -133,12 +140,18 @@ _HORIZONTE_ANIO_TOL: float = 0.25
 # abortar por él dejaría el motor inservible con su propio valor por defecto. Que no detenga no lo
 # absuelve: su arreglo es CT-3, y CRP-7 ya lo tiene asignado.
 _STRUCTURAL_WARNINGS: frozenset[str] = frozenset({"FALTA-DATO-IFRS-4"})
+# CASO-REAL-IFRS9 D-CRE-3: con la cuota del contrato, la operación que sigue la tabla de pagos deja
+# de tener la EAD constante y pierde este aviso; las demás lo conservan (§3.3).
+_WARNING_CONSTANT_EAD: str = "FALTA-DATO-IFRS-4"
 
 # Rótulo hermano de ``ecl_by_scenario`` en ``metric_sections``. Esa cifra y ``total_ecl_reported``
 # difieren por construcción, pero salían pegadas en el anexo de auditoría sin nada que lo explicara
 # —y una diferencia de ~2x sin rótulo se lee como descuadre contable. El texto viaja en el propio
 # artefacto, no en la plantilla del informe, para que acompañe a la cifra dondequiera que se lea
 # ``results`` (anexo, payload de la UI, consumidor externo).
+# CASO-REAL-IFRS9 D-CRE-2 (§3.2): el tramo de la curva que lee cada período posterior al corte.
+_CURVE_SEGMENT_COLUMNS: tuple[str, ...] = ("curve_start", "curve_end")
+
 _ECL_BY_SCENARIO_BASIS: str = (
     "Diagnóstico auditable de la term-structure, no un desglose de total_ecl_reported: "
     "suma la ECL marginal descontada de cada escenario por separado, sin aplicar scenario_weights "
@@ -178,6 +191,8 @@ _DETAIL_COLUMNS: tuple[str, ...] = (
     "pd_basis",
     "warning_codes",
 )
+# CASO-REAL-IFRS9 D-CRE-2 (§3.2): sólo con las fechas del contrato (espejo de ``results.py``).
+_DETAIL_CONTRACT_COLUMNS: tuple[str, ...] = ("age_periods", "life_periods")
 _SUMMARY_COLUMNS: tuple[str, ...] = (
     "portfolio",
     "stage",
@@ -215,6 +230,7 @@ class IfrsProvisioningEngine:
         calibrated_pd: DataFrame | None = None,
         as_of_date: str,
         audit: AuditSink | None = None,
+        events_by_period: Mapping[int, int] | None = None,
     ) -> IfrsProvisionResult:
         """Calcula la ECL IFRS 9 por operación y ensambla el :class:`IfrsProvisionResult`.
 
@@ -233,6 +249,11 @@ class IfrsProvisioningEngine:
             Fecha de cálculo/cierre contable de la provisión (texto no vacío).
         audit
             Sink de auditoría opcional (el step orquestador registra las decisiones de §9).
+        events_by_period
+            Los incumplimientos de la historia de la curva por período (``person_period`` de la
+            card de ``discrete_hazard``). Sólo se leen con las fechas del contrato
+            (CASO-REAL-IFRS9 D-CRE-2): la cola de la curva se extiende desde el último período
+            con incumplimientos.
 
         Returns
         -------
@@ -257,6 +278,7 @@ class IfrsProvisioningEngine:
         pandas = _import_pandas()
         config = self._config
         _validate_as_of_date(as_of_date)
+        check_contract_config(config, events_by_period)
 
         frame = _as_dataframe(frame, pandas, "data.frame").copy(deep=True)
         ts = _as_dataframe(term_structure, pandas, "term_structure").copy(deep=True)
@@ -292,6 +314,13 @@ class IfrsProvisioningEngine:
             ead_arr = ead_arr[posiciones]
         portfolios = _frame_column_texts(frame, config.portfolio_col, "portfolio_col")
         eir_arr = _frame_float_column(frame, config.ecl.eir_col, "eir", numpy)
+        # CASO-REAL-IFRS9 D-CRE-2 y D-CRE-3: las fechas y la cuota del contrato, leídas y validadas
+        # sólo en las operaciones con exposición, antes de tocar la curva.
+        terms = (
+            read_contract_terms(frame, config, as_of_date=as_of_date, row_ids=row_ids)
+            if config.lee_fechas_del_contrato()
+            else None
+        )
 
         if sin_exposicion and "row_id" in ts.columns:
             # D-CRE-5: la curva de una fila sin exposición tampoco se valida ni decide el horizonte
@@ -305,10 +334,36 @@ class IfrsProvisioningEngine:
         # infiere de la unidad de la curva, antes de que nada lo lea; declarado, no se toca. Los
         # tres que lo usan —la PD a 12 meses, el chequeo D-ECL-0 y la ECL— reciben este número.
         horizonte_12m = effective_horizon_12m(config.pd.horizon_12m_periods, ts)
-        ts = _prepare_term_structure(ts, config, numpy)
+        # Con las fechas, la vida de cada operación la corta el contrato y `max_lifetime_periods`
+        # la acota desde el corte (§3.2-3): la curva publicada no se trunca, que la cola la lee.
+        ts = _prepare_term_structure(ts, config, numpy, truncar_vida=terms is None)
         _check_row_coverage(row_ids, [str(value) for value in ts["row_id"].to_numpy()])
+        # Lo que se declara de la curva RECIBIDA —la LGD forward descartada, la unidad presumida y
+        # el horizonte de 12 meses que no dura un año (D-ECL-0)— se mide sobre la curva publicada,
+        # antes de leerla por contrato (§3.2-8).
+        lgd_forward = _ts_lgd_present(ts)
+        sin_unidad = _ts_row_ids_sin_unidad(ts)
+        horizonte_inconmensurable = _horizonte_inconmensurable(ts, horizonte_12m, numpy)
 
         weights = self._resolve_weights(ts, numpy)
+        lectura: ContractReading | None = None
+        if terms is not None:
+            lectura = read_curve_by_contract(
+                ts,
+                terms=terms,
+                row_ids=row_ids,
+                ead_by_rid=dict(zip(row_ids, (float(v) for v in ead_arr), strict=True)),
+                events_by_period=cast("Mapping[int, int]", events_by_period),
+                max_lifetime=config.pd.max_lifetime_periods,
+            )
+            ts = lectura.term_structure
+            # D-CRE-3: una operación que sigue la tabla de pagos ya no tiene la EAD constante.
+            row_warnings = [
+                tuple(c for c in codes if c != _WARNING_CONSTANT_EAD)
+                if rid in lectura.amortizing
+                else codes
+                for rid, codes in zip(row_ids, row_warnings, strict=True)
+            ]
         pit_marginal = self._resolve_pit_marginal(ts, config, numpy)
         ts = ts.assign(pd_marginal=pit_marginal)
 
@@ -320,14 +375,13 @@ class IfrsProvisioningEngine:
         pd_pit_arr = numpy.array([pd_12m_by_rid[rid] for rid in row_ids], dtype=numpy.float64)
 
         lgd_arr = self._estimate_lgd(frame, eir_arr, numpy, pandas)
-        if _ts_lgd_present(ts):
+        if lgd_forward:
             row_warnings = [(*codes, _WARNING_LGD_FORWARD_IGNORED) for codes in row_warnings]
         # Por `row_id` y no en bloque, a diferencia de IFRS-6: con `forward` conviven filas que
         # declaran la unidad y filas que no. La marca sale sea cual sea `discount_convention`,
         # porque describe una propiedad del INPUT y no de una rama de cálculo aguas abajo:
         # condicionarla a la convención haría que la misma curva sea «declarada» o «no declarada»
         # según un ajuste posterior, que es el agujero que D-HOR-0 cierra.
-        sin_unidad = _ts_row_ids_sin_unidad(ts)
         if sin_unidad:
             row_warnings = [
                 (*codes, _WARNING_TIME_UNIT_ASSUMED) if rid in sin_unidad else codes
@@ -336,7 +390,7 @@ class IfrsProvisioningEngine:
         # En bloque, a diferencia de IFRS-7: el horizonte es un escalar de config. Se mide curva a
         # curva (D-ECL-0), pero basta una desajustada para que la «ECL a 12 meses» de la corrida
         # no lo sea, y la marca la gobierna `fail_on_falta_dato` para la corrida entera.
-        if _horizonte_inconmensurable(ts, horizonte_12m, numpy):
+        if horizonte_inconmensurable:
             row_warnings = [(*codes, _WARNING_HORIZON_MISMATCH) for codes in row_warnings]
         stage_arr, triggers, exempt = self._assign_staging(frame, pd_life_arr, pd_pit_arr, pandas)
 
@@ -344,7 +398,14 @@ class IfrsProvisioningEngine:
         ead_by_rid = dict(zip(row_ids, (float(value) for value in ead_arr), strict=True))
         eir_by_rid = dict(zip(row_ids, (float(value) for value in eir_arr), strict=True))
 
-        components = _components_frame(ts, row_ids, lgd_by_rid, ead_by_rid, pandas)
+        components = _components_frame(
+            ts,
+            row_ids,
+            lgd_by_rid,
+            ead_by_rid,
+            pandas,
+            ead_por_periodo=None if lectura is None else lectura.ead,
+        )
         ecl_ts, ecl_detail = EclEngine.from_config(config.ecl).compute(
             components,
             eir=pandas.Series(eir_arr, index=row_ids),
@@ -352,6 +413,8 @@ class IfrsProvisioningEngine:
             weights=weights,
             horizon_12m=horizonte_12m,
         )
+        if lectura is not None:
+            ecl_ts = _con_tramo_de_la_curva(ecl_ts, components)
 
         pd_basis = "ttc" if config.pd.pit_mode == "ttc_only" else "pit"
         origination = _origination_pd_life(frame, config, numpy)
@@ -377,6 +440,7 @@ class IfrsProvisioningEngine:
             ecl_term_structure=ecl_ts,
             as_of_date=as_of_date,
             n_rows_without_exposure=n_sin_exposicion,
+            lectura=lectura,
             pandas=pandas,
         )
 
@@ -487,6 +551,7 @@ class IfrsProvisioningEngine:
         ecl_term_structure: DataFrame,
         as_of_date: str,
         n_rows_without_exposure: int,
+        lectura: ContractReading | None,
         pandas: Any,
     ) -> IfrsProvisionResult:
         """Construye ``staging``/``detail``/``summary``, los registros y la card (SDD-16 §4/§6)."""
@@ -564,6 +629,14 @@ class IfrsProvisioningEngine:
                     "scenario_weights": dict(context.weights),
                     "pd_basis": context.pd_basis,
                     "warning_codes": warnings,
+                    **(
+                        {}
+                        if lectura is None
+                        else {
+                            "age_periods": lectura.age_periods[rid],
+                            "life_periods": lectura.life_periods[rid],
+                        }
+                    ),
                 }
             )
             stage_records.append(
@@ -596,7 +669,10 @@ class IfrsProvisioningEngine:
                 )
             )
         staging = pandas.DataFrame(staging_rows, columns=list(_STAGING_COLUMNS))
-        detail = pandas.DataFrame(detail_rows, columns=list(_DETAIL_COLUMNS))
+        detail = pandas.DataFrame(
+            detail_rows,
+            columns=[*_DETAIL_COLUMNS, *(() if lectura is None else _DETAIL_CONTRACT_COLUMNS)],
+        )
         summary = _summary_frame(detail_rows, pandas)
         card = self._build_card(
             detail_rows=detail_rows,
@@ -605,6 +681,7 @@ class IfrsProvisioningEngine:
             as_of_date=as_of_date,
             ecl_term_structure=ecl_term_structure,
             n_rows_without_exposure=n_rows_without_exposure,
+            lectura=lectura,
         )
         return IfrsProvisionResult(
             staging=staging,
@@ -625,6 +702,7 @@ class IfrsProvisioningEngine:
         as_of_date: str,
         ecl_term_structure: DataFrame,
         n_rows_without_exposure: int,
+        lectura: ContractReading | None,
     ) -> IfrsProvisionCard:
         """Construye la ``IfrsProvisionCard`` CT-2 con totales, conteos y secciones métricas."""
         stages = [int(row["stage"]) for row in detail_rows]
@@ -677,6 +755,7 @@ class IfrsProvisioningEngine:
             n_stage1=stages.count(1),
             n_stage2=stages.count(2),
             n_stage3=stages.count(3),
+            **({} if lectura is None else _campos_del_contrato(lectura)),
             total_ead=total_ead,
             total_ecl_reported=total_ecl,
             scenarios=tuple(weights),
@@ -859,7 +938,9 @@ def _time_unit_values(ts: DataFrame) -> list[str | None]:
     ]
 
 
-def _prepare_term_structure(ts: DataFrame, config: IfrsProvisioningConfig, numpy: Any) -> DataFrame:
+def _prepare_term_structure(
+    ts: DataFrame, config: IfrsProvisioningConfig, numpy: Any, *, truncar_vida: bool = True
+) -> DataFrame:
     """Normaliza ``scenario``, convierte ``time_value`` a años y trunca por ``max_lifetime``.
 
     La conversión vive aquí —y no en ``EclEngine``— porque esta es la función que normaliza lo que
@@ -892,7 +973,7 @@ def _prepare_term_structure(ts: DataFrame, config: IfrsProvisioningConfig, numpy
     prepared[_TS_SCENARIO_COLUMN] = scenario
     prepared[_TS_YEARS_COLUMN] = years
     max_lifetime = config.pd.max_lifetime_periods
-    if max_lifetime is not None:
+    if max_lifetime is not None and truncar_vida:
         prepared = prepared.loc[period <= max_lifetime].copy(deep=True)
         if prepared.shape[0] == 0:
             raise IfrsTermStructureError(
@@ -1145,27 +1226,72 @@ def _components_frame(
     lgd_by_rid: dict[str, float],
     ead_by_rid: dict[str, float],
     pandas: Any,
+    *,
+    ead_por_periodo: NDArrayFloat | None = None,
 ) -> DataFrame:
-    """Arma la malla tidy de componentes para ``EclEngine`` en orden del ``frame`` (SDD-16 §7)."""
+    """Arma la malla tidy de componentes para ``EclEngine`` en orden del ``frame`` (SDD-16 §7).
+
+    ``ead_por_periodo`` es la exposición de cada fila de ``ts`` cuando la operación sigue la tabla
+    de pagos de su cuota (CASO-REAL-IFRS9 D-CRE-3); sin ella, la de la operación en cada período.
+    Con la curva leída por contrato, la malla lleva además el tramo de la curva de cada período.
+    """
     order = {rid: index for index, rid in enumerate(row_ids)}
     ts_row_ids = [str(value) for value in ts["row_id"].to_numpy()]
-    components = pandas.DataFrame(
-        {
-            "row_id": ts_row_ids,
-            "scenario": [str(value) for value in ts[_TS_SCENARIO_COLUMN].tolist()],
-            "period": ts["period"].to_numpy(),
-            "time_value": ts["time_value"].to_numpy(),
-            "time_value_years": ts[_TS_YEARS_COLUMN].to_numpy(),
-            "pd_marginal": ts["pd_marginal"].to_numpy(),
-            "lgd": [lgd_by_rid[rid] for rid in ts_row_ids],
-            "ead": [ead_by_rid[rid] for rid in ts_row_ids],
-            "_order": [order[rid] for rid in ts_row_ids],
-        }
-    )
+    columnas: dict[str, Any] = {
+        "row_id": ts_row_ids,
+        "scenario": [str(value) for value in ts[_TS_SCENARIO_COLUMN].tolist()],
+        "period": ts["period"].to_numpy(),
+        "time_value": ts["time_value"].to_numpy(),
+        "time_value_years": ts[_TS_YEARS_COLUMN].to_numpy(),
+        "pd_marginal": ts["pd_marginal"].to_numpy(),
+        "lgd": [lgd_by_rid[rid] for rid in ts_row_ids],
+        "ead": (
+            [ead_by_rid[rid] for rid in ts_row_ids] if ead_por_periodo is None else ead_por_periodo
+        ),
+    }
+    for tramo in _CURVE_SEGMENT_COLUMNS:
+        if tramo in ts.columns:
+            columnas[tramo] = ts[tramo].to_numpy()
+    columnas["_order"] = [order[rid] for rid in ts_row_ids]
+    components = pandas.DataFrame(columnas)
     components = components.sort_values(
         ["_order", "scenario", "period"], kind="mergesort"
     ).reset_index(drop=True)
     return cast("DataFrame", components.drop(columns="_order"))
+
+
+def _con_tramo_de_la_curva(ecl_ts: DataFrame, components: DataFrame) -> DataFrame:
+    """Añade a la ``ecl_term_structure`` el tramo de la curva de cada período (§3.2, aditivo).
+
+    ``EclEngine`` arma su salida fila a fila de la malla, en el mismo orden y sin filtrar (el motor
+    no le pasa ``max_lifetime``): el tramo se copia por posición, y se comprueba.
+    """
+    if not (
+        len(ecl_ts.index) == len(components.index)
+        and (ecl_ts["row_id"].to_numpy() == components["row_id"].to_numpy()).all()
+        and (ecl_ts["period"].to_numpy() == components["period"].to_numpy()).all()
+    ):
+        raise IfrsTermStructureError(
+            "La term-structure de ECL no se alinea con la malla de componentes."
+        )
+    salida = ecl_ts.copy(deep=True)
+    for tramo in _CURVE_SEGMENT_COLUMNS:
+        salida[tramo] = components[tramo].to_numpy()
+    return salida
+
+
+def _campos_del_contrato(lectura: ContractReading) -> dict[str, Any]:
+    """Los campos aditivos de la card cuando la curva se leyó con las fechas (§3.2 y §3.3)."""
+    return {
+        "contract_dates": True,
+        "n_matured_with_balance": lectura.n_matured_with_balance,
+        "ead_matured_with_balance": lectura.ead_matured_with_balance,
+        "tail_from_period": lectura.tail_from_period,
+        "ead_beyond_observed_curve": lectura.ead_beyond_observed_curve,
+        "n_amortizing": len(lectura.amortizing),
+        "n_installment_not_amortizing": lectura.n_installment_not_amortizing,
+        "ead_installment_not_amortizing": lectura.ead_installment_not_amortizing,
+    }
 
 
 def _summary_frame(detail_rows: list[dict[str, Any]], pandas: Any) -> DataFrame:

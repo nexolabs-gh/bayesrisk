@@ -66,6 +66,49 @@ def test_la_guia_corre_por_las_dos_puertas_y_llega_a_la_misma_cifra(
     assert (tmp_path / "bayesrisk-runs" / "provision_por_yaml" / "audit_trail.jsonl").is_file()
 
 
+def _bloque(nombre: str, anclas: tuple[str, ...]) -> str:
+    texto = _GUIA.read_text(encoding="utf-8")
+    inicio = f"<!-- {nombre}:start -->\n```python\n"
+    fin = f"\n```\n<!-- {nombre}:end -->"
+    assert texto.count(inicio) == 1 and texto.count(fin) == 1, (
+        f"el bloque ejecutable {nombre!r} de la guía perdió sus delimitadores"
+    )
+    codigo = texto.split(inicio, maxsplit=1)[1].split(fin, maxsplit=1)[0]
+    for ancla in anclas:
+        assert ancla in codigo, f"el código de la guía perdió {ancla!r}: el gate quedaría vacuo"
+    return codigo
+
+
+def test_el_bloque_del_contrato_lee_la_curva_con_fechas_y_cuota(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CASO-REAL-IFRS9 §13: las tres columnas en un bloque de la guía, sobre un archivo sintético
+    pequeño y determinista generado en el propio bloque. Se comprueba lo que la guía afirma."""
+    pytest.importorskip("statsmodels", reason="la curva de PD exige el extra scoring")
+    codigo = _bloque(
+        "provision-ifrs9-contrato",
+        ("origination=", "maturity=", "installment=", "contrato.run()"),
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PYTHONHASHSEED", "0")
+    espacio: dict[str, Any] = {"__name__": "__main__"}
+    exec(compile(codigo, str(_GUIA), "exec"), espacio)
+
+    ecl = espacio["contrato"]
+    assert ecl.study.run_context.status == "done", ecl.study.run_context.error
+    card = ecl.study.artifacts.get("provisioning_ifrs9", "card")
+    assert card.contract_dates is True
+    # «la de los préstamos a 48 meses que pasan del período 14»: la cola empieza en el 15.
+    assert card.tail_from_period == 15
+    assert card.ead_beyond_observed_curve and card.ead_beyond_observed_curve > 0
+    # Cuotas de una tabla exacta: todas pagan su saldo en el plazo.
+    assert card.n_amortizing == card.n_rows
+    assert "FALTA-DATO-IFRS-4" not in card.falta_dato
+    lineas = ecl.summary("provisioning_ifrs9").lines
+    assert any(linea.startswith("Con las fechas del contrato") for linea in lineas), lineas
+    assert any("tabla de pagos" in linea for linea in lineas), lineas
+
+
 def test_la_guia_esta_en_la_navegacion_y_empezar_la_enlaza() -> None:
     nav = (_RAIZ / "mkdocs.yml").read_text(encoding="utf-8")
     assert "guias/provision-ifrs9.md" in nav

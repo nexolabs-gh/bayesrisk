@@ -455,6 +455,16 @@ class SurvivalConfig(BayesRiskBaseConfig):
         """
         return self.input.id_col
 
+    def metodo_de_ajuste_declarado(self) -> str:
+        """El método con que se ajusta la curva (CASO-REAL-IFRS9 D-CRE-2, §3.2-7).
+
+        La provisión sólo lee la curva desde la edad de cada operación con ``discrete_hazard``, el
+        único método que publica los incumplimientos por período (la cola de la curva se extiende
+        desde el último período con incumplimientos); lo comprueba con este valor
+        (``provisioning_ifrs9``, requisito por contexto).
+        """
+        return self.method
+
     def requisitos_incumplidos(self, columnas: frozenset[str] | None) -> tuple[Requisito, ...]:
         """Lo que esta sección se exige a sí misma y detiene la corrida al final (D-INV-1).
 

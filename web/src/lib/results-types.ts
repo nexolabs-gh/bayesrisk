@@ -1145,6 +1145,21 @@ export interface Ifrs9ProvisioningResult {
   n_stage1: number
   n_stage2: number
   n_stage3: number
+  /**
+   * CASO-REAL-IFRS9 (capa B, aditivos): si la provisión leyó la curva con las fechas del contrato
+   * —desde la antigüedad de cada operación y hasta su vencimiento—, cuántas operaciones vencidas
+   * con saldo se provisionaron con un período, desde qué período de la curva se extiende la cola y
+   * qué exposición vive más allá de lo observado; con la cuota, cuántas siguen la tabla de pagos y
+   * cuántas tienen una cuota que no paga el saldo al vencimiento.
+   */
+  contract_dates?: boolean
+  n_matured_with_balance?: number
+  ead_matured_with_balance?: number
+  tail_from_period?: number | null
+  ead_beyond_observed_curve?: number | null
+  n_amortizing?: number
+  n_installment_not_amortizing?: number
+  ead_installment_not_amortizing?: number
   /** Exposición total (EAD) de la cartera, SIN moneda. */
   total_ead: number
   /** ECL reportada total (provisión contable), SIN moneda. */

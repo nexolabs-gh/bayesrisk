@@ -3,15 +3,16 @@
 Gemelo de ``test_simplicidad_scorecard.py``: cada cifra es un golden con la regla de
 ``HOJAS_DEL_FORMULARIO`` —moverla es legítimo; moverla sin actualizar el número y decir por qué,
 no—. Línea base medida sobre ``3cc9654`` (S28, ``privado/evidencia/s28/ifrs9-mediciones.md``) y
-el después, en la capa A (S30, 2026-10-04) y la B (S31, 2026-10-05):
+el después, en la capa A (S30, 2026-10-04) y la B (S31, 2026-10-05); la capa B de CASO-REAL-IFRS9
+(S35, 2026-10-06) suma las tres columnas opcionales del contrato (§13 de esa enmienda):
 
-| Cifra | Antes (``3cc9654``) | Después (capas A y B) | Objetivo |
-|---|---|---|---|
-| Líneas de usuario | sin notebook; YAML de 268 líneas | 21 | ≤ 25 |
-| Esenciales por sección | 0 (se pintan enteras) | 5 y 7, en la firma y en el schema | 5 y 7 |
-| Perillas de las tres secciones | 230 (158 + 24 + 48) | 230 | sin crecer |
-| Segundos al primer resumen | sin resumen; ECL a los 4,8 a 6,4 s | ≈ 1 s («Cartera») | ≤ 30 s |
-| Conceptos antes del primer resultado | ≥ 8 | 5 | ≤ 5 |
+| Cifra | ``3cc9654`` | Capas A y B | CASO-REAL-IFRS9 B | Objetivo |
+|---|---|---|---|---|
+| Líneas de usuario | YAML de 268 líneas | 21 | 21 | ≤ 25 |
+| Esenciales por sección | 0 (enteras) | 5 y 7 (firma y schema) | 5 y 10 | 5 y 10 |
+| Perillas de las tres secciones | 230 (158 + 24 + 48) | 230 | 233 (+ 3) | las de la enmienda |
+| Segundos al primer resumen | ECL a los 4,8 a 6,4 s | ≈ 1 s («Cartera») | ≈ 1 s | ≤ 30 s |
+| Conceptos antes del primer resultado | ≥ 8 | 5 | 5 | ≤ 5 |
 
 La capa A ancló los esenciales en la firma de ``Ecl``; la B los marca en el schema
 (``ui_essential``) y la pantalla los pinta abiertos: el mismo mapeo, atado aquí a los dos.
@@ -62,6 +63,10 @@ ESENCIALES: Final[dict[str, dict[str, str]]] = {
         "rate": "provisioning_ifrs9.ecl.eir_col",
         "days_past_due": "provisioning_ifrs9.staging.days_past_due_col",
         "default": "provisioning_ifrs9.staging.is_default_col",
+        # CASO-REAL-IFRS9 D-CRE-8 (§8-3): las tres del contrato, opcionales.
+        "origination": "provisioning_ifrs9.origination_date_col",
+        "maturity": "provisioning_ifrs9.maturity_date_col",
+        "installment": "provisioning_ifrs9.ead.installment_col",
     },
 }
 #: Los argumentos que no son esenciales de una sección de cálculo: los de `governance`, `report` y
@@ -69,15 +74,18 @@ ESENCIALES: Final[dict[str, dict[str, str]]] = {
 ARGUMENTOS_DE_INFRAESTRUCTURA: Final = frozenset(
     {"name", "run_dir", "purpose", "owner", "review_every", "track", "document", "formats"}
 )
-#: El tope de SDD-31 §12.1 y su única excepción, aprobada por Cami el 2026-10-03 (§8-4).
+#: El tope de SDD-31 §12.1 y su única excepción, aprobada por Cami el 2026-10-03 (§8-4) con 7 y
+#: ampliada a 10 el 2026-10-05 (CASO-REAL-IFRS9 §8-3).
 TOPE_ESENCIALES_POR_SECCION: Final = 6
-EXCEPCION_AL_TOPE: Final = {"provisioning_ifrs9": 7}
+EXCEPCION_AL_TOPE: Final = {"provisioning_ifrs9": 10}
 
 #: Cifra 3: perillas de las tres secciones de cálculo con el barrido del formulario. 230 el
 #: 2026-10-02 (S28) y el 2026-10-04: la capa A no añade ni retira hojas (D-ECL-15, presupuesto
-#: cero; `rebut_backstops` es una acción de `decisions`, fuera del formulario y del hash).
+#: cero; `rebut_backstops` es una acción de `decisions`, fuera del formulario y del hash). 233 desde
+#: la capa B de CASO-REAL-IFRS9 (S35, 2026-10-06): las tres hojas del contrato, con su evidencia
+#: de que el default falla en un caso real (§3.8 de esa enmienda); 48 → 51 en la provisión.
 SECCIONES_DE_CALCULO: Final[tuple[str, ...]] = ("data", "survival", "provisioning_ifrs9")
-PERILLAS_DE_LAS_TRES_SECCIONES: Final = 230
+PERILLAS_DE_LAS_TRES_SECCIONES: Final = 233
 
 #: Cifra 4: segundos hasta el primer resumen («Cartera») con el dataset del paquete.
 TOPE_SEGUNDOS_PRIMER_RESUMEN: Final = 30.0
@@ -125,7 +133,7 @@ def test_cifra_2_cada_argumento_de_la_puerta_es_un_esencial_o_de_infraestructura
     )
     assert {s: len(a) for s, a in ESENCIALES.items() if s != "data"} == {
         "survival": 5,
-        "provisioning_ifrs9": 7,
+        "provisioning_ifrs9": 10,
     }
     for seccion, args in ESENCIALES.items():
         tope = EXCEPCION_AL_TOPE.get(seccion, TOPE_ESENCIALES_POR_SECCION)

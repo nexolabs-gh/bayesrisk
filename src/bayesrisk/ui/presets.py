@@ -883,6 +883,9 @@ _IFRS9_PROVISIONING_SECTION: dict[str, Any] = {
     "row_id_col": None,
     "portfolio_col": "portfolio",
     "portfolio_scheme": None,
+    # CASO-REAL-IFRS9 D-CRE-2: el paquete no trae fechas del contrato; la curva se lee tal cual.
+    "origination_date_col": None,
+    "maturity_date_col": None,
     "pd": {
         "term_structure_source": "survival",
         "base_pd_source": "term_structure",
@@ -910,6 +913,8 @@ _IFRS9_PROVISIONING_SECTION: dict[str, Any] = {
         "ccf_col": None,
         "ccf_value": None,
         "exposure_profile_col": None,
+        # CASO-REAL-IFRS9 D-CRE-3: ni cuota; la exposición queda constante.
+        "installment_col": None,
     },
     "staging": {
         "sicr_pd_ratio_threshold": 2.0,

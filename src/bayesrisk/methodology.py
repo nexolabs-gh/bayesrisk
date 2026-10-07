@@ -161,11 +161,23 @@ def build_ifrs9_methodology_card(
         # El código que decide esto (línea de arriba) es el identificador con el que el motor y la
         # UI se entienden; el texto es para quien lee el informe, así que nombra la limitación en
         # vez del código: la EAD no amortiza en el tiempo.
-        detail = (
-            "La EAD se mantiene constante por período: no se modela la amortización del crédito."
-            if ead_constant
-            else "Los métodos efectivos provienen del config de la corrida."
-        )
+        # CASO-REAL-IFRS9 D-CRE-3: con la cuota del contrato, la EAD sigue su tabla de pagos y
+        # sólo queda constante en las operaciones sin cuota o cuya cuota no alcanza.
+        con_cuota = ead_cfg.get("installment_col") is not None
+        if ead_constant and con_cuota:
+            detail = (
+                "La EAD sigue la tabla de pagos de la cuota del contrato; las operaciones sin "
+                "cuota, o cuya cuota no paga el saldo al vencimiento, la mantienen constante."
+            )
+        elif ead_constant:
+            detail = (
+                "La EAD se mantiene constante por período: no se modela la amortización del "
+                "crédito."
+            )
+        elif con_cuota:
+            detail = "La EAD sigue la tabla de pagos de la cuota del contrato."
+        else:
+            detail = "Los métodos efectivos provienen del config de la corrida."
         active.append(
             MethodologyFact(
                 id="loss_inputs",

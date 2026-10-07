@@ -132,7 +132,8 @@ def test_el_aviso_no_mueve_el_config_hash_de_ningun_preset() -> None:
         "f1-estandar-consumo": "1063d6cf",
         "f3-provisiones-consumo": "857b06ee",
         # CASO-REAL-IFRS9 D-CRE-1 (S34): el preset escribe Stage 3 = LGD × EAD; antes 013e69dc…
-        "f4-ifrs9-retail": "a3b7cf9b",
+        # D-CRE-2/3 (S35): las tres hojas del contrato en `null`; antes a3b7cf9b…
+        "f4-ifrs9-retail": "f688fce7",
     }
     for preset_id, prefijo in esperados.items():
         config = BayesRiskConfig.model_validate(get_preset(preset_id)["config"])

@@ -32,6 +32,7 @@ nombre que tengan en tu archivo:
 | La provisión | fecha de corte (un solo valor), cartera, exposición ya calculada, LGD, tasa efectiva **anual**, días de mora y, si la tienes, la marca de incumplimiento |
 | La curva de PD | cuánto tiempo se observó cada operación (entero ≥ 1) y si incumplió (0/1); la unidad de ese tiempo (`"month"`, `"quarter"`, `"year"`…) y hasta cuántos períodos se proyecta la curva |
 | Opcional | el identificador de la operación y las covariables que ordenan el riesgo |
+| Opcional, del contrato | la fecha de otorgamiento, la de vencimiento y la cuota mensual de cada operación (ver [Con las fechas y la cuota del contrato](#con-las-fechas-y-la-cuota-del-contrato)) |
 
 Dos cosas que conviene saber antes de armar el archivo con datos reales:
 
@@ -119,6 +120,105 @@ print(f"ECL total: {float(card.total_ecl_reported):,.0f}")  # la misma cifra que
 El mismo config da la misma cifra y el mismo `config_hash`: la identidad de la corrida no
 depende de la puerta por la que entró.
 
+## Con las fechas y la cuota del contrato
+
+Sin más datos, la provisión lee la curva de cada operación desde su primer período y hasta el
+horizonte de la curva, como si cada operación naciera hoy, y con la exposición constante. Si tu
+archivo trae las fechas y la cuota del contrato, dáselas: la curva se lee desde la **antigüedad**
+de cada operación —los meses desde el otorgamiento, sin redondear— y la vida termina en su
+**vencimiento** (IFRS 9 5.5.19); el Stage 1 suma 12 meses o la vida, si es menor; y la exposición
+de cada período sigue la **tabla de pagos** de la cuota, con la tasa implícita en la cuota —no la
+tasa efectiva, que incluye comisiones—. Las tres columnas son opcionales e independientes, salvo
+la cuota, que necesita el vencimiento. Aquí, con una cartera sintética de cuota fija generada en
+el mismo bloque:
+
+<!-- provision-ifrs9-contrato:start -->
+```python
+import numpy as np
+import pandas as pd
+
+from bayesrisk import Ecl
+
+# 2.000 préstamos de cuota fija otorgados en los últimos cuatro años, a 24, 36 o 48 meses, con su
+# historia hasta el corte: los cerrados (pagados o castigados) entran con exposición 0.
+rng = np.random.default_rng(2025)
+n = 2_000
+corte = pd.Timestamp("2025-06-30")
+antiguedad = rng.integers(1, 49, n)                 # meses desde el otorgamiento
+plazo = rng.choice([24, 36, 48], n)                 # meses del contrato
+puntaje = rng.normal(0.0, 1.0, n)                   # más alto, menos riesgo
+tasa_mes = 0.015 + 0.004 * rng.random(n)            # la tasa mensual del contrato
+monto = rng.integers(500, 5_000, n) * 1_000.0
+cuota = monto * tasa_mes / (1 - (1 + tasa_mes) ** -plazo)
+mes_incumple = rng.geometric(0.006 * np.exp(-0.6 * puntaje))
+observado = np.minimum(antiguedad, plazo)
+incumplio = mes_incumple <= observado
+vivo = ~incumplio & (antiguedad < plazo)
+saldo = monto * ((1 + tasa_mes) ** plazo - (1 + tasa_mes) ** observado) / (
+    (1 + tasa_mes) ** plazo - 1
+)
+otorgamiento = [corte - pd.DateOffset(months=int(m)) for m in antiguedad]
+
+cartera = pd.DataFrame({
+    "loan_id": [f"P{i:05d}" for i in range(n)],
+    "as_of_date": "2025-06-30",
+    "portfolio": np.where(plazo == 48, "consumo largo", "consumo"),
+    "ead": np.where(vivo, saldo.round(0), 0.0),
+    "lgd": 0.65,
+    "eir": (1 + tasa_mes) ** 12 - 1,                # la tasa efectiva ANUAL
+    "days_past_due": np.where(vivo & (puntaje < -1.5), 45, 0),
+    "is_default": False,
+    "duration": np.ceil(np.where(incumplio, mes_incumple, observado) / 3).astype(int),
+    "event": incumplio.astype(int),
+    "puntaje": puntaje,
+    "otorgamiento": otorgamiento,
+    "vencimiento": [o + pd.DateOffset(months=int(p)) for o, p in zip(otorgamiento, plazo)],
+    "cuota": cuota.round(0),
+})
+
+contrato = Ecl(
+    data=cartera,
+    id="loan_id",
+    as_of="as_of_date",
+    portfolio="portfolio",
+    exposure="ead",
+    lgd="lgd",
+    rate="eir",
+    days_past_due="days_past_due",
+    default="is_default",
+    origination="otorgamiento",                     # la curva, desde la antigüedad
+    maturity="vencimiento",                         # la vida, hasta el vencimiento
+    installment="cuota",                            # la exposición, por la tabla de pagos
+    duration="duration", event="event", period="quarter", horizon=16,
+    covariates=["puntaje"],
+    name="provision_con_contrato",
+)
+contrato.run()
+print(contrato.summary("provisioning_ifrs9"))       # dice cómo leyó la curva y la exposición
+```
+<!-- provision-ifrs9-contrato:end -->
+
+Con las fechas, la curva de cada operación se lee **desde su edad**: la probabilidad de cada
+período es la de incumplir en ese tramo de la curva dado que la operación sobrevivió hasta hoy,
+con el riesgo constante dentro de cada período. Tres reglas fijas, sin perilla, que el resumen
+declara:
+
+- **La cola.** Una curva por períodos sólo estima riesgo donde hubo incumplimientos: más allá del
+  último período con incumplimientos observados, el riesgo de cada operación se extiende con la
+  media de sus tres últimos períodos con incumplimientos. «Qué revisar» dice qué parte de la
+  exposición vive ahí —en esta cartera, la de los préstamos a 48 meses que pasan del período 14—.
+- **Vencida con saldo.** Una operación con el vencimiento ya pasado y saldo vivo sigue expuesta:
+  se provisiona con un período y «Qué revisar» la cuenta.
+- **Una cuota que no alcanza.** Si la cuota no paga el saldo en el plazo —un pago final mayor,
+  atrasos, intereses que se capitalizan—, la exposición queda constante hasta el vencimiento y
+  «Qué revisar» la cuenta con su monto.
+
+La lectura desde la edad supone que la duración de la historia de la curva cuenta desde el
+otorgamiento —como en este archivo—, y exige la curva de supervivencia por períodos discretos y
+la PD a 12 meses de esa misma curva: con otra configuración, la verificación previa lo avisa antes
+de correr. Una fila sin fecha o sin cuota se lee como sin ese dato; sin ninguna de las tres
+columnas, la provisión es exactamente la de antes.
+
 ## La pantalla
 
 ```bash
@@ -128,9 +228,10 @@ bayesrisk-ui
 El trabajo «Provisiones IFRS 9 / ECL» pregunta lo mismo que la puerta guiada y nada más: no pide
 qué es un cliente malo ni cómo separar muestras —los muestra como «No aplica en una corrida de
 cartera»— y sí la duración, el evento, la unidad y el horizonte de la curva. La curva abre sus
-cinco campos esenciales y la provisión sus siete; el resto queda en «Avanzado». Los 12 meses del
-Stage 1 se infieren de la unidad, como en la puerta guiada. Resultados pinta el mismo resumen,
-con sus supuestos, la curva de PD por cartera y la ECL por cartera y etapa.
+cinco campos esenciales y la provisión sus diez —las tres columnas opcionales del contrato van
+juntas bajo «Si tienes las fechas y la cuota del contrato»—; el resto queda en «Avanzado». Los
+12 meses del Stage 1 se infieren de la unidad, como en la puerta guiada. Resultados pinta el mismo
+resumen, con sus supuestos, la curva de PD por cartera y la ECL por cartera y etapa.
 
 ## Lo que entrega
 
@@ -163,6 +264,7 @@ Las cifras de consumo y de hipotecas leen la curva desde la edad de cada operaci
 constante dentro de cada período y, más allá del último período con incumplimientos observados,
 con la media de los tres últimos: en las hipotecas, el último año de la curva no tiene ninguno.
 Stage 3 con su pérdida ya es el default de las tres puertas. La antigüedad, el vencimiento y la
-cuota de cada operación llegarán como tres columnas opcionales del archivo de cartera; lo que se
-puede cambiar hoy se cambia en el config (la puerta completa) y queda con su `config_hash`, y lo
-demás está declarado como límite conocido en el [changelog](../changelog.md).
+cuota de cada operación se declaran con tres columnas opcionales del archivo de cartera (arriba);
+medido con el motor, con las tres la ECL de consumo baja un 13,8 % y la de hipotecas un 13,1 %. Lo
+demás se cambia en el config (la puerta completa) y queda con su `config_hash`, o está declarado
+como límite conocido en el [changelog](../changelog.md).

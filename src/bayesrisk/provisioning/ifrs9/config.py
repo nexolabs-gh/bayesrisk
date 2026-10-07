@@ -58,6 +58,9 @@ _LOC_SECCION: tuple[str, ...] = ("provisioning_ifrs9",)
 
 # Tolerancia absoluta para exigir que los pesos de escenario sumen 1 (SDD-16 §5).
 _WEIGHT_SUM_TOL: float = 1e-9
+# CASO-REAL-IFRS9 §3.2-7: el único método de survival que publica los incumplimientos por período,
+# que la lectura desde la edad necesita para saber desde dónde extender la cola de la curva.
+_METODO_POR_PERIODOS: str = "discrete_hazard"
 # Nombres de escenario vetados por el guard anti escenario medio (espejo de SDD-20/forward:
 # se ponderan outputs por escenario, nunca inputs macro promediados).
 _RESERVED_SCENARIO_NAMES: frozenset[str] = frozenset({"mean", "average", "weighted_mean_input"})
@@ -462,6 +465,30 @@ class IfrsEadConfig(BayesRiskBaseConfig):
             "ui_order": 7,
         },
     )
+    installment_col: str | None = Field(
+        default=None,
+        title="Cuota del contrato",
+        description=(
+            "Columna con la cuota mensual del contrato; con ella la exposición sigue la tabla de "
+            "pagos hasta el vencimiento."
+        ),
+        json_schema_extra={
+            "ui_help": (
+                "Opcional; exige la fecha de vencimiento y la EAD entregada. La exposición de "
+                "cada período es el saldo al inicio del período en la tabla de cuota fija que "
+                "paga el saldo de hoy justo al vencimiento, con la tasa implícita en la cuota (no "
+                "la tasa efectiva). Si la cuota no alcanza a pagar el saldo en el plazo, la "
+                "exposición queda constante hasta el vencimiento y se cuenta en «Qué revisar». "
+                "Una fila sin cuota conserva la exposición constante."
+            ),
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "EAD",
+            "ui_order": 8,
+            "ui_essential": True,
+            "ui_essential_group": "Si tienes las fechas y la cuota del contrato",
+        },
+    )
 
     @model_validator(mode="after")
     def _check_ead(self) -> Self:
@@ -488,7 +515,9 @@ class IfrsEadConfig(BayesRiskBaseConfig):
                 "desplegada constante con aviso FALTA-DATO-IFRS-4) o espere CT-3.",
                 loc=(*_LOC_SECCION, "ead", "exposure_profile_col"),  # D-EXI-5
             )
-        _require_non_empty_if_set({"ccf_col": self.ccf_col}, context="ead")
+        _require_non_empty_if_set(
+            {"ccf_col": self.ccf_col, "installment_col": self.installment_col}, context="ead"
+        )
         # Sin `loc`: informar las DOS fuentes de CCF es una incompatibilidad entre campos, y se
         # arregla borrando cualquiera de las dos. No hay un campo que sea *el* equivocado.
         if self.method == "ccf" and self.ccf_col is not None and self.ccf_value is not None:
@@ -512,7 +541,9 @@ class IfrsEadConfig(BayesRiskBaseConfig):
             # default es `"ead"` y el de `method` es `ccf`. Es el peor de los catorce, y el motivo
             # de que no se pudiera declarar el rol hasta que existió este mecanismo: con el config
             # de fábrica habría exigido una columna que el motor nunca abre.
-            inactivas.add("ead_col")
+            # La cuota (CASO-REAL-IFRS9 D-CRE-3) tampoco: la tabla parte de un saldo entregado, y
+            # con CCF el requisito de la sección raíz lo avisa antes de correr.
+            inactivas |= {"ead_col", "installment_col"}
         return frozenset(inactivas)
 
 
@@ -856,9 +887,11 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
     Motor experimental: fuera de la garantía SemVer 2.x.
     """
 
-    # Siete esenciales (FLUJO-GUIADO-IFRS9 D-ECL-6, §8-4: la única excepción al tope de 6): las
-    # columnas de la entrada mínima —fecha de corte, cartera, EAD, LGD, tasa, mora y la marca de
-    # incumplimiento—, que son dato institucional y no perillas; el resto, en «Avanzado».
+    # Diez esenciales (FLUJO-GUIADO-IFRS9 D-ECL-6, §8-4: la única excepción al tope de 6; ampliada
+    # de 7 a 10 por CASO-REAL-IFRS9 D-CRE-8, §8-3): las columnas de la entrada mínima —fecha de
+    # corte, cartera, EAD, LGD, tasa, mora y la marca de incumplimiento— y, opcionales, las tres del
+    # contrato —otorgamiento, vencimiento y cuota—, que son dato institucional y no perillas; el
+    # resto, en «Avanzado».
     model_config = ConfigDict(json_schema_extra=declara_esenciales)
 
     schema_version: str = Field(
@@ -924,6 +957,55 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
             "ui_order": 22,
         },
     )
+    # CASO-REAL-IFRS9 D-CRE-2 (§3.2): las fechas del contrato, opcionales y por fila. Con alguna de
+    # las dos, la curva de PD se lee desde la edad de cada operación y se corta en su vencimiento.
+    origination_date_col: str | None = Field(
+        default=None,
+        title="Fecha de otorgamiento",
+        description=(
+            "Columna con la fecha en que se otorgó cada operación; con ella la curva de PD se lee "
+            "desde la antigüedad de la operación."
+        ),
+        json_schema_extra={
+            "ui_help": (
+                "Opcional. Con esta fecha, la curva de PD se lee desde la antigüedad de cada "
+                "operación —los meses desde el otorgamiento, sin redondear— y no desde su primer "
+                "período. Supone que la duración de la historia de la curva cuenta desde el "
+                "otorgamiento. Una fila sin fecha se lee desde el primer período. Exige la curva "
+                "de supervivencia por períodos discretos."
+            ),
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Columnas",
+            "ui_order": 4,
+            "ui_essential": True,
+            "ui_essential_group": "Si tienes las fechas y la cuota del contrato",
+        },
+    )
+    maturity_date_col: str | None = Field(
+        default=None,
+        title="Fecha de vencimiento",
+        description=(
+            "Columna con la fecha de vencimiento contractual; con ella la vida de cada operación "
+            "termina en su vencimiento."
+        ),
+        json_schema_extra={
+            "ui_help": (
+                "Opcional. La vida de cada operación termina en su vencimiento contractual y el "
+                "Stage 1 suma 12 meses o la vida, si es menor. Una operación ya vencida con saldo "
+                "se provisiona con un período. Una fila sin fecha vive el horizonte de la curva. "
+                "Más allá del último período de la curva con incumplimientos observados, el riesgo "
+                "de cada operación se extiende con la media de sus tres últimos períodos con "
+                "incumplimientos."
+            ),
+            "column_role": "input",
+            "ui_widget": "text_input",
+            "ui_group": "Columnas",
+            "ui_order": 5,
+            "ui_essential": True,
+            "ui_essential_group": "Si tienes las fechas y la cuota del contrato",
+        },
+    )
     pd: IfrsPdConfig = Field(
         default_factory=IfrsPdConfig,
         title="PD 12m/lifetime + PIT",
@@ -981,7 +1063,14 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
             {"as_of_date_col": self.as_of_date_col, "portfolio_col": self.portfolio_col},
             context="provisioning_ifrs9",
         )
-        _require_non_empty_if_set({"row_id_col": self.row_id_col}, context="provisioning_ifrs9")
+        _require_non_empty_if_set(
+            {
+                "row_id_col": self.row_id_col,
+                "origination_date_col": self.origination_date_col,
+                "maturity_date_col": self.maturity_date_col,
+            },
+            context="provisioning_ifrs9",
+        )
         # D-CRP6-3: el chequeo PIT es incondicional y no mira `fail_on_falta_dato`. Antes lo hacía,
         # pero `False` no abría ninguna ruta degradada —`_apply_vasicek` levanta igual—: su único
         # efecto era mover esta validación al medio del cálculo, que es lo que CRP-5 prohíbe. El
@@ -1017,30 +1106,60 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
         columnas distintas, ninguna operación se encuentra con su curva y la corrida muere en la
         provisión, después de ajustar la curva. Se avisa antes de correr. Sólo con la curva de
         ``survival``: la de ``forward`` hereda su ``row_id`` y la de ``markov`` tiene el suyo.
+
+        Y las fechas del contrato (D-CRE-2, §3.2-7): leer la curva desde la edad de cada operación
+        exige sus incumplimientos por período, que sólo publica ``discrete_hazard``; con otro
+        método de ``survival``, la corrida se detiene antes de correr.
         """
         if self.pd.term_structure_source != "survival":
             return ()
-        if "survival" not in contexto.identificadores:
-            return ()
-        de_la_curva = contexto.identificadores["survival"]
-        if de_la_curva == self.row_id_col:
-            return ()
+        requisitos: list[Requisito] = []
+        de_la_curva = contexto.identificadores.get("survival", self.row_id_col)
+        if "survival" in contexto.identificadores and de_la_curva != self.row_id_col:
 
-        def _por(columna: str | None) -> str:
-            return "el índice del archivo" if columna is None else f"la columna «{columna}»"
+            def _por(columna: str | None) -> str:
+                return "el índice del archivo" if columna is None else f"la columna «{columna}»"
 
-        return (
-            Requisito(
-                path="row_id_col",
-                declared=self.row_id_col or "(índice del archivo)",
-                message=(
-                    f"La curva de PD identifica cada operación por {_por(de_la_curva)} y la "
-                    f"provisión, por {_por(self.row_id_col)}: no se encontrarían. Declara la "
-                    "misma columna de identificador en las dos, o déjalas las dos vacías para "
-                    "identificar por el índice del archivo."
-                ),
-            ),
-        )
+            requisitos.append(
+                Requisito(
+                    path="row_id_col",
+                    declared=self.row_id_col or "(índice del archivo)",
+                    message=(
+                        f"La curva de PD identifica cada operación por {_por(de_la_curva)} y la "
+                        f"provisión, por {_por(self.row_id_col)}: no se encontrarían. Declara la "
+                        "misma columna de identificador en las dos, o déjalas las dos vacías para "
+                        "identificar por el índice del archivo."
+                    ),
+                )
+            )
+        metodo = contexto.metodos_de_ajuste.get("survival")
+        campo = self._campo_de_fecha()
+        if campo is not None and metodo is not None and metodo != _METODO_POR_PERIODOS:
+            requisitos.append(
+                Requisito(
+                    path=campo,
+                    declared=getattr(self, campo),
+                    message=(
+                        "Con las fechas del contrato, la curva de PD se lee desde la edad de cada "
+                        "operación, y para eso la curva tiene que contar los incumplimientos de "
+                        "cada período: sólo lo hace el ajuste por períodos discretos. Ajusta la "
+                        "curva por períodos discretos, o quita las fechas."
+                    ),
+                )
+            )
+        return tuple(requisitos)
+
+    def lee_fechas_del_contrato(self) -> bool:
+        """Si la provisión lee la curva con las fechas de cada operación (D-CRE-2, §3.2)."""
+        return self._campo_de_fecha() is not None
+
+    def _campo_de_fecha(self) -> str | None:
+        """La primera hoja de fecha declarada: donde se anclan los requisitos de la lectura."""
+        if self.origination_date_col is not None:
+            return "origination_date_col"
+        if self.maturity_date_col is not None:
+            return "maturity_date_col"
+        return None
 
     def requisitos_incumplidos(self, columnas: frozenset[str] | None) -> tuple[Requisito, ...]:
         """Lo que esta sección se exige a sí misma y la corrida rechazará (D-INV-1).
@@ -1093,4 +1212,70 @@ class IfrsProvisioningConfig(BayesRiskBaseConfig):
                     ),
                 )
             )
+        requisitos.extend(self._requisitos_del_contrato())
         return tuple(requisitos)
+
+    def _requisitos_del_contrato(self) -> list[Requisito]:
+        """Las fechas y la cuota del contrato (CASO-REAL-IFRS9 §3.2-7 y §3.3).
+
+        Las fechas leen la curva de ``survival`` desde la edad de cada operación: con ``markov`` o
+        ``forward`` —que ya parten del estado actual, o pueden venir de él— no se sabe qué
+        significaría, y la PD a 12 meses de la calibración transversal no se puede leer desde la
+        edad (pasada 3 de Codex sobre la enmienda). La cuota necesita el plazo que da el
+        vencimiento y un saldo entregado, no un dispuesto más CCF. Los anclajes van a la hoja
+        nueva, que es la elección que choca; ``declared`` no nombra la columna, para que el
+        preflight no la confunda con una columna ausente.
+        """
+        requisitos: list[Requisito] = []
+        campo = self._campo_de_fecha()
+        if campo is not None and self.pd.term_structure_source != "survival":
+            requisitos.append(
+                Requisito(
+                    path=campo,
+                    declared=f"curva de {self.pd.term_structure_source}",
+                    message=(
+                        "Con las fechas del contrato, la curva de PD se lee desde la edad de cada "
+                        "operación, y eso sólo se puede con la curva de supervivencia: las otras "
+                        "fuentes ya parten del estado actual de cada operación. Toma la curva de "
+                        "supervivencia, o quita las fechas."
+                    ),
+                )
+            )
+        if campo is not None and self.pd.base_pd_source == "calibration":
+            requisitos.append(
+                Requisito(
+                    path=campo,
+                    declared="PD a 12 meses de la calibración",
+                    message=(
+                        "Con las fechas del contrato, la curva de PD se lee desde la edad de cada "
+                        "operación, y la PD a 12 meses tiene que salir de esa misma lectura: la "
+                        "calibración la fija sin mirar la edad. Toma la PD a 12 meses de la curva, "
+                        "o quita las fechas."
+                    ),
+                )
+            )
+        if self.ead.installment_col is not None and self.maturity_date_col is None:
+            requisitos.append(
+                Requisito(
+                    path="ead.installment_col",
+                    declared="(sin fecha de vencimiento)",
+                    message=(
+                        "La cuota arma la tabla de pagos hasta el vencimiento de cada operación, y "
+                        "no declaraste la fecha de vencimiento: sin plazo no hay tabla. Declara la "
+                        "columna del vencimiento, o quita la cuota."
+                    ),
+                )
+            )
+        if self.ead.installment_col is not None and self.ead.method != "provided":
+            requisitos.append(
+                Requisito(
+                    path="ead.installment_col",
+                    declared=f"EAD por {self.ead.method}",
+                    message=(
+                        "La tabla de pagos parte del saldo de hoy entregado en el archivo, y la "
+                        "exposición se está calculando con el factor de conversión. Entrega la "
+                        "exposición en una columna, o quita la cuota."
+                    ),
+                )
+            )
+        return requisitos

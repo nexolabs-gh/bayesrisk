@@ -82,6 +82,11 @@ _ECL_TERM_STRUCTURE_COLUMNS: tuple[str, ...] = (
     "discount_factor",
     "ecl_marginal",
 )
+# CASO-REAL-IFRS9 D-CRE-2 (§3.2, salidas aditivas): sólo cuando la provisión leyó la curva con las
+# fechas del contrato. Van al final y únicamente entonces, para que una corrida sin las fechas
+# publique exactamente las mismas tablas que antes (bit a bit, §4).
+_DETAIL_CONTRACT_COLUMNS: tuple[str, ...] = ("age_periods", "life_periods")
+_ECL_TERM_STRUCTURE_CONTRACT_COLUMNS: tuple[str, ...] = ("curve_start", "curve_end")
 _SUMMARY_COLUMNS: tuple[str, ...] = (
     "portfolio",
     "stage",
@@ -332,6 +337,20 @@ class IfrsProvisionCard(BaseModel):
     n_stage1: int = Field(ge=0)
     n_stage2: int = Field(ge=0)
     n_stage3: int = Field(ge=0)
+    # CASO-REAL-IFRS9 D-CRE-2 y D-CRE-3 (§3.2 y §3.3), aditivos y con default para que una card
+    # anterior a la enmienda siga recargando: si la provisión leyó la curva con las fechas del
+    # contrato, cuántas operaciones vencidas con saldo se provisionaron con un período, desde qué
+    # período de la curva se extiende la cola y qué exposición vive más allá del último período con
+    # incumplimientos observados; con la cuota, cuántas operaciones siguen la tabla de pagos y
+    # cuántas —con qué exposición— tienen una cuota que no paga el saldo al vencimiento.
+    contract_dates: bool = False
+    n_matured_with_balance: int = Field(default=0, ge=0)
+    ead_matured_with_balance: float = 0.0
+    tail_from_period: int | None = Field(default=None, ge=1)
+    ead_beyond_observed_curve: float | None = None
+    n_amortizing: int = Field(default=0, ge=0)
+    n_installment_not_amortizing: int = Field(default=0, ge=0)
+    ead_installment_not_amortizing: float = 0.0
     total_ead: float
     total_ecl_reported: float
     scenarios: tuple[str, ...]
@@ -351,11 +370,23 @@ class IfrsProvisionCard(BaseModel):
             raise ValueError("as_of_date, term_structure_source y pit_mode no pueden estar vacíos.")
         return value
 
-    @field_validator("total_ead", "total_ecl_reported", mode="before")
+    @field_validator(
+        "total_ead",
+        "total_ecl_reported",
+        "ead_matured_with_balance",
+        "ead_installment_not_amortizing",
+        mode="before",
+    )
     @classmethod
     def _normaliza_float_requerido(cls, value: Any) -> float:
         """Exige totales finitos y publica ``-0.0`` como ``0.0``."""
         return _normalize_required_float(value)
+
+    @field_validator("ead_beyond_observed_curve", mode="before")
+    @classmethod
+    def _normaliza_float_opcional(cls, value: Any) -> float | None:
+        """Exige un total finito cuando se publica y normaliza ``-0.0``."""
+        return _normalize_optional_required_float(value)
 
     @field_validator("scenario_weights", mode="before")
     @classmethod
@@ -450,6 +481,7 @@ class IfrsProvisionResult(BaseModel):
             value,
             expected_columns=_DETAIL_COLUMNS,
             field_name="detail",
+            additive_columns=_DETAIL_CONTRACT_COLUMNS,
         )
 
     @field_validator("ecl_term_structure", mode="before")
@@ -460,6 +492,7 @@ class IfrsProvisionResult(BaseModel):
             value,
             expected_columns=_ECL_TERM_STRUCTURE_COLUMNS,
             field_name="ecl_term_structure",
+            additive_columns=_ECL_TERM_STRUCTURE_CONTRACT_COLUMNS,
         )
 
     @field_validator("summary", mode="before")
@@ -508,13 +541,15 @@ def _copy_and_validate_dataframe(
     *,
     expected_columns: tuple[str, ...],
     field_name: str,
+    additive_columns: tuple[str, ...] = (),
 ) -> Any:
     if not _is_dataframe_like(value):
         raise ValueError(f"{field_name} debe ser un pandas.DataFrame.")
 
     copied = _copy_dataframe(value)
     observed_columns = tuple(str(column) for column in copied.columns)
-    if observed_columns != expected_columns:
+    admitted = (expected_columns, expected_columns + additive_columns)
+    if observed_columns not in admitted:
         raise ValueError(
             f"{field_name} debe tener exactamente las columnas canónicas de SDD-16 §6."
         )

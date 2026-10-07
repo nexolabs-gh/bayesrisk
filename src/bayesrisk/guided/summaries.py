@@ -2345,6 +2345,20 @@ _STAGE3_PD_1: Final = "Stage 3: la pérdida del incumplimiento ya ocurrido, LGD 
 _STAGE3_CON_CURVA: Final = (
     "Stage 3 con la PD de la curva: una operación ya incumplida se provisiona como una sana"
 )
+#: CASO-REAL-IFRS9 D-CRE-2 (§3.2): lo que la lectura por contrato supone, en palabras.
+_LECTURA_DESDE_LA_EDAD: Final = (
+    "La curva de PD se lee desde la antigüedad de cada operación (meses desde el otorgamiento, "
+    "sin redondear): supone que la duración de su historia cuenta desde el otorgamiento"
+)
+_VIDA_CONTRACTUAL: Final = (
+    "La vida de cada operación termina en su vencimiento contractual (IFRS 9 5.5.19); una ya "
+    "vencida con saldo se provisiona con un período"
+)
+#: CASO-REAL-IFRS9 D-CRE-3 (§3.3): la tabla de pagos de la cuota.
+_TABLA_DE_PAGOS: Final = (
+    "la exposición sigue la tabla de pagos de la cuota del contrato hasta el vencimiento, con la "
+    "tasa implícita en la cuota"
+)
 
 
 def _horizonte_de_la_curva(study: Study, card: Mapping[str, Any]) -> int | None:
@@ -2867,8 +2881,9 @@ def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
         verbo = "lo lleva" if len(fuentes) == 1 else "lo llevan"
         lines.append(f"Sin marca de incumplimiento: al Stage 3 {verbo} {_enumerar(fuentes)}")
     falta = tuple(str(c) for c in _sequence(card.get("falta_dato")))
-    if "FALTA-DATO-IFRS-4" in falta:
-        lines.append(_ead_constante())
+    if card.get("contract_dates") is True:
+        lines.append(_linea_de_lectura_por_contrato(ifrs))
+    lines.extend(_lineas_de_ead(card, ifrs, n_filas))
     if str(card.get("pit_mode") or "") == "ttc_only":
         alerts.append(
             "La provisión usa la PD a lo largo del ciclo (TTC), sin ajuste a las condiciones "
@@ -2892,6 +2907,7 @@ def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
             f"{_plural(n3, 'se provisiona como sana', 'se provisionan como sanas')}: la pérdida "
             "del incumplimiento ya ocurrido es LGD × EAD (PD = 1)"
         )
+    alerts.extend(_alertas_del_contrato(card, ead))
     otras = [c for c in falta if c != "FALTA-DATO-IFRS-4"]
     alerts.extend(_capitalizar(d) for d in _declared_warning_descriptions(otras))
     extra: list[tuple[str, pd.DataFrame, Mapping[str, _Kind]]] = []
@@ -3056,6 +3072,73 @@ def _ead_constante() -> str:
         f"{_capitalizar(_DECLARED_WARNING_PROSE['FALTA-DATO-IFRS-4'])}: si la cartera amortiza, la "
         "ECL de por vida queda sobrestimada"
     )
+
+
+def _linea_de_lectura_por_contrato(ifrs: Any) -> str:
+    """Cómo leyó la curva la provisión con las fechas del contrato (D-CRE-2, §3.2)."""
+    desde_la_edad = _hoja(ifrs, "origination_date_col") is not None
+    hasta_el_vencimiento = _hoja(ifrs, "maturity_date_col") is not None
+    partes = []
+    if desde_la_edad:
+        partes.append("la curva de PD desde la antigüedad de cada operación")
+    if hasta_el_vencimiento:
+        partes.append("la vida hasta su vencimiento contractual")
+    return f"Con las fechas del contrato: {_enumerar(partes)}"
+
+
+def _lineas_de_ead(card: Mapping[str, Any], ifrs: Any, n_filas: int) -> list[str]:
+    """La exposición por período: la tabla de la cuota (D-CRE-3) o la constante declarada."""
+    falta = tuple(str(c) for c in _sequence(card.get("falta_dato")))
+    constante = "FALTA-DATO-IFRS-4" in falta
+    if _hoja(ifrs, "ead", "installment_col") is None or card.get("contract_dates") is not True:
+        return [_ead_constante()] if constante else []
+    n = _int(card.get("n_amortizing")) or 0
+    if not constante:
+        return [f"En todas las operaciones, {_TABLA_DE_PAGOS}"]
+    if n == 0:
+        return [
+            "Ninguna operación sigue la tabla de pagos de su cuota: sin cuota, o con una cuota que "
+            "no paga el saldo al vencimiento, la exposición queda constante"
+        ]
+    return [
+        f"En {_miles(n)} de {_miles(n_filas)} {_plural(n_filas, 'operación', 'operaciones')}, "
+        f"{_TABLA_DE_PAGOS}; en {_plural(n_filas - n, 'la otra', 'las demás')} queda constante "
+        "(sin cuota, o con una cuota que no paga el saldo al vencimiento)"
+    ]
+
+
+def _alertas_del_contrato(card: Mapping[str, Any], ead: float | None) -> list[str]:
+    """Lo que la lectura por contrato deja para revisar (§3.2-4, §3.2-5 y §3.3), con su monto."""
+    if card.get("contract_dates") is not True:
+        return []
+    alertas: list[str] = []
+    vencidas = _int(card.get("n_matured_with_balance")) or 0
+    if vencidas:
+        alertas.append(
+            f"{_miles(vencidas)} {_plural(vencidas, 'operación vencida', 'operaciones vencidas')} "
+            f"con saldo (exposición {_monto(_float(card.get('ead_matured_with_balance')) or 0.0)}) "
+            f"{_plural(vencidas, 'se provisiona', 'se provisionan')} con un período de vida: "
+            "revisa si el vencimiento está bien informado o si siguen en cobranza"
+        )
+    mas_alla = _float(card.get("ead_beyond_observed_curve"))
+    cola = _int(card.get("tail_from_period"))
+    if mas_alla and cola is not None:
+        parte = f"{_pct(mas_alla / ead)} de la exposición" if ead else "Parte de la exposición"
+        alertas.append(
+            f"{_capitalizar(parte)} ({_monto(mas_alla)}) vive más allá del período "
+            f"{_miles(cola - 1)} de la curva, el último con incumplimientos observados: su riesgo "
+            "es la media de los tres últimos períodos con incumplimientos, no historia observada"
+        )
+    no_alcanza = _int(card.get("n_installment_not_amortizing")) or 0
+    if no_alcanza:
+        monto = _monto(_float(card.get("ead_installment_not_amortizing")) or 0.0)
+        alertas.append(
+            f"{_miles(no_alcanza)} {_plural(no_alcanza, 'operación tiene', 'operaciones tienen')} "
+            f"una cuota que no paga el saldo al vencimiento (exposición {monto}): su exposición "
+            "queda constante hasta el vencimiento; si la diferencia se capitaliza, la exposición "
+            "real crece y queda subestimada"
+        )
+    return alertas
 
 
 _BUILDERS: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
@@ -3336,6 +3419,23 @@ def _cinco_cifras_cartera(study: Study) -> tuple[tuple[str, str], ...]:
     return tuple(cifras)
 
 
+def _supuestos_del_contrato(card: Mapping[str, Any], ifrs: Any) -> list[str]:
+    """Lo que supone leer la curva con las fechas del contrato (D-CRE-2, §3.2)."""
+    supuestos: list[str] = []
+    if _hoja(ifrs, "origination_date_col") is not None:
+        supuestos.append(_LECTURA_DESDE_LA_EDAD)
+    if _hoja(ifrs, "maturity_date_col") is not None:
+        supuestos.append(_VIDA_CONTRACTUAL)
+    cola = _int(card.get("tail_from_period"))
+    if cola is not None and _float(card.get("ead_beyond_observed_curve")):
+        supuestos.append(
+            f"Más allá del período {_miles(cola - 1)} de la curva —el último con incumplimientos "
+            "observados—, el riesgo de cada operación se extiende con la media de sus tres "
+            "últimos períodos con incumplimientos"
+        )
+    return supuestos
+
+
 def _supuestos(study: Study) -> tuple[str, ...]:
     """Lo que la cifra supone, leído del config y de los artefactos de ESA corrida (§3.8).
 
@@ -3387,10 +3487,13 @@ def _supuestos(study: Study) -> tuple[str, ...]:
             if isinstance(consumida, pd.DataFrame)
             else None
         )
+        por_contrato = card.get("contract_dates") is True
         supuestos.append(
-            f"Los 12 meses del Stage 1 son {cuantos} de la curva"
+            f"Los 12 meses del Stage 1 son {cuantos} "
+            + ("desde el corte" if por_contrato else "de la curva")
             + (f" ({duracion})" if duracion else "")
             + (", inferido de su unidad" if inferido else "")
+            + (", o la vida de la operación si es menor (B5.5.43)" if por_contrato else "")
         )
     s2 = _int(_hoja(ifrs, "staging", "dpd_sicr_backstop"))
     s3 = _int(_hoja(ifrs, "staging", "dpd_default_backstop"))
@@ -3405,13 +3508,14 @@ def _supuestos(study: Study) -> tuple[str, ...]:
                 f"Stage 2 desde {s2} días de mora y Stage 3 desde {s3}, frente a las presunciones "
                 f"de IFRS 9 de {_PRESUNCION_STAGE_2} y {_PRESUNCION_STAGE_3}"
             )
+    if card.get("contract_dates") is True:
+        supuestos.extend(_supuestos_del_contrato(card, ifrs))
     directo = _hoja(ifrs, "ecl", "stage3_direct")
     if directo is True:
         supuestos.append(_STAGE3_PD_1)
     elif directo is False and _int(card.get("n_stage3")):
         supuestos.append(_STAGE3_CON_CURVA)
-    if "FALTA-DATO-IFRS-4" in tuple(str(c) for c in _sequence(card.get("falta_dato"))):
-        supuestos.append(_ead_constante())
+    supuestos.extend(_lineas_de_ead(card, ifrs, _int(card.get("n_rows")) or 0))
     if _hoja(ifrs, "lgd", "method") == "provided":
         supuestos.append("La LGD es la del archivo de cartera, la misma en cada período")
     return tuple(supuestos)

@@ -7,6 +7,50 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **La provisión IFRS 9 lee la curva con las fechas del contrato.** Dos columnas opcionales del
+  archivo de cartera —la fecha de otorgamiento y la de vencimiento—
+  (`provisioning_ifrs9.origination_date_col` y `maturity_date_col`; `origination=` y `maturity=`
+  en `bayesrisk.Ecl`). Con ellas, la curva de PD de cada operación se lee desde su antigüedad —los
+  meses desde el otorgamiento, sin redondear, con el riesgo constante dentro de cada período de la
+  curva— y la PD de cada período es la de incumplir en ese tramo dado que la operación sobrevivió
+  hasta hoy; la vida termina en el vencimiento contractual (IFRS 9 5.5.19) y el Stage 1 suma 12
+  meses o la vida, si es menor (B5.5.43). Una operación ya vencida con saldo se provisiona con un
+  período. Más allá del último período de la curva con incumplimientos observados, el riesgo de
+  cada operación se extiende con la media de sus tres últimos períodos con incumplimientos: una
+  curva por períodos sólo estima riesgo donde hubo incumplimientos, y su último período sin
+  ninguno decía «ningún riesgo más allá». Sólo con la curva de supervivencia por períodos
+  discretos y la PD a 12 meses de esa misma curva; con otra configuración, la verificación previa
+  lo avisa antes de correr.
+- **La exposición amortiza con la cuota del contrato.** Una columna opcional con la cuota mensual
+  (`provisioning_ifrs9.ead.installment_col`; `installment=` en `bayesrisk.Ecl`), que exige el
+  vencimiento y la exposición entregada. La exposición de cada período es el saldo al inicio del
+  período en la tabla de cuota fija que paga el saldo de hoy justo al vencimiento, con la tasa
+  implícita en la cuota —no la tasa efectiva, que incluye comisiones—. Si la cuota no alcanza a
+  pagar el saldo en el plazo, la exposición queda constante y «Qué revisar» lo cuenta con su
+  monto; el aviso de exposición constante sólo sale si alguna operación la conserva.
+- Medido con el motor sobre las dos carteras reales: con las dos fechas, la muestra de consumo de
+  Lending Club 2013–2016 pasa de 3.254.890 a 3.315.758 (+1,9 %) y la de hipotecas de Freddie Mac
+  2016 de 3.028.897 a 2.706.204 (−10,7 %); con fechas y cuota, 2.805.331 (−13,8 %) y 2.632.095
+  (−13,1 %). Sin las tres columnas la provisión es la misma de antes, bit a bit.
+- «Supuestos», «Qué revisar», el capítulo IFRS 9 del informe y la ficha metodológica dicen cómo se
+  leyó la curva, desde qué período se extiende su cola y qué exposición vive más allá de lo
+  observado, las operaciones vencidas con saldo y la tabla de pagos. La card de la provisión gana
+  `contract_dates`, `n_matured_with_balance`, `ead_matured_with_balance`, `tail_from_period`,
+  `ead_beyond_observed_curve`, `n_amortizing`, `n_installment_not_amortizing` y
+  `ead_installment_not_amortizing`; con las fechas, el detalle gana `age_periods` y
+  `life_periods`, y la ECL por período, `curve_start` y `curve_end` (el tramo de la curva que leyó).
+- En la pantalla, las tres columnas son esenciales de la provisión —diez en total— y van juntas
+  bajo «Si tienes las fechas y la cuota del contrato».
+
+### Cambiado
+
+- El `config_hash` de toda corrida con provisiones IFRS 9 cambia —el preset IFRS 9 incluido—
+  porque el config gana las tres claves nuevas, vacías; su cifra no cambia.
+
 ## [2.6.0] — 2026-10-06
 
 ### Cambiado

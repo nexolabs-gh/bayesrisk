@@ -344,9 +344,10 @@ export const SALVEDADES = [
   {
     clave: "EAD constante",
     texto:
-      "La curva lifetime de IFRS 9 asume exposición constante por período: no modela la " +
-      "amortización del crédito en el tiempo. El resultado lo deja anotado en cada fila, para que " +
-      "nadie lo descubra tarde.",
+      "Sin la cuota del contrato, la curva lifetime de IFRS 9 asume exposición constante por " +
+      "período: no modela la amortización del crédito en el tiempo. Con la cuota, la exposición " +
+      "sigue su tabla de pagos, y la operación que no la trae queda constante. El resultado lo " +
+      "deja anotado en cada fila, para que nadie lo descubra tarde.",
   },
   {
     clave: "Caso de referencia congelado",
