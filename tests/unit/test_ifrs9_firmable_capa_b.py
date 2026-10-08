@@ -584,3 +584,61 @@ def test_codex_p2_la_puerta_avisa_antes_de_correr_con_una_curva_corta(tmp_path: 
             pd="pd_hoy",
             run_dir=tmp_path / "corridas",
         )
+
+
+def test_codex_p3_con_escenarios_la_razon_en_el_umbral_no_pierde_precision() -> None:
+    """Pasada 3 (high): con escenarios, el numerador se reconstruía restando supervivencias y, con
+    PD muy chicas, una razón de 2 exacta salía 1,99999999: la operación se quedaba en Stage 1."""
+    plano = [6.0] * 8
+    modelo = _modelo({"base": (0.5, plano), "adverso": (0.5, plano)})
+    base = _cfg_b(
+        pd=_pd_cfg(pit_mode="cycle", horizon_12m_periods=12),
+        scenarios=IfrsScenarioConfig(source="forward"),
+    )
+    cfg = base.model_copy(
+        update={"staging": base.staging.model_copy(update={"origination_pd_12m_col": "pd_origen"})}
+    )
+    resultado = IfrsProvisioningEngine.from_config(cfg).calculate(
+        _cartera(
+            otorgamiento=["2025-03-01"],
+            vencimiento=["2028-03-01"],
+            pd_modelo=[1e-7],
+            pd_origen=[5e-8],
+        ),
+        term_structure=_curva_mensual(["op0"], [1e-8] * 24 + [0.1] * 12),
+        as_of_date=_CORTE,
+        events_by_period={p: 5 for p in range(1, 37)},
+        cycle=CycleInputs(model=modelo, history=None),
+    )
+    assert resultado.detail["sicr_pd_ratio_12m"].iloc[0] == pytest.approx(2.0, rel=1e-12)
+    assert resultado.staging["stage"].iloc[0] == 2
+
+
+def test_codex_p3_sin_fecha_de_otorgamiento_no_se_compara_por_tramo() -> None:
+    """Pasada 3 (medium): una fila sin fecha se lee desde la edad 0 para la ECL, pero sin fecha no
+    hay tramo de vida: comparar su PD de hoy con la de origen es lo que D-FIR-8 descarta. No se
+    compara, se cuenta y el resumen lo avisa."""
+    cfg = _cfg_b(
+        staging=_cfg_b().staging.model_copy(update={"origination_pd_12m_col": "pd_origen"})
+    )
+    resultado = IfrsProvisioningEngine.from_config(cfg).calculate(
+        _cartera(
+            otorgamiento=[None, "2022-03-01"],
+            vencimiento=["2032-03-01", "2032-03-01"],
+            pd_modelo=[0.05, 0.05],
+            pd_origen=[0.80, 0.20],
+        ),
+        term_structure=_curva(["op0", "op1"], _DECRECIENTE),
+        as_of_date=_CORTE,
+        events_by_period=_EVENTOS_DEC,
+    )
+    detalle = resultado.detail.set_index("row_id")
+    assert math.isnan(detalle.loc["op0", "sicr_pd_ratio_12m"])
+    assert detalle.loc["op1", "sicr_pd_ratio_12m"] == pytest.approx(2.5, abs=1e-9)
+    seccion = resultado.card.metric_sections["sicr_origination_12m"]
+    assert seccion["n_rows_without_origination_date"] == 1
+    assert seccion["n_rows_evaluated"] == 1
+    from bayesrisk.guided.summaries import _lineas_de_la_pd_del_modelo
+
+    _lineas, alertas = _lineas_de_la_pd_del_modelo(resultado.card.model_dump())
+    assert any("sin fecha de otorgamiento" in a for a in alertas), alertas

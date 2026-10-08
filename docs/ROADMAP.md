@@ -169,7 +169,7 @@ un comparador mínimo dentro de la cadena. **(1) tiene su enmienda aprobada el 2
 [`design/_ENMIENDA-IFRS9-FIRMABLE.md`](design/_ENMIENDA-IFRS9-FIRMABLE.md), D-FIR-1…11 —escenarios
 ponderados con un ajuste por ciclo por tramo de calendario (capa A, 2.8.0), la PD del modelo del
 banco y el SICR con PD de origen (capa B, 2.9.0; resuelve D-CRE-4 de H7) y pantalla, informe y Excel
-(capa C, 2.10.0)—; la capa A quedó implementada en S37 (la 2.8.0 pide su OK).
+(capa C, 2.10.0)—; la capa A quedó implementada en S37 y publicada en la 2.8.0 (S38), y la B implementada en S38 (la 2.9.0 y su recaptura piden su OK).
 
 Un módulo a la vez, en ese orden; Cami puede reordenar. Nada arranca sin su enmienda
 medida, la revisión de Codex y el OK. Cada hito termina con el notebook mínimo en CI y sus cinco

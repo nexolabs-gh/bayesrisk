@@ -1172,7 +1172,7 @@ por módulo bajo SDD-31, la primera
 > la curva sin incumplimientos decidía la cifra de las hipotecas que midió S32.
 
 > **IFRS 9 firmable (2026-10-07; tres pasadas de Codex; **aprobada por Cami** el 2026-10-07;
-> primer eslabón de la cadena del banco; capa A implementada en S37, sin publicar).** [`_ENMIENDA-IFRS9-FIRMABLE.md`](_ENMIENDA-IFRS9-FIRMABLE.md), D-FIR-1…11, enmienda a
+> primer eslabón de la cadena del banco; capa A implementada en S37 y publicada en la 2.8.0; capa B implementada en S38, sin publicar).** [`_ENMIENDA-IFRS9-FIRMABLE.md`](_ENMIENDA-IFRS9-FIRMABLE.md), D-FIR-1…11, enmienda a
 > SDD-20, SDD-16, D-ECL-5 y D-CRE-4: escenarios ponderados con un ajuste por ciclo en logit por tramo
 > de calendario (la edad decide la forma de la curva, el calendario el desplazamiento), la
 > sensibilidad desde una tasa de referencia larga, el ancla en las condiciones de la ventana de la

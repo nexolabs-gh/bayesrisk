@@ -1,6 +1,6 @@
 # Enmienda SDD — IFRS 9 firmable: escenarios, la PD de tu modelo y el aumento significativo del riesgo
 
-> **Estado: APROBADA por Cami el 2026-10-07** (cierre de S36); **capa A implementada en S37 (§9)**, de forma interactiva y con la
+> **Estado: APROBADA por Cami el 2026-10-07** (cierre de S36); **capa A implementada en S37 (§9)** y publicada en la 2.8.0; **capa B implementada en S38 (§10)**, sin publicar. Aprobada de forma interactiva y con la
 > recomendación de cada uno de los siete puntos de §8: la enmienda entera; la sensibilidad desde una
 > tasa de referencia larga con el supuesto de transferencia declarado y sus cuatro criterios; el
 > ancla en las condiciones de la historia de la curva; el SICR con PD de origen y el escenario en la
@@ -834,6 +834,76 @@ lectura sin escenarios; `fit` se podía alinear por `time_value`, que también e
 `cycle_by_period` publicaba el tramo completo aunque el último sea parcial— → `5cec48c`; p3
 **approve**, sin hallazgos materiales. Ninguno contractual. 3 → 3 → 0.
 
+## 10. Capa B implementada (S38, 2026-10-07)
+
+**Qué se programó** (D-FIR-7…9 y el bloque de la guía de D-FIR-10), sobre `48f5350` (2.8.0):
+
+- `provisioning/ifrs9/anchor.py` (nuevo): la lectura de la PD del modelo (vacía = sin dato; fuera
+  de `(0, 1)`, acotada a `[10⁻⁹, 1 − 10⁻⁹]` y contada; un valor que no es un número detiene la
+  corrida con la operación), la PD de una ventana de la curva con el riesgo constante dentro del
+  período, la bisección en `[−50, 50]` sobre el riesgo acotado a `[10⁻¹², 1 − 10⁻¹²]`, el conteo
+  de las ventanas con un riesgo en el borde y el anclaje de la curva **sin fechas** (cada
+  operación desde su período 1; la ventana son los períodos `1…H` del Stage 1). `contract.py`
+  ancla **con fechas** sobre la curva extendida con su cola, en `[A, A + H]` sin cortar por el
+  vencimiento, y con escenarios suma `δ_k(t)` encima del anclaje (`shifted_tranche_pd` con
+  `s_i + δ_k`); la lectura TTC de la ECL de desplazamiento cero conserva el anclaje. El SICR por
+  tramo (`_sicr_por_tramo`): lo esperado al otorgar, la curva anclada a la PD de origen en la edad
+  0 leída en `[A, A + H]`; lo de hoy, la PD del modelo o, con escenarios, la de esos tramos
+  ponderada por escenario.
+- `config.py`: `pd.pd_12m_col` y `staging.origination_pd_12m_col` (default `None`, esenciales
+  bajo «Si tienes la PD de tu modelo»), sus requisitos —la PD del modelo exige la curva de
+  `survival`, la PD a 12 meses de la curva y `ttc_only` o `cycle`; la de origen exige la de hoy y
+  la fecha de otorgamiento—, comprobados también por código (`check_model_pd_config`); la ayuda
+  de `origination_pd_life_col` (§0-7). `staging.py`: el gatillo `sicr_pd_origination_12m`,
+  eximible como el ratio de vida. `engine.py`: el detalle gana `pd_12m_model` y
+  `pd_12m_origination_expected` con `sicr_pd_ratio_12m`, y la card `pd_model_anchor` (anclados,
+  sin PD y su exposición, acotados, en el borde, las dos medias ponderadas por exposición, la
+  diferencia relativa y el umbral) y `sicr_origination_12m` (evaluadas, sin PD de origen,
+  acotadas, el umbral, si hubo escenarios, disparadas y las que pasaron a Stage 2 sólo por él, con
+  su exposición). Todo, sólo con sus columnas. `ui/jobs.py`: la ayuda de `base_pd_source` (§0-5).
+- `bayesrisk.Ecl(..., pd=, origination_pd=)` **experimental** (D-SIM-1: el informe y el Excel
+  llegan con la capa C); `origination_pd=` sin `pd=` o sin `origination=` se detiene antes de
+  correr. Resúmenes: «Provisión IFRS 9» dice la PD del modelo frente a la de la curva y cuántas
+  pasaron a Stage 2 por la comparación por tramo, con sus alertas; «Supuestos», lo que supone cada
+  PD y el método de la LGD también cuando no es la del archivo (D-FIR-9), con la alerta de la LGD
+  modelada sobre la cartera viva.
+
+**Una precisión de implementación**, sin perilla y declarada (no es una decisión nueva: es el
+texto de §3.8): **las dos PD del SICR se leen en la ventana de 12 meses sin cortar por el
+vencimiento** —«por construcción, la PD de hoy», y lo esperado en `[A, A + 12 meses]`—. El oráculo
+de S36 (`pd_sicr_lgd.py`, `sicr_con_macro.py`) cortaba las dos ventanas en el vencimiento, como la
+ECL. Con la regla del texto, el oráculo da lo mismo que el motor (`evidencia/s38/oraculo_capa_b.py`);
+la diferencia con las cifras publicadas son operaciones a las que les quedan menos de 12 meses, en
+las que el Stage 1 y el Stage 2 provisionan lo mismo: la ECL es idéntica al peso.
+
+**Medido con el motor** (datos regenerados en `%TEMP%\nkr\s38\ext` con `evidencia/s32/`):
+
+| | Oráculo de la enmienda | Motor | |
+|---|---|---|---|
+| Paquete, PD del scorecard (§3.7) | 5.669.963,44 (+18,5 %) | **5.669.963,44** | al centavo (`pd_paquete_motor.py`); PD media 9,99 % frente a 6,31 %: la alerta salta |
+| Lending Club, PD de hoy (§3.7) | 3.120.618,62 (+11,2 %) | **3.120.618,62** | al peso |
+| Lending Club, SICR sin escenarios (§3.8) | 269 de 9.308 · ECL 3.146.216,72 | **256** · ECL **3.146.216,72** | 256 = el oráculo sin cortar, con la misma etapa en cada operación; misma ECL |
+| Lending Club, SICR con el escenario en la razón | 235 · ECL 3.089.719 | **240** · ECL **3.089.718,61** | 240 = el oráculo sin cortar; misma ECL |
+| Freddie Mac, PD de hoy (§3.7) | 2.309.486,88 (−12,3 %) | **2.309.486,88** | al centavo; PD media 0,17 % frente a 0,27 %: la alerta salta (−35 %) |
+| Freddie Mac, SICR sin y con escenarios | 0 y 0 · ECL ponderada 2.534.865 | **0 y 0** · **2.535.128,55** | +263,55 (0,010 %): el oráculo de S36 tomaba dos fechas de otorgamiento para el ancla, el dato que ya explicó §9 |
+
+**Sin las columnas, bit a bit** (`evidencia/s38/bit_a_bit.py`, proyección canónica del código de
+`48f5350` frente al nuevo): F4 (17 artefactos de `data`, `survival` y `provisioning_ifrs9`),
+Lending Club y Freddie Mac (15 cada uno) con la misma huella y la misma ECL en hexadecimal; sólo
+cambia el `config_hash`, por las dos hojas vacías (F4 `f688fce7…` → `7de7a682…`).
+
+**Gates.** Tests por regla (§6-8, 9 y 11) en `tests/unit/test_ifrs9_firmable_capa_b.py` y el bloque
+de la guía en `test_docs_provision_ifrs9.py` (la curva anclada en todas las operaciones, las que
+pasan a Stage 2 son las que empeoraron, el resumen y los supuestos); los censos del formulario
+(`HOJAS_DEL_FORMULARIO` 577 → 579, default efectivo 461 → 463, descriptores 1090 → 1094),
+esenciales 10 → 12 (golden de catorce secciones, espejo del front y `essentials.test.ts`) y las
+cinco cifras; **un control negativo por regla, en paralelo** (`evidencia/s38/cn_capa_b.py`),
+los once rojos por su motivo —el anclaje sin la edad, el anclaje sólo de los 12 meses, el
+escenario sin el anclaje, la reconciliación con el umbral por diez, la PD sin acotar, lo esperado
+sin el tramo, el escenario fuera de la razón, la LGD modelada sin declarar, las columnas del modelo
+sin sus columnas, el requisito de la fecha de otorgamiento y la marca de esencial—. Los arreglos de
+Codex nacieron rojos contra el commit anterior.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima:** la de CASO-REAL más, opcionales, dos tablas (historia de la tasa de referencia
@@ -872,3 +942,6 @@ lectura sin escenarios; `fit` se podía alinear por `time_value`, que también e
 | Perillas de las secciones de cálculo del trabajo | 233 (158 + 24 + 51) | 233 en A (la hoja nueva vive en `forward`, fuera del trabajo); **235** en B (158 + 24 + 53); **280** en C, cuando `forward` entra al trabajo (44 + 1 hojas) |
 | Segundos al primer resumen (paquete) | ~1 | ~1 (sin escenarios no hay cálculo nuevo) |
 | Conceptos antes del primer resultado | 5 | 5 |
+
+Medidas en la capa B (S38): línea base sobre `48f5350` (2.8.0) 21 · 5, 10 y 2 (`forward`, en la
+firma) · 233 · 0,86 s · 5; después 21 · 5, **12** y 2 · **235** (158 + 24 + 53) · ≈ 1 s · 5.
