@@ -43,9 +43,10 @@ const F4_ID = "f4-ifrs9-retail"
 // config distinto del que trae el paquete instalado.
 // Recalculado en 2.6.0 por CASO-REAL-IFRS9 D-CRE-1: el preset provisiona Stage 3 con LGD × EAD.
 // Y en 2.7.0 por D-CRE-2/3: el preset escribe las tres hojas del contrato vacías (la cifra no
+// cambia). Y en 2.9.0 por IFRS9-FIRMABLE D-FIR-7/8: las dos PD del modelo vacías (la cifra no
 // cambia).
 const F4_CONFIG_HASH =
-  "f688fce704ad36414a7c4e5f4e7c10e9455c9d50a0802b3f3ec90bb97ff4b9c7"
+  "7de7a6829e85107303df2cfb9f4d09a40513bc8ea855ed9e3214d5182e88870c"
 
 beforeEach(() => {
   // Cada test arranca con el preset activo en su default (F1): el estado de módulo no se filtra.

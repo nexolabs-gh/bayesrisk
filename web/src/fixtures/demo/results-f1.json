@@ -1,16 +1,16 @@
 {
  "status": "done",
- "run_id": "84313a0311dd44f3b9f3cbc7544d9dff",
+ "run_id": "664f184c3d004fb2a82af017aa45f378",
  "error": null,
  "model_card": {
-  "run_id": "84313a0311dd44f3b9f3cbc7544d9dff",
+  "run_id": "664f184c3d004fb2a82af017aa45f378",
   "config_hash": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
   "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8",
-  "git_sha": "14b196aecb4ed0a3f0abb456bf8524f186ea8cdb",
+  "git_sha": "748831629ae12028915ffd499b11c6e47c30ff01",
   "git_dirty": false,
   "root_seed": 20240706,
   "schema_version": "1.0.0",
-  "created_at": "2026-10-07T11:04:09.641831Z",
+  "created_at": "2026-10-08T11:47:56.242549Z",
   "purpose": "Demostración pública de bayesrisk: scorecard de comportamiento sobre una cartera de consumo sintética. Ilustra el flujo completo de construcción y validación; no decide sobre ninguna operación real.",
   "assumptions": [
    "Los datos son sintéticos y reproducibles: no representan a ninguna institución.",
@@ -110,7 +110,7 @@
     "umbral": "cohort",
     "valor": "cohort",
     "accion": "aplicar_estrategia",
-    "ts": "2026-10-07T11:04:09.946528Z",
+    "ts": "2026-10-08T11:47:56.540312Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -134,7 +134,7 @@
      }
     },
     "accion": "reportar_particiones",
-    "ts": "2026-10-07T11:04:09.946610Z",
+    "ts": "2026-10-08T11:47:56.540379Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -145,7 +145,7 @@
     "umbral": 0.25,
     "valor": "eje de cohorte sin cronología",
     "accion": "no_evaluable",
-    "ts": "2026-10-07T11:04:09.966400Z",
+    "ts": "2026-10-08T11:47:56.559691Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -159,7 +159,7 @@
      "variable": "ingreso_mensual"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-07T11:04:14.299438Z",
+    "ts": "2026-10-08T11:48:00.906667Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -173,7 +173,7 @@
      "variable": "deuda_ingreso"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-07T11:04:14.299511Z",
+    "ts": "2026-10-08T11:48:00.906737Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -187,7 +187,7 @@
      "variable": "utilizacion_linea"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-07T11:04:14.299537Z",
+    "ts": "2026-10-08T11:48:00.906764Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -201,7 +201,7 @@
      "variable": "mora_max_12m"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-07T11:04:14.299554Z",
+    "ts": "2026-10-08T11:48:00.906783Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -215,7 +215,7 @@
      "variable": "antiguedad_meses"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-07T11:04:14.299569Z",
+    "ts": "2026-10-08T11:48:00.906799Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -229,7 +229,7 @@
      "variable": "utilizacion_linea"
     },
     "accion": "conservar_variable",
-    "ts": "2026-10-07T11:04:14.300145Z",
+    "ts": "2026-10-08T11:48:00.907405Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -243,7 +243,7 @@
      "variable": "segmento"
     },
     "accion": "conservar_variable",
-    "ts": "2026-10-07T11:04:14.300186Z",
+    "ts": "2026-10-08T11:48:00.907447Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -257,7 +257,7 @@
      "variable": "segmento"
     },
     "accion": "diagnosticar_sin_eliminar",
-    "ts": "2026-10-07T11:04:14.300208Z",
+    "ts": "2026-10-08T11:48:00.907469Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -273,7 +273,7 @@
      "woe_column": "segmento__woe"
     },
     "accion": "excluir",
-    "ts": "2026-10-07T11:04:14.547516Z",
+    "ts": "2026-10-08T11:48:01.160491Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -289,7 +289,7 @@
      "p_value": 9.904266606971208e-41
     },
     "accion": "enter",
-    "ts": "2026-10-07T11:04:14.847827Z",
+    "ts": "2026-10-08T11:48:01.483098Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -305,7 +305,7 @@
      "p_value": null
     },
     "accion": "flag",
-    "ts": "2026-10-07T11:04:14.860148Z",
+    "ts": "2026-10-08T11:48:01.495652Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -321,7 +321,7 @@
      "p_value": 4.298619202001231e-28
     },
     "accion": "enter",
-    "ts": "2026-10-07T11:04:14.910540Z",
+    "ts": "2026-10-08T11:48:01.547049Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -337,7 +337,7 @@
      "p_value": 9.970285673886036e-12
     },
     "accion": "enter",
-    "ts": "2026-10-07T11:04:14.961744Z",
+    "ts": "2026-10-08T11:48:01.603300Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -353,7 +353,7 @@
      "p_value": 1.7899471110037847e-07
     },
     "accion": "enter",
-    "ts": "2026-10-07T11:04:15.000936Z",
+    "ts": "2026-10-08T11:48:01.642903Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -369,7 +369,7 @@
      "p_value": 0.00036461213095663236
     },
     "accion": "enter",
-    "ts": "2026-10-07T11:04:15.027630Z",
+    "ts": "2026-10-08T11:48:01.674456Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -389,7 +389,7 @@
      "woe_column": "ingreso_mensual__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-07T11:04:15.087134Z",
+    "ts": "2026-10-08T11:48:01.738596Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -411,7 +411,7 @@
      "woe_column": "ingreso_mensual__woe"
     },
     "accion": "flag",
-    "ts": "2026-10-07T11:04:15.087209Z",
+    "ts": "2026-10-08T11:48:01.738665Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "contribución al IV 1,0000 > máximo 0,90"
@@ -431,7 +431,7 @@
      "woe_column": "deuda_ingreso__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-07T11:04:15.087243Z",
+    "ts": "2026-10-08T11:48:01.738701Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -451,7 +451,7 @@
      "woe_column": "utilizacion_linea__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-07T11:04:15.087270Z",
+    "ts": "2026-10-08T11:48:01.738729Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -471,7 +471,7 @@
      "woe_column": "antiguedad_meses__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-07T11:04:15.087293Z",
+    "ts": "2026-10-08T11:48:01.738752Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -491,7 +491,7 @@
      "woe_column": "mora_max_12m__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-07T11:04:15.087314Z",
+    "ts": "2026-10-08T11:48:01.738773Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -509,7 +509,7 @@
      "optimizer": "newton"
     },
     "accion": "aceptar_ajuste",
-    "ts": "2026-10-07T11:04:15.087339Z",
+    "ts": "2026-10-08T11:48:01.738830Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -556,7 +556,7 @@
      }
     ],
     "accion": "usar_punto_determinista",
-    "ts": "2026-10-07T11:04:15.112243Z",
+    "ts": "2026-10-08T11:48:01.764201Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -571,7 +571,7 @@
      "n_variables": 5
     },
     "accion": "publicar_puntos_redondeados",
-    "ts": "2026-10-07T11:04:15.112497Z",
+    "ts": "2026-10-08T11:48:01.764461Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -586,7 +586,7 @@
      "target_pd": 0.23327442565008835
     },
     "accion": "fijar_ancla",
-    "ts": "2026-10-07T11:04:15.197556Z",
+    "ts": "2026-10-08T11:48:01.854520Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -600,7 +600,7 @@
      "n_fit": 3961
     },
     "accion": "ajustar_calibracion",
-    "ts": "2026-10-07T11:04:15.197606Z",
+    "ts": "2026-10-08T11:48:01.854569Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -615,7 +615,7 @@
      "raw_mean_pd_dev": 0.23327442565008835
     },
     "accion": "publicar_pd_calibrada",
-    "ts": "2026-10-07T11:04:15.197635Z",
+    "ts": "2026-10-08T11:48:01.854598Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -629,7 +629,7 @@
      "ties_created": 0
     },
     "accion": "registrar_ranking",
-    "ts": "2026-10-07T11:04:15.197662Z",
+    "ts": "2026-10-08T11:48:01.854624Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -644,7 +644,7 @@
      "statistic": 19.451071238480708
     },
     "accion": "revisar_calibracion",
-    "ts": "2026-10-07T11:04:15.325200Z",
+    "ts": "2026-10-08T11:48:02.020676Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -709,7 +709,7 @@
      ]
     },
     "accion": "renderizar_reporte",
-    "ts": "2026-10-07T11:04:40.695874Z",
+    "ts": "2026-10-08T11:48:26.828840Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -722,7 +722,7 @@
      "provider": "none"
     },
     "accion": "usar_narrativa_basica",
-    "ts": "2026-10-07T11:04:40.697402Z",
+    "ts": "2026-10-08T11:48:26.830392Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -733,10 +733,10 @@
     "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
     "valor": {
      "path": "scorecard_report.html",
-     "sha256": "5db60231e2a094eaf2d6b46dc3c42b42f492a2ca260fcac08741d1351b5c3ae7"
+     "sha256": "ffafc315f9c303ac62d1e1d2dda32321df6eecfb32109777b8a297687f8d731e"
     },
     "accion": "publicar_html_local",
-    "ts": "2026-10-07T11:04:40.697472Z",
+    "ts": "2026-10-08T11:48:26.830441Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -749,7 +749,7 @@
      "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf"
     },
     "accion": "publicar_pdf_local",
-    "ts": "2026-10-07T11:04:40.697508Z",
+    "ts": "2026-10-08T11:48:26.830476Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -762,7 +762,7 @@
      "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd"
     },
     "accion": "publicar_qmd_local",
-    "ts": "2026-10-07T11:04:40.697530Z",
+    "ts": "2026-10-08T11:48:26.830496Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -775,20 +775,20 @@
      "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx"
     },
     "accion": "publicar_docx_local",
-    "ts": "2026-10-07T11:04:40.697547Z",
+    "ts": "2026-10-08T11:48:26.830512Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
    }
   ],
   "determinism_caveats": [],
-  "review_date": "2026-10-07T11:04:40.705755Z",
-  "next_review_date": "2027-10-07T11:04:40.705755Z",
+  "review_date": "2026-10-08T11:48:26.838597Z",
+  "next_review_date": "2027-10-08T11:48:26.838597Z",
   "environment": {
    "python_version": "3.12.15",
    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
    "library_versions": {
-    "bayesrisk": "2.7.0",
+    "bayesrisk": "2.9.0",
     "numpy": "2.4.6",
     "pandas": "2.3.3",
     "pandera": "0.32.0",
@@ -798,26 +798,26 @@
     "PyYAML": "6.0.3"
    },
    "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
-   "captured_at": "2026-10-07T11:04:40.706676Z"
+   "captured_at": "2026-10-08T11:48:26.839546Z"
   }
  },
  "lineage": {
-  "git_sha": "14b196aecb4ed0a3f0abb456bf8524f186ea8cdb",
+  "git_sha": "748831629ae12028915ffd499b11c6e47c30ff01",
   "git_dirty": false,
   "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8",
   "config_hash": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
   "root_seed": 20240706,
   "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
-  "runtime_environment_hash": "36dc88ba430c06b7e92d168cc2ea3ac29776e37ff19052bae85bbf04f9fa4f11",
+  "runtime_environment_hash": "ca7dd4f5e0fd81523427628b015e65878e604320aa67b4b06d19c71ba9298005",
   "library_versions": {
-   "bayesrisk": "2.7.0",
+   "bayesrisk": "2.9.0",
    "numpy": "2.4.6",
    "pandas": "2.3.3",
    "pydantic": "2.13.4",
    "PyYAML": "6.0.3"
   },
   "determinism_caveats": [],
-  "created_at": "2026-10-07T11:04:09.641831Z",
+  "created_at": "2026-10-08T11:47:56.242549Z",
   "schema_version": "1.0.0",
   "injected_artifacts": []
  },
@@ -12228,7 +12228,7 @@
      "Archivo: consumo_comportamiento",
      "6.000 filas · 1.407 malos (23,45 %) · 8 columnas",
      "Muestras: Desarrollo 3.961 (23,33 %) · Holdout 1.031 (23,67 %) · Fuera de tiempo (OOT) 1.008 (23,71 %) — cohortes fuera de tiempo: 2024Q2 (columna «cohorte»); holdout 20 % del resto",
-     "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/84313a0311dd44f3b9f3cbc7544d9dff"
+     "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378"
     ],
     "alerts": [],
     "table": {
@@ -13578,7 +13578,7 @@
      "Informe Word: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx",
      "Informe PDF: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf",
      "Fuente editable (Quarto): /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd",
-     "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/84313a0311dd44f3b9f3cbc7544d9dff/audit_trail.jsonl"
+     "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378/audit_trail.jsonl"
     ],
     "alerts": [],
     "table": null
@@ -13621,15 +13621,15 @@
    "files": [
     [
      "Carpeta del proyecto",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/84313a0311dd44f3b9f3cbc7544d9dff"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378"
     ],
     [
      "Evidencia de la corrida",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/84313a0311dd44f3b9f3cbc7544d9dff"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378"
     ],
     [
      "Registro de auditoría",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/84313a0311dd44f3b9f3cbc7544d9dff/audit_trail.jsonl"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378/audit_trail.jsonl"
     ],
     [
      "Informe HTML",

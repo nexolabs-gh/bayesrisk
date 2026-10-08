@@ -1,25 +1,25 @@
 {
  "status": "done",
- "run_id": "67b0907a68df4b39a62b7eb29c2d7906",
+ "run_id": "db083269f48148c0b3007dc6f31bc432",
  "error": null,
  "model_card": null,
  "lineage": {
-  "git_sha": "14b196aecb4ed0a3f0abb456bf8524f186ea8cdb",
+  "git_sha": "748831629ae12028915ffd499b11c6e47c30ff01",
   "git_dirty": false,
   "data_hash": "d713808d0604110d6c450358453cea172934d93eb56ccdcb0e7aea7279a94e3e",
-  "config_hash": "f688fce704ad36414a7c4e5f4e7c10e9455c9d50a0802b3f3ec90bb97ff4b9c7",
+  "config_hash": "7de7a6829e85107303df2cfb9f4d09a40513bc8ea855ed9e3214d5182e88870c",
   "root_seed": 20240706,
   "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
-  "runtime_environment_hash": "36dc88ba430c06b7e92d168cc2ea3ac29776e37ff19052bae85bbf04f9fa4f11",
+  "runtime_environment_hash": "ca7dd4f5e0fd81523427628b015e65878e604320aa67b4b06d19c71ba9298005",
   "library_versions": {
-   "bayesrisk": "2.7.0",
+   "bayesrisk": "2.9.0",
    "numpy": "2.4.6",
    "pandas": "2.3.3",
    "pydantic": "2.13.4",
    "PyYAML": "6.0.3"
   },
   "determinism_caveats": [],
-  "created_at": "2026-10-07T11:03:43.388614Z",
+  "created_at": "2026-10-08T11:46:58.576874Z",
   "schema_version": "1.0.0",
   "injected_artifacts": []
  },
@@ -1016,7 +1016,7 @@
     "lines": [
      "Archivo: ifrs9_retail_latam",
      "6.000 operaciones · fecha de corte 2025-06-30 · 4 carteras · exposición total 114.325.315",
-     "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/67b0907a68df4b39a62b7eb29c2d7906"
+     "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/db083269f48148c0b3007dc6f31bc432"
     ],
     "alerts": [],
     "table": {
@@ -1365,7 +1365,7 @@
      "Informe Word: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.docx",
      "Informe PDF: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.pdf",
      "Fuente editable (Quarto): /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/reports/ifrs9_ecl_report.qmd",
-     "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/67b0907a68df4b39a62b7eb29c2d7906/audit_trail.jsonl"
+     "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/db083269f48148c0b3007dc6f31bc432/audit_trail.jsonl"
     ],
     "alerts": [],
     "table": null
@@ -1404,15 +1404,15 @@
    "files": [
     [
      "Carpeta del proyecto",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/67b0907a68df4b39a62b7eb29c2d7906"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/db083269f48148c0b3007dc6f31bc432"
     ],
     [
      "Evidencia de la corrida",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/67b0907a68df4b39a62b7eb29c2d7906"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/db083269f48148c0b3007dc6f31bc432"
     ],
     [
      "Registro de auditoría",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/67b0907a68df4b39a62b7eb29c2d7906/audit_trail.jsonl"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f4/runs/db083269f48148c0b3007dc6f31bc432/audit_trail.jsonl"
     ],
     [
      "Informe HTML",
