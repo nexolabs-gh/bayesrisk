@@ -31,7 +31,9 @@ entradas anteriores conservan el nombre con el que se publicaron.
   `staging.sicr_pd_ratio_threshold` (2,0) veces la que se esperaba al otorgar para ese mismo tramo
   de vida (la curva anclada a la PD de origen en la edad 0, leída desde la antigüedad de hoy). Es el
   gatillo nuevo `sicr_pd_origination_12m`; la mora y la marca siguen como presunciones, y la alerta
-  «el aumento significativo del riesgo se detecta sólo por la mora y la marca» deja de salir.
+  «el aumento significativo del riesgo se detecta sólo por la mora y la marca» deja de salir. Una
+  operación sin fecha de otorgamiento no se compara por tramo —sin su antigüedad no se sabe qué
+  tramo se esperaba al otorgar—: se cuenta y «Qué revisar» lo avisa; su provisión no cambia.
 - Medido con el motor: la PD del scorecard del paquete anclando la curva sube la ECL de la cartera
   de ejemplo de 4.786.739 a 5.669.963 (+18,5 %, al centavo con el oráculo de la enmienda), y la
   alerta de la reconciliación salta (9,99 % frente a 6,31 %); con la PD de hoy, la muestra de

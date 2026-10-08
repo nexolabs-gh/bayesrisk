@@ -904,6 +904,40 @@ sin el tramo, el escenario fuera de la razón, la LGD modelada sin declarar, las
 sin sus columnas, el requisito de la fecha de otorgamiento y la marca de esencial—. Los arreglos de
 Codex nacieron rojos contra el commit anterior.
 
+**Codex sobre el código** (binario 0.160.1; tope tres más una pasada 4 de confirmación, decidida
+por Cami el 2026-10-08; criterio: `approve` o hallazgos que dejen de ser materiales; lo contractual
+se eleva): p1 (`7b9e425`) 2 high y 1 medium —sin fechas, el tope de vida recortaba la ventana antes
+del anclaje y concentraba la PD anual en él; una razón de 2 exacta, reconstruida por bisección,
+salía 1,9999999999999998 y no llegaba al umbral inclusivo; la bisección aceptaba un extremo sin raíz
+encerrada— → `f73ef67` (el anclaje sobre la curva entera, la razón con tolerancia relativa 10⁻⁹,
+`n_rows_not_reached`); p2 1 high —sin fechas, una curva más corta que los 12 meses seguía
+concentrando la PD anual— → `85b788b` (la corrida se detiene con el arreglo y `Ecl(pd=)` lo avisa
+antes de correr); p3 1 high y 1 medium (contractual) —con escenarios, el numerador del SICR restaba
+supervivencias y, con PD muy chicas, una razón de 2 salía 1,99999999 (la tolerancia no lo cubría);
+una fila sin fecha de otorgamiento se comparaba desde la edad 0— → tests nacidos rojos en
+`b233223` y el arreglo en `62631f9` (S39): la PD de 12 meses de cada escenario sale de sumar
+`window_log_survival` por tramo y `-expm1` de la suma, la misma regla de `window_pd`, con
+regresiones en el umbral y justo bajo y sobre él; y la fila sin fecha no se compara por tramo
+—razón vacía, `n_rows_without_origination_date` en `sicr_origination_12m` (las que traían las dos
+PD; va antes que `n_rows_not_reached`), alerta en «Qué revisar»; su ECL sigue leyendo la curva desde
+la edad 0, igual que sin la PD de origen—; p4 (`62631f9`, sólo esos arreglos) **approve**, sin
+hallazgos materiales. 3 → 1 → 2 → 0; los tres contractuales (dos de la p1, uno de la p3), decididos
+por Cami.
+
+**Las decisiones de Cami del 2026-10-08** (interactivas, al cierre de S38): la fila sin fecha de
+otorgamiento **no se compara, se cuenta** (lo de arriba); el intervalo `[−50, 50]` de la bisección
+**se mantiene y se cuenta** (`f73ef67`: si la PD del modelo no se alcanza, la operación queda con
+la más cercana y se cuenta; con la PD de origen, no se compara); la ventana del SICR **sin cortar
+por el vencimiento**, ratificada (la precisión de arriba); la pasada 4 de confirmación; y la 2.9.0
+con la recaptura de la demo si el CI y Codex quedan en verde.
+
+**Sobre el commit final** (S39, `evidencia/s39/`): los once controles negativos de S38 y uno por
+cada arreglo de la pasada 3 —la resta de supervivencias de vuelta, la fila sin fecha comparada desde
+la edad 0—, **13 de 13 rojos** por su motivo (`cn_capa_b.py`); sin las columnas, **bit a bit** con
+la 2.8.0 en F4 (17 artefactos), Lending Club y Freddie Mac (15 cada uno), con la misma ECL en
+hexadecimal (`bit_a_bit_s39.sh`, cada lado desde su `src`); batería dirigida de 24 archivos, 641
+passed.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima:** la de CASO-REAL más, opcionales, dos tablas (historia de la tasa de referencia
