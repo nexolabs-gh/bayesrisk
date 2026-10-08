@@ -67,6 +67,7 @@ __all__ = [
     "edge_curves",
     "read_model_pd",
     "solve_shift",
+    "window_log_survival",
     "window_pd",
 ]
 
@@ -112,7 +113,8 @@ class OriginationReading:
 
     ``expected`` es la PD que se esperaba al otorgar para los 12 meses siguientes al corte;
     ``current``, la de hoy para esos mismos 12 meses (ponderada por escenario si los hay);
-    ``ratio``, su cociente. Los tres son ``NaN`` donde falta la PD de hoy o la de origen.
+    ``ratio``, su cociente. Los tres son ``NaN`` donde falta la PD de hoy, la de origen o la fecha
+    de otorgamiento; ``n_without_origination_date`` cuenta las que traían las dos PD y no la fecha.
     """
 
     expected: NDArrayFloat
@@ -121,6 +123,7 @@ class OriginationReading:
     n_missing: int
     n_clipped: int
     n_not_reached: int = 0
+    n_without_origination_date: int = 0
 
 
 @dataclass(frozen=True)
@@ -232,6 +235,28 @@ def window_pd(
     a ``[10⁻¹², 1 - 10⁻¹²]`` y se desplaza en logit; sin él, se usa tal cual.
     """
     numpy = _import_numpy()
+    log_sobrevive = window_log_survival(
+        riesgos, relleno, curva=curva, desde=desde, hasta=hasta, shift=shift
+    )
+    return cast("NDArrayFloat", -numpy.expm1(log_sobrevive))
+
+
+def window_log_survival(
+    riesgos: NDArrayFloat,
+    relleno: NDArrayFloat | None,
+    *,
+    curva: Any,
+    desde: NDArrayFloat,
+    hasta: NDArrayFloat,
+    shift: NDArrayFloat | None = None,
+) -> NDArrayFloat:
+    """El logaritmo de sobrevivir ``[desde, hasta]``, con las mismas reglas que :func:`window_pd`.
+
+    Sumar estos logaritmos y tomar ``-expm1`` de la suma da la PD de una ventana hecha de tramos
+    sin restar supervivencias, que con PD muy chicas pierde las cifras que decide el umbral del
+    SICR (pasada 3 de Codex sobre el código).
+    """
+    numpy = _import_numpy()
     n_periodos = riesgos.shape[1]
     desde = numpy.asarray(desde, dtype=numpy.float64)
     hasta = numpy.asarray(hasta, dtype=numpy.float64)
@@ -254,7 +279,7 @@ def window_pd(
         with numpy.errstate(divide="ignore", invalid="ignore"):
             aporte = numpy.where(solape > 0.0, solape * numpy.log1p(-riesgo), 0.0)
         log_sobrevive = log_sobrevive + aporte
-    return cast("NDArrayFloat", -numpy.expm1(log_sobrevive))
+    return cast("NDArrayFloat", log_sobrevive)
 
 
 def solve_shift(

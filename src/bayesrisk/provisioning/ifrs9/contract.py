@@ -347,6 +347,9 @@ def read_curve_by_contract(
 
     # Antigüedad y vida de cada operación, en períodos de la curva.
     posicion = {rid: i for i, rid in enumerate(row_ids)}
+    # Sin fecha de otorgamiento la curva se lee desde la edad 0 (D-CRE-2), pero el tramo de vida no
+    # se conoce: el SICR por tramo no compara esas filas (decisión de Cami del 2026-10-08).
+    sin_fecha = numpy.isnan(terms.age_months)
     edad = numpy.nan_to_num(terms.age_months / meses_por_periodo, nan=0.0)
     restante = terms.remaining_months
     vencida = ~numpy.isnan(restante) & (restante <= 0.0)
@@ -528,6 +531,7 @@ def read_curve_by_contract(
             s_curva=s_curva,
             pd_hoy=cast("AnchorReading", anclaje).pd_model[fila],
             a=a,
+            sin_fecha=sin_fecha[fila],
             fila=fila,
             n_filas=len(row_ids),
             ventana=float(cast("int", window_periods)),
@@ -621,6 +625,7 @@ def _sicr_por_tramo(
     s_curva: NDArrayFloat,
     pd_hoy: NDArrayFloat,
     a: NDArrayFloat,
+    sin_fecha: Any,
     fila: Any,
     n_filas: int,
     ventana: float,
@@ -633,15 +638,15 @@ def _sicr_por_tramo(
     Lo esperado: la curva anclada a la PD de origen **en la edad 0**, leída en ``[A, A + 12
     meses]``. Lo de hoy: la PD del modelo —la curva anclada en la edad ``A``— y, con escenarios, la
     PD de esos 12 meses ponderada por escenario, con el desplazamiento de cada tramo de calendario
-    encima del anclaje.
+    encima del anclaje. Una curva ``sin_fecha`` de otorgamiento no tiene tramo de vida: no se
+    compara y, si traía las dos PD, se cuenta.
     """
     from bayesrisk.provisioning.ifrs9.anchor import (
         OriginationReading,
-        bounded_risk,
         solve_shift,
+        window_log_survival,
         window_pd,
     )
-    from bayesrisk.provisioning.ifrs9.cycle import shifted_tranche_pd
 
     numpy = _import_numpy()
     curvas = numpy.arange(fila.shape[0])
@@ -666,23 +671,33 @@ def _sicr_por_tramo(
         por_escenario = deltas((t - 1.0) * meses_por_periodo, (hasta - desde) * meses_por_periodo)
         actual = numpy.zeros(curvas.shape[0], dtype=numpy.float64)
         for nombre, delta in por_escenario.items():
-            tramos = shifted_tranche_pd(
-                bounded_risk(extendidos),
-                bounded_risk(relleno),
+            # La PD de los 12 meses de cada escenario sale de sumar el logaritmo de sobrevivir cada
+            # tramo y de `-expm1` de la suma, como lo esperado al otorgar (pasada 3 de Codex):
+            # restar supervivencias perdía, con PD muy chicas, las cifras que decide el umbral.
+            log_tramos = window_log_survival(
+                extendidos,
+                relleno,
                 curva=curva_v,
                 desde=desde,
                 hasta=hasta,
-                delta=delta + numpy.nan_to_num(s_curva)[curva_v],
+                shift=delta + numpy.nan_to_num(s_curva)[curva_v],
             )
-            ventana_k = numpy.bincount(curva_v, weights=tramos, minlength=curvas.shape[0])
+            ventana_k = -numpy.expm1(
+                numpy.bincount(curva_v, weights=log_tramos, minlength=curvas.shape[0])
+            )
             actual = actual + float((weights or {})[nombre]) * ventana_k
         actual = numpy.where(numpy.isnan(s_curva), numpy.nan, actual)
     with numpy.errstate(divide="ignore", invalid="ignore"):
         razon = actual / esperado
+    # Sin fecha de otorgamiento no hay tramo que comparar (pasada 3 de Codex; decisión de Cami del
+    # 2026-10-08): la razón queda vacía y se cuentan las que traían las dos PD. Va primero: una fila
+    # sin fecha no se compara, alcance o no el intervalo su PD de origen.
+    sin_fecha = numpy.asarray(sin_fecha, dtype=bool)
+    sin_tramo = sin_fecha & ~numpy.isnan(objetivo) & ~numpy.isnan(s_curva)
     # Pasada 1 de Codex sobre el código: si la PD de origen queda fuera del alcance del intervalo,
     # lo esperado al otorgar no la reproduce y la comparación no se hace (se cuenta).
-    fuera = ~numpy.isnan(objetivo) & ~encerrada
-    razon = numpy.where(fuera, numpy.nan, razon)
+    fuera = ~numpy.isnan(objetivo) & ~encerrada & ~sin_fecha
+    razon = numpy.where(fuera | sin_fecha, numpy.nan, razon)
 
     def _por_fila(valores: Any) -> Any:
         salida = numpy.empty(n_filas, dtype=numpy.float64)
@@ -696,6 +711,7 @@ def _sicr_por_tramo(
         n_missing=origination_pd.n_missing,
         n_clipped=origination_pd.n_clipped,
         n_not_reached=int(fuera.sum()),
+        n_without_origination_date=int(sin_tramo.sum()),
     )
 
 

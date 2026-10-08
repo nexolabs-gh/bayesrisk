@@ -1109,6 +1109,7 @@ def _seccion_del_sicr_por_tramo(
     return {
         "n_rows_evaluated": len(evaluadas),
         "n_rows_without_origination_pd": int(origen.n_missing),
+        "n_rows_without_origination_date": int(origen.n_without_origination_date),
         "n_rows_clipped": int(origen.n_clipped),
         "n_rows_not_reached": int(origen.n_not_reached),
         "threshold": float(umbral),

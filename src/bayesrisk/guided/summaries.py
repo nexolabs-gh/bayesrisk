@@ -3287,6 +3287,15 @@ def _lineas_de_la_pd_del_modelo(card: Mapping[str, Any]) -> tuple[list[str], lis
                 f"{_plural(sin, 'se compara', 'se comparan')} por tramo de vida: su aumento "
                 "significativo del riesgo es sólo la mora y la marca"
             )
+        sin_fecha = _int(origen.get("n_rows_without_origination_date")) or 0
+        if sin_fecha:
+            alerts.append(
+                f"{_miles(sin_fecha)} {_plural(sin_fecha, 'operación', 'operaciones')} sin fecha "
+                f"de otorgamiento no {_plural(sin_fecha, 'se compara', 'se comparan')} por tramo "
+                "de vida —sin su antigüedad no se sabe qué tramo se esperaba al otorgar—: su "
+                "aumento significativo del riesgo es sólo la mora y la marca, y su provisión lee "
+                "la curva como la de una operación recién otorgada"
+            )
         lejos = _int(origen.get("n_rows_not_reached")) or 0
         if lejos:
             alerts.append(

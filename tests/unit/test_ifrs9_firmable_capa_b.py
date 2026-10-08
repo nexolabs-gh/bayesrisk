@@ -642,3 +642,57 @@ def test_codex_p3_sin_fecha_de_otorgamiento_no_se_compara_por_tramo() -> None:
 
     _lineas, alertas = _lineas_de_la_pd_del_modelo(resultado.card.model_dump())
     assert any("sin fecha de otorgamiento" in a for a in alertas), alertas
+
+
+@pytest.mark.parametrize(("factor", "etapa"), [(1.0 - 1e-6, 1), (1.0 + 1e-6, 2)])
+def test_codex_p3_con_escenarios_justo_bajo_y_sobre_el_umbral(factor: float, etapa: int) -> None:
+    """Pasada 3: alrededor del umbral inclusivo, la razón con escenarios decide de qué lado cae."""
+    plano = [6.0] * 8
+    modelo = _modelo({"base": (0.5, plano), "adverso": (0.5, plano)})
+    base = _cfg_b(
+        pd=_pd_cfg(pit_mode="cycle", horizon_12m_periods=12),
+        scenarios=IfrsScenarioConfig(source="forward"),
+    )
+    cfg = base.model_copy(
+        update={"staging": base.staging.model_copy(update={"origination_pd_12m_col": "pd_origen"})}
+    )
+    resultado = IfrsProvisioningEngine.from_config(cfg).calculate(
+        _cartera(
+            otorgamiento=["2025-03-01"],
+            vencimiento=["2028-03-01"],
+            pd_modelo=[1e-7 * factor],
+            pd_origen=[5e-8],
+        ),
+        term_structure=_curva_mensual(["op0"], [1e-8] * 24 + [0.1] * 12),
+        as_of_date=_CORTE,
+        events_by_period={p: 5 for p in range(1, 37)},
+        cycle=CycleInputs(model=modelo, history=None),
+    )
+    assert resultado.detail["sicr_pd_ratio_12m"].iloc[0] == pytest.approx(2.0 * factor, rel=1e-12)
+    assert resultado.staging["stage"].iloc[0] == etapa
+
+
+def test_codex_p3_sin_fecha_la_ecl_sigue_leyendo_la_curva_desde_la_edad_0() -> None:
+    """Decisión de Cami del 2026-10-08: no compararla por tramo no cambia su provisión."""
+    cartera = _cartera(
+        otorgamiento=[None, "2022-03-01"],
+        vencimiento=["2032-03-01", "2032-03-01"],
+        pd_modelo=[0.05, 0.05],
+        pd_origen=[0.80, 0.20],
+    )
+    corridas = []
+    for origen in ("pd_origen", None):
+        cfg = _cfg_b(staging=_cfg_b().staging.model_copy(update={"origination_pd_12m_col": origen}))
+        corridas.append(
+            IfrsProvisioningEngine.from_config(cfg)
+            .calculate(
+                cartera,
+                term_structure=_curva(["op0", "op1"], _DECRECIENTE),
+                as_of_date=_CORTE,
+                events_by_period=_EVENTOS_DEC,
+            )
+            .detail.set_index("row_id")
+        )
+    con, sin = corridas
+    for columna in ("stage", "pd_12m", "pd_life", "ecl_reported_unrounded"):
+        assert con.loc["op0", columna] == sin.loc["op0", columna], columna
