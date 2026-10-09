@@ -3,6 +3,7 @@ import {
   Activity,
   Boxes,
   ChartColumn,
+  ChartSpline,
   ClipboardCheck,
   Database,
   FileSignature,
@@ -79,6 +80,8 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   // La validación formal es el acta de las pruebas del modelo (D-SC-6).
   validation: ClipboardCheck,
   survival: TrendingDown,
+  // Los escenarios de la institución: trayectorias que desplazan la curva (IFRS9-FIRMABLE capa C).
+  forward: ChartSpline,
   provisioning_cmf: Landmark,
   provisioning_internal: Users,
   provisioning_ifrs9: Layers,

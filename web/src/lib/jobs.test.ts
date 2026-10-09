@@ -15,7 +15,9 @@ import configTabSource from "@/components/ConfigTab.tsx?raw"
 import { configEditadoRespectoDelPreset } from "@/lib/bootstrap"
 import {
   FIXTURE_JOBS,
+  apagarSeccion,
   decisionStatuses,
+  encenderSeccion,
   jobForConfig,
   jobSkeleton,
   jobSwitchForConfig,
@@ -150,7 +152,10 @@ describe("jobSkeleton (elegir un trabajo siembra SU esqueleto · D-JOB-16)", () 
     } as never
     for (const job of JOBS) {
       expect(job.sections, job.id).toContain("governance")
-      expect(job.latent_sections, job.id).toEqual(["governance"])
+      // La provisión IFRS 9 trae además los escenarios latentes (IFRS9-FIRMABLE capa C).
+      expect(job.latent_sections, job.id).toEqual(
+        job.id === "provisiones_ifrs9" ? ["forward", "governance"] : ["governance"],
+      )
       const skeleton = jobSkeleton(vacio, job, conGovernance)
       expect(skeleton.governance, job.id).toBeNull()
     }
@@ -1274,5 +1279,82 @@ describe("una decisión escalar sin formas está pendiente mientras el dato est�
     )!
     expect(estado.rejected).toBe(true)
     expect(estado.rejectionReasons).toEqual(["El propósito no puede quedar en blanco"])
+  })
+})
+
+describe("encender y apagar una sección latente (IFRS9-FIRMABLE capa C)", () => {
+  const ifrs9 = porId("provisiones_ifrs9")
+  const base = {
+    data: { load: { source: "cartera.parquet" } },
+    forward: null,
+    provisioning_ifrs9: { pd: { pit_mode: "ttc_only" }, scenarios: { source: "single" } },
+  }
+
+  it("el catálogo de la provisión IFRS 9 declara los dos gestos de los escenarios", () => {
+    const gestos = ifrs9.toggle_overrides?.forward
+    expect(gestos).toBeDefined()
+    expect(Object.fromEntries(gestos!.on)).toMatchObject({
+      "forward.satellite.mode": "reference_rate",
+      "forward.macro.kind": "scenario_paths",
+      "provisioning_ifrs9.pd.pit_mode": "cycle",
+      "provisioning_ifrs9.scenarios.source": "forward",
+    })
+    expect(Object.fromEntries(gestos!.off)).toEqual({
+      "provisioning_ifrs9.pd.pit_mode": "ttc_only",
+      "provisioning_ifrs9.scenarios.source": "single",
+    })
+    // Y ningún otro trabajo los declara: el interruptor de siempre no cambia para ellos.
+    for (const job of JOBS.filter((j) => j.id !== "provisiones_ifrs9")) {
+      expect(job.toggle_overrides ?? {}, job.id).toEqual({})
+    }
+  })
+
+  it("encender siembra la base, aplica el gesto (también en otra sección) y escribe encima lo del servidor", () => {
+    const tablas = {
+      input: { macro_source: { path: "/w/history-a.parquet", variable_cols: ["u"] } },
+      scenarios: { scenarios: [{ name: "base", weight: 1, macro_path_path: "/w/s1.parquet" }] },
+    }
+    const proyeccion = { satellite: { mode: "fit", reference_rate_col: "default_rate" }, macro: { kind: "arima" } }
+    const cfg = encenderSeccion(base, "forward", proyeccion, ifrs9, tablas) as Record<string, any>
+    expect(cfg.forward.satellite).toEqual({ mode: "reference_rate", reference_rate_col: "default_rate" })
+    expect(cfg.forward.macro.kind).toBe("scenario_paths")
+    expect(cfg.forward.input.macro_source).toMatchObject({
+      type: "path",
+      time_col: "date",
+      path: "/w/history-a.parquet",
+      variable_cols: ["u"],
+    })
+    expect(cfg.forward.scenarios.scenarios).toEqual(tablas.scenarios.scenarios)
+    expect(cfg.provisioning_ifrs9.pd.pit_mode).toBe("cycle")
+    expect(cfg.provisioning_ifrs9.scenarios.source).toBe("forward")
+    // Pura: el config de entrada no se tocó.
+    expect(base.forward).toBeNull()
+    expect(base.provisioning_ifrs9.pd.pit_mode).toBe("ttc_only")
+  })
+
+  it("apagar deja la sección en null y devuelve la provisión a lo largo del ciclo", () => {
+    const encendido = encenderSeccion(base, "forward", {}, ifrs9)
+    const apagado = apagarSeccion(encendido, "forward", ifrs9) as Record<string, any>
+    expect(apagado.forward).toBeNull()
+    expect(apagado.provisioning_ifrs9.pd.pit_mode).toBe("ttc_only")
+    expect(apagado.provisioning_ifrs9.scenarios.source).toBe("single")
+  })
+
+  it("sin gestos declarados es el interruptor de siempre", () => {
+    const scorecard = porId("scorecard_pd")
+    const cfg = { governance: null, data: { x: 1 } }
+    expect(encenderSeccion(cfg, "governance", { purpose: "" }, scorecard)).toEqual({
+      governance: { purpose: "" },
+      data: { x: 1 },
+    })
+    expect(apagarSeccion({ governance: { purpose: "p" } }, "governance", scorecard)).toEqual({
+      governance: null,
+    })
+  })
+
+  it("un gesto sobre una sección apagada no la crea", () => {
+    const sinProvision = { forward: null, provisioning_ifrs9: null }
+    const cfg = encenderSeccion(sinProvision, "forward", {}, ifrs9)
+    expect(cfg.provisioning_ifrs9).toBeNull()
   })
 })

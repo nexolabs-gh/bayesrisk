@@ -158,14 +158,21 @@ def test_governance_es_la_ultima_seccion_del_formulario_y_se_llama_gobernanza() 
     Lo que este gate fija es la POSICIÓN —última, detrás de `report`— y el rótulo, no el número:
     la lista crece cuando el formulario gana una sección (14 → 15 con D-GOB-11; 15 → **16** con
     D-SC-6, que mete «Validación formal» entre estabilidad y survival; 16 → **17** con D-SC-1,
-    que mete «Análisis exploratorio» entre el esquema y el binning). El conteo se conserva como
+    que mete «Análisis exploratorio» entre el esquema y el binning; 17 → **18** con la capa C de
+    IFRS9-FIRMABLE, que mete «Escenarios económicos» entre survival y las provisiones). El conteo se
+    conserva como
     ancla de no vacuidad y se mueve a conciencia; quien lo cambie sin mirar dónde queda la
     gobernanza rompe la promesa de D-GOB-11, que es que sea lo último que se ve.
     """
     secciones = _config_sections_del_front()
-    assert len(secciones) == 17, [k for k, _ in secciones]
+    assert len(secciones) == 18, [k for k, _ in secciones]
     assert secciones[-2][0] == "report", "el informe sigue siendo el último paso del pipeline"
     assert secciones[-1] == ("governance", "Gobernanza")
+
+
+#: Las latentes que no son sólo `governance`: los escenarios de la provisión IFRS 9 (IFRS9-FIRMABLE
+#: capa C), en su orden de sección.
+_LATENTES_ESPERADAS: dict[str, list[str]] = {"provisiones_ifrs9": ["forward", "governance"]}
 
 
 def test_los_diez_trabajos_ofrecen_governance_y_la_declaran_latente() -> None:
@@ -179,16 +186,22 @@ def test_los_diez_trabajos_ofrecen_governance_y_la_declaran_latente() -> None:
     assert len(trabajos) == 10
     for job in trabajos:
         assert job["sections"][-1] == "governance", (job["id"], job["sections"])
-        assert job["latent_sections"] == ["governance"], (job["id"], job["latent_sections"])
-    # La latencia se declara UNA vez, por sección, con su razón; hoy sólo `governance` lo es.
-    assert set(_SECCIONES_LATENTES) == {"governance"}
-    assert len(_SECCIONES_LATENTES["governance"]) > 40
+        assert job["latent_sections"] == _LATENTES_ESPERADAS.get(job["id"], ["governance"]), (
+            job["id"],
+            job["latent_sections"],
+        )
+    # La latencia se declara UNA vez, por sección, con su razón: `governance` en los diez y, desde
+    # la capa C de IFRS9-FIRMABLE, `forward` —los escenarios—, que sólo ofrece la provisión IFRS 9.
+    assert set(_SECCIONES_LATENTES) == {"governance", "forward"}
+    assert all(len(razon) > 40 for razon in _SECCIONES_LATENTES.values())
 
 
 def test_el_endpoint_publica_latent_sections() -> None:
     """El front y el gate de ejecutabilidad consumen la misma clave del contrato REST."""
     for job in routes.jobs_payload(UiConfig())["jobs"]:
-        assert job["latent_sections"] == ["governance"], job["id"]
+        assert job["latent_sections"] == _LATENTES_ESPERADAS.get(job["id"], ["governance"]), job[
+            "id"
+        ]
         assert set(job["latent_sections"]) <= set(job["sections"])
 
 

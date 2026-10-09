@@ -486,6 +486,40 @@ export async function uploadDataset(file: File): Promise<UploadedDataset> {
   return (await res.json()) as UploadedDataset
 }
 
+/** Lo que devuelve `POST /api/scenario-tables` (IFRS9-FIRMABLE capa C). */
+export interface ScenarioTablesResponse {
+  /** La parte de la sección `forward` que sale de las dos tablas: rutas, variables y pesos. */
+  forward: Record<string, unknown>
+  /** Lo que se leyó, en una línea («Escenarios: 3 (base, adverso, severo), trimestrales; …»). */
+  summary: string
+}
+
+/**
+ * POST /api/scenario-tables — lee las dos tablas de escenarios ya subidas (`/api/upload`) con la
+ * misma regla que `bayesrisk.Ecl(history=, scenarios=)` y devuelve la sección que las lee. Una
+ * tabla que la puerta guiada rechaza → `ApiError` 422 con el mismo motivo en `detail`.
+ */
+export function scenarioTables(body: {
+  history_dataset_id: string
+  scenarios_dataset_id: string
+  reference_rate_col: string
+  portfolio_dataset_id?: string | null
+  as_of_col?: string | null
+}): Promise<ScenarioTablesResponse> {
+  if (DEMO_MODE) {
+    return Promise.reject(
+      new ApiError(
+        "Los escenarios propios no están disponibles en la demo: instala bayesrisk para usarlos.",
+        0,
+      ),
+    )
+  }
+  return request<ScenarioTablesResponse>("scenario-tables", {
+    method: "POST",
+    body: JSON.stringify(body),
+  })
+}
+
 /** POST /api/run — ejecuta la corrida (síncrona) vía bayesrisk.run. */
 export function runPipeline(
   config: ConfigDict,

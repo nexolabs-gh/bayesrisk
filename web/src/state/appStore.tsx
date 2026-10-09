@@ -24,6 +24,7 @@ import {
 } from "@/lib/bootstrap"
 import type { SelectedDataset } from "@/lib/datasets"
 import { DEMO_MODE } from "@/lib/demo-runtime"
+import { SIN_TABLAS, type ScenarioTablesState } from "@/lib/scenario-tables"
 import {
   externalRefs as buildExternalRefs,
   requiredExternalArtifacts,
@@ -83,6 +84,9 @@ export interface AppState {
    */
   externalInputs: Record<string, ExternalInput>
   setExternalInputs: Dispatch<SetStateAction<Record<string, ExternalInput>>>
+  /** Las dos tablas de escenarios subidas (IFRS9-FIRMABLE capa C); persisten entre pestañas. */
+  scenarioTables: ScenarioTablesState
+  setScenarioTables: Dispatch<SetStateAction<ScenarioTablesState>>
   /** Los insumos que el trabajo pide CON EL CONFIG ACTUAL, ya resueltas sus condiciones. */
   requiredExternals: ExternalArtifact[]
   /** El cuerpo que viaja al backend: una referencia por insumo pedido y ya cubierto. */
@@ -124,6 +128,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [externalInputs, setExternalInputs] = useState<
     Record<string, ExternalInput>
   >({})
+  const [scenarioTables, setScenarioTables] = useState<ScenarioTablesState>(SIN_TABLAS)
   const [selectedDataset, setSelectedDataset] =
     useState<SelectedDataset | null>(null)
   const [validation, setValidation] = useState<ValidationState>({ kind: "idle" })
@@ -285,6 +290,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setDatasetId,
       externalInputs,
       setExternalInputs,
+      scenarioTables,
+      setScenarioTables,
       requiredExternals,
       externalRefs,
       selectedDataset,
@@ -308,6 +315,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       seed,
       datasetId,
       externalInputs,
+      scenarioTables,
       requiredExternals,
       externalRefs,
       selectedDataset,

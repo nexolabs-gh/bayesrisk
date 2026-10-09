@@ -42,6 +42,7 @@ from bayesrisk.report.document import (
     EXECUTIVE_SUMMARY_ID,
     HL_GROUP_TABLE_PREFIX,
     IFRS9_DOMAINS,
+    IFRS9_EXTRA_SECTIONS,
     METHODOLOGY_STEPS,
     PIPELINE_DOMAINS,
     PROVISION_DOMAINS,
@@ -211,6 +212,8 @@ class ReportBuilder:
         tables.update(_atomic_result_tables(results))
         tables.update(_hl_group_tables(study, results))
         tables.update(_curva_de_pd_por_cartera(study))
+        ifrs9_extras, tablas_ifrs9 = _escenarios_y_pd_del_modelo(study)
+        tables.update(tablas_ifrs9)
         tables.update(_extract_card_dataframes(cards))
         figures = self._collect_figures(study)
         pipeline_params = _collect_pipeline_params(study)
@@ -237,6 +240,8 @@ class ReportBuilder:
             unseen_reference_bins=_referencias_no_vistas(study),
             # D-PAN-4: la procedencia de los tramos del EDA, declarada por el perfilador.
             eda_numeric_profiles=_perfiles_numericos(study),
+            # IFRS9-FIRMABLE capa C: los escenarios y la PD del modelo, desde los resúmenes.
+            ifrs9_extras=ifrs9_extras,
         )
         return bundle.model_copy(update={"sections": self.build_sections(bundle)})
 
@@ -337,7 +342,7 @@ class ReportBuilder:
         if spec.id == "provisions":
             return self._domain_subsections(spec.id, PROVISION_DOMAINS, bundle, number, kind="data")
         if spec.id == "ifrs9":
-            return self._domain_subsections(spec.id, IFRS9_DOMAINS, bundle, number, kind="data")
+            return self._ifrs9_subsections(bundle, number)
         if spec.id == APPENDIX_PARAMETERS_ID:
             return self._domain_subsections(
                 spec.id,
@@ -383,6 +388,51 @@ class ReportBuilder:
                 )
             )
         return tuple(sections)
+
+    def _ifrs9_subsections(
+        self,
+        bundle: ReportInputBundle,
+        number: str,
+    ) -> tuple[ReportSection, ...]:
+        """La curva, los escenarios, la provisión y la PD del modelo, en el orden del pipeline.
+
+        Entre la curva y la provisión va lo que la corrida hizo con sus escenarios, y tras la
+        provisión lo que hizo con la PD del modelo (IFRS9-FIRMABLE capa C). Las dos subsecciones
+        nuevas sólo existen cuando ``bundle.ifrs9_extras`` las trae: sin escenarios ni las dos PD,
+        el capítulo es exactamente el de siempre.
+        """
+        de_dominio = {
+            section.source_domain: section
+            for section in self._domain_subsections(
+                "ifrs9", IFRS9_DOMAINS, bundle, number, kind="data"
+            )
+        }
+        orden: list[ReportSection] = []
+        for hijo in ("survival", "forward", "provisioning_ifrs9", "pd_model"):
+            if hijo in de_dominio:
+                orden.append(de_dominio[hijo])
+            elif hijo in bundle.ifrs9_extras:
+                orden.append(
+                    ReportSection(
+                        id=domain_section_id("ifrs9", hijo),
+                        title=IFRS9_EXTRA_SECTIONS[hijo],
+                        status="included",
+                        # `forward` publica sus tablas del cuerpo por `KEY_TABLES["forward"]`; la
+                        # de la PD del modelo no trae tablas: sólo dice.
+                        source_domain="forward" if hijo == "forward" else None,
+                        source_key=None,
+                        payload={},
+                        metric_sections={},
+                        kind="data" if hijo == "forward" else "prose",
+                        level=2,
+                        number=number,
+                        body=bundle.ifrs9_extras[hijo],
+                    )
+                )
+        return tuple(
+            section.model_copy(update={"number": f"{number}.{i}"})
+            for i, section in enumerate(orden, 1)
+        )
 
     def _methodology_subsections(
         self,
@@ -1053,6 +1103,33 @@ def _hl_group_tables(study: Study, results: Mapping[str, Any]) -> dict[str, Data
             registros, _HL_GROUP_REPORT_COLUMNS
         )
     return tablas
+
+
+def _escenarios_y_pd_del_modelo(
+    study: Study,
+) -> tuple[dict[str, tuple[str, ...]], dict[str, DataFrameLike]]:
+    """El cuerpo y las tablas de «Escenarios y ajuste por ciclo» y de «La PD de tu modelo…».
+
+    Los arma :func:`bayesrisk.guided.summaries.ifrs9_report_extras` (import perezoso: arrastra los
+    mapas de rótulos de los dominios): las mismas líneas, alertas y tablas que los resúmenes de
+    etapa, ya escritas. El informe no recalcula nada. Las alertas se dicen como «Qué revisar». Sin
+    escenarios ni las dos PD, nada: el capítulo es el de siempre.
+    """
+    if not study.artifacts.has("provisioning_ifrs9", "card"):
+        return {}, {}
+    from bayesrisk.guided.summaries import ifrs9_report_extras
+
+    pd = importlib.import_module("pandas")
+    cuerpos: dict[str, tuple[str, ...]] = {}
+    tablas: dict[str, DataFrameLike] = {}
+    for seccion, contenido in ifrs9_report_extras(study).items():
+        cuerpos[seccion] = (
+            *(f"{linea}." for linea in contenido["lines"]),
+            *(f"Qué revisar: {alerta}." for alerta in contenido["alerts"]),
+        )
+        for clave, columnas, filas in contenido["tables"]:
+            tablas[clave] = cast(DataFrameLike, pd.DataFrame(filas, columns=columnas))
+    return cuerpos, tablas
 
 
 def _curva_de_pd_por_cartera(study: Study) -> dict[str, DataFrameLike]:

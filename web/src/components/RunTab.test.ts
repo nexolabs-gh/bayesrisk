@@ -262,7 +262,8 @@ describe("efecto medido sobre los ejemplos publicados (y sobre la demo estática
       nombre: "F4 · IFRS 9",
       preset: presetF4Fixture as unknown as PresetResponse,
       job: "provisiones_ifrs9",
-      secciones: 5,
+      // Seis desde la capa C de IFRS9-FIRMABLE: «Escenarios económicos», latente.
+      secciones: 6,
     },
   ]
 

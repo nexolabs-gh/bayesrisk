@@ -170,7 +170,23 @@ _SECCIONES_DEL_CATALOGO: frozenset[str] = frozenset(
 #:
 #: Mismo patrón que las exenciones del preflight, y por la misma razón: una lista corta sin
 #: explicación se lee como cobertura total. El gate exige además que ninguna exención sobre.
+#: La razón común de los ocho puntos de elección de `forward` (IFRS9-FIRMABLE capa C).
+_VIA_DE_LOS_ESCENARIOS = (
+    "la vía de los escenarios de la institución la fija el trabajo IFRS 9 al encender la "
+    "sección (`toggle_overrides`, IFRS9-FIRMABLE capa C): ofrecer aquí la vía con modelo "
+    "macro sería una metodología que la enmienda no lleva a la pantalla; sigue en la "
+    "puerta completa y en «Avanzado»"
+)
+
 _EXENTOS: dict[str, str] = {
+    "forward.input.macro_source.type": _VIA_DE_LOS_ESCENARIOS,
+    "forward.input.pd_basis_assumption": _VIA_DE_LOS_ESCENARIOS,
+    "forward.input.term_structure_sources": _VIA_DE_LOS_ESCENARIOS,
+    "forward.macro.kind": _VIA_DE_LOS_ESCENARIOS,
+    "forward.satellite.mode": _VIA_DE_LOS_ESCENARIOS,
+    "forward.satellite.target_components": _VIA_DE_LOS_ESCENARIOS,
+    "forward.ttc_reversion.method": _VIA_DE_LOS_ESCENARIOS,
+    "forward.ttc_reversion.ttc_anchor": _VIA_DE_LOS_ESCENARIOS,
     "data.partition.strategy.type": (
         "no es abanico sino DECISIÓN OBLIGATORIA, y la separación es deliberada (D-ABA-3): no "
         "tiene default, el config no construye sin ella, y ya tiene su superficie propia con "

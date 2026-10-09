@@ -228,7 +228,18 @@ _JOBS: tuple[dict[str, Any], ...] = (
         ),
         # Compuesto: la ECL lifetime consume la term-structure que produce survival, así que ese
         # paso es parte del trabajo y no un dominio ajeno que se cuela en el sidebar.
-        "sections": ("data", "survival", "provisioning_ifrs9", "report", "governance"),
+        #
+        # IFRS9-FIRMABLE capa C (D-FIR-11, §3.11): `forward` —los escenarios de la institución—
+        # entra entre la curva y la provisión, en su orden de pipeline, y LATENTE: sin las dos
+        # tablas no hay escenarios, y la provisión sigue a lo largo del ciclo, bit a bit.
+        "sections": (
+            "data",
+            "survival",
+            "forward",
+            "provisioning_ifrs9",
+            "report",
+            "governance",
+        ),
         "missing_sections": (),
         "external_input": None,
         "external_artifacts": (),
@@ -253,7 +264,45 @@ _JOBS: tuple[dict[str, Any], ...] = (
             # sumaba cinco años y la corrida se detenía con FALTA-DATO-IFRS-8 (pasada 1 de Codex
             # sobre la capa B; OK de Cami, 2026-10-05).
             ("provisioning_ifrs9.pd.horizon_12m_periods", None),
+            # 🔴 IFRS9-FIRMABLE capa C (S40): las constantes con que corre la puerta guiada, que
+            # parte de las secciones del preset F4 (D-ECL-4). Sin ellas, entrar por este trabajo y
+            # llenar los esenciales daba los defaults de fábrica de la provisión, y la corrida se
+            # detenía —medido sobre `f337cae` con la cartera del paquete—: la EAD por CCF pedía una
+            # columna «drawn» que la entrada mínima no trae (el esencial es la EAD de cada
+            # operación) y el PIT de fábrica pedía escenarios de `forward`. Con ellas, la pantalla
+            # da la misma cifra que `bayesrisk.Ecl` (D-SIM-1; gate en
+            # `test_ifrs9_firmable_capa_c.py`). Los escenarios los enciende `toggle_overrides`.
+            ("survival.discrete_hazard.pd_role", "none"),
+            ("survival.kaplan_meier.confidence_level", 0.95),
+            ("survival.kaplan_meier.confidence_transform", "loglog"),
+            ("provisioning_ifrs9.ead.method", "provided"),
+            ("provisioning_ifrs9.pd.pit_mode", "ttc_only"),
+            ("provisioning_ifrs9.scenarios.source", "single"),
         ),
+        # Lo que el trabajo escribe al ENCENDER o APAGAR una sección latente (IFRS9-FIRMABLE, capa
+        # C): con los escenarios de la institución, la vía del ciclo —el satélite contra la tasa de
+        # referencia y las trayectorias tal cual (D-FIR-2/4)— y la provisión que la consume
+        # (`pit_mode = "cycle"`, D-FIR-1); sin ellos, la provisión vuelve a lo largo del ciclo. Son
+        # las mismas hojas que escribe `bayesrisk.Ecl(history=, scenarios=)`; las que salen de las
+        # dos tablas (rutas, variables, nombres y pesos) las arma `POST /api/scenario-tables`.
+        "toggle_overrides": {
+            "forward": {
+                "on": (
+                    ("forward.input.macro_source.type", "path"),
+                    ("forward.input.macro_source.time_col", "date"),
+                    ("forward.input.term_structure_sources", ["survival"]),
+                    ("forward.input.pd_basis_assumption", "ttc"),
+                    ("forward.satellite.mode", "reference_rate"),
+                    ("forward.macro.kind", "scenario_paths"),
+                    ("provisioning_ifrs9.pd.pit_mode", "cycle"),
+                    ("provisioning_ifrs9.scenarios.source", "forward"),
+                ),
+                "off": (
+                    ("provisioning_ifrs9.pd.pit_mode", "ttc_only"),
+                    ("provisioning_ifrs9.scenarios.source", "single"),
+                ),
+            },
+        },
         "jurisdiction_code": None,
         "jurisdiction_label": None,
         "status": _AVAILABLE,
@@ -586,6 +635,11 @@ _SECCIONES_LATENTES: dict[str, str] = {
         "`purpose` es DATO-INSTITUCIONAL sin default (D-GOB-8): sembrada encendida dejaría los "
         "diez trabajos con una decisión pendiente que hoy no piden"
     ),
+    "forward": (
+        "los escenarios son de la institución (D-FIR-4) y llegan en dos tablas suyas: sembrada "
+        "encendida, toda provisión pediría tablas que son opcionales, y sin ellas la provisión "
+        "es a lo largo del ciclo, bit a bit (IFRS9-FIRMABLE capa C)"
+    ),
 }
 
 JOB_IDS: tuple[str, ...] = tuple(job["id"] for job in _JOBS)
@@ -864,6 +918,30 @@ _DECISIONES_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
             "help": (
                 "Distingue a quien incumplió de quien seguía sano cuando terminó la observación. "
                 "Sin ella las dos situaciones se confunden y las curvas salen sesgadas."
+            ),
+            "answer_forms": (),
+        },
+    ),
+    # IFRS9-FIRMABLE capa C: las dos hojas obligatorias de `forward` son las variables macro, que
+    # la pantalla lee de las dos tablas al subirlas (`POST /api/scenario-tables`: las columnas
+    # comunes a las dos). La sección llega LATENTE, así que la pregunta duerme hasta encenderla; y
+    # encendida sin las tablas, dice qué falta y de dónde sale.
+    "forward": (
+        {
+            "path": "forward.input.macro_source.variable_cols",
+            "question": "¿Qué variables macroeconómicas trae tu tabla de historia?",
+            "help": (
+                "Se leen solas al subir tus dos tablas: son las columnas que traen las dos, menos "
+                "la fecha, la tasa de referencia, el escenario y el peso."
+            ),
+            "answer_forms": (),
+        },
+        {
+            "path": "forward.satellite.factor_cols",
+            "question": "¿Qué variables explican la tasa de referencia?",
+            "help": (
+                "Las mismas variables macroeconómicas de tus dos tablas: se llenan al subirlas, y "
+                "el motor estima cuánto mueve cada una la tasa de incumplimiento de referencia."
             ),
             "answer_forms": (),
         },
@@ -5044,6 +5122,15 @@ def list_jobs(*, incluir_referencia: bool = False) -> list[dict[str, Any]]:
             # overrides sobre rutas anidadas del mismo bloque tienen que aplicarse como se
             # escribieron— y un objeto JSON no lo garantiza en todos los clientes.
             "overrides": [[ruta, valor] for ruta, valor in job["overrides"]],
+            # Lo que el trabajo escribe al encender («on») o apagar («off») una de sus secciones
+            # latentes, con la misma forma de parejas ordenadas; `{}` si ninguna (capa C de
+            # IFRS9-FIRMABLE). Las hojas de la sección encendida van encima de su proyección.
+            "toggle_overrides": {
+                seccion: {
+                    modo: [[ruta, valor] for ruta, valor in pares] for modo, pares in modos.items()
+                }
+                for seccion, modos in job.get("toggle_overrides", {}).items()
+            },
             "required_decisions": decisiones_de(
                 job["sections"],
                 no_aplican=[ruta for ruta, valor in job["overrides"] if valor is None],

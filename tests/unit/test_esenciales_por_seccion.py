@@ -29,7 +29,8 @@ EXCEPCION_AL_TOPE: Final[dict[str, int]] = {"provisioning_ifrs9": 12}
 #: Los caminos marcados, por sección, tal como los pinta la tabla §3.8 de la enmienda del
 #: scorecard (39 marcas en sus 12 secciones; ``eda`` no tiene ninguna: todo default, el resumen lo
 #: muestra) y la §3.7 de FLUJO-GUIADO-IFRS9 (``survival`` 5 y ``provisioning_ifrs9`` 7, 10 desde
-#: CASO-REAL-IFRS9 §8-3 y 12 desde IFRS9-FIRMABLE §8-5): 56 marcas y 54 caminos en 14 secciones.
+#: CASO-REAL-IFRS9 §8-3 y 12 desde IFRS9-FIRMABLE §8-5), más los tres de ``forward`` desde la capa C
+#: de IFRS9-FIRMABLE (§13): 59 marcas y 57 caminos en 15 secciones.
 #: Un mismo camino puede vivir en varias ramas de una unión (``holdout_fraction``) y se lista una
 #: vez.
 ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
@@ -103,6 +104,13 @@ ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
         "provisioning_ifrs9.pd.pd_12m_col",
         "provisioning_ifrs9.staging.origination_pd_12m_col",
     ),
+    # IFRS9-FIRMABLE D-FIR-11 (§13, capa C): la tabla de historia, la columna de la tasa de
+    # referencia —con su default— y los escenarios con sus pesos.
+    "forward": (
+        "forward.input.macro_source.path",
+        "forward.satellite.reference_rate_col",
+        "forward.scenarios.scenarios",
+    ),
 }
 
 #: Lo que la pantalla muestra a la vez por sección (la rama más cargada de la partición: fecha o
@@ -122,6 +130,7 @@ ESENCIALES_VISIBLES_A_LA_VEZ: Final[dict[str, int]] = {
     "governance": 3,
     "survival": 5,
     "provisioning_ifrs9": 12,
+    "forward": 3,
 }
 
 
@@ -199,13 +208,13 @@ def _secciones() -> dict[str, dict[str, Any]]:
     }
 
 
-def test_el_golden_cubre_las_catorce_secciones() -> None:
-    """Las doce del scorecard y las dos de cálculo de IFRS 9: survival y provisioning_ifrs9."""
-    assert len(ESENCIALES_POR_SECCION) == 14
+def test_el_golden_cubre_las_quince_secciones() -> None:
+    """Las doce del scorecard y las tres de cálculo de IFRS 9: survival, forward y la provisión."""
+    assert len(ESENCIALES_POR_SECCION) == 15
     assert set(_secciones()) == set(ESENCIALES_POR_SECCION)
-    # 37 caminos del scorecard (39 marcas: un camino de la partición vive en varias ramas) y 17
-    # de IFRS 9 (12 hasta CASO-REAL-IFRS9 §8-3; 15 hasta IFRS9-FIRMABLE §8-5).
-    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 54
+    # 37 caminos del scorecard (39 marcas: un camino de la partición vive en varias ramas) y 20
+    # de IFRS 9 (12 hasta CASO-REAL-IFRS9 §8-3; 15 hasta IFRS9-FIRMABLE §8-5; 17 hasta su capa C).
+    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 57
 
 
 def test_cada_marca_del_schema_esta_en_el_golden_y_cada_entrada_del_golden_esta_marcada() -> None:
@@ -254,8 +263,8 @@ def _rama_de_seccion(nodo: Any, defs: dict[str, Any]) -> dict[str, Any]:
     return _resolver(nodo, defs)
 
 
-def test_las_catorce_secciones_declaran_sus_esenciales_y_ninguna_otra() -> None:
-    """``ui_essentials_declared`` (``declara_esenciales``) va en las catorce y en ninguna más.
+def test_las_quince_secciones_declaran_sus_esenciales_y_ninguna_otra() -> None:
+    """``ui_essentials_declared`` (``declara_esenciales``) va en las quince y en ninguna más.
 
     Es la marca que hace que la pantalla divida la sección (D-FLU-8): sin ella se pinta entera.
     No se deduce contando marcas porque ``eda`` declara cero esenciales y también se divide.

@@ -1775,6 +1775,7 @@
         "governance"
       ],
       "status": "available",
+      "toggle_overrides": {},
       "unavailable_reason": null
     },
     {
@@ -2408,6 +2409,7 @@
         "governance"
       ],
       "status": "available",
+      "toggle_overrides": {},
       "unavailable_reason": null
     },
     {
@@ -2983,6 +2985,7 @@
         "governance"
       ],
       "status": "available",
+      "toggle_overrides": {},
       "unavailable_reason": null
     },
     {
@@ -2994,6 +2997,7 @@
       "jurisdiction_label": null,
       "label": "Provisiones IFRS 9 / ECL",
       "latent_sections": [
+        "forward",
         "governance"
       ],
       "methodology_choices": [
@@ -3722,6 +3726,30 @@
         [
           "provisioning_ifrs9.pd.horizon_12m_periods",
           null
+        ],
+        [
+          "survival.discrete_hazard.pd_role",
+          "none"
+        ],
+        [
+          "survival.kaplan_meier.confidence_level",
+          0.95
+        ],
+        [
+          "survival.kaplan_meier.confidence_transform",
+          "loglog"
+        ],
+        [
+          "provisioning_ifrs9.ead.method",
+          "provided"
+        ],
+        [
+          "provisioning_ifrs9.pd.pit_mode",
+          "ttc_only"
+        ],
+        [
+          "provisioning_ifrs9.scenarios.source",
+          "single"
         ]
       ],
       "required_decisions": [
@@ -3751,6 +3779,18 @@
         },
         {
           "answer_forms": [],
+          "help": "Se leen solas al subir tus dos tablas: son las columnas que traen las dos, menos la fecha, la tasa de referencia, el escenario y el peso.",
+          "path": "forward.input.macro_source.variable_cols",
+          "question": "¿Qué variables macroeconómicas trae tu tabla de historia?"
+        },
+        {
+          "answer_forms": [],
+          "help": "Las mismas variables macroeconómicas de tus dos tablas: se llenan al subirlas, y el motor estima cuánto mueve cada una la tasa de incumplimiento de referencia.",
+          "path": "forward.satellite.factor_cols",
+          "question": "¿Qué variables explican la tasa de referencia?"
+        },
+        {
+          "answer_forms": [],
           "help": "Lo escribe tu institución: el motor no puede inventarlo, y sin esto la ficha del modelo no se emite.",
           "path": "governance.purpose",
           "question": "¿Para qué se va a usar este modelo y sobre qué cartera decide?"
@@ -3759,11 +3799,62 @@
       "sections": [
         "data",
         "survival",
+        "forward",
         "provisioning_ifrs9",
         "report",
         "governance"
       ],
       "status": "available",
+      "toggle_overrides": {
+        "forward": {
+          "off": [
+            [
+              "provisioning_ifrs9.pd.pit_mode",
+              "ttc_only"
+            ],
+            [
+              "provisioning_ifrs9.scenarios.source",
+              "single"
+            ]
+          ],
+          "on": [
+            [
+              "forward.input.macro_source.type",
+              "path"
+            ],
+            [
+              "forward.input.macro_source.time_col",
+              "date"
+            ],
+            [
+              "forward.input.term_structure_sources",
+              [
+                "survival"
+              ]
+            ],
+            [
+              "forward.input.pd_basis_assumption",
+              "ttc"
+            ],
+            [
+              "forward.satellite.mode",
+              "reference_rate"
+            ],
+            [
+              "forward.macro.kind",
+              "scenario_paths"
+            ],
+            [
+              "provisioning_ifrs9.pd.pit_mode",
+              "cycle"
+            ],
+            [
+              "provisioning_ifrs9.scenarios.source",
+              "forward"
+            ]
+          ]
+        }
+      },
       "unavailable_reason": null
     },
     {
@@ -4397,6 +4488,7 @@
         "governance"
       ],
       "status": "available",
+      "toggle_overrides": {},
       "unavailable_reason": null
     },
     {
@@ -6349,6 +6441,7 @@
         "governance"
       ],
       "status": "available",
+      "toggle_overrides": {},
       "unavailable_reason": null
     },
     {
@@ -7323,6 +7416,7 @@
         "governance"
       ],
       "status": "available",
+      "toggle_overrides": {},
       "unavailable_reason": null
     },
     {
@@ -8016,6 +8110,7 @@
         "governance"
       ],
       "status": "available",
+      "toggle_overrides": {},
       "unavailable_reason": null
     },
     {
@@ -8649,6 +8744,7 @@
         "governance"
       ],
       "status": "available",
+      "toggle_overrides": {},
       "unavailable_reason": null
     },
     {
@@ -9068,6 +9164,7 @@
         "governance"
       ],
       "status": "unavailable",
+      "toggle_overrides": {},
       "unavailable_reason": "El motor de escenarios corre desde Python, pero todavía no tiene pantalla ni se ha probado de punta a punta desde la interfaz."
     }
   ]

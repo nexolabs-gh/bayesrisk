@@ -62,6 +62,10 @@ _DECISIONES_CONTESTADAS: dict[str, Any] = {
     "survival.time_grid.horizon_periods": 5,
     # D-GOB-12: sólo se contesta con la sección encendida; en el esqueleto es latente (`null`).
     "governance.purpose": "Gate de ejecutabilidad",
+    # IFRS9-FIRMABLE capa C: las variables de las dos tablas de escenarios; `forward` también llega
+    # latente, así que tampoco se contestan sobre el esqueleto.
+    "forward.input.macro_source.variable_cols": ["desempleo"],
+    "forward.satellite.factor_cols": ["desempleo"],
 }
 
 
@@ -404,8 +408,13 @@ def test_governance_es_latente_en_los_diez_y_el_esqueleto_la_siembra_apagada(
     """
     for job in trabajos:
         assert "governance" in job["sections"], f"«{job['label']}» no ofrece Gobernanza"
-        assert job["latent_sections"] == ["governance"], (
-            f"«{job['label']}»: latentes {job['latent_sections']}, y sólo `governance` lo es hoy"
+        # Desde la capa C de IFRS9-FIRMABLE, la provisión IFRS 9 ofrece además los escenarios
+        # latentes (`forward`): sin las dos tablas de la institución no los hay.
+        esperadas = (
+            ["forward", "governance"] if job["id"] == "provisiones_ifrs9" else ["governance"]
+        )
+        assert job["latent_sections"] == esperadas, (
+            f"«{job['label']}»: latentes {job['latent_sections']}, y se esperaban {esperadas}"
         )
         assert set(job["latent_sections"]) <= set(job["sections"]), (
             f"«{job['label']}» declara latente una sección que no ofrece"

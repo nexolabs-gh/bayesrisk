@@ -17,6 +17,7 @@ __all__ = [
     "UiError",
     "UiLaunchError",
     "UiRunNotFoundError",
+    "UiScenarioTablesError",
     "UiSerializationError",
     "UiStaticIndexError",
 ]
@@ -38,6 +39,13 @@ class UiArtifactError(UiError):
     malformada o un archivo cuyo número de filas no cuadra con la cartera son cosas que el usuario
     puede corregir, y responder 404 le diría que algo no existe cuando lo que pasa es que no se
     admite.
+    """
+
+
+class UiScenarioTablesError(UiError):
+    """Las dos tablas de escenarios no se leen o no cumplen sus reglas (→ 422; IFRS9-FIRMABLE C).
+
+    El mensaje es el mismo que daría la puerta guiada con esas tablas.
     """
 
 

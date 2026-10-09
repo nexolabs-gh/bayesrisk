@@ -55,6 +55,7 @@ __all__ = [
     "EXECUTIVE_SUMMARY_ID",
     "HL_GROUP_TABLE_PREFIX",
     "IFRS9_DOMAINS",
+    "IFRS9_EXTRA_SECTIONS",
     "KEY_TABLES",
     "METHODOLOGY_STEPS",
     "PER_OBSERVATION_TABLES",
@@ -172,6 +173,16 @@ PROVISION_DOMAINS: Final[tuple[str, ...]] = (
 # (FLUJO-GUIADO-IFRS9 D-ECL-12): es lo primero que lee un validador de la provisión, y hasta la
 # capa C sólo vivía en el anexo C.2 como card. Cada una se emite sólo si su dominio corrió.
 IFRS9_DOMAINS: Final[tuple[str, ...]] = ("survival", "provisioning_ifrs9")
+# Y dos subsecciones que no son un dominio con card sino lo que la provisión hizo con los
+# escenarios de la institución y con la PD del modelo (IFRS9-FIRMABLE capa C, D-FIR-11): sólo se
+# emiten cuando la corrida los trae, con las líneas y tablas de los resúmenes de etapa
+# (`guided.summaries.ifrs9_report_extras`). La de escenarios va entre la curva y la provisión —el
+# orden del pipeline—; la de la PD, tras la provisión.
+IFRS9_EXTRA_SECTIONS: Final[dict[str, str]] = {
+    "forward": "Escenarios y ajuste por ciclo",
+    "pd_model": "La PD de tu modelo y el aumento significativo del riesgo",
+}
+_IFRS9_CHILDREN: Final[tuple[str, ...]] = ("survival", "forward", "provisioning_ifrs9", "pd_model")
 
 # Familias publicadas por el ``ValidationResult`` atómico (SDD-22), en el orden metodológico del
 # capítulo condicional. Solo se emiten las declaradas en ``card.families_run``.
@@ -246,6 +257,14 @@ KEY_TABLES: Final[dict[str, tuple[str, ...]]] = {
     # tabla que la etapa «Curva de PD» del resumen— y los coeficientes del ajuste.
     "survival": (SURVIVAL_PD_BY_PERIOD_TABLE, "survival.coefficients"),
     "provisioning_ifrs9": ("provisioning_ifrs9.summary",),
+    # «Escenarios y ajuste por ciclo» (IFRS9-FIRMABLE capa C): los escenarios con sus pesos, la
+    # sensibilidad, la ECL por escenario y el desplazamiento por tramo —la curva consumida—.
+    "forward": (
+        "forward.scenarios",
+        "forward.sensitivity",
+        "provisioning_ifrs9.ecl_by_scenario",
+        "provisioning_ifrs9.shift_by_period",
+    ),
 }
 
 #: La tabla de la tasa por período o cohorte, que además del máximo configurable de filas por
@@ -334,6 +353,13 @@ _TABLE_TITLES: Final[dict[str, str]] = {
         "PD acumulada por período y cartera (promedio de las operaciones)"
     ),
     "survival.coefficients": "Coeficientes de la curva de PD (supervivencia)",
+    # IFRS9-FIRMABLE capa C: las tablas de «Escenarios y ajuste por ciclo», las del resumen.
+    "forward.scenarios": "Escenarios de la institución, con sus pesos",
+    "forward.sensitivity": "La sensibilidad estimada",
+    "provisioning_ifrs9.ecl_by_scenario": (
+        "ECL por escenario frente a la curva a lo largo del ciclo"
+    ),
+    "provisioning_ifrs9.shift_by_period": "Desplazamiento por tramo",
 }
 _BINNING_TABLE_PREFIX: Final = "binning.tables."
 #: Prefijo de los perfiles por variable del análisis exploratorio (`UnivariateResult.profiles`,
@@ -537,7 +563,7 @@ _CHILD_ORDER: Final[dict[str, tuple[str, ...]]] = {
     "results": RESULT_DOMAINS,
     "validation": tuple(family for family, _ in VALIDATION_FAMILIES),
     "provisions": PROVISION_DOMAINS,
-    "ifrs9": IFRS9_DOMAINS,
+    "ifrs9": _IFRS9_CHILDREN,
     APPENDIX_PARAMETERS_ID: APPENDIX_PARAMETER_DOMAINS,
 }
 

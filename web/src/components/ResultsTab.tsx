@@ -147,6 +147,12 @@ import { frenteAlCorte } from "@/lib/cifras"
 import { useAppState } from "@/state/appStore"
 import type { LastRun } from "@/state/appStore"
 
+/**
+ * Las tablas del resumen de «Provisión IFRS 9» que cuentan la curva consumida con los escenarios de
+ * la institución (IFRS9-FIRMABLE capa C): sus títulos son los de `guided/summaries.py`.
+ */
+const TABLAS_DEL_CICLO = new Set(["ECL por escenario", "Desplazamiento por tramo"])
+
 interface ResultsTabProps {
   /** Navega a otra sección del shell (misma convención que RunTab: la navegación vive en App). */
   onNavigate: (section: string) => void
@@ -379,6 +385,16 @@ export function ResultsPanel({
   const curvaDePd = curvaConsumida
     ? (results.summaries?.stages.find((etapa) => etapa.stage === "survival")?.extra_tables ?? [])
     : []
+  // Con los escenarios de la institución (IFRS9-FIRMABLE capa C), la curva que consumió la
+  // provisión es la de la etapa desplazada en logit, tramo a tramo y escenario por escenario: se
+  // pinta desde el MISMO resumen de «Provisión IFRS 9» —la ECL por escenario frente a la TTC y el
+  // desplazamiento de cada tramo—, que es lo que dicen también el Excel y el informe.
+  const tablasDelCiclo =
+    ifrs9?.pit_mode === "cycle"
+      ? (results.summaries?.stages
+          .find((etapa) => etapa.stage === "provisioning_ifrs9")
+          ?.extra_tables?.filter((tabla) => TABLAS_DEL_CICLO.has(tabla.title)) ?? [])
+      : []
 
   return (
     <div className="space-y-6">
@@ -539,6 +555,18 @@ export function ResultsPanel({
               description="La probabilidad de incumplimiento acumulada que estimó la curva de supervivencia, período a período y promediada por cartera, en la unidad de la curva: la curva de la que parte esta provisión. Si declaraste un tope de horizonte lifetime, la provisión sólo usa sus períodos hasta ese tope."
             >
               {curvaDePd.map((tabla) => (
+                <SummaryTableView key={tabla.title} table={tabla} title={tabla.title} />
+              ))}
+            </ResultsSection>
+          ) : null}
+
+          {/* La curva consumida con escenarios (IFRS9-FIRMABLE capa C; abierto desde S32). */}
+          {tablasDelCiclo.length > 0 ? (
+            <ResultsSection
+              title="Escenarios: la curva que consumió la provisión"
+              description="Con tus escenarios, la provisión no lee la curva tal cual: desplaza el riesgo de cada tramo según la macro de su fecha de calendario y pondera la ECL de cada escenario. Primero, la ECL de cada escenario frente a la de la curva a lo largo del ciclo (TTC), con las mismas etapas; después, el desplazamiento de cada tramo por escenario: del escenario, de la reversión de 24 meses o del largo plazo."
+            >
+              {tablasDelCiclo.map((tabla) => (
                 <SummaryTableView key={tabla.title} table={tabla} title={tabla.title} />
               ))}
             </ResultsSection>

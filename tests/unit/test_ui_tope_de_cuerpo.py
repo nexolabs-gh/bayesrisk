@@ -60,9 +60,12 @@ def _posts_de_json() -> list[str]:
 
 
 def test_el_contrato_tiene_cinco_post_de_json() -> None:
-    """Ancla de la medición previa: 5 POST de JSON sin tope + ``/api/upload`` con el suyo.
+    """Ancla de la medición previa: 6 POST de JSON sin tope + ``/api/upload`` con el suyo.
 
     Si el contrato gana un POST, este número cambia y hay que mirar si el tope le sirve tal cual.
+    ``/api/scenario-tables`` (IFRS9-FIRMABLE capa C) es el sexto: su cuerpo son dos ``dataset_id``
+    y dos nombres de columna —las tablas llegan antes por ``/api/upload``, con su tope—, así que el
+    tope global de JSON le sirve tal cual y los tests de abajo lo recorren.
     No es un golden decorativo: es lo que impide que la lista derivada quede vacía y los tests
     parametrizados de abajo pasen recorriendo cero endpoints.
     """
@@ -71,6 +74,7 @@ def test_el_contrato_tiene_cinco_post_de_json() -> None:
         "/api/config/to-yaml",
         "/api/preflight",
         "/api/run",
+        "/api/scenario-tables",
         "/api/validate",
     ]
 

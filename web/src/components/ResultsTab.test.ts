@@ -1689,6 +1689,51 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     expect(sc).not.toContain("Curva de PD por cartera")
   })
 
+  it("con escenarios, Resultados pinta la curva que consumió la provisión (IFRS9-FIRMABLE C)", () => {
+    // El abierto desde S32: con `forward` la curva de supervivencia no es la consumida. La que sí
+    // lo es se cuenta con las dos tablas del resumen de «Provisión IFRS 9» —la misma fuente que el
+    // Excel y el informe—, junto al bloque IFRS 9 y sólo con `pit_mode = "cycle"`.
+    const f4 = demoF4 as unknown as ResultsResponse
+    const tablasDelCiclo = [
+      {
+        title: "ECL por escenario",
+        columns: ["Escenario", "Peso", "Desplazamiento del primer año", "ECL", "Cambio frente a la TTC"],
+        rows: [
+          ["base", "70,0 %", "-0,010", "4.702.478", "-0,5 %"],
+          ["adverso", "30,0 %", "0,086", "4.983.635", "+5,5 %"],
+        ],
+      },
+      {
+        title: "Desplazamiento por tramo",
+        columns: ["Escenario", "Tramo", "Desde", "Hasta", "u", "Desplazamiento", "Estado"],
+        rows: [["adverso", "2", "2026-07-01", "2027-07-01", "9,36", "0,343", "escenario"]],
+      },
+    ]
+    const conCiclo: RunSummaries = {
+      ...deCartera,
+      stages: deCartera.stages.map((etapa) =>
+        etapa.stage === "provisioning_ifrs9"
+          ? { ...etapa, extra_tables: [...(etapa.extra_tables ?? []), ...tablasDelCiclo] }
+          : etapa,
+      ),
+    }
+    const titulo = "Escenarios: la curva que consumió la provisión"
+    const conEscenarios = render({
+      ...f4,
+      provisioning_ifrs9: { ...f4.provisioning_ifrs9!, pit_mode: "cycle" },
+      summaries: conCiclo,
+    })
+    expect(conEscenarios).toContain(titulo)
+    // Cada tabla, plegada en su etapa Y en el bloque IFRS 9: dos veces.
+    expect(ocurrencias(conEscenarios, "Desplazamiento por tramo")).toBe(2)
+    expect(ocurrencias(conEscenarios, "4.983.635")).toBe(2)
+    // Y la curva de supervivencia no se le atribuye a la provisión.
+    expect(conEscenarios).not.toContain("Curva de PD por cartera")
+    // Sin escenarios (TTC), la sección no existe aunque el resumen trajera las tablas.
+    const sin = render({ ...f4, summaries: conCiclo })
+    expect(sin).not.toContain(titulo)
+  })
+
   it("la nota del runoff dice la tabla de pagos cuando alguna operación la sigue", () => {
     // CASO-REAL-IFRS9 D-CRE-3: con la cuota del contrato, «EAD constante» deja de ser cierto para
     // las operaciones que siguen su tabla de pagos.

@@ -7,6 +7,60 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **Los escenarios y la PD de tu modelo en la pantalla.** El trabajo «Provisiones IFRS 9 / ECL»
+  gana la sección «Escenarios económicos», apagada hasta que subes tus dos tablas —la historia de
+  una tasa de incumplimiento de referencia con sus variables macroeconómicas y tus escenarios con
+  sus pesos—: la pantalla las lee con la misma regla que `bayesrisk.Ecl(history=, scenarios=)`
+  —una tabla que la puerta guiada rechaza, la pantalla también, con el mismo motivo—, enciende la
+  sección y pone la provisión en el ajuste por ciclo; «Quitar los escenarios» la devuelve a lo largo
+  del ciclo. La sección abre tres campos —la tabla de historia, la columna de la tasa de referencia
+  y los escenarios con sus pesos— y pliega el resto en «Avanzado». Las dos PD de tu modelo ya eran
+  esenciales de la provisión.
+- **Resultados pinta la curva que consumió la provisión con escenarios**: la ECL de cada escenario
+  frente a la de la curva a lo largo del ciclo y el desplazamiento de cada tramo de calendario por
+  escenario —del escenario, de la reversión o del largo plazo—, desde el mismo resumen de
+  «Provisión IFRS 9» que ahora trae esa tabla («Desplazamiento por tramo»).
+- **El informe** gana, en su capítulo IFRS 9, «Escenarios y ajuste por ciclo» —la sensibilidad
+  estimada, el ancla, tus escenarios con sus pesos y la huella de las dos tablas, la ECL de cada
+  escenario frente a la de la curva y el desplazamiento por tramo— y «La PD de tu modelo y el
+  aumento significativo del riesgo» —tu PD frente a la de la curva, las operaciones que movió la
+  comparación por tramo y las que no se compararon por no traer fecha de otorgamiento—. Sólo con
+  escenarios o con las dos PD: sin ellos el informe es el de siempre.
+- **El Excel** gana el libro `03 Escenarios.xlsx` cuando la provisión los trae.
+
+### Cambiado
+
+- `bayesrisk.Ecl(history=, scenarios=, pd=, origination_pd=)` **dejan de ser experimentales**: sus
+  tres puertas —la guiada, el config completo y la pantalla— corren el mismo config y llegan a la
+  misma cifra. Sus cifras siguen la marca experimental de `survival`, `forward` y `provisioning`.
+- **La ubicación de las dos tablas de escenarios ya no es identidad.** `config_hash` deja fuera
+  `forward.input.macro_source.path` y `forward.scenarios.scenarios[*].macro_path_path`, como la
+  ruta del dataset: la misma provisión con las mismas tablas tiene el mismo `config_hash` en
+  cualquier carpeta y por cualquier puerta. Su contenido lo ancla la huella de cada tabla, que la
+  corrida publica en `("forward", "cycle_model")` (`history_hash` y `content_hash` de cada
+  escenario), en el resumen de «Escenarios» y en el informe. Cambia el `config_hash` de los configs
+  con esas rutas; ningún preset las trae.
+- **Los libros del Excel de una provisión se renumeran**: `03 Escenarios.xlsx`, `04 Provisión
+  IFRS 9.xlsx` y `05 Decisiones.xlsx` —antes `03 Provisión IFRS 9.xlsx` y `04 Decisiones.xlsx`—.
+  El número es la posición de la etapa, también sin escenarios (falta el `03`, como en una corrida
+  parcial).
+- Los rótulos y las descripciones de la sección `forward` quedan en español sin literales de
+  código, ahora que la pantalla los muestra («Modelo satélite», «Tabla de historia», «Trayectoria
+  del escenario»…).
+
+### Corregido
+
+- **Entrar a la pantalla por «Provisiones IFRS 9 / ECL» y llenar los campos esenciales no
+  corría**: el trabajo sembraba los valores de fábrica de la provisión, y la corrida se detenía
+  —la exposición por CCF pedía una columna «drawn» que la entrada mínima no trae, y la PD puntual
+  pedía escenarios—. El trabajo siembra ahora las mismas constantes que la puerta guiada (EAD
+  provista, PD a lo largo del ciclo y escenario único, y las de la curva), y con las mismas columnas
+  calcula la misma provisión que `bayesrisk.Ecl`, al bit.
+
 ## [2.9.0] — 2026-10-08
 
 ### Añadido

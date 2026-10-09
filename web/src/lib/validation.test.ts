@@ -167,13 +167,14 @@ describe("erroresSinSuperficie (D-VIS-1/2)", () => {
   })
 
   it("una sección de dominio SIN pestaña se nombra, pero no se ofrece salto", () => {
-    // `forward` es una de las 8 secciones que el formulario nunca pinta (19 `raise` viven ahí).
-    // Ofrecer «ir al campo» sería mandar a una pestaña que no existe (criterio de preflight.ts:84).
+    // `stress` es una de las 7 secciones que el formulario nunca pinta (`forward` dejó de serlo con
+    // la capa C de IFRS9-FIRMABLE). Ofrecer «ir al campo» sería mandar a una pestaña que no existe
+    // (criterio de preflight.ts:84).
     const fuera = erroresSinSuperficie(
-      invalido([{ loc: ["forward", "scenarios"], msg: "faltan escenarios", type: "missing" }]),
+      invalido([{ loc: ["stress", "scenarios"], msg: "faltan escenarios", type: "missing" }]),
       "binning",
     )
-    expect(fuera[0].seccion).toBe("forward")
+    expect(fuera[0].seccion).toBe("stress")
     expect(fuera[0].seccionLabel).toBeNull()
     expect(fuera[0].alcanzable).toBe(false)
   })

@@ -63,13 +63,14 @@ function hojas(schema: JsonSchema, prefijo: string): string[] {
 }
 
 describe("golden espejo: las marcas del schema son exactamente las del golden (D-FLU-7)", () => {
-  it("las doce secciones del scorecard y las dos de cálculo de IFRS 9 declaran sus esenciales, y ninguna otra", () => {
+  it("las doce secciones del scorecard y las tres de cálculo de IFRS 9 declaran sus esenciales, y ninguna otra", () => {
     const declaradas = Object.keys(PAYLOAD.json_schema.properties ?? {}).filter((clave) => {
       const entrada = configSectionSchema(PAYLOAD, clave)
       return entrada !== null && declaresEssentials(resolveRef(entrada.schema, DEFS))
     })
     expect(new Set(declaradas)).toEqual(new Set(Object.keys(ESSENTIALS_BY_SECTION)))
-    expect(declaradas).toHaveLength(14)
+    // Quince desde la capa C de IFRS9-FIRMABLE: `forward`, con sus tres esenciales.
+    expect(declaradas).toHaveLength(15)
   })
 
   it.each(Object.keys(ESSENTIALS_BY_SECTION))(
@@ -124,7 +125,7 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
     // siete a diez por CASO-REAL-IFRS9 §8-3: las tres columnas opcionales del contrato; de diez a
     // doce por IFRS9-FIRMABLE §8-5: las dos PD del modelo).
     const EXCEPCION_AL_TOPE: Record<string, number> = { provisioning_ifrs9: 12 }
-    const DE_IFRS9 = new Set(["survival", "provisioning_ifrs9"])
+    const DE_IFRS9 = new Set(["survival", "provisioning_ifrs9", "forward"])
     let total = 0
     let deIfrs9 = 0
     for (const clave of Object.keys(ESSENTIALS_BY_SECTION)) {
@@ -138,7 +139,8 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
       else total += porRama
     }
     expect(total).toBe(35)
-    expect(deIfrs9).toBe(17)
+    // 5 + 12 + 3: la tabla de historia, la columna de la tasa y los escenarios (IFRS9-FIRMABLE C).
+    expect(deIfrs9).toBe(20)
   })
 
   it("las tres columnas del contrato van juntas bajo su subtítulo, también la cuota de EAD", () => {

@@ -37,8 +37,10 @@ pantalla): su firma, sus resúmenes y sus decisiones (`exclude`, `keep`, `merge_
 cartera y la historia de incumplimientos que alimenta la curva de PD, resúmenes por etapa en
 palabras de provisiones y dos decisiones con motivo (`exclude` sobre las covariables de la curva y
 `rebut_backstops` sobre las presunciones de mora). Su firma, sus métodos y la forma de sus
-resúmenes son estables bajo SemVer 2.x desde que la pantalla ofrece lo mismo; sus cifras siguen la
-marca experimental de `survival` y `provisioning`, los motores que las calculan.
+resúmenes son estables bajo SemVer 2.x desde que la pantalla ofrece lo mismo —también los
+escenarios de la institución y las dos PD del modelo (`history=`, `scenarios=`, `pd=`,
+`origination_pd=`), desde la 2.10.0—; sus cifras siguen la marca experimental de `survival`,
+`forward` y `provisioning`, los motores que las calculan.
 
 ::: bayesrisk.guided.ecl.Ecl
 

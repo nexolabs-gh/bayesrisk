@@ -17,9 +17,9 @@ import warnings
 from math import isclose, isfinite
 from typing import Any, Literal, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
-from bayesrisk.core.config import BayesRiskBaseConfig
+from bayesrisk.core.config import BayesRiskBaseConfig, declara_esenciales
 from bayesrisk.forward.exceptions import (
     ForwardConfigError,
     ForwardScenarioError,
@@ -87,51 +87,64 @@ class MacroSourceConfig(BayesRiskBaseConfig):
     type: MacroSourceType = Field(
         default="path",
         title="Tipo de fuente macro",
-        description="Origen del histórico macro: path local, artefacto del Study o DataFrame.",
-        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Macro fuente", "ui_order": 1},
+        description="De dónde se lee la historia macro: un archivo o el resultado de una etapa.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Fuente macro", "ui_order": 1},
     )
     path: str | None = Field(
         default=None,
-        title="Ruta macro",
-        description="Ruta al histórico macro cuando type='path'.",
-        json_schema_extra={"ui_widget": "text_input", "ui_group": "Macro fuente", "ui_order": 2},
+        title="Tabla de historia",
+        description=(
+            "El archivo con la historia de la tasa de referencia y sus variables macro. La "
+            "pantalla lo escribe al subir la tabla."
+        ),
+        json_schema_extra={
+            # IFRS9-FIRMABLE D-FIR-11 (§13): uno de los tres esenciales de la pantalla —la tabla de
+            # historia—, que la pantalla escribe al subirla.
+            "ui_essential": True,
+            "ui_widget": "text_input",
+            "ui_group": "Fuente macro",
+            "ui_order": 2,
+        },
     )
     artifact_domain: str | None = Field(
         default=None,
         title="Dominio de artefacto macro",
-        description="Dominio del artefacto cuando type='artifact'.",
-        json_schema_extra={"ui_widget": "text_input", "ui_group": "Macro fuente", "ui_order": 3},
+        description="La etapa que publicó la historia, cuando se lee de un resultado.",
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Fuente macro", "ui_order": 3},
     )
     artifact_key: str | None = Field(
         default=None,
         title="Clave de artefacto macro",
-        description="Clave del artefacto cuando type='artifact'.",
-        json_schema_extra={"ui_widget": "text_input", "ui_group": "Macro fuente", "ui_order": 4},
+        description="El resultado de esa etapa que trae la historia.",
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Fuente macro", "ui_order": 4},
     )
     time_col: str = Field(
         default="period",
         title="Columna temporal macro",
         description="Columna de período o fecha ordenable del histórico macro.",
-        json_schema_extra={"ui_widget": "text_input", "ui_group": "Macro fuente", "ui_order": 5},
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Fuente macro", "ui_order": 5},
     )
     frequency: str | None = Field(
         default=None,
         title="Frecuencia macro",
         description="Frecuencia declarativa opcional de la serie macro.",
-        json_schema_extra={"ui_widget": "text_input", "ui_group": "Macro fuente", "ui_order": 6},
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Fuente macro", "ui_order": 6},
     )
     variable_cols: tuple[str, ...] = Field(
         default=...,
         min_length=1,
         title="Variables macro proyectadas",
-        description="Columnas macro que el modelo proyecta y el satellite puede consumir.",
-        json_schema_extra={"ui_widget": "multiselect", "ui_group": "Macro fuente", "ui_order": 7},
+        description=(
+            "Las variables macro de la historia. Con los escenarios de la institución, las "
+            "columnas comunes a las dos tablas: se leen al subirlas."
+        ),
+        json_schema_extra={"ui_widget": "multiselect", "ui_group": "Fuente macro", "ui_order": 7},
     )
     exogenous_cols: tuple[str, ...] = Field(
         default=(),
         title="Variables exógenas",
         description="Columnas exógenas requeridas por la ruta ARIMAX.",
-        json_schema_extra={"ui_widget": "multiselect", "ui_group": "Macro fuente", "ui_order": 8},
+        json_schema_extra={"ui_widget": "multiselect", "ui_group": "Fuente macro", "ui_order": 8},
     )
 
     @model_validator(mode="before")
@@ -193,72 +206,72 @@ class MacroModelConfig(BayesRiskBaseConfig):
         default="arima",
         title="Tipo de modelo macro",
         description=(
-            "Modelo de forecasting: ARIMA/SARIMA/ARIMAX, auto_arima, VAR o VECM; scenario_paths "
-            "toma tal cual las trayectorias de los escenarios de la institución."
+            "Cómo se proyecta la macro: ARIMA, SARIMA o ARIMAX, auto_arima, VAR o VECM; con los "
+            "escenarios de la institución, sus trayectorias tal cual."
         ),
-        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Macro modelo", "ui_order": 1},
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Modelo macro", "ui_order": 1},
     )
     horizon_periods: int = Field(
         default=12,
         ge=1,
         title="Horizonte macro",
         description="Número de períodos a proyectar.",
-        json_schema_extra={"ui_widget": "number_input", "ui_group": "Macro modelo", "ui_order": 2},
+        json_schema_extra={"ui_widget": "number_input", "ui_group": "Modelo macro", "ui_order": 2},
     )
     arima_order: tuple[int, int, int] = Field(
         default=(1, 0, 0),
         title="Orden ARIMA",
         description="Orden (p,d,q) usado por ARIMA/SARIMA/ARIMAX.",
-        json_schema_extra={"ui_widget": "number_tuple", "ui_group": "Macro modelo", "ui_order": 3},
+        json_schema_extra={"ui_widget": "number_tuple", "ui_group": "Modelo macro", "ui_order": 3},
     )
     seasonal_order: tuple[int, int, int, int] | None = Field(
         default=None,
         title="Orden estacional",
         description="Orden estacional opcional (P,D,Q,s) para SARIMA.",
-        json_schema_extra={"ui_widget": "number_tuple", "ui_group": "Macro modelo", "ui_order": 4},
+        json_schema_extra={"ui_widget": "number_tuple", "ui_group": "Modelo macro", "ui_order": 4},
     )
     var_lags: int | None = Field(
         default=None,
         ge=1,
-        title="Lags VAR",
+        title="Rezagos del VAR",
         description="Número de rezagos para modelos VAR.",
-        json_schema_extra={"ui_widget": "number_input", "ui_group": "Macro modelo", "ui_order": 5},
+        json_schema_extra={"ui_widget": "number_input", "ui_group": "Modelo macro", "ui_order": 5},
     )
     vecm_rank: int | None = Field(
         default=None,
         ge=1,
         title="Rango VECM",
         description="Rango de cointegración para VECM cuando se define explícitamente.",
-        json_schema_extra={"ui_widget": "number_input", "ui_group": "Macro modelo", "ui_order": 6},
+        json_schema_extra={"ui_widget": "number_input", "ui_group": "Modelo macro", "ui_order": 6},
     )
     use_pmdarima_auto_order: bool = Field(
         default=False,
-        title="Usar pmdarima auto-order",
+        title="Orden automático (pmdarima)",
         description="Activa selección automática de orden para ARIMA/SARIMA/ARIMAX univariado.",
-        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Macro modelo", "ui_order": 7},
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Modelo macro", "ui_order": 7},
     )
     auto_arima_random: bool = Field(
         default=False,
-        title="auto_arima aleatorio",
-        description="Permite la ruta aleatoria de auto_arima; exige random_state explícito.",
-        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Macro modelo", "ui_order": 8},
+        title="Búsqueda aleatoria de auto_arima",
+        description="Permite la búsqueda aleatoria de auto_arima; exige fijar su semilla.",
+        json_schema_extra={"ui_widget": "checkbox", "ui_group": "Modelo macro", "ui_order": 8},
     )
     random_state: int | None = Field(
         default=None,
-        title="Semilla auto_arima",
-        description="Semilla explícita cuando auto_arima_random=True.",
-        json_schema_extra={"ui_widget": "number_input", "ui_group": "Macro modelo", "ui_order": 9},
+        title="Semilla de auto_arima",
+        description="La semilla de la búsqueda aleatoria de auto_arima, cuando está activada.",
+        json_schema_extra={"ui_widget": "number_input", "ui_group": "Modelo macro", "ui_order": 9},
     )
     ljung_box_lags: tuple[int, ...] = Field(
         default=(6, 12),
-        title="Lags Ljung-Box",
-        description="Lags usados para diagnosticar autocorrelación residual.",
+        title="Rezagos de Ljung-Box",
+        description="Rezagos con que se diagnostica la autocorrelación de los residuos.",
         json_schema_extra={"ui_widget": "number_list", "ui_group": "Diagnóstico", "ui_order": 1},
     )
     fail_on_ljung_box: bool = Field(
         default=False,
         title="Fallar por Ljung-Box",
-        description="Si es True, un diagnóstico Ljung-Box fallido aborta el ajuste.",
+        description="Activado, un diagnóstico de Ljung-Box fallido detiene el ajuste.",
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "Diagnóstico", "ui_order": 2},
     )
 
@@ -306,54 +319,69 @@ class MacroModelConfig(BayesRiskBaseConfig):
 
 
 class SatelliteConfig(BayesRiskBaseConfig):
-    """Configuración del modelo satellite PD/LGD."""
+    """Configuración del modelo satélite de PD y LGD."""
 
     mode: SatelliteMode = Field(
         default="fit",
-        title="Modo satellite",
+        title="Modo del modelo satélite",
         description=(
             "Ajustar coeficientes desde datos, cargar coeficientes fijos auditados o estimar la "
-            "sensibilidad sobre una tasa de incumplimiento de referencia larga (reference_rate)."
+            "sensibilidad sobre una tasa de incumplimiento de referencia larga."
         ),
-        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Satellite", "ui_order": 1},
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "Modelo satélite", "ui_order": 1},
     )
     factor_cols: tuple[str, ...] = Field(
         default=...,
         min_length=1,
-        title="Factores macro satellite",
-        description="Variables macro proyectadas que alimentan el modelo satellite.",
-        json_schema_extra={"ui_widget": "multiselect", "ui_group": "Satellite", "ui_order": 2},
+        title="Variables del modelo satélite",
+        description=(
+            "Las variables macro que explican la tasa. Con los escenarios de la institución, "
+            "las mismas de las dos tablas."
+        ),
+        json_schema_extra={
+            "ui_widget": "multiselect",
+            "ui_group": "Modelo satélite",
+            "ui_order": 2,
+        },
     )
     segment_col: str | None = Field(
         default=None,
         title="Columna de segmento",
-        description="Segmento opcional para coeficientes satellite por pool.",
-        json_schema_extra={"ui_widget": "text_input", "ui_group": "Satellite", "ui_order": 3},
+        description="Columna de segmento opcional, para coeficientes por grupo.",
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Modelo satélite", "ui_order": 3},
     )
     target_components: tuple[TargetComponent, ...] = Field(
         default=("pd",),
         title="Componentes objetivo",
-        description="Componentes ajustados por satellite: PD y opcionalmente LGD.",
-        json_schema_extra={"ui_widget": "multiselect", "ui_group": "Satellite", "ui_order": 4},
+        description="Qué ajusta el modelo satélite: la PD y, si se pide, la LGD.",
+        json_schema_extra={
+            "ui_widget": "multiselect",
+            "ui_group": "Modelo satélite",
+            "ui_order": 4,
+        },
     )
     reference_scenario: str = Field(
         default="base",
         title="Escenario de referencia",
         description="Escenario base contra el que se calculan deltas macro.",
-        json_schema_extra={"ui_widget": "text_input", "ui_group": "Satellite", "ui_order": 5},
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Modelo satélite", "ui_order": 5},
     )
     coefficient_table_path: str | None = Field(
         default=None,
         title="Tabla de coeficientes",
         description="Ruta opcional a coeficientes fijos auditados.",
-        json_schema_extra={"ui_widget": "text_input", "ui_group": "Satellite", "ui_order": 6},
+        json_schema_extra={"ui_widget": "text_input", "ui_group": "Modelo satélite", "ui_order": 6},
     )
     min_history_periods: int = Field(
         default=12,
         ge=3,
         title="Historia mínima",
-        description="Mínimo de períodos históricos para aceptar el ajuste satellite.",
-        json_schema_extra={"ui_widget": "number_input", "ui_group": "Satellite", "ui_order": 7},
+        description="Mínimo de períodos de historia para aceptar el ajuste del modelo satélite.",
+        json_schema_extra={
+            "ui_widget": "number_input",
+            "ui_group": "Modelo satélite",
+            "ui_order": 7,
+        },
     )
     # IFRS9-FIRMABLE D-FIR-2 (§3.2): la única hoja nueva de la capa A. Sin una tasa de referencia
     # larga, la sensibilidad saldría de la historia corta de la cartera: medido, con el signo
@@ -362,8 +390,8 @@ class SatelliteConfig(BayesRiskBaseConfig):
         default="default_rate",
         title="Columna de la tasa de referencia",
         description=(
-            "Columna de la tabla de historia con la tasa de incumplimiento de referencia, como "
-            "fracción entre 0 y 1 (un 0,9 % va como 0,009). Sólo con mode='reference_rate'."
+            "Columna de la historia con la tasa de incumplimiento de referencia, como fracción "
+            "(un 0,9 % va como 0,009)."
         ),
         json_schema_extra={
             "ui_help": (
@@ -372,8 +400,10 @@ class SatelliteConfig(BayesRiskBaseConfig):
                 "macro. Va como fracción: un 0,9 % se escribe 0,009. Puede faltar al principio o "
                 "al final de la tabla; en medio, no."
             ),
+            # IFRS9-FIRMABLE D-FIR-11 (§13): esencial de la pantalla, con su default.
+            "ui_essential": True,
             "ui_widget": "text_input",
-            "ui_group": "Satellite",
+            "ui_group": "Modelo satélite",
             "ui_order": 8,
         },
     )
@@ -408,7 +438,7 @@ class ScenarioDefinitionConfig(BayesRiskBaseConfig):
     name: str = Field(
         default=...,
         title="Nombre del escenario",
-        description="Nombre canónico del escenario, por ejemplo base, adverse o severe.",
+        description="El nombre del escenario: base, adverso, severo o el de tu tabla.",
         json_schema_extra={"ui_widget": "text_input", "ui_group": "Escenarios", "ui_order": 1},
     )
     weight: float = Field(
@@ -421,20 +451,23 @@ class ScenarioDefinitionConfig(BayesRiskBaseConfig):
     )
     macro_path_path: str | None = Field(
         default=None,
-        title="Ruta macro del escenario",
-        description="Ruta opcional a trayectoria macro específica del escenario.",
+        title="Trayectoria del escenario",
+        description=(
+            "El archivo con la trayectoria macro del escenario. La pantalla lo escribe al subir "
+            "la tabla de escenarios."
+        ),
         json_schema_extra={"ui_widget": "text_input", "ui_group": "Escenarios", "ui_order": 3},
     )
     shocks: dict[str, float] = Field(
         default_factory=dict,
-        title="Shocks macro",
-        description="Shocks aditivos o declarativos por variable macro.",
+        title="Choques macro",
+        description="Choques por variable macro, aditivos o declarados.",
         json_schema_extra={"ui_widget": "key_value", "ui_group": "Escenarios", "ui_order": 4},
     )
     description: str | None = Field(
         default=None,
         title="Descripción",
-        description="Descripción humana opcional del escenario.",
+        description="Una descripción opcional del escenario.",
         json_schema_extra={"ui_widget": "text_area", "ui_group": "Escenarios", "ui_order": 5},
     )
 
@@ -479,21 +512,34 @@ class ScenarioConfig(BayesRiskBaseConfig):
             ScenarioDefinitionConfig(name="severe", weight=0.10),
         ),
         title="Escenarios",
-        description="Escenarios macro ponderados; por defecto base/adverse/severe.",
-        json_schema_extra={"ui_widget": "editable_table", "ui_group": "Escenarios", "ui_order": 1},
+        description=(
+            "Los escenarios con sus pesos, que suman 1. Con los escenarios de la institución, "
+            "los de tu tabla: la pantalla los llena al subirla."
+        ),
+        json_schema_extra={
+            # IFRS9-FIRMABLE D-FIR-11 (§13): esencial de la pantalla —los escenarios con sus
+            # pesos—, que la pantalla llena al subir la tabla de escenarios.
+            "ui_essential": True,
+            "ui_widget": "editable_table",
+            "ui_group": "Escenarios",
+            "ui_order": 1,
+        },
     )
     forbid_mean_scenario: bool = Field(
         default=True,
         title="Prohibir escenario medio",
-        description="Bloquea mean/average/weighted_mean_input como sustitutos no lineales.",
+        description=(
+            "Impide usar un escenario promedio en lugar de ponderar escenarios: la pérdida no "
+            "es lineal en la macro."
+        ),
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "Escenarios", "ui_order": 2},
     )
     require_at_least_three: bool = Field(
         default=True,
         title="Exigir tres escenarios",
         description=(
-            "Exige base, adverse y severe cuando está activo. No aplica a los escenarios de la "
-            "institución (macro.kind='scenario_paths'), que se nombran libremente."
+            "Activado, exige los escenarios base, adverso y severo. No aplica a los escenarios de "
+            "la institución, que se nombran libremente."
         ),
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "Escenarios", "ui_order": 3},
     )
@@ -505,27 +551,27 @@ class TtcReversionConfig(BayesRiskBaseConfig):
     enabled: bool = Field(
         default=True,
         title="Activar reversión TTC",
-        description="Activa mezcla gradual desde PIT hacia ancla TTC.",
+        description="Mezcla gradualmente la PD puntual (PIT) hacia el ancla TTC.",
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "Reversión TTC", "ui_order": 1},
     )
     reasonable_supportable_periods: int = Field(
         default=12,
         ge=1,
         title="Horizonte razonable y soportable",
-        description="Períodos PIT antes de iniciar reversión TTC.",
+        description="Períodos con la PD puntual antes de empezar a revertir hacia la TTC.",
         json_schema_extra={"ui_widget": "number_input", "ui_group": "Reversión TTC", "ui_order": 2},
     )
     reversion_periods: int = Field(
         default=24,
         ge=1,
         title="Períodos de reversión",
-        description="Períodos usados para mezclar gradualmente hacia TTC.",
+        description="Períodos en que la PD se mezcla gradualmente hacia la TTC.",
         json_schema_extra={"ui_widget": "number_input", "ui_group": "Reversión TTC", "ui_order": 3},
     )
     method: TtcReversionMethod = Field(
         default="linear_logit",
         title="Método de reversión",
-        description="Método de reversión TTC; none desactiva el tramo de reversión.",
+        description="Cómo se revierte hacia la TTC; «none» no revierte.",
         json_schema_extra={"ui_widget": "selectbox", "ui_group": "Reversión TTC", "ui_order": 4},
     )
     ttc_anchor: TtcAnchor = Field(
@@ -547,20 +593,23 @@ class ForwardInputConfig(BayesRiskBaseConfig):
     )
     term_structure_sources: tuple[TermStructureSource, ...] = Field(
         default=("survival", "markov"),
-        title="Fuentes term-structure",
-        description="Etapas de las que se toma la term-structure de PD lifetime.",
+        title="Curvas de PD de entrada",
+        description="Las etapas cuyas curvas de PD de por vida se ajustan con la macro.",
         json_schema_extra={"ui_widget": "multiselect", "ui_group": "Entrada", "ui_order": 2},
     )
     pd_basis_assumption: PdBasisAssumption | None = Field(
         default=None,
-        title="Supuesto PD basis",
-        description="Supuesto PIT/TTC usado si la term-structure no trae pd_basis.",
+        title="Base de la PD de entrada",
+        description=(
+            "Si la curva de entrada es a lo largo del ciclo (TTC) o puntual (PIT), cuando la "
+            "curva no lo dice."
+        ),
         json_schema_extra={"ui_widget": "selectbox", "ui_group": "PIT/TTC", "ui_order": 1},
     )
     require_pit_consistency: bool = Field(
         default=True,
         title="Exigir consistencia PIT",
-        description="Si es True, la base PIT/TTC debe quedar resuelta de forma explícita.",
+        description="Activado, la base PIT o TTC de la curva tiene que quedar declarada.",
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "PIT/TTC", "ui_order": 2},
     )
 
@@ -590,7 +639,7 @@ class ForwardValidationConfig(BayesRiskBaseConfig):
         default=1e-12,
         gt=0.0,
         lt=1e-3,
-        title="Tolerancia suma pesos",
+        title="Tolerancia de la suma de pesos",
         description="Tolerancia para validar que los pesos de escenarios sumen 1.",
         json_schema_extra={"ui_widget": "number_input", "ui_group": "Validación", "ui_order": 2},
     )
@@ -606,8 +655,8 @@ class ForwardValidationConfig(BayesRiskBaseConfig):
         default=True,
         title="Fallar si faltan trayectorias (deprecado)",
         description=(
-            "DEPRECADO: ya no tiene efecto. Que un escenario adverse o severe sin trayectoria ni "
-            "shocks detenga la corrida lo decide «Fallar ante falta de dato», el mismo ajuste que "
+            "Ya no tiene efecto: que un escenario adverso o severo sin trayectoria ni choques "
+            "detenga la corrida lo decide «Fallar ante falta de dato», el mismo ajuste que "
             "gobierna el resto de los avisos declarados."
         ),
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "Validación", "ui_order": 4},
@@ -637,6 +686,11 @@ class ForwardValidationConfig(BayesRiskBaseConfig):
 class ForwardConfig(BayesRiskBaseConfig):
     """Proyecta la PD con variables macroeconómicas y convierte entre PD PIT y PD TTC."""
 
+    # Tres esenciales (IFRS9-FIRMABLE D-FIR-11, §13; capa C): la tabla de historia, la columna de
+    # la tasa de referencia —con su default— y los escenarios con sus pesos. El resto, en
+    # «Avanzado»: la vía con modelo macro (ARIMA, VAR) y las tolerancias.
+    model_config = ConfigDict(json_schema_extra=declara_esenciales)
+
     schema_version: str = Field(
         default="1.0.0",
         title="Versión del sub-schema forward",
@@ -652,20 +706,20 @@ class ForwardConfig(BayesRiskBaseConfig):
     input: ForwardInputConfig = Field(
         default=...,
         title="Entrada",
-        description="Fuentes macro y term-structures survival/markov.",
+        description="La historia macro y las curvas de PD de entrada.",
         json_schema_extra={"ui_widget": "section", "ui_group": "Entrada", "ui_order": 1},
     )
     satellite: SatelliteConfig = Field(
         default=...,
-        title="Satellite",
-        description="Configuración del modelo satellite PD/LGD.",
-        json_schema_extra={"ui_widget": "section", "ui_group": "Satellite", "ui_order": 1},
+        title="Modelo satélite",
+        description="Cómo se traduce la macro al riesgo: la sensibilidad de la PD (y la LGD).",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Modelo satélite", "ui_order": 1},
     )
     macro: MacroModelConfig = Field(
         default_factory=MacroModelConfig,
-        title="Macro",
-        description="Configuración del modelo macro y diagnósticos.",
-        json_schema_extra={"ui_widget": "section", "ui_group": "Macro modelo", "ui_order": 1},
+        title="Modelo macro",
+        description="Cómo se proyecta la macro y sus diagnósticos.",
+        json_schema_extra={"ui_widget": "section", "ui_group": "Modelo macro", "ui_order": 1},
     )
     scenarios: ScenarioConfig = Field(
         default_factory=ScenarioConfig,
@@ -689,7 +743,7 @@ class ForwardConfig(BayesRiskBaseConfig):
         default=True,
         title="Fallar ante falta de dato",
         description=(
-            "Si es True, un escenario adverse o severe sin trayectoria macro ni shocks propios "
+            "Activado, un escenario adverso o severo sin trayectoria macro ni choques propios "
             "detiene la corrida en vez de quedar registrado como aviso declarado y seguir."
         ),
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "Gobernanza", "ui_order": 1},

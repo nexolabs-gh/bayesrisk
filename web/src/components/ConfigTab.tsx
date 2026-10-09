@@ -15,6 +15,7 @@ import {
 import { FieldRenderer } from "@/components/FieldRenderer"
 import { PreflightNotice } from "@/components/PreflightNotice"
 import { applyPreset } from "@/components/RunTab"
+import { ScenarioTablesCard } from "@/components/ScenarioTablesCard"
 import {
   Accordion,
   AccordionContent,
@@ -39,7 +40,9 @@ import {
   type Job,
   type JobSwitch,
   type MethodologyStatus,
+  apagarSeccion,
   decisionStatuses,
+  encenderSeccion,
   jobSwitchForConfig,
   jobSwitchNotice,
   loadJobs,
@@ -529,6 +532,26 @@ function MethodologyChoices({
 }
 
 /** Descarga `text` como archivo `filename` vía Blob + anchor (efecto DOM, no puro). */
+/** Texto en una ruta con puntos del config, o `null` si no hay uno no vacío. */
+function textoEn(config: Record<string, unknown> | null, ruta: string): string | null {
+  let nodo: unknown = config
+  for (const tramo of ruta.split(".")) {
+    if (typeof nodo !== "object" || nodo === null) return null
+    nodo = (nodo as Record<string, unknown>)[tramo]
+  }
+  return typeof nodo === "string" && nodo.trim() !== "" ? nodo : null
+}
+
+/** La columna de la tasa de referencia que dice su esencial; su default si la sección no existe. */
+function referenceRateColOf(config: Record<string, unknown> | null): string {
+  return textoEn(config, "forward.satellite.reference_rate_col") ?? "default_rate"
+}
+
+/** La columna de la fecha de corte de la provisión, para comprobar la cobertura de 12 meses. */
+function asOfColOf(config: Record<string, unknown> | null): string | null {
+  return textoEn(config, "provisioning_ifrs9.as_of_date_col")
+}
+
 function triggerDownload(text: string, filename: string) {
   const blob = new Blob([text], { type: "application/x-yaml" })
   const url = URL.createObjectURL(blob)
@@ -606,7 +629,7 @@ function HashStatus({
                   <span className="opacity-70">En {error.seccionLabel}.</span>
                 )
               ) : error.seccion !== null ? (
-                // Sección de dominio sin pestaña (8 de 22: `forward`, `markov`, `stress`…). Se dice
+                // Sección de dominio sin pestaña (7 de 22: `markov`, `stress`, `ml`…). Se dice
                 // dónde vive en vez de fingir un salto a una pestaña que no existe, que es el
                 // criterio que `preflight.ts:84-91` ya declara para sus desajustes.
                 <span className="opacity-70">
@@ -937,6 +960,8 @@ export function ConfigTab({
     selectedDataset,
     datasetId,
     externalInputs,
+    scenarioTables,
+    setScenarioTables,
     focusField,
   } = useAppState()
   const [yamlError, setYamlError] = useState<string | null>(null)
@@ -1127,25 +1152,37 @@ export function ConfigTab({
   // ahora la UI no alcanzaba porque el schema compuesto perdía la nulabilidad al empotrar.
   const sectionValue = config[section]
   const sectionActive = sectionValue !== null && sectionValue !== undefined
+  // Activar una sección es un gesto de ESTRUCTURA (D-FX-8): se escriben todas las hojas con default
+  // de su proyección canónica. `defaultForSchema` queda de respaldo sin catálogo —sólo ve los
+  // `default` del JSON Schema, que no existen para los submodelos con `default_factory`, y por eso
+  // sembraba secciones a medias—.
+  const baseDeLaSeccion = () => {
+    const canonica = childMap(nodeAtPath(catalogo, [section]))
+    return (
+      lastSectionValue.current[section] ??
+      (canonica
+        ? canonicalProjection(canonica)
+        : resolvedSection
+          ? defaultForSchema(resolvedSection, defs)
+          : {})
+    )
+  }
+  // Encender o apagar aplica, además, lo que el trabajo declara para ese gesto (IFRS9-FIRMABLE
+  // capa C): encender los escenarios pone la provisión en la vía del ciclo; apagarlos la devuelve a
+  // lo largo del ciclo. Sin `toggle_overrides`, es exactamente el interruptor de siempre.
   const toggleSection = (next: boolean) => {
     if (next) {
-      // Activar una sección es un gesto de ESTRUCTURA (D-FX-8): se escriben todas las hojas con
-      // default de su proyección canónica. `defaultForSchema` queda de respaldo sin catálogo —sólo
-      // ve los `default` del JSON Schema, que no existen para los submodelos con `default_factory`,
-      // y por eso sembraba secciones a medias—.
-      const canonica = childMap(nodeAtPath(catalogo, [section]))
-      const restaurado =
-        lastSectionValue.current[section] ??
-        (canonica
-          ? canonicalProjection(canonica)
-          : resolvedSection
-            ? defaultForSchema(resolvedSection, defs)
-            : {})
-      setField([section], restaurado)
+      const base = baseDeLaSeccion()
+      setConfig((actual) => encenderSeccion(actual, section, base, job))
     } else {
       if (sectionValue !== undefined) lastSectionValue.current[section] = sectionValue
-      setField([section], null)
+      setConfig((actual) => apagarSeccion(actual, section, job))
     }
+  }
+  // Las dos tablas de escenarios, leídas por el servidor: la sección se enciende con ellas encima.
+  const aplicarTablasDeEscenarios = (forward: Record<string, unknown>) => {
+    const base = baseDeLaSeccion()
+    setConfig((actual) => encenderSeccion(actual, section, base, job, forward))
   }
   const banner = SOURCE_BANNER[source]
   const errorLookup =
@@ -1376,6 +1413,18 @@ export function ConfigTab({
 
         {sectionRenderable && resolvedSection ? (
           <div className="space-y-4">
+            {section === "forward" ? (
+              <ScenarioTablesCard
+                active={sectionActive}
+                referenceRateCol={referenceRateColOf(config)}
+                portfolioDatasetId={datasetId}
+                asOfCol={asOfColOf(config)}
+                onTablas={aplicarTablasDeEscenarios}
+                onQuitar={() => toggleSection(false)}
+                tablas={scenarioTables}
+                setTablas={setScenarioTables}
+              />
+            ) : null}
             {sectionEntry.nullable ? (
               <SectionToggle
                 sectionKey={section}

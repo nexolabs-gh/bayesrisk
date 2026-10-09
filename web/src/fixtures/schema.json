@@ -6661,15 +6661,15 @@
               }
             ],
             "default": null,
-            "description": "Supuesto PIT/TTC usado si la term-structure no trae pd_basis.",
-            "title": "Supuesto PD basis",
+            "description": "Si la curva de entrada es a lo largo del ciclo (TTC) o puntual (PIT), cuando la curva no lo dice.",
+            "title": "Base de la PD de entrada",
             "ui_group": "PIT/TTC",
             "ui_order": 1,
             "ui_widget": "selectbox"
           },
           "require_pit_consistency": {
             "default": true,
-            "description": "Si es True, la base PIT/TTC debe quedar resuelta de forma explícita.",
+            "description": "Activado, la base PIT o TTC de la curva tiene que quedar declarada.",
             "title": "Exigir consistencia PIT",
             "type": "boolean",
             "ui_group": "PIT/TTC",
@@ -6681,7 +6681,7 @@
               "survival",
               "markov"
             ],
-            "description": "Etapas de las que se toma la term-structure de PD lifetime.",
+            "description": "Las etapas cuyas curvas de PD de por vida se ajustan con la macro.",
             "items": {
               "enum": [
                 "survival",
@@ -6689,7 +6689,7 @@
               ],
               "type": "string"
             },
-            "title": "Fuentes term-structure",
+            "title": "Curvas de PD de entrada",
             "type": "array",
             "ui_group": "Entrada",
             "ui_order": 2,
@@ -6708,7 +6708,7 @@
         "properties": {
           "fail_on_missing_scenario_paths": {
             "default": true,
-            "description": "DEPRECADO: ya no tiene efecto. Que un escenario adverse o severe sin trayectoria ni shocks detenga la corrida lo decide «Fallar ante falta de dato», el mismo ajuste que gobierna el resto de los avisos declarados.",
+            "description": "Ya no tiene efecto: que un escenario adverso o severo sin trayectoria ni choques detenga la corrida lo decide «Fallar ante falta de dato», el mismo ajuste que gobierna el resto de los avisos declarados.",
             "title": "Fallar si faltan trayectorias (deprecado)",
             "type": "boolean",
             "ui_group": "Validación",
@@ -6742,7 +6742,7 @@
             "description": "Tolerancia para validar que los pesos de escenarios sumen 1.",
             "exclusiveMaximum": 0.001,
             "exclusiveMinimum": 0.0,
-            "title": "Tolerancia suma pesos",
+            "title": "Tolerancia de la suma de pesos",
             "type": "number",
             "ui_group": "Validación",
             "ui_order": 2,
@@ -6778,22 +6778,22 @@
             ],
             "title": "Orden ARIMA",
             "type": "array",
-            "ui_group": "Macro modelo",
+            "ui_group": "Modelo macro",
             "ui_order": 3,
             "ui_widget": "number_tuple"
           },
           "auto_arima_random": {
             "default": false,
-            "description": "Permite la ruta aleatoria de auto_arima; exige random_state explícito.",
-            "title": "auto_arima aleatorio",
+            "description": "Permite la búsqueda aleatoria de auto_arima; exige fijar su semilla.",
+            "title": "Búsqueda aleatoria de auto_arima",
             "type": "boolean",
-            "ui_group": "Macro modelo",
+            "ui_group": "Modelo macro",
             "ui_order": 8,
             "ui_widget": "checkbox"
           },
           "fail_on_ljung_box": {
             "default": false,
-            "description": "Si es True, un diagnóstico Ljung-Box fallido aborta el ajuste.",
+            "description": "Activado, un diagnóstico de Ljung-Box fallido detiene el ajuste.",
             "title": "Fallar por Ljung-Box",
             "type": "boolean",
             "ui_group": "Diagnóstico",
@@ -6806,13 +6806,13 @@
             "minimum": 1,
             "title": "Horizonte macro",
             "type": "integer",
-            "ui_group": "Macro modelo",
+            "ui_group": "Modelo macro",
             "ui_order": 2,
             "ui_widget": "number_input"
           },
           "kind": {
             "default": "arima",
-            "description": "Modelo de forecasting: ARIMA/SARIMA/ARIMAX, auto_arima, VAR o VECM; scenario_paths toma tal cual las trayectorias de los escenarios de la institución.",
+            "description": "Cómo se proyecta la macro: ARIMA, SARIMA o ARIMAX, auto_arima, VAR o VECM; con los escenarios de la institución, sus trayectorias tal cual.",
             "enum": [
               "arima",
               "sarima",
@@ -6824,7 +6824,7 @@
             ],
             "title": "Tipo de modelo macro",
             "type": "string",
-            "ui_group": "Macro modelo",
+            "ui_group": "Modelo macro",
             "ui_order": 1,
             "ui_widget": "selectbox"
           },
@@ -6833,11 +6833,11 @@
               6,
               12
             ],
-            "description": "Lags usados para diagnosticar autocorrelación residual.",
+            "description": "Rezagos con que se diagnostica la autocorrelación de los residuos.",
             "items": {
               "type": "integer"
             },
-            "title": "Lags Ljung-Box",
+            "title": "Rezagos de Ljung-Box",
             "type": "array",
             "ui_group": "Diagnóstico",
             "ui_order": 1,
@@ -6853,9 +6853,9 @@
               }
             ],
             "default": null,
-            "description": "Semilla explícita cuando auto_arima_random=True.",
-            "title": "Semilla auto_arima",
-            "ui_group": "Macro modelo",
+            "description": "La semilla de la búsqueda aleatoria de auto_arima, cuando está activada.",
+            "title": "Semilla de auto_arima",
+            "ui_group": "Modelo macro",
             "ui_order": 9,
             "ui_widget": "number_input"
           },
@@ -6887,16 +6887,16 @@
             "default": null,
             "description": "Orden estacional opcional (P,D,Q,s) para SARIMA.",
             "title": "Orden estacional",
-            "ui_group": "Macro modelo",
+            "ui_group": "Modelo macro",
             "ui_order": 4,
             "ui_widget": "number_tuple"
           },
           "use_pmdarima_auto_order": {
             "default": false,
             "description": "Activa selección automática de orden para ARIMA/SARIMA/ARIMAX univariado.",
-            "title": "Usar pmdarima auto-order",
+            "title": "Orden automático (pmdarima)",
             "type": "boolean",
-            "ui_group": "Macro modelo",
+            "ui_group": "Modelo macro",
             "ui_order": 7,
             "ui_widget": "checkbox"
           },
@@ -6912,8 +6912,8 @@
             ],
             "default": null,
             "description": "Número de rezagos para modelos VAR.",
-            "title": "Lags VAR",
-            "ui_group": "Macro modelo",
+            "title": "Rezagos del VAR",
+            "ui_group": "Modelo macro",
             "ui_order": 5,
             "ui_widget": "number_input"
           },
@@ -6930,7 +6930,7 @@
             "default": null,
             "description": "Rango de cointegración para VECM cuando se define explícitamente.",
             "title": "Rango VECM",
-            "ui_group": "Macro modelo",
+            "ui_group": "Modelo macro",
             "ui_order": 6,
             "ui_widget": "number_input"
           }
@@ -6952,9 +6952,9 @@
               }
             ],
             "default": null,
-            "description": "Dominio del artefacto cuando type='artifact'.",
+            "description": "La etapa que publicó la historia, cuando se lee de un resultado.",
             "title": "Dominio de artefacto macro",
-            "ui_group": "Macro fuente",
+            "ui_group": "Fuente macro",
             "ui_order": 3,
             "ui_widget": "text_input"
           },
@@ -6968,9 +6968,9 @@
               }
             ],
             "default": null,
-            "description": "Clave del artefacto cuando type='artifact'.",
+            "description": "El resultado de esa etapa que trae la historia.",
             "title": "Clave de artefacto macro",
-            "ui_group": "Macro fuente",
+            "ui_group": "Fuente macro",
             "ui_order": 4,
             "ui_widget": "text_input"
           },
@@ -6982,7 +6982,7 @@
             },
             "title": "Variables exógenas",
             "type": "array",
-            "ui_group": "Macro fuente",
+            "ui_group": "Fuente macro",
             "ui_order": 8,
             "ui_widget": "multiselect"
           },
@@ -6998,7 +6998,7 @@
             "default": null,
             "description": "Frecuencia declarativa opcional de la serie macro.",
             "title": "Frecuencia macro",
-            "ui_group": "Macro fuente",
+            "ui_group": "Fuente macro",
             "ui_order": 6,
             "ui_widget": "text_input"
           },
@@ -7012,9 +7012,10 @@
               }
             ],
             "default": null,
-            "description": "Ruta al histórico macro cuando type='path'.",
-            "title": "Ruta macro",
-            "ui_group": "Macro fuente",
+            "description": "El archivo con la historia de la tasa de referencia y sus variables macro. La pantalla lo escribe al subir la tabla.",
+            "title": "Tabla de historia",
+            "ui_essential": true,
+            "ui_group": "Fuente macro",
             "ui_order": 2,
             "ui_widget": "text_input"
           },
@@ -7023,13 +7024,13 @@
             "description": "Columna de período o fecha ordenable del histórico macro.",
             "title": "Columna temporal macro",
             "type": "string",
-            "ui_group": "Macro fuente",
+            "ui_group": "Fuente macro",
             "ui_order": 5,
             "ui_widget": "text_input"
           },
           "type": {
             "default": "path",
-            "description": "Origen del histórico macro: path local, artefacto del Study o DataFrame.",
+            "description": "De dónde se lee la historia macro: un archivo o el resultado de una etapa.",
             "enum": [
               "path",
               "artifact",
@@ -7037,19 +7038,19 @@
             ],
             "title": "Tipo de fuente macro",
             "type": "string",
-            "ui_group": "Macro fuente",
+            "ui_group": "Fuente macro",
             "ui_order": 1,
             "ui_widget": "selectbox"
           },
           "variable_cols": {
-            "description": "Columnas macro que el modelo proyecta y el satellite puede consumir.",
+            "description": "Las variables macro de la historia. Con los escenarios de la institución, las columnas comunes a las dos tablas: se leen al subirlas.",
             "items": {
               "type": "string"
             },
             "minItems": 1,
             "title": "Variables macro proyectadas",
             "type": "array",
-            "ui_group": "Macro fuente",
+            "ui_group": "Fuente macro",
             "ui_order": 7,
             "ui_widget": "multiselect"
           }
@@ -7062,7 +7063,7 @@
       },
       "forward__SatelliteConfig": {
         "additionalProperties": false,
-        "description": "Configuración del modelo satellite PD/LGD.",
+        "description": "Configuración del modelo satélite de PD y LGD.",
         "properties": {
           "coefficient_table_path": {
             "anyOf": [
@@ -7076,52 +7077,53 @@
             "default": null,
             "description": "Ruta opcional a coeficientes fijos auditados.",
             "title": "Tabla de coeficientes",
-            "ui_group": "Satellite",
+            "ui_group": "Modelo satélite",
             "ui_order": 6,
             "ui_widget": "text_input"
           },
           "factor_cols": {
-            "description": "Variables macro proyectadas que alimentan el modelo satellite.",
+            "description": "Las variables macro que explican la tasa. Con los escenarios de la institución, las mismas de las dos tablas.",
             "items": {
               "type": "string"
             },
             "minItems": 1,
-            "title": "Factores macro satellite",
+            "title": "Variables del modelo satélite",
             "type": "array",
-            "ui_group": "Satellite",
+            "ui_group": "Modelo satélite",
             "ui_order": 2,
             "ui_widget": "multiselect"
           },
           "min_history_periods": {
             "default": 12,
-            "description": "Mínimo de períodos históricos para aceptar el ajuste satellite.",
+            "description": "Mínimo de períodos de historia para aceptar el ajuste del modelo satélite.",
             "minimum": 3,
             "title": "Historia mínima",
             "type": "integer",
-            "ui_group": "Satellite",
+            "ui_group": "Modelo satélite",
             "ui_order": 7,
             "ui_widget": "number_input"
           },
           "mode": {
             "default": "fit",
-            "description": "Ajustar coeficientes desde datos, cargar coeficientes fijos auditados o estimar la sensibilidad sobre una tasa de incumplimiento de referencia larga (reference_rate).",
+            "description": "Ajustar coeficientes desde datos, cargar coeficientes fijos auditados o estimar la sensibilidad sobre una tasa de incumplimiento de referencia larga.",
             "enum": [
               "fit",
               "fixed_coefficients",
               "reference_rate"
             ],
-            "title": "Modo satellite",
+            "title": "Modo del modelo satélite",
             "type": "string",
-            "ui_group": "Satellite",
+            "ui_group": "Modelo satélite",
             "ui_order": 1,
             "ui_widget": "selectbox"
           },
           "reference_rate_col": {
             "default": "default_rate",
-            "description": "Columna de la tabla de historia con la tasa de incumplimiento de referencia, como fracción entre 0 y 1 (un 0,9 % va como 0,009). Sólo con mode='reference_rate'.",
+            "description": "Columna de la historia con la tasa de incumplimiento de referencia, como fracción (un 0,9 % va como 0,009).",
             "title": "Columna de la tasa de referencia",
             "type": "string",
-            "ui_group": "Satellite",
+            "ui_essential": true,
+            "ui_group": "Modelo satélite",
             "ui_help": "La tasa de incumplimiento de referencia larga —del sistema por cartera o la propia, si cruza un ciclo— con que se estima cuánto se mueve el riesgo con la macro. Va como fracción: un 0,9 % se escribe 0,009. Puede faltar al principio o al final de la tabla; en medio, no.",
             "ui_order": 8,
             "ui_widget": "text_input"
@@ -7131,7 +7133,7 @@
             "description": "Escenario base contra el que se calculan deltas macro.",
             "title": "Escenario de referencia",
             "type": "string",
-            "ui_group": "Satellite",
+            "ui_group": "Modelo satélite",
             "ui_order": 5,
             "ui_widget": "text_input"
           },
@@ -7145,9 +7147,9 @@
               }
             ],
             "default": null,
-            "description": "Segmento opcional para coeficientes satellite por pool.",
+            "description": "Columna de segmento opcional, para coeficientes por grupo.",
             "title": "Columna de segmento",
-            "ui_group": "Satellite",
+            "ui_group": "Modelo satélite",
             "ui_order": 3,
             "ui_widget": "text_input"
           },
@@ -7155,7 +7157,7 @@
             "default": [
               "pd"
             ],
-            "description": "Componentes ajustados por satellite: PD y opcionalmente LGD.",
+            "description": "Qué ajusta el modelo satélite: la PD y, si se pide, la LGD.",
             "items": {
               "enum": [
                 "pd",
@@ -7165,7 +7167,7 @@
             },
             "title": "Componentes objetivo",
             "type": "array",
-            "ui_group": "Satellite",
+            "ui_group": "Modelo satélite",
             "ui_order": 4,
             "ui_widget": "multiselect"
           }
@@ -7182,7 +7184,7 @@
         "properties": {
           "forbid_mean_scenario": {
             "default": true,
-            "description": "Bloquea mean/average/weighted_mean_input como sustitutos no lineales.",
+            "description": "Impide usar un escenario promedio en lugar de ponderar escenarios: la pérdida no es lineal en la macro.",
             "title": "Prohibir escenario medio",
             "type": "boolean",
             "ui_group": "Escenarios",
@@ -7191,7 +7193,7 @@
           },
           "require_at_least_three": {
             "default": true,
-            "description": "Exige base, adverse y severe cuando está activo. No aplica a los escenarios de la institución (macro.kind='scenario_paths'), que se nombran libremente.",
+            "description": "Activado, exige los escenarios base, adverso y severo. No aplica a los escenarios de la institución, que se nombran libremente.",
             "title": "Exigir tres escenarios",
             "type": "boolean",
             "ui_group": "Escenarios",
@@ -7222,12 +7224,13 @@
                 "weight": 0.1
               }
             ],
-            "description": "Escenarios macro ponderados; por defecto base/adverse/severe.",
+            "description": "Los escenarios con sus pesos, que suman 1. Con los escenarios de la institución, los de tu tabla: la pantalla los llena al subirla.",
             "items": {
               "$ref": "#/$defs/forward__ScenarioDefinitionConfig"
             },
             "title": "Escenarios",
             "type": "array",
+            "ui_essential": true,
             "ui_group": "Escenarios",
             "ui_order": 1,
             "ui_widget": "editable_table"
@@ -7250,7 +7253,7 @@
               }
             ],
             "default": null,
-            "description": "Descripción humana opcional del escenario.",
+            "description": "Una descripción opcional del escenario.",
             "title": "Descripción",
             "ui_group": "Escenarios",
             "ui_order": 5,
@@ -7266,14 +7269,14 @@
               }
             ],
             "default": null,
-            "description": "Ruta opcional a trayectoria macro específica del escenario.",
-            "title": "Ruta macro del escenario",
+            "description": "El archivo con la trayectoria macro del escenario. La pantalla lo escribe al subir la tabla de escenarios.",
+            "title": "Trayectoria del escenario",
             "ui_group": "Escenarios",
             "ui_order": 3,
             "ui_widget": "text_input"
           },
           "name": {
-            "description": "Nombre canónico del escenario, por ejemplo base, adverse o severe.",
+            "description": "El nombre del escenario: base, adverso, severo o el de tu tabla.",
             "title": "Nombre del escenario",
             "type": "string",
             "ui_group": "Escenarios",
@@ -7284,8 +7287,8 @@
             "additionalProperties": {
               "type": "number"
             },
-            "description": "Shocks aditivos o declarativos por variable macro.",
-            "title": "Shocks macro",
+            "description": "Choques por variable macro, aditivos o declarados.",
+            "title": "Choques macro",
             "type": "object",
             "ui_group": "Escenarios",
             "ui_order": 4,
@@ -7315,7 +7318,7 @@
         "properties": {
           "enabled": {
             "default": true,
-            "description": "Activa mezcla gradual desde PIT hacia ancla TTC.",
+            "description": "Mezcla gradualmente la PD puntual (PIT) hacia el ancla TTC.",
             "title": "Activar reversión TTC",
             "type": "boolean",
             "ui_group": "Reversión TTC",
@@ -7324,7 +7327,7 @@
           },
           "method": {
             "default": "linear_logit",
-            "description": "Método de reversión TTC; none desactiva el tramo de reversión.",
+            "description": "Cómo se revierte hacia la TTC; «none» no revierte.",
             "enum": [
               "linear_logit",
               "none"
@@ -7337,7 +7340,7 @@
           },
           "reasonable_supportable_periods": {
             "default": 12,
-            "description": "Períodos PIT antes de iniciar reversión TTC.",
+            "description": "Períodos con la PD puntual antes de empezar a revertir hacia la TTC.",
             "minimum": 1,
             "title": "Horizonte razonable y soportable",
             "type": "integer",
@@ -7347,7 +7350,7 @@
           },
           "reversion_periods": {
             "default": 24,
-            "description": "Períodos usados para mezclar gradualmente hacia TTC.",
+            "description": "Períodos en que la PD se mezcla gradualmente hacia la TTC.",
             "minimum": 1,
             "title": "Períodos de reversión",
             "type": "integer",
@@ -13198,7 +13201,7 @@
             "properties": {
               "fail_on_falta_dato": {
                 "default": true,
-                "description": "Si es True, un escenario adverse o severe sin trayectoria macro ni shocks propios detiene la corrida en vez de quedar registrado como aviso declarado y seguir.",
+                "description": "Activado, un escenario adverso o severo sin trayectoria macro ni choques propios detiene la corrida en vez de quedar registrado como aviso declarado y seguir.",
                 "title": "Fallar ante falta de dato",
                 "type": "boolean",
                 "ui_group": "Gobernanza",
@@ -13207,7 +13210,7 @@
               },
               "input": {
                 "$ref": "#/$defs/forward__ForwardInputConfig",
-                "description": "Fuentes macro y term-structures survival/markov.",
+                "description": "La historia macro y las curvas de PD de entrada.",
                 "title": "Entrada",
                 "ui_group": "Entrada",
                 "ui_order": 1,
@@ -13215,16 +13218,17 @@
               },
               "macro": {
                 "$ref": "#/$defs/forward__MacroModelConfig",
-                "description": "Configuración del modelo macro y diagnósticos.",
-                "title": "Macro",
-                "ui_group": "Macro modelo",
+                "description": "Cómo se proyecta la macro y sus diagnósticos.",
+                "title": "Modelo macro",
+                "ui_group": "Modelo macro",
                 "ui_order": 1,
                 "ui_widget": "section"
               },
               "satellite": {
                 "$ref": "#/$defs/forward__SatelliteConfig",
-                "title": "Satellite",
-                "ui_group": "Satellite",
+                "description": "Cómo se traduce la macro al riesgo: la sensibilidad de la PD (y la LGD).",
+                "title": "Modelo satélite",
+                "ui_group": "Modelo satélite",
                 "ui_order": 1,
                 "ui_widget": "section"
               },
@@ -13277,7 +13281,8 @@
               "satellite"
             ],
             "title": "ForwardConfig",
-            "type": "object"
+            "type": "object",
+            "ui_essentials_declared": true
           },
           {
             "type": "null"

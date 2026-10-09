@@ -33,7 +33,12 @@ from bayesrisk.core.config.schema import build_full_json_schema, cargar_configs_
 from bayesrisk.core.dataset_check import columnas_producidas_por_seccion
 from bayesrisk.core.exceptions import BayesRiskError, ConfigError, MissingDependencyError
 from bayesrisk.ui import datasets, jobs, presets, runs
-from bayesrisk.ui.exceptions import UiArtifactError, UiDatasetError, UiRunNotFoundError
+from bayesrisk.ui.exceptions import (
+    UiArtifactError,
+    UiDatasetError,
+    UiRunNotFoundError,
+    UiScenarioTablesError,
+)
 from bayesrisk.ui.serializers import public_engine_message
 
 if TYPE_CHECKING:
@@ -684,6 +689,90 @@ def upload_dataset(
     return datasets.ingest_upload(content, filename, workdir=workdir, max_bytes=max_bytes)
 
 
+#: Donde la pantalla deja las dos tablas de escenarios que lee `forward` (IFRS9-FIRMABLE capa C):
+#: una por escenario, con la huella en el nombre. Su ubicación no entra al ``config_hash``.
+_TABLAS_DE_ESCENARIOS_SUBDIR = "scenario_tables"
+
+
+def scenario_tables_payload(payload: Any, *, workdir: Path) -> dict[str, Any]:
+    """Lee las dos tablas de escenarios subidas y arma la sección ``forward`` (IFRS9-FIRMABLE C).
+
+    ``{history_dataset_id, scenarios_dataset_id, reference_rate_col?, portfolio_dataset_id?,
+    as_of_col?}`` → ``{forward, summary}``. Las dos tablas llegan por ``POST /api/upload`` como
+    cualquier archivo; aquí se leen y se validan con **la misma función** que
+    ``bayesrisk.Ecl(history=, scenarios=)`` (:mod:`bayesrisk.guided.escenarios`), así que una tabla
+    que la puerta guiada rechaza, la pantalla también, con el mismo motivo. Con la cartera y su
+    columna de corte, comprueba además —antes de correr, como la puerta guiada— que los escenarios
+    cubran los 12 meses siguientes al corte.
+
+    La historia y cada escenario quedan en ``workdir/scenario_tables/`` con su huella en el nombre;
+    la sección que se devuelve las lee desde ahí. El front la escribe encima de lo que el trabajo
+    siembra al encender la sección (``toggle_overrides``): no hay dominio en el front (SDD-23 §11).
+
+    Raises
+    ------
+    UiDatasetError
+        Si un ``dataset_id`` no existe (→ 404 en el endpoint).
+    UiScenarioTablesError
+        Si el cuerpo no trae lo que pide o las tablas no cumplen sus reglas (→ 422, con el motivo).
+    """
+    if not isinstance(payload, dict):
+        raise UiScenarioTablesError(
+            "el cuerpo tiene que ser un objeto JSON con las dos tablas subidas."
+        )
+    campos = {
+        "history_dataset_id": "la tabla de historia",
+        "scenarios_dataset_id": "la tabla de escenarios",
+        "reference_rate_col": "la columna de la tasa de referencia",
+    }
+    valores: dict[str, str] = {}
+    for campo, rotulo in campos.items():
+        valor = payload.get(campo, "default_rate" if campo == "reference_rate_col" else None)
+        if not isinstance(valor, str) or not valor.strip():
+            raise UiScenarioTablesError(f"falta {rotulo} ({campo}).")
+        valores[campo] = valor.strip()
+    historia_ruta = datasets.materialize(valores["history_dataset_id"], workdir=workdir)
+    escenarios_ruta = datasets.materialize(valores["scenarios_dataset_id"], workdir=workdir)
+    cortes: list[str] = []
+    cartera_id, corte_col = payload.get("portfolio_dataset_id"), payload.get("as_of_col")
+    if isinstance(cartera_id, str) and isinstance(corte_col, str) and corte_col.strip():
+        import pandas as pd
+
+        cartera = pd.read_parquet(datasets.materialize(cartera_id, workdir=workdir))
+        if corte_col in cartera.columns:
+            cortes = cartera[corte_col].dropna().astype(str).str.strip().unique().tolist()
+    # Import perezoso (D-HASH-5): la capa `ui` no carga dominios al importarse.
+    from bayesrisk.guided.escenarios import (
+        ScenarioTablesError,
+        escribir_tabla,
+        leer_tabla,
+        leer_tablas_de_escenarios,
+        seccion_forward,
+    )
+
+    try:
+        tablas = leer_tablas_de_escenarios(
+            leer_tabla(historia_ruta),
+            leer_tabla(escenarios_ruta),
+            reference_rate_col=valores["reference_rate_col"],
+            cortes=cortes,
+            rotulos=("la tabla de historia", "la tabla de escenarios"),
+        )
+    except (ScenarioTablesError, BayesRiskError) as exc:
+        raise UiScenarioTablesError(str(exc)) from exc
+    # Absoluta: la corrida lee las tablas desde ahí, y su ubicación no entra al `config_hash`.
+    destino = (workdir / _TABLAS_DE_ESCENARIOS_SUBDIR).resolve()
+    ruta_historia = escribir_tabla(destino, "history", tablas.historia)
+    rutas = {
+        nombre: str(escribir_tabla(destino, f"scenario-{i + 1}", tabla))
+        for i, (nombre, tabla) in enumerate(tablas.por_escenario.items())
+    }
+    return {
+        "forward": seccion_forward(tablas, ruta_historia=str(ruta_historia), rutas=rutas),
+        "summary": tablas.linea,
+    }
+
+
 def preset_payload(preset_id: str | None = None) -> dict[str, Any]:
     """Compone la respuesta de un preset (config completo + ``config_hash`` + dataset, SDD-23/28).
 
@@ -1221,6 +1310,21 @@ def build_router() -> APIRouter:
             return upload_dataset(content, file.filename, workdir=workdir, max_bytes=max_bytes)
         except UiDatasetError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.post("/scenario-tables")
+    async def scenario_tables_endpoint(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """Lee las dos tablas de escenarios subidas → ``{forward, summary}`` (IFRS9-FIRMABLE C).
+
+        Un ``dataset_id`` desconocido → 404; unas tablas que no cumplen las reglas → 422 con el
+        motivo, el mismo que daría la puerta guiada.
+        """
+        workdir = Path(request.app.state.settings.workdir)
+        try:
+            return scenario_tables_payload(payload, workdir=workdir)
+        except UiScenarioTablesError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except UiDatasetError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.get("/jobs")
     async def jobs_endpoint(request: Request) -> dict[str, Any]:

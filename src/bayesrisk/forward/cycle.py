@@ -102,6 +102,9 @@ class CycleScenarioPath(BaseModel):
     #: El primer mes de cada período, como ``año · 12 + mes - 1``.
     start_months: tuple[int, ...] = Field(min_length=1)
     values: dict[str, tuple[float, ...]]
+    #: La huella del contenido de su tabla (SHA-256 lógico, la del trail): su ubicación no entra
+    #: al ``config_hash`` (IFRS9-FIRMABLE capa C; Cami, 2026-10-09). La pone ``forward`` al leerla.
+    content_hash: str | None = None
 
     @model_validator(mode="after")
     def _check_largos(self) -> Self:
@@ -145,6 +148,8 @@ class ForwardCycleModel(BaseModel):
     history_rate: tuple[float | None, ...]
     scenarios: tuple[CycleScenarioPath, ...] = Field(min_length=2)
     reversion_months: int = MESES_DE_REVERSION
+    #: La huella del contenido de la tabla de historia, como ``content_hash`` de cada escenario.
+    history_hash: str | None = None
 
     @model_validator(mode="after")
     def _check_consistencia(self) -> Self:

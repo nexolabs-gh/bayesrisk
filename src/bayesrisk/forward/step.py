@@ -291,6 +291,21 @@ class ForwardStep(AuditableMixin):
             reference_rate_col=cfg.satellite.reference_rate_col,
             factor_cols=cfg.satellite.factor_cols,
         )
+        # La huella del contenido de cada tabla viaja con el modelo: su ruta no entra al
+        # `config_hash` (IFRS9-FIRMABLE capa C; Cami, 2026-10-09), así que el contenido lo ancla
+        # ella, como el `data_hash` al dataset. Es la misma que ya registraba el trail.
+        huellas = {
+            nombre: _logical_frame_hash(frame, pd=pd) for nombre, frame in trayectorias.items()
+        }
+        modelo = modelo.model_copy(
+            update={
+                "history_hash": _logical_frame_hash(historia, pd=pd),
+                "scenarios": tuple(
+                    escenario.model_copy(update={"content_hash": huellas[escenario.name]})
+                    for escenario in modelo.scenarios
+                ),
+            }
+        )
         self.log_decision(
             regla="forward_satellite_model",
             umbral={
@@ -308,7 +323,7 @@ class ForwardStep(AuditableMixin):
                 "window": (modelo.window_start_month, modelo.window_end_month),
                 "long_run_means": modelo.long_run_means,
                 "source": contexto,
-                "history_hash": _logical_frame_hash(historia, pd=pd),
+                "history_hash": modelo.history_hash,
             },
             accion="estimar_sensibilidad_sobre_la_tasa_de_referencia",
         )
@@ -323,10 +338,7 @@ class ForwardStep(AuditableMixin):
                     modelo.scenarios[0].start_months[0],
                     modelo.scenarios[0].start_months[-1],
                 ),
-                "path_hashes": {
-                    nombre: _logical_frame_hash(frame, pd=pd)
-                    for nombre, frame in trayectorias.items()
-                },
+                "path_hashes": huellas,
             },
             accion="leer_escenarios_de_la_institucion",
         )

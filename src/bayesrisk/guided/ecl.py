@@ -21,7 +21,6 @@ verdad y ``ecl.config_hash``, la identidad (D-SIM-1).
 from __future__ import annotations
 
 import hashlib
-import io
 import os
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
@@ -43,14 +42,10 @@ __all__ = ["Ecl", "EclInputError", "EclRunError"]
 #: ``scorecard_guided``).
 GUIDED_STEP: Final = "ecl_guided"
 
-#: IFRS9-FIRMABLE §3.11: las columnas de nombre fijo de las dos tablas de escenarios. Las variables
-#: macro son las columnas restantes, y tienen que ser las mismas en las dos.
-_HISTORIA_FECHA: Final = "date"
+#: IFRS9-FIRMABLE §3.11: en la puerta guiada la tasa de la historia va en la columna de nombre fijo
+#: ``default_rate``; las demás columnas fijas y las reglas de las dos tablas viven en
+#: :mod:`bayesrisk.guided.escenarios`, la fuente que comparte con la pantalla.
 _HISTORIA_TASA: Final = "default_rate"
-_ESCENARIO_NOMBRE: Final = "scenario"
-_ESCENARIO_PESO: Final = "weight"
-#: La tolerancia con que los pesos de los escenarios suman 1 (la de `forward`).
-_TOL_PESOS: Final = 1e-9
 
 #: Las unidades que la puerta acepta, en palabras, para el mensaje de una unidad no reconocida. La
 #: tabla de conversión es la de :mod:`bayesrisk.core.time_units`; aquí sólo se nombra.
@@ -78,8 +73,10 @@ class EclRunError(BayesRiskError):
 class Ecl(_PuertaGuiada):
     """La provisión IFRS 9 de una cartera, de punta a punta, con la entrada mínima (D-ECL-1).
 
-    La firma, los métodos y la forma de los resúmenes son estables (SemVer 2.x); las cifras siguen
-    la marca experimental de ``survival`` y ``provisioning`` (D-ECL-9).
+    La firma, los métodos y la forma de los resúmenes son estables (SemVer 2.x), también los
+    escenarios y las dos PD del modelo desde que cerraron sus tres puertas (IFRS9-FIRMABLE capa C,
+    D-SIM-1); las cifras siguen la marca experimental de ``survival``, ``forward`` y
+    ``provisioning`` (D-ECL-9).
 
     Parameters
     ----------
@@ -113,15 +110,16 @@ class Ecl(_PuertaGuiada):
         cuota (no ``rate``). Si la cuota no alcanza a pagar el saldo en el plazo, la exposición
         queda constante y se cuenta en «Qué revisar».
     history, scenarios
-        **Experimentales** (IFRS9-FIRMABLE, capa A): los escenarios económicos de la institución,
-        las dos juntas, como ruta (CSV, Parquet o Excel) o ``DataFrame``. ``history`` es la historia
-        larga de una tasa de incumplimiento de referencia —columnas ``date``, ``default_rate`` como
-        fracción (un 0,9 % va como 0,009) y las variables macro—; ``scenarios``, las trayectorias de
-        esas variables por escenario —``scenario``, ``weight``, ``date`` y las mismas variables—,
-        al menos dos, con pesos mayores que cero que suman 1 y que cubran los 12 meses siguientes
-        al corte. El motor estima cuánto se mueve la tasa con la macro y desplaza en logit el riesgo
-        de cada tramo de la curva según su fecha de calendario; la ECL es la ponderada de los
-        escenarios. Se copian al proyecto con su huella, como ``data``.
+        Los escenarios económicos de la institución (IFRS9-FIRMABLE; estables desde la capa
+        C, con la pantalla y el informe), las dos juntas, como ruta (CSV, Parquet o Excel) o
+        ``DataFrame``. ``history`` es la historia larga de una tasa de incumplimiento de
+        referencia —columnas ``date``, ``default_rate`` como fracción (un 0,9 % va como
+        0,009) y las variables macro—; ``scenarios``, las trayectorias de esas variables por
+        escenario —``scenario``, ``weight``, ``date`` y las mismas variables—, al menos dos,
+        con pesos mayores que cero que suman 1 y que cubran los 12 meses siguientes al
+        corte. El motor estima cuánto se mueve la tasa con la macro y desplaza en logit el
+        riesgo de cada tramo de la curva según su fecha de calendario; la ECL es la
+        ponderada de los escenarios. Se copian al proyecto con su huella, como ``data``.
     pd, origination_pd
         La PD a 12 meses de **hoy** de cada operación, de tu scorecard o de tu modelo de rating
         (con ``bayesrisk``, el bundle del scorecard aplicado a la cartera con ``bayesrisk.apply``),
@@ -519,132 +517,42 @@ class Ecl(_PuertaGuiada):
                 "history= y scenarios= van juntas: la historia de la tasa de referencia estima la "
                 "sensibilidad y los escenarios la aplican. Pasa las dos, o ninguna."
             )
-        historia = self._tabla(history, "history")
-        trayectorias = self._tabla(scenarios, "scenarios")
-        faltan = [c for c in (_HISTORIA_FECHA, _HISTORIA_TASA) if c not in historia.columns]
-        if faltan:
-            raise EclInputError(
-                f"history= no trae {', '.join(faltan)}: lleva date, default_rate (la tasa de "
-                "referencia como fracción) y las variables macro."
-            )
-        faltan = [
-            c
-            for c in (_ESCENARIO_NOMBRE, _ESCENARIO_PESO, _HISTORIA_FECHA)
-            if c not in trayectorias.columns
-        ]
-        if faltan:
-            raise EclInputError(
-                f"scenarios= no trae {', '.join(faltan)}: lleva scenario, weight, date y las "
-                "mismas variables macro que history=."
-            )
-        variables = [c for c in historia.columns if c not in (_HISTORIA_FECHA, _HISTORIA_TASA)]
-        de_escenarios = [
-            c
-            for c in trayectorias.columns
-            if c not in (_ESCENARIO_NOMBRE, _ESCENARIO_PESO, _HISTORIA_FECHA)
-        ]
-        if not variables or set(variables) != set(de_escenarios):
-            raise EclInputError(
-                "Las variables macro son las columnas restantes de las dos tablas y tienen que ser "
-                f"las mismas: history= trae {variables or 'ninguna'} y scenarios= trae "
-                f"{de_escenarios or 'ninguna'}."
-            )
-        nombres = list(dict.fromkeys(str(n) for n in trayectorias[_ESCENARIO_NOMBRE].tolist()))
-        pesos: dict[str, float] = {}
-        por_escenario: dict[str, pd.DataFrame] = {}
-        for nombre in nombres:
-            filas = trayectorias.loc[trayectorias[_ESCENARIO_NOMBRE].astype(str) == nombre]
-            valores = pd.to_numeric(filas[_ESCENARIO_PESO], errors="coerce").unique()
-            if len(valores) != 1 or not pd.notna(valores[0]):
-                raise EclInputError(
-                    f"El peso del escenario {nombre!r} tiene que ser un número, el mismo en todas "
-                    "sus filas."
-                )
-            pesos[nombre] = float(valores[0])
-            por_escenario[nombre] = filas[[_HISTORIA_FECHA, *variables]].reset_index(drop=True)
-        total = sum(pesos.values())
-        if abs(total - 1.0) > _TOL_PESOS:
-            raise EclInputError(
-                f"Los pesos de los escenarios suman {total!r}: tienen que sumar 1 "
-                f"({', '.join(f'{n} {w}' for n, w in pesos.items())})."
-            )
-        from bayesrisk.core.exceptions import BayesRiskError as _Error
-        from bayesrisk.forward.cycle import build_cycle_model, month_label
-        from bayesrisk.provisioning.ifrs9.cycle import check_scenario_coverage, first_future_month
+        from bayesrisk.guided.escenarios import (
+            ScenarioTablesError,
+            leer_tablas_de_escenarios,
+            seccion_forward,
+        )
 
         try:
-            modelo = build_cycle_model(
-                historia,
-                por_escenario,
-                pesos,
-                time_col=_HISTORIA_FECHA,
+            tablas = leer_tablas_de_escenarios(
+                self._tabla(history, "history"),
+                self._tabla(scenarios, "scenarios"),
                 reference_rate_col=_HISTORIA_TASA,
-                factor_cols=variables,
+                cortes=frame[as_of].dropna().astype(str).str.strip().unique().tolist(),
             )
-            cortes = frame[as_of].dropna().astype(str).str.strip().unique()
-            if len(cortes) == 1:
-                check_scenario_coverage(modelo, first_month=first_future_month(str(cortes[0])))
-        except _Error as exc:
+        except ScenarioTablesError as exc:
             raise EclInputError(str(exc)) from exc
-
-        historia_ruta = self._reservar_tabla(historia, "history")
+        historia_ruta = self._reservar_tabla(tablas.historia, "history")
         rutas = {
-            nombre: self._reservar_tabla(tabla, f"scenario-{i + 1}")
-            for i, (nombre, tabla) in enumerate(por_escenario.items())
+            nombre: str(self._reservar_tabla(tabla, f"scenario-{i + 1}"))
+            for i, (nombre, tabla) in enumerate(tablas.por_escenario.items())
         }
-        frecuencias = {1: "mensual", 3: "trimestral", 12: "anual"}
-        frecuencia_historia = frecuencias[modelo.history_frequency_months]
-        frecuencia_escenarios = frecuencias[modelo.scenarios[0].frequency_months]
-        forward = {
-            "input": {
-                "macro_source": {
-                    "type": "path",
-                    "path": str(historia_ruta),
-                    "time_col": _HISTORIA_FECHA,
-                    "variable_cols": list(variables),
-                },
-                "term_structure_sources": ["survival"],
-                # La curva de supervivencia es a lo largo del ciclo; en esta vía no se usa (el
-                # satélite mira la tabla de historia), pero el sub-schema lo exige declarado.
-                "pd_basis_assumption": "ttc",
-            },
-            "satellite": {
-                "mode": "reference_rate",
-                "factor_cols": list(variables),
-                "reference_rate_col": _HISTORIA_TASA,
-            },
-            "macro": {"kind": "scenario_paths"},
-            "scenarios": {
-                "scenarios": [
-                    {"name": nombre, "weight": pesos[nombre], "macro_path_path": str(rutas[nombre])}
-                    for nombre in nombres
-                ]
-            },
-        }
-        ventana = (
-            f"{month_label(modelo.window_start_month, modelo.history_frequency_months)} a "
-            f"{month_label(modelo.window_end_month, modelo.history_frequency_months)}"
-        )
         return {
-            "forward": forward,
+            "forward": seccion_forward(tablas, ruta_historia=str(historia_ruta), rutas=rutas),
             "inferencia": Inferencia(
                 regla="inferencia_escenarios",
                 valor={
-                    "variables": list(variables),
-                    "frecuencia_historia": frecuencia_historia,
-                    "frecuencia_escenarios": frecuencia_escenarios,
-                    "escenarios": dict(pesos),
+                    "variables": list(tablas.variables),
+                    "frecuencia_historia": tablas.frecuencia_historia,
+                    "frecuencia_escenarios": tablas.frecuencia_escenarios,
+                    "escenarios": dict(tablas.pesos),
                 },
                 motivo=(
                     "las variables macro son las columnas comunes a las dos tablas y la frecuencia "
                     "de cada una se lee de sus fechas"
                 ),
             ),
-            "linea": (
-                f"Escenarios: {len(nombres)} ({', '.join(nombres)}), {frecuencia_escenarios}es; "
-                f"historia {frecuencia_historia} de la tasa de referencia, {ventana}; "
-                f"{_plural(len(variables), 'variable', 'variables')} {', '.join(variables)}"
-            ),
+            "linea": tablas.linea,
         }
 
     def _tabla(self, tabla: Any, argumento: str) -> pd.DataFrame:
@@ -656,24 +564,18 @@ class Ecl(_PuertaGuiada):
         ruta = Path(tabla).resolve()
         if not ruta.is_file():
             raise EclInputError(f"{argumento}= apunta a un archivo que no existe: {ruta}")
-        from bayesrisk.data.config import LoadingConfig
-        from bayesrisk.data.loading import DataLoader
+        from bayesrisk.guided.escenarios import leer_tabla
 
         try:
-            return (
-                DataLoader.from_config(LoadingConfig(source=str(ruta)))
-                .load()
-                .reset_index(drop=True)
-            )
+            return leer_tabla(ruta)
         except BayesRiskError as exc:
             raise EclInputError(f"No se pudo leer {argumento}= ({ruta}): {exc}") from exc
 
     def _reservar_tabla(self, tabla: pd.DataFrame, prefijo: str) -> Path:
         """El snapshot de una tabla en ``input/``, con su huella; se escribe al publicar."""
-        buffer = io.BytesIO()
-        tabla.to_parquet(buffer, index=False)
-        contenido = buffer.getvalue()
-        digest = hashlib.sha256(contenido).hexdigest()
+        from bayesrisk.guided.escenarios import contenido_parquet
+
+        contenido, digest = contenido_parquet(tabla)
         ruta = self._project_dir / "input" / f"{prefijo}-{digest[:16]}.parquet"
         self._tablas_pendientes.append((ruta, contenido))
         self._tablas_huellas.append((ruta, digest))
@@ -861,12 +763,13 @@ class Ecl(_PuertaGuiada):
     def export_excel(self) -> tuple[Path, ...]:
         """Un libro Excel por etapa, numerado, en ``<run_dir>/<name>/excel/`` (D-ECL-10).
 
-        ``01 Cartera.xlsx``, ``02 Curva de PD.xlsx`` y ``03 Provisión IFRS 9.xlsx`` para las etapas
-        que corrieron —cada uno con el resumen, la tabla de decisión, las tablas adicionales de la
-        etapa y las tablas completas que el informe publica para ese dominio, con la misma
-        protección de celdas que los exports del informe— más ``04 Decisiones.xlsx`` con las
-        decisiones del registro de auditoría (humanas, de la puerta y del motor). El número es la
-        posición de la etapa y no se mueve en una corrida parcial. Opcional: nunca es la vía para
+        ``01 Cartera.xlsx``, ``02 Curva de PD.xlsx``, ``03 Escenarios.xlsx`` (con escenarios) y
+        ``04 Provisión IFRS 9.xlsx`` para las etapas que corrieron —cada uno con el resumen, la
+        tabla de decisión, las tablas adicionales de la etapa y las tablas completas que el informe
+        publica para ese dominio, con la misma protección de celdas que los exports del informe—
+        más ``05 Decisiones.xlsx`` con las decisiones del registro de auditoría (humanas, de la
+        puerta y del motor). El número es la posición de la etapa y no se mueve en una corrida
+        parcial ni sin escenarios. Opcional: nunca es la vía para
         ver un resultado. Exige el extra ``excel`` (``openpyxl``); sin él se detiene con el comando
         de instalación.
         """

@@ -118,7 +118,7 @@ describe("sectionIsEditable / canJumpTo", () => {
   // si alguna entra (P5), el gate de Python obliga a ofrecerla antes.
   it("no declara editable una sección de config que el formulario no ofrece", () => {
     expect(sectionIsEditable("stress")).toBe(false)
-    expect(sectionIsEditable("forward")).toBe(false)
+    expect(sectionIsEditable("markov")).toBe(false)
     expect(canJumpTo(mismatch("stress.scenario_col"))).toBe(false)
   })
 

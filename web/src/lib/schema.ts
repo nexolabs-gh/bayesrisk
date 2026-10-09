@@ -155,6 +155,15 @@ export const CONFIG_SECTIONS: ConfigSectionDef[] = [
       "Tiempo hasta el incumplimiento: método, grilla temporal, covariables y unidad de la curva.",
   },
   {
+    // Entre la curva y las provisiones, su lugar en el pipeline (IFRS9-FIRMABLE capa C): los
+    // escenarios de la institución desplazan la curva que la provisión IFRS 9 lee. Sólo la ofrece
+    // ese trabajo, y LATENTE: se enciende al subir las dos tablas.
+    key: "forward",
+    label: "Escenarios económicos",
+    description:
+      "Los escenarios de la institución: la historia de una tasa de referencia, los escenarios con sus pesos y el ajuste de la PD al ciclo.",
+  },
+  {
     key: "provisioning_cmf",
     label: "Provisiones CMF",
     description:

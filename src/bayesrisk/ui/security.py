@@ -71,7 +71,12 @@ MUTATING_PATHS: frozenset[tuple[str, str]] = frozenset(
 #: porque el bind a loopback no se considera suficiente—. Pero comprobar no es correr: dejarlo en
 #: :data:`MUTATING_PATHS` lo habría apagado con ``allow_live_execution=false``, que es el modo en
 #: el que un aviso de config↔dataset más se agradece. De ahí la categoría propia.
-CREDENTIALED_PATHS: frozenset[tuple[str, str]] = frozenset({("POST", "/api/preflight")})
+#:
+#: ``/api/scenario-tables`` (IFRS9-FIRMABLE capa C) entra por la misma razón: lee dos archivos
+#: subidos y deja una tabla por escenario en el ``workdir``, sin correr el pipeline.
+CREDENTIALED_PATHS: frozenset[tuple[str, str]] = frozenset(
+    {("POST", "/api/preflight"), ("POST", "/api/scenario-tables")}
+)
 
 #: Endpoints que **a propósito** no exigen credenciales, cada uno con su razón (D-PUE-9).
 #:

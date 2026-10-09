@@ -1,6 +1,6 @@
 # Enmienda SDD — IFRS 9 firmable: escenarios, la PD de tu modelo y el aumento significativo del riesgo
 
-> **Estado: APROBADA por Cami el 2026-10-07** (cierre de S36); **capa A implementada en S37 (§9)** y publicada en la 2.8.0; **capa B implementada en S38 (§10)**, sin publicar. Aprobada de forma interactiva y con la
+> **Estado: APROBADA por Cami el 2026-10-07** (cierre de S36); **capa A implementada en S37 (§9)** y publicada en la 2.8.0; **capa B implementada en S38 (§10)** y publicada en la 2.9.0; **capa C implementada en S40 (§11)**, sin publicar. Aprobada de forma interactiva y con la
 > recomendación de cada uno de los siete puntos de §8: la enmienda entera; la sensibilidad desde una
 > tasa de referencia larga con el supuesto de transferencia declarado y sus cuatro criterios; el
 > ancla en las condiciones de la historia de la curva; el SICR con PD de origen y el escenario en la
@@ -45,7 +45,8 @@
 > 2023/1803, consolidado al 2026-03-08, idéntico en estos párrafos al 2016/2067— en español y en
 > inglés; el texto del IASB en ifrs.org exige sesión y **no se cotejó**.
 >
-> **Enmienda a:** SDD-20 (`forward`: el satélite y la referencia del desplazamiento), SDD-16
+> **Enmienda a:** SDD-01 §329 (la exclusión de rutas del `config_hash` se extiende a las dos tablas de
+> los escenarios, por decisión de Cami del 2026-10-09; §11), SDD-20 (`forward`: el satélite y la referencia del desplazamiento), SDD-16
 > (`provisioning_ifrs9`: la vía PIT, la PD de entrada, el SICR), D-ECL-5 de
 > [`_ENMIENDA-FLUJO-GUIADO-IFRS9.md`](_ENMIENDA-FLUJO-GUIADO-IFRS9.md) (la provisión deja de ser sólo
 > TTC cuando hay escenarios), D-CRE-4 y §3.2-7 de
@@ -938,6 +939,112 @@ la 2.8.0 en F4 (17 artefactos), Lending Club y Freddie Mac (15 cada uno), con la
 hexadecimal (`bit_a_bit_s39.sh`, cada lado desde su `src`); batería dirigida de 24 archivos, 641
 passed.
 
+## 11. Capa C implementada (S40, 2026-10-09)
+
+**Qué se programó** (§3.11, capa C), sobre `f337cae` (2.9.0):
+
+- **Pantalla.** `forward` entra al formulario (`CONFIG_SECTIONS`, «Escenarios económicos», entre la
+  curva y las provisiones) y al trabajo `provisiones_ifrs9`, **latente**: sin las dos tablas no hay
+  escenarios y la provisión sigue a lo largo del ciclo, bit a bit. Sus tres esenciales —la tabla de
+  historia (`input.macro_source.path`), la columna de la tasa de referencia
+  (`satellite.reference_rate_col`, con su default) y los escenarios (`scenarios.scenarios`)— van
+  abiertos y el resto en «Avanzado». La carga de las dos tablas es una tarjeta de la sección: cada
+  tabla sube por `POST /api/upload` y `POST /api/scenario-tables` (ruta nueva, con credenciales,
+  sin correr el pipeline) las lee con **la misma función** que `Ecl(history=, scenarios=)`
+  —`guided/escenarios.py`, la fuente que ahora comparten—, las deja en el `workdir` (una tabla por
+  escenario, con la huella en el nombre y ruta absoluta) y devuelve la parte de `forward` que sale
+  de ellas. El catálogo del trabajo gana `toggle_overrides`: lo que el trabajo escribe al encender
+  la sección —la vía del ciclo (`satellite.mode = "reference_rate"`, `macro.kind =
+  "scenario_paths"`, la fuente y la base de la curva) y la provisión que la consume (`pit_mode =
+  "cycle"`, `scenarios.source = "forward"`)— y al apagarla —la provisión a lo largo del ciclo—. Es
+  dato del catálogo: el front lo aplica sin saber qué significa (`encenderSeccion`/`apagarSeccion`,
+  `jobs.ts`), y la tarjeta guarda las dos tablas en el store para que sobrevivan al cambio de
+  sección; un archivo rechazado no reemplaza al último leído. Las dos hojas obligatorias de
+  `forward` (`variable_cols`, `factor_cols`) tienen su pregunta y duermen con la sección latente.
+- **Resultados.** «Provisión IFRS 9» gana la tabla adicional «Desplazamiento por tramo» —una fila
+  por escenario y tramo de calendario: su ventana completa, el valor de cada variable, el
+  desplazamiento en logit y el estado (escenario, reversión o largo plazo)—, y el bloque IFRS 9
+  pinta, sólo con `pit_mode = "cycle"`, «Escenarios: la curva que consumió la provisión» con esa
+  tabla y «ECL por escenario»: la curva consumida, abierto desde S32.
+- **Informe.** El capítulo IFRS 9 gana «Escenarios y ajuste por ciclo» —entre la curva y la
+  provisión: la sensibilidad estimada con su error y su sentido, la ventana, los escenarios con sus
+  pesos, la huella de las dos tablas, la ECL ponderada frente a la de desplazamiento cero, el ancla,
+  sus alertas y cuatro tablas (escenarios con pesos, sensibilidad, ECL por escenario, desplazamiento
+  por tramo)— y «La PD de tu modelo y el aumento significativo del riesgo» —tras la provisión: la
+  PD del modelo frente a la de la curva, las operaciones que movió la comparación por tramo y sus
+  alertas, la fila sin fecha de otorgamiento incluida—. **Una sola fuente**: las líneas, alertas y
+  tablas son las de los resúmenes de etapa, ya escritas (`guided.summaries.ifrs9_report_extras`).
+  Sin escenarios ni las dos PD el capítulo es el de siempre (ningún golden del informe se movió).
+- **Excel.** «Escenarios» tiene su libro, `03 Escenarios.xlsx`; la provisión pasa al `04` y las
+  decisiones al `05` en toda provisión (decisión de Cami de abajo).
+- **`Ecl` estable.** `history=`, `scenarios=`, `pd=` y `origination_pd=` dejan de ser
+  experimentales (D-SIM-1): docstring, `guided/__init__.py`, `docs_site/api.md`, la guía —sus
+  secciones pierden «(experimental)» y «La pantalla» cuenta los escenarios— y el CHANGELOG. Las
+  cifras siguen la marca experimental de `survival`, `forward` y `provisioning`.
+- **Copy de `forward`.** Al entrar al formulario su copy pasa a ser público: los 54 campos se
+  revisaron —sin literales de Python ni de código en las descripciones, «Modelo satélite», «Modelo
+  macro», «Tabla de historia», «Trayectoria del escenario»…—.
+
+**Las decisiones de Cami del 2026-10-09** (interactivas, al arrancar S40; «Respuestas de Cami» ›
+S40), las dos contractuales que la capa destapó:
+
+1. **La ubicación de las dos tablas no es identidad.** Medido sobre `f337cae`: `config_hash` sólo
+   excluía `data.load.source`, y las rutas de la historia y de cada escenario —absolutas, bajo el
+   `run_dir` de `Ecl` o el `workdir` de la pantalla— entraban a la identidad: la misma provisión con
+   las mismas tablas daba otro hash en otra carpeta y por la pantalla. Decidido: **fuera del hash,
+   huella aparte** —`forward.input.macro_source.path` y `forward.scenarios.scenarios[*].
+   macro_path_path` salen del `config_hash`, como el dataset (SDD-01 §329); la huella del contenido
+   de cada tabla (la misma del trail, SHA-256 lógico) se publica en `("forward", "cycle_model")`
+   (`history_hash`, `content_hash` de cada escenario), en el resumen de «Escenarios» y en el
+   informe—. Mueve sólo el hash de los configs con esas rutas; ningún preset las trae (F4 intacto).
+2. **«Escenarios» numera su libro**: `03 Escenarios`, `04 Provisión IFRS 9`, `05 Decisiones` en toda
+   provisión, la regla de D-ECL-10 tal cual; el cambio de nombres se declara en el CHANGELOG.
+
+**Un hallazgo que la capa destapó y que se arregló dentro de su contrato** (D-SIM-1, D-ECL-4):
+entrar a la pantalla por el trabajo IFRS 9 —sin cargar el ejemplo— y llenar los esenciales **no
+corría** desde la 2.5.0: el esqueleto sembraba los defaults de fábrica de la provisión y la corrida
+se detenía —la EAD por CCF pedía una columna «drawn»; con `ead.method = "provided"`, el PIT de
+fábrica pedía escenarios—. Medido con la réplica del esqueleto (`test_jobs_ejecutables._esqueleto`)
+y confirmado en vivo. El trabajo siembra ahora las seis constantes de F4 con que corre la puerta
+guiada (`ead.method`, `pd.pit_mode`, `scenarios.source`, `discrete_hazard.pd_role` y la confianza
+de Kaplan-Meier); con las mismas columnas, la pantalla calcula la misma provisión que `Ecl`, al
+bit. Su config difiere sólo en tres hojas que la puerta guiada declara además —el esquema de las
+columnas (D-SIM-2), los 12 meses que infirió (la pantalla los deja en blanco y el motor infiere los
+mismos, Cami 2026-10-05) y la semilla del preset—: por la pantalla, el mismo `config_hash` se
+obtiene cargando el YAML de la puerta guiada, como el scorecard en S21.
+
+**Una corrección de medición**, sin perilla ni decisión: la cifra 3 de §13 estimaba 280 perillas
+(«44 + 1» hojas de `forward`, contando campos Pydantic). El barrido del formulario cuenta **54**
+—las seis filas de sus listas y la tabla de escenarios con sus cinco columnas, sin las dos
+ocultas—, reproducido igual sobre `0e5e46f` (53, antes de la hoja de la capa A): **289** (158 + 24 +
+54 + 53). `HOJAS_DEL_FORMULARIO` 579 → 633 (0 desapariciones, 54 apariciones, todas bajo
+`forward.`), hojas resueltas 463 → 517, esenciales 14 → 15 secciones y 54 → 57 caminos.
+
+**Las tres puertas** (`tests/unit/test_ifrs9_firmable_capa_c.py`, el gate de cierre): la provisión
+firmable de la guía —contrato, escenarios y las dos PD— por `Ecl`, por su YAML con `bayesrisk.run`
+y por la pantalla cargando ese YAML (`/api/config/from-yaml` y `/api/run` sobre la copia de los
+datos subida): **el mismo `config_hash` y la misma ECL al bit**, también la ECL de cada escenario;
+el formulario con las dos tablas subidas por `/api/scenario-tables`: la misma ECL al bit que `Ecl`.
+En vivo con el Browser pane (`bayesrisk-ui`, la cartera del paquete): sin escenarios, 4.724.668,70,
+los mismos bits que `Ecl`; con las dos tablas de los tests, 4.786.824,93 y la ECL por escenario y
+la TTC iguales a las de `Ecl`; «Quitar los escenarios» vuelve al mismo `config_hash` (3000876c…)
+que la corrida sin escenarios.
+
+**Sin escenarios ni las dos PD, bit a bit** con la 2.9.0 (`evidencia/s40/bit_a_bit_s40.sh`, cada
+lado desde su `src`): F4 (17 artefactos), Lending Club y Freddie Mac (15 cada uno), con la misma
+huella y la misma ECL en hexadecimal.
+
+**Gates.** Tests nacidos rojos por regla (`test_ifrs9_firmable_capa_c.py`); los cinco censos de la
+sección nueva del formulario; vitest de `encenderSeccion`/`apagarSeccion` y de la sección de
+Resultados; **un control negativo por regla, en paralelo** (`evidencia/s40/cn_capa_c.py`, cada uno
+en su copia de `src/`, y dos del front en el árbol con copia y sha256): **18 de 18 rojos** por su
+motivo —la ubicación de vuelta al hash (historia y escenarios), la huella sin publicar, el libro sin
+número, el trabajo con la EAD de fábrica, los escenarios encendidos de fábrica, apagar sin el gesto,
+la columna de la tasa fija, la ruta relativa, la tabla del desplazamiento sin publicar, las
+ventanas parciales, el capítulo sin la subsección, las tablas del informe con otra regla de formato,
+el informe sin las alertas, la columna de la tasa sin su marca, el copy de `forward` con «True»,
+apagar en el front sin el gesto y la sección de Resultados sin escenarios—.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima:** la de CASO-REAL más, opcionales, dos tablas (historia de la tasa de referencia
@@ -973,9 +1080,11 @@ passed.
 |---|---|---|
 | Líneas de usuario | 21 | 21 |
 | Esenciales por sección | `survival` 5, `provisioning_ifrs9` 10 | 5, **12** y `forward` **3** (capa C) |
-| Perillas de las secciones de cálculo del trabajo | 233 (158 + 24 + 51) | 233 en A (la hoja nueva vive en `forward`, fuera del trabajo); **235** en B (158 + 24 + 53); **280** en C, cuando `forward` entra al trabajo (44 + 1 hojas) |
+| Perillas de las secciones de cálculo del trabajo | 233 (158 + 24 + 51) | 233 en A (la hoja nueva vive en `forward`, fuera del trabajo); **235** en B (158 + 24 + 53); **289** en C, cuando `forward` entra al trabajo (158 + 24 + 54 + 53; se estimó 280 con 44 + 1 campos Pydantic, §11) |
 | Segundos al primer resumen (paquete) | ~1 | ~1 (sin escenarios no hay cálculo nuevo) |
 | Conceptos antes del primer resultado | 5 | 5 |
 
 Medidas en la capa B (S38): línea base sobre `48f5350` (2.8.0) 21 · 5, 10 y 2 (`forward`, en la
 firma) · 233 · 0,86 s · 5; después 21 · 5, **12** y 2 · **235** (158 + 24 + 53) · ≈ 1 s · 5.
+Medidas en la capa C (S40): línea base sobre `f337cae` (2.9.0) 21 · 5, 12 y 2 · 235 · 0,74 s · 5;
+después 21 · 5, 12 y **3** · **289** (158 + 24 + 54 + 53) · ≈ 0,7 s · 5.

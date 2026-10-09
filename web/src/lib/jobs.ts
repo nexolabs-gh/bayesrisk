@@ -159,6 +159,14 @@ export interface Job {
    * —que es Python— los aplique desde la misma fuente que esta pantalla.
    */
   overrides: [string, unknown][]
+  /**
+   * Lo que el trabajo escribe al ENCENDER (`on`) o APAGAR (`off`) una de sus secciones latentes,
+   * con la misma forma de parejas ordenadas que `overrides` (IFRS9-FIRMABLE capa C). Hoy sólo la
+   * provisión IFRS 9 la declara: encender los escenarios pone la vía del ciclo y la provisión que
+   * la consume; apagarlos devuelve la provisión a lo largo del ciclo. Es dato del catálogo: la
+   * pantalla lo aplica sin saber qué significa (SDD-23 §11). Ausente en un fixture viejo.
+   */
+  toggle_overrides?: Record<string, { on: [string, unknown][]; off: [string, unknown][] }>
   /** País cuya normativa impone el cálculo; `null` = neutral (D-JOB-8). */
   jurisdiction_code: string | null
   jurisdiction_label: string | null
@@ -455,6 +463,81 @@ function aplicarOverridesDelTrabajo(
     }
     nodo[tramos[tramos.length - 1]] = valor
   }
+}
+
+/** Escribe `valor` en `ruta` (con puntos) si su sección existe y no está apagada. */
+function escribirRuta(config: Record<string, unknown>, ruta: string, valor: unknown): void {
+  const tramos = ruta.split(".")
+  const seccion = config[tramos[0]]
+  if (typeof seccion !== "object" || seccion === null) return
+  let nodo = config
+  for (const tramo of tramos.slice(0, -1)) {
+    const siguiente: unknown = nodo[tramo]
+    if (typeof siguiente !== "object" || siguiente === null || Array.isArray(siguiente)) {
+      nodo[tramo] = {}
+    }
+    nodo = nodo[tramo] as Record<string, unknown>
+  }
+  nodo[tramos[tramos.length - 1]] = structuredClone(valor)
+}
+
+/** Fusión profunda de objetos planos: lo de `encima` gana; las listas se reemplazan enteras. */
+function fusionar(
+  base: Record<string, unknown>,
+  encima: Record<string, unknown>,
+): Record<string, unknown> {
+  const salida: Record<string, unknown> = structuredClone(base)
+  for (const [clave, valor] of Object.entries(encima)) {
+    const actual = salida[clave]
+    const objeto = (v: unknown) => typeof v === "object" && v !== null && !Array.isArray(v)
+    salida[clave] =
+      objeto(valor) && objeto(actual)
+        ? fusionar(actual as Record<string, unknown>, valor as Record<string, unknown>)
+        : structuredClone(valor)
+  }
+  return salida
+}
+
+/**
+ * Enciende una sección: la siembra con `base` (su proyección canónica, o lo que tenía antes de
+ * apagarla) y aplica lo que el trabajo declara para ese gesto (`toggle_overrides[sección].on`),
+ * que puede tocar otra sección —encender los escenarios mueve la provisión IFRS 9 a la vía del
+ * ciclo—. Con `encima`, una parte de la sección que llega armada desde el servidor (las dos tablas
+ * de escenarios, `POST /api/scenario-tables`) se escribe al final. Pura: devuelve un config nuevo.
+ *
+ * La réplica Python vive en `test_ifrs9_firmable_capa_c.py` (`_config_de_la_pantalla`), que mide
+ * con ella que la pantalla arma el mismo config que `bayesrisk.Ecl`.
+ */
+export function encenderSeccion(
+  config: Record<string, unknown>,
+  seccion: string,
+  base: unknown,
+  job: Job | null,
+  encima?: Record<string, unknown>,
+): Record<string, unknown> {
+  const salida = structuredClone(config)
+  salida[seccion] = structuredClone(base ?? {})
+  for (const [ruta, valor] of job?.toggle_overrides?.[seccion]?.on ?? []) {
+    escribirRuta(salida, ruta, valor)
+  }
+  if (encima) {
+    salida[seccion] = fusionar(salida[seccion] as Record<string, unknown>, encima)
+  }
+  return salida
+}
+
+/** Apaga una sección (`null`) y aplica lo que el trabajo declara para ese gesto (`off`). */
+export function apagarSeccion(
+  config: Record<string, unknown>,
+  seccion: string,
+  job: Job | null,
+): Record<string, unknown> {
+  const salida = structuredClone(config)
+  salida[seccion] = null
+  for (const [ruta, valor] of job?.toggle_overrides?.[seccion]?.off ?? []) {
+    escribirRuta(salida, ruta, valor)
+  }
+  return salida
 }
 
 /**

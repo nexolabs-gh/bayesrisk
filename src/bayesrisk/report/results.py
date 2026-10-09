@@ -193,6 +193,14 @@ class ReportInputBundle(_ReportBaseModel):
     ``scorecard.scorecard``, la línea «Categorías no vistas → como «<tramo>»»; el JSON y el CSV de
     la tabla no cambian.
     """
+    ifrs9_extras: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    """El cuerpo de las subsecciones del capítulo IFRS 9 que no son un dominio con card.
+
+    ``{"forward": (párrafos…), "pd_model": (párrafos…)}`` (IFRS9-FIRMABLE capa C): lo que la
+    provisión hizo con los escenarios de la institución y con la PD del modelo, escrito por los
+    resúmenes de etapa. Aditivo (default vacío): sin escenarios ni las dos PD, el documento es byte
+    a byte el de siempre.
+    """
     eda_numeric_profiles: tuple[str, ...] = Field(default=())
     """Las columnas que el EDA perfiló como numéricas (D-PAN-4, CIFRAS-EN-PANTALLA).
 

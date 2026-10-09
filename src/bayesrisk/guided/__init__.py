@@ -15,7 +15,10 @@ crecen de forma aditiva.
 :class:`~bayesrisk.guided.ecl.Ecl`, la puerta guiada de la provisión IFRS 9 (enmienda
 FLUJO-GUIADO-IFRS9), salió en la 2.4.0 como excepción experimental por símbolo y es estable desde
 la capa B de su enmienda (D-ECL-9): su firma, sus métodos y la forma de sus resúmenes; sus cifras
-siguen la marca experimental de ``survival`` y ``provisioning``.
+siguen la marca experimental de ``survival``, ``forward`` y ``provisioning``. Los escenarios de la
+institución y las dos PD del modelo (``history=``, ``scenarios=``, ``pd=``, ``origination_pd=``)
+salieron experimentales en la 2.8.0 y la 2.9.0 y son estables desde que cerraron sus tres puertas
+(IFRS9-FIRMABLE capa C, 2.10.0).
 """
 
 from bayesrisk.guided.ecl import Ecl, EclInputError, EclRunError

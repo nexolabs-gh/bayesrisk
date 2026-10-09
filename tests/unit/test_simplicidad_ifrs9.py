@@ -2,25 +2,29 @@
 
 Gemelo de ``test_simplicidad_scorecard.py``: cada cifra es un golden con la regla de
 ``HOJAS_DEL_FORMULARIO`` —moverla es legítimo; moverla sin actualizar el número y decir por qué,
-no—. Línea base medida sobre ``3cc9654`` (S28, ``privado/evidencia/s28/ifrs9-mediciones.md``) y
-el después, en la capa A (S30, 2026-10-04) y la B (S31, 2026-10-05); la capa B de CASO-REAL-IFRS9
-(S35, 2026-10-06) suma las tres columnas opcionales del contrato (§13 de esa enmienda), y la capa A
-de IFRS9-FIRMABLE (S37, 2026-10-07; línea base medida sobre ``698423a``: 21 · 5 y 10 · 233 · 0,74 s
-· 5) suma a la puerta las dos tablas de escenarios, experimentales, que escriben la sección
+no—. Línea base medida sobre ``3cc9654`` (S28, ``privado/evidencia/s28/ifrs9-mediciones.md``) y el
+después, en la capa A (S30, 2026-10-04) y la B (S31, 2026-10-05); la capa B de CASO-REAL-IFRS9 (S35,
+2026-10-06) suma las tres columnas opcionales del contrato (§13 de esa enmienda), y la capa A de
+IFRS9-FIRMABLE (S37, 2026-10-07; línea base medida sobre ``698423a``: 21 · 5 y 10 · 233 · 0,74 s ·
+5) suma a la puerta las dos tablas de escenarios, experimentales, que escriben la sección
 ``forward`` —fuera de las tres secciones del trabajo, cuyas perillas no cambian—, y la capa B (S38,
 2026-10-07; línea base sobre ``48f5350``, la 2.8.0: 21 · 5, 10 y 2 · 233 · 0,86 s · 5) suma las dos
-PD del modelo, opcionales, como esenciales de la provisión (§8-5) y dos hojas (§3.11):
+PD del modelo, opcionales, como esenciales de la provisión (§8-5) y dos hojas (§3.11). La capa C
+(S40, 2026-10-09; línea base sobre ``f337cae``, la 2.9.0: 21 · 5, 12 y 2 · 235 · 0,74 s · 5) mete
+``forward`` al trabajo de la pantalla con sus tres esenciales y sus 54 perillas (§13; la enmienda
+estimó 45 contando campos Pydantic, el barrido del formulario cuenta 54):
 
-| Cifra | ``3cc9654`` | H2 A y B | CASO-REAL B | FIRMABLE A | FIRMABLE B | Objetivo |
+| Cifra | ``3cc9654`` | H2 A y B | CASO-REAL B | FIRMABLE A | FIRMABLE B | FIRMABLE C |
 |---|---|---|---|---|---|---|
-| Líneas de usuario | YAML de 268 | 21 | 21 | 21 | 21 | ≤ 25 |
+| Líneas de usuario | YAML de 268 | 21 | 21 | 21 | 21 | 21 |
 | Esenciales por sección | 0 (enteras) | 5 y 7 | 5 y 10 | 5, 10 y 2 | 5, 12 y 2 | 5, 12 y 3 |
-| Perillas de las tres secciones | 230 (158 + 24 + 48) | 230 | 233 | 233 | 235 | la enmienda |
-| Segundos al primer resumen | 4,8 a 6,4 s (ECL) | ≈ 1 s | ≈ 1 s | ≈ 1 s | ≈ 1 s | ≤ 30 s |
-| Conceptos antes del primer resultado | ≥ 8 | 5 | 5 | 5 | 5 | ≤ 5 |
+| Perillas de las secciones de cálculo | 230 (158 + 24 + 48) | 230 | 233 | 233 | 235 | 289 |
+| Segundos al primer resumen | 4,8 a 6,4 s (ECL) | ≈ 1 s | ≈ 1 s | ≈ 1 s | ≈ 1 s | ≈ 1 s |
+| Conceptos antes del primer resultado | ≥ 8 | 5 | 5 | 5 | 5 | 5 |
 
-Los 2 de ``forward`` son las dos tablas de escenarios de la puerta; sus marcas en el schema, y el
-tercero, llegan con la pantalla (capa C).
+Los 3 de ``forward`` son, en la pantalla, la tabla de historia, la columna de la tasa de referencia
+—con su default— y los escenarios; en la puerta guiada, las dos tablas (la columna de la tasa es la
+de nombre fijo ``default_rate``). Las 289 perillas son 158 + 24 + 54 + 53.
 
 La capa A ancló los esenciales en la firma de ``Ecl``; la B los marca en el schema
 (``ui_essential``) y la pantalla los pinta abiertos: el mismo mapeo, atado aquí a los dos.
@@ -79,13 +83,19 @@ ESENCIALES: Final[dict[str, dict[str, str]]] = {
         "pd": "provisioning_ifrs9.pd.pd_12m_col",
         "origination_pd": "provisioning_ifrs9.staging.origination_pd_12m_col",
     },
-    # IFRS9-FIRMABLE D-FIR-11 (§8-5): las dos tablas de los escenarios, experimentales en la capa A.
-    # Escriben la sección `forward` (la historia, su fuente; los escenarios, una trayectoria por
-    # escenario con su peso); sus marcas en el schema llegan con la pantalla (capa C).
+    # IFRS9-FIRMABLE D-FIR-11 (§8-5): las dos tablas de los escenarios. Escriben la sección
+    # `forward` (la historia, su fuente; los escenarios, una trayectoria por escenario con su peso).
     "forward": {
         "history": "forward.input.macro_source.path",
         "scenarios": "forward.scenarios.scenarios",
     },
+}
+#: Los esenciales de la pantalla que la puerta guiada no pide como argumento, con su razón: la
+#: columna de la tasa de referencia es, en la puerta guiada, la de nombre fijo ``default_rate``
+#: (§3.11: las dos tablas tienen columnas de nombre fijo); en la pantalla se escribe, con ese
+#: default (§13, capa C).
+ESENCIALES_SOLO_DE_LA_PANTALLA: Final[dict[str, tuple[str, ...]]] = {
+    "forward": ("forward.satellite.reference_rate_col",),
 }
 #: Los argumentos que no son esenciales de una sección de cálculo: los de `governance`, `report` y
 #: `tracking`, como en `Scorecard`, y dónde queda la evidencia.
@@ -103,9 +113,13 @@ EXCEPCION_AL_TOPE: Final = {"provisioning_ifrs9": 12}
 #: la capa B de CASO-REAL-IFRS9 (S35, 2026-10-06): las tres hojas del contrato, con su evidencia
 #: de que el default falla en un caso real (§3.8 de esa enmienda); 48 → 51 en la provisión. 235
 #: desde la capa B de IFRS9-FIRMABLE (S38, 2026-10-07): las dos PD del modelo —``pd.pd_12m_col`` y
-#: ``staging.origination_pd_12m_col``—, con su evidencia (§3.11 de esa enmienda); 51 → 53.
-SECCIONES_DE_CALCULO: Final[tuple[str, ...]] = ("data", "survival", "provisioning_ifrs9")
-PERILLAS_DE_LAS_TRES_SECCIONES: Final = 235
+#: ``staging.origination_pd_12m_col``—, con su evidencia (§3.11 de esa enmienda); 51 → 53. 289
+#: desde la capa C de IFRS9-FIRMABLE (S40, 2026-10-09): ``forward`` entra al trabajo de la pantalla
+#: con sus 54 hojas del barrido del formulario —ninguna nueva: es la sección que la puerta guiada ya
+#: escribía—. La enmienda (§13) estimó 280 contando 45 campos Pydantic; el barrido cuenta 54 (las
+#: seis filas de sus listas y la tabla de escenarios con sus cinco columnas, sin las dos ocultas).
+SECCIONES_DE_CALCULO: Final[tuple[str, ...]] = ("data", "survival", "forward", "provisioning_ifrs9")
+PERILLAS_DE_LAS_TRES_SECCIONES: Final = 289
 
 #: Cifra 4: segundos hasta el primer resumen («Cartera») con el dataset del paquete.
 TOPE_SEGUNDOS_PRIMER_RESUMEN: Final = 30.0
@@ -165,8 +179,12 @@ def test_cifra_2_las_marcas_del_schema_son_los_argumentos_de_la_puerta() -> None
     """La pantalla abre exactamente las hojas que la puerta pide como argumento (capa B, §3.7)."""
     from test_esenciales_por_seccion import ESENCIALES_POR_SECCION
 
-    for seccion in ("survival", "provisioning_ifrs9"):
-        assert sorted(ESENCIALES[seccion].values()) == sorted(ESENCIALES_POR_SECCION[seccion])
+    for seccion in ("survival", "provisioning_ifrs9", "forward"):
+        de_la_puerta = [
+            *ESENCIALES[seccion].values(),
+            *ESENCIALES_SOLO_DE_LA_PANTALLA.get(seccion, ()),
+        ]
+        assert sorted(de_la_puerta) == sorted(ESENCIALES_POR_SECCION[seccion]), seccion
 
 
 def test_cifra_2_cada_argumento_escribe_su_hoja(tmp_path: Path) -> None:

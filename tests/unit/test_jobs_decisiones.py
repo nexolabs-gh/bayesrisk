@@ -53,6 +53,8 @@ SECCIONES_DEL_FORMULARIO = (
     "stability",
     "validation",
     "survival",
+    # IFRS9-FIRMABLE capa C: los escenarios de la institución, entre la curva y las provisiones.
+    "forward",
     "provisioning_cmf",
     "provisioning_internal",
     "provisioning_ifrs9",
@@ -279,11 +281,15 @@ def test_los_dos_trabajos_con_survival_preguntan_cinco_cosas() -> None:
         "survival.input.event_col",
         "governance.purpose",
     ]
+    # Desde la capa C de IFRS9-FIRMABLE, también las dos de `forward` —las variables macro, que la
+    # pantalla lee de las dos tablas—, que duermen mientras la sección esté apagada (latente).
     assert [d["path"] for d in por_id["provisiones_ifrs9"]["required_decisions"]] == [
         "survival.input.duration_col",
         "survival.input.event_col",
         "survival.time_grid.time_unit",
         "survival.time_grid.horizon_periods",
+        "forward.input.macro_source.variable_cols",
+        "forward.satellite.factor_cols",
         "governance.purpose",
     ]
     assert [d["path"] for d in por_id["scorecard_pd"]["required_decisions"]] == [

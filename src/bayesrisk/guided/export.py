@@ -2,16 +2,17 @@
 
 ``export_excel()`` escribe en ``<run_dir>/<name>/excel/`` un libro por etapa, numerado en el orden
 de las etapas (§3.2 de la enmienda) y rotulado con el mismo nombre que el resumen, más un último
-libro con las decisiones. Cada familia de resúmenes numera sus propias etapas: el scorecard, de
-``01 Datos y muestras`` a ``11 Decisiones``; la provisión IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-10), de
-``01 Cartera`` a ``04 Decisiones``. Cada libro lleva el resumen de la etapa, su **tabla de
-decisión** (la de ``sc.results[<etapa>]``, con rótulos en español) y las **tablas completas** que el
-informe publica para ese dominio —las del anexo y las que el informe entrega por observación como
-exports—, escritas por :mod:`bayesrisk.report.exports` con la misma protección de celdas: una
-tabla escrita por las dos vías es la misma celda a celda (gate §6-9). Las tablas adicionales de una
-etapa (``StageSummary.extra_tables``: la curva por sus coeficientes y por cartera, la provisión por
-etapa y gatillo) van en hojas propias tras la de decisión, con su título. Nunca es obligatorio ni la
-vía para ver un resultado (D-SIM-7): el resultado se ve en el notebook o en pantalla.
+libro con las decisiones. Cada familia de resúmenes numera sus propias etapas: el scorecard, de ``01
+Datos y muestras`` a ``11 Decisiones``; la provisión IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-10), de ``01
+Cartera`` a ``05 Decisiones`` (``03 Escenarios`` desde IFRS9-FIRMABLE capa C). Cada libro lleva el
+resumen de la etapa, su **tabla de decisión** (la de ``sc.results[<etapa>]``, con rótulos en
+español) y las **tablas completas** que el informe publica para ese dominio —las del anexo y las que
+el informe entrega por observación como exports—, escritas por :mod:`bayesrisk.report.exports` con
+la misma protección de celdas: una tabla escrita por las dos vías es la misma celda a celda (gate
+§6-9). Las tablas adicionales de una etapa (``StageSummary.extra_tables``: la curva por sus
+coeficientes y por cartera, la provisión por etapa y gatillo) van en hojas propias tras la de
+decisión, con su título. Nunca es obligatorio ni la vía para ver un resultado (D-SIM-7): el
+resultado se ve en el notebook o en pantalla.
 
 ``export(destino)`` empaqueta la carpeta del proyecto —config vigente, snapshot de datos, evidencia
 de la corrida, informe y el Excel si se pidió— en un ``.zip`` que viaja entero.
@@ -64,9 +65,9 @@ def stage_books(family: str = "scorecard") -> dict[str, str]:
     qué etapas corrieron: una corrida parcial deja los primeros libros y los números no se mueven.
     """
     rotulos = stage_labels(family)
-    # «Escenarios» (IFRS9-FIRMABLE) entra al Excel con la capa C de la enmienda: numerarla aquí
-    # movería «03 Provisión IFRS 9.xlsx» en toda provisión, también en las que no tienen escenarios.
-    etapas = [stage for stage in rotulos if stage not in ("report", "forward")]
+    # «Escenarios» (IFRS9-FIRMABLE) tiene su libro desde la capa C, con el número de su posición
+    # (Cami, 2026-10-09): `03 Escenarios.xlsx`, y la provisión en el `04` también sin escenarios.
+    etapas = [stage for stage in rotulos if stage != "report"]
     return {stage: f"{numero:02d} {rotulos[stage]}.xlsx" for numero, stage in enumerate(etapas, 1)}
 
 

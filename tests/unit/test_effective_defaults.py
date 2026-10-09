@@ -124,7 +124,18 @@ from bayesrisk.ui.routes import schema_payload
 #: las dos PD del modelo en ``provisioning_ifrs9`` —``pd.pd_12m_col`` y
 #: ``staging.origination_pd_12m_col``—, cada una con su evidencia de que el default falla en un
 #: caso real. Dos hojas de texto, dos nodos. Hojas resueltas 461 → 463.
-HOJAS_DEL_FORMULARIO = 579
+#:
+#: 579 → 633 el 2026-10-09 con la capa C de IFRS9-FIRMABLE (D-FIR-11, §13): ``forward`` —los
+#: escenarios de la institución— entra a ``CONFIG_SECTIONS`` (17 → 18) y por tanto a este barrido.
+#: Baseline por ``git worktree`` de ``f337cae`` a un directorio aparte, importando ``bayesrisk``
+#: desde allí (verificado por ``__file__``): **0 desapariciones y 54 apariciones**, todas bajo
+#: ``forward.``: sus 43 campos visibles —la tabla de escenarios entre ellos—, las cinco columnas de
+#: esa tabla (``scenarios[].name`` … ``[].description``) y las seis filas de sus listas
+#: (``variable_cols[]``, ``exogenous_cols[]``, ``term_structure_sources[]``, ``factor_cols[]``,
+#: ``target_components[]``, ``ljung_box_lags[]``). Los dos que faltan son ``schema_version`` y
+#: ``type``, ``hidden``. La enmienda estimó «44 + 1» contando campos Pydantic;
+#: el barrido del formulario cuenta 54 (la cifra 3 de IFRS 9 queda en 289, no en 280).
+HOJAS_DEL_FORMULARIO = 633
 
 #: Hojas que el barrido de PARIDAD contra el catálogo de defaults efectivos resuelve.
 #:
@@ -161,7 +172,12 @@ HOJAS_DEL_FORMULARIO = 579
 #: 458 → 461 el 2026-10-06 con la capa B de CASO-REAL-IFRS9: las tres hojas del contrato, sin
 #: unión discriminada y con default ``None``, resuelven con default efectivo.
 #: 461 → 463 el 2026-10-07 con la capa B de IFRS9-FIRMABLE: las dos PD del modelo, igual.
-HOJAS_CON_DEFAULT_EFECTIVO = 463
+#: 463 → 517 el 2026-10-09 con la capa C de IFRS9-FIRMABLE, por los mismos 54 nodos de ``forward``
+#: del golden de arriba: la sección no tiene uniones discriminadas, así que las dos cifras suben lo
+#: mismo. ``input.macro_source.variable_cols`` y ``satellite.factor_cols`` cuentan como resueltos
+#: porque el catálogo los publica como descriptores sin default (``has_default: false``): son
+#: decisiones obligatorias, que la pantalla llena al leer las dos tablas.
+HOJAS_CON_DEFAULT_EFECTIVO = 517
 
 #: Descriptores de hoja que el barrido de paridad compara, en las DOS coordenadas (`$defs` y
 #: `sections`). Segundo golden, por la misma razón que el de 394: un barrido que recorra menos
@@ -289,6 +305,7 @@ SECCIONES_ESPERADAS = (
     "stability",
     "validation",
     "survival",
+    "forward",
     "provisioning_cmf",
     "provisioning_internal",
     "provisioning_ifrs9",
@@ -881,6 +898,7 @@ ANCLAS_POR_SECCION: dict[str, str] = {
     "stability": "stability.psi_bins",
     "validation": "validation.calibration.hl_n_groups",
     "survival": "survival.method",
+    "forward": "forward.satellite.reference_rate_col",
     "provisioning_cmf": "provisioning_cmf.matrices.active_version",
     "provisioning_internal": "provisioning_internal.lgd.method",
     "provisioning_ifrs9": "provisioning_ifrs9.staging.dpd_default_backstop",

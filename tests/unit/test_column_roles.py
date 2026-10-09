@@ -98,7 +98,14 @@ ROLES_INSPECCIONABLES = frozenset({ROL_ENTRADA, ROL_INDICE})
 #:
 #: Se conserva la estructura, no por simetría, sino porque el gate de abajo la necesita para el día
 #: que aparezca un multiselect nuevo cuya declaración haya que posponer con su razón a la vista.
-EXENTOS_MULTISELECT: dict[str, str] = {}
+EXENTOS_MULTISELECT: dict[str, str] = {
+    # IFRS9-FIRMABLE capa C: los tres nombran columnas de la TABLA DE HISTORIA de los escenarios, no
+    # del archivo de cartera. Un rol `input` haría que el preflight las buscara en la cartera (y no
+    # están); la pantalla las llena al leer las dos tablas (`POST /api/scenario-tables`).
+    "MacroSourceConfig.variable_cols": "columnas de la tabla de historia, no del archivo",
+    "MacroSourceConfig.exogenous_cols": "columnas de la tabla de historia, no del archivo",
+    "SatelliteConfig.factor_cols": "columnas de la tabla de historia, no del archivo",
+}
 
 #: Catálogo de secciones navegables del formulario (front). Vive UNA vez, en `lib/schema.ts`.
 _SCHEMA_TS = Path(__file__).resolve().parents[2] / "web" / "src" / "lib" / "schema.ts"

@@ -255,7 +255,8 @@ resumen final; `ecl.run(until="survival")` se detiene tras la curva para mirarla
 y `ecl.resume()` es una corrida nueva y completa. Como en el scorecard, `ecl.config` es el
 `BayesRiskConfig` entero (`ecl.to_yaml()` lo exporta) y la evidencia queda en
 `bayesrisk-runs/cartera_2025_06/`. `ecl.export_excel()` escribe en su carpeta `excel/` un libro por
-etapa —`01 Cartera.xlsx`, `02 Curva de PD.xlsx`, `03 Provisión IFRS 9.xlsx`— y `04 Decisiones.xlsx`,
+etapa —`01 Cartera.xlsx`, `02 Curva de PD.xlsx`, `04 Provisión IFRS 9.xlsx` y, con escenarios,
+`03 Escenarios.xlsx`— y `05 Decisiones.xlsx`,
 con el resumen, las tablas de cada etapa y las que el informe publica (exige el extra `excel`), y
 `ecl.export("corrida.zip")` empaqueta la carpeta entera. En la interfaz, el trabajo «Provisiones
 IFRS 9 / ECL» pregunta lo mismo que la puerta —sin «cliente malo» ni muestras— y Resultados pinta

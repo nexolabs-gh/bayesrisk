@@ -134,6 +134,10 @@ def test_report_input_bundle_golden_copias_frozen_y_extra() -> None:
         # D-NOV-1 §1.1: por categórica del modelo, la fila de puntos de su tramo de referencia,
         # aditiva con default vacío; sólo la vista gana la línea de no vistas.
         "unseen_reference_bins",
+        # IFRS9-FIRMABLE capa C: el cuerpo de «Escenarios y ajuste por ciclo» y de «La PD de tu
+        # modelo…», aditivo con default vacío; sin escenarios ni las dos PD, el capítulo IFRS 9 es
+        # el de siempre.
+        "ifrs9_extras",
         # D-PAN-4: las columnas que el EDA perfiló como numéricas, aditivas con default vacío: sólo
         # sus tramos se reescriben con comparadores en es-CL.
         "eda_numeric_profiles",
@@ -143,6 +147,7 @@ def test_report_input_bundle_golden_copias_frozen_y_extra() -> None:
         "summary",
     )
     assert bundle.summary is None, "sin corrida el bundle no afirma ningún resumen"
+    assert bundle.ifrs9_extras == {}, "sin corrida el bundle no afirma escenarios ni PD"
     assert bundle.governance is None, "sin gobernanza declarada el bundle no afirma ninguna"
     assert bundle.pipeline_params == {}
     assert bundle.currency == "", "sin moneda declarada el bundle no afirma ninguna"

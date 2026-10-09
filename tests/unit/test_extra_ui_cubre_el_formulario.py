@@ -46,6 +46,12 @@ EXTRA_POR_SECCION = {
     # a «requiere scipy; instale bayesrisk[scoring]». Ningún extra propio: `scoring` ya lo trae.
     "validation": "scoring",
     "survival": "survival",  # además de `scoring`: `cox_ph`/`aft` exigen lifelines (KM no)
+    # IFRS9-FIRMABLE capa C: lo que la pantalla ofrece de `forward` es la vía de los escenarios de
+    # la institución, que el trabajo IFRS 9 enciende al subir las dos tablas, y corre con el núcleo
+    # (MCO con numpy, `forward/cycle.py`; medido: no importa statsmodels ni pmdarima). La vía con
+    # modelo macro —ARIMA, VAR, VECM, en «Avanzado»— pide `[forecasting]` y se detiene con su
+    # mensaje; `[ui]` no lo trae a propósito. Excepción declarada, como el PDF del informe.
+    "forward": None,
     "provisioning_cmf": "scoring",
     "provisioning_internal": "scoring",
     "provisioning_ifrs9": "scoring",

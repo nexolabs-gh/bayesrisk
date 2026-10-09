@@ -2972,17 +2972,13 @@ def _resumen_provision(study: Study, context: SummaryContext) -> StageSummary:
     if gatillos is not None:
         extra.append(("Operaciones por etapa y gatillo", gatillos, {"Operaciones": "int"}))
     if tabla_del_ciclo is not None:
-        extra.append(
-            (
-                "ECL por escenario",
-                tabla_del_ciclo,
-                {
-                    "Peso": "pct",
-                    "Desplazamiento del primer año": "num3",
-                    "ECL": "int",
-                },
-            )
-        )
+        extra.append(("ECL por escenario", tabla_del_ciclo, _FORMATOS_ECL_POR_ESCENARIO))
+    desplazamiento = _tabla_del_desplazamiento(
+        _artifact(study, "provisioning_ifrs9", "cycle_by_period")
+    )
+    if desplazamiento is not None:
+        tabla, formatos_del_desplazamiento = desplazamiento
+        extra.append(("Desplazamiento por tramo", tabla, formatos_del_desplazamiento))
     return StageSummary(
         stage="provisioning_ifrs9",
         label=STAGE_LABELS_CARTERA["provisioning_ifrs9"],
@@ -3086,6 +3082,9 @@ def _resumen_escenarios(study: Study, context: SummaryContext) -> StageSummary:
             f"{month_label(periodos[-1], f_esc)}. Se ponderan las pérdidas de cada escenario, no "
             "la macro"
         )
+    huellas = _linea_de_huellas(modelo, escenarios)
+    if huellas is not None:
+        lines.append(huellas)
     tabla = _tabla_de_escenarios(escenarios, _sequence(modelo.get("factor_cols")))
     formatos: dict[str, _Kind] = {"Peso": "pct"}
     for variable in _sequence(modelo.get("factor_cols")):
@@ -3109,6 +3108,25 @@ def _resumen_escenarios(study: Study, context: SummaryContext) -> StageSummary:
         formats=formatos,
         extra_tables=tuple(extra),
     )
+
+
+def _linea_de_huellas(modelo: Mapping[str, Any], escenarios: list[Mapping[str, Any]]) -> str | None:
+    """La huella del contenido de las dos tablas: su ubicación no es identidad, su contenido sí.
+
+    Desde la capa C de IFRS9-FIRMABLE (Cami, 2026-10-09) la ruta de la historia y la de cada
+    escenario no entran al ``config_hash``; lo que ancla qué tablas leyó la corrida es esta huella
+    (SHA-256 del contenido lógico, la misma del trail). Se dicen sus primeros 16 caracteres.
+    """
+    historia = modelo.get("history_hash")
+    if not isinstance(historia, str) or not historia:
+        return None
+    partes = [f"historia {historia[:16]}"]
+    partes.extend(
+        f"{e.get('name')} {str(e.get('content_hash'))[:16]}"
+        for e in escenarios
+        if isinstance(e.get("content_hash"), str)
+    )
+    return "Huella del contenido de las tablas (SHA-256): " + "; ".join(partes)
 
 
 def _tabla_de_escenarios(
@@ -3204,6 +3222,128 @@ def _lineas_del_ciclo(card: Mapping[str, Any]) -> tuple[list[str], list[str], pd
         for nombre, valor in por_escenario.items()
     ]
     return lines, alerts, pd.DataFrame(filas)
+
+
+#: Cómo se escribe la tabla «ECL por escenario»: en el resumen, en el Excel y en el informe.
+_FORMATOS_ECL_POR_ESCENARIO: Final[Mapping[str, _Kind]] = {
+    "Peso": "pct",
+    "Desplazamiento del primer año": "num3",
+    "ECL": "int",
+}
+
+#: El estado de cada tramo de `cycle_by_period`, en palabras (IFRS9-FIRMABLE §3.3).
+_ESTADO_DEL_TRAMO: Final[dict[str, str]] = {
+    "scenario": "escenario",
+    "reversion": "reversión",
+    "long_run": "largo plazo",
+}
+
+
+def _tabla_del_desplazamiento(
+    ciclo: pd.DataFrame | None,
+) -> tuple[pd.DataFrame, Mapping[str, _Kind]] | None:
+    """La curva que consumió la provisión con escenarios: el desplazamiento de cada tramo (§3.1).
+
+    Una fila por escenario y tramo de calendario posterior al corte —su ventana, el valor de cada
+    variable en ella, el desplazamiento en logit del riesgo y si viene del escenario, de la
+    reversión o del largo plazo— leída de ``("provisioning_ifrs9", "cycle_by_period")``. Es lo que
+    Resultados pinta como la curva consumida (abierto desde S32; IFRS9-FIRMABLE capa C).
+
+    Con las fechas del contrato, el artefacto trae además las ventanas parciales que usaron las
+    operaciones que vencen dentro de un tramo (medido en S40: 144 filas para 3 escenarios × 16
+    tramos); la tabla dice la ventana completa de cada tramo —la más larga— y el artefacto las
+    conserva todas.
+    """
+    if not isinstance(ciclo, pd.DataFrame) or ciclo.empty:
+        return None
+    ciclo = (
+        ciclo.assign(_orden=range(len(ciclo)))
+        .sort_values(["window_end", "_orden"], kind="stable")
+        .drop_duplicates(["scenario", "period"], keep="last")
+        .sort_values("_orden", kind="stable")
+        .drop(columns="_orden")
+        .reset_index(drop=True)
+    )
+    fijas = {
+        "scenario",
+        "period",
+        "window_start",
+        "window_end",
+        "months_in_scenario",
+        "cycle_shift",
+        "state",
+    }
+    variables = [c for c in ciclo.columns if c not in fijas]
+    tabla = pd.DataFrame(
+        {
+            "Escenario": ciclo["scenario"].astype(str),
+            "Tramo": ciclo["period"].astype("int64"),
+            "Desde": ciclo["window_start"].astype(str),
+            "Hasta": ciclo["window_end"].astype(str),
+            **{v: ciclo[v].astype("float64") for v in variables},
+            "Desplazamiento": ciclo["cycle_shift"].astype("float64"),
+            "Estado": [_ESTADO_DEL_TRAMO.get(str(e), str(e)) for e in ciclo["state"]],
+        }
+    )
+    formatos: dict[str, _Kind] = {"Tramo": "int", "Desplazamiento": "num3"}
+    formatos.update(dict.fromkeys(variables, "num2"))
+    return tabla, formatos
+
+
+def ifrs9_report_extras(study: Study) -> dict[str, dict[str, Any]]:
+    """Lo que el informe cuenta de los escenarios y de la PD del modelo (IFRS9-FIRMABLE capa C).
+
+    **Una sola fuente**: las mismas líneas, alertas y tablas que los resúmenes de «Escenarios» y de
+    «Provisión IFRS 9» —ya escritas como las lee una persona—, agrupadas por subsección del
+    capítulo IFRS 9:
+
+    - ``"forward"`` («Escenarios y ajuste por ciclo»): la sensibilidad estimada sobre la tasa de
+      referencia, los escenarios con sus pesos y la huella de las dos tablas; la ECL ponderada
+      frente a la de la curva a lo largo del ciclo y el ancla; la ECL por escenario y el
+      desplazamiento por tramo;
+    - ``"pd_model"`` («La PD de tu modelo…»): la PD del modelo frente a la de la curva y el aumento
+      significativo del riesgo por la PD de origen, con sus alertas (la fila sin fecha incluida).
+
+    Cada entrada trae ``lines``, ``alerts`` y ``tables`` (``(clave, columnas, filas)``). Sin
+    escenarios ni las dos PD, ``{}``: el informe es el de siempre.
+    """
+    salida: dict[str, dict[str, Any]] = {}
+    card = _card(study, "provisioning_ifrs9", "card") or {}
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="", partition_label="")
+    if _artifact(study, "forward", "cycle_model") is not None:
+        escenarios = _resumen_escenarios(study, contexto)
+        lineas_ciclo, alertas_ciclo, tabla_ciclo = _lineas_del_ciclo(card)
+        tablas: list[tuple[str, dict[str, Any] | None]] = [
+            ("forward.scenarios", _tabla_transportable(escenarios.table, escenarios.formats)),
+        ]
+        for titulo, tabla, formatos in escenarios.extra_tables:
+            if titulo == "La sensibilidad estimada":
+                tablas.append(("forward.sensitivity", _tabla_transportable(tabla, formatos)))
+        tablas.append(
+            (
+                "provisioning_ifrs9.ecl_by_scenario",
+                _tabla_transportable(tabla_ciclo, _FORMATOS_ECL_POR_ESCENARIO),
+            )
+        )
+        desplazamiento = _tabla_del_desplazamiento(
+            _artifact(study, "provisioning_ifrs9", "cycle_by_period")
+        )
+        if desplazamiento is not None:
+            tablas.append(
+                (
+                    "provisioning_ifrs9.shift_by_period",
+                    _tabla_transportable(desplazamiento[0], desplazamiento[1]),
+                )
+            )
+        salida["forward"] = {
+            "lines": [*escenarios.lines, *lineas_ciclo],
+            "alerts": [*escenarios.alerts, *alertas_ciclo],
+            "tables": [(k, t["columns"], t["rows"]) for k, t in tablas if t is not None],
+        }
+    lineas_pd, alertas_pd = _lineas_de_la_pd_del_modelo(card)
+    if lineas_pd or alertas_pd:
+        salida["pd_model"] = {"lines": lineas_pd, "alerts": alertas_pd, "tables": []}
+    return salida
 
 
 def _lineas_de_la_pd_del_modelo(card: Mapping[str, Any]) -> tuple[list[str], list[str]]:

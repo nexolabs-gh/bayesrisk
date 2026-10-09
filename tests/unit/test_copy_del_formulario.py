@@ -46,6 +46,8 @@ SECCIONES_DEL_FORMULARIO = (
     "stability",
     "validation",
     "survival",
+    # IFRS9-FIRMABLE capa C: los escenarios de la institución, entre la curva y las provisiones.
+    "forward",
     "provisioning_cmf",
     "provisioning_internal",
     "provisioning_ifrs9",

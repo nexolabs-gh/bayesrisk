@@ -33,7 +33,8 @@ nombre que tengan en tu archivo:
 | La curva de PD | cuánto tiempo se observó cada operación (entero ≥ 1) y si incumplió (0/1); la unidad de ese tiempo (`"month"`, `"quarter"`, `"year"`…) y hasta cuántos períodos se proyecta la curva |
 | Opcional | el identificador de la operación y las covariables que ordenan el riesgo |
 | Opcional, del contrato | la fecha de otorgamiento, la de vencimiento y la cuota mensual de cada operación (ver [Con las fechas y la cuota del contrato](#con-las-fechas-y-la-cuota-del-contrato)) |
-| Opcional, escenarios (experimental) | la historia de una tasa de incumplimiento de referencia con sus variables macroeconómicas y tus escenarios con sus pesos, en dos tablas aparte (ver [Con escenarios económicos](#con-escenarios-economicos-experimental)) |
+| Opcional, escenarios | la historia de una tasa de incumplimiento de referencia con sus variables macroeconómicas y tus escenarios con sus pesos, en dos tablas aparte (ver [Con escenarios económicos](#con-escenarios-economicos)) |
+| Opcional, la PD de tu modelo | la PD a 12 meses de hoy de cada operación y la del otorgamiento (ver [Con la PD de tu modelo](#con-la-pd-de-tu-modelo)) |
 
 Dos cosas que conviene saber antes de armar el archivo con datos reales:
 
@@ -220,7 +221,7 @@ PD a 12 meses de esa misma curva y a lo largo del ciclo: con otra configuración
 previa lo avisa antes de correr. Una fila sin fecha o sin cuota se lee como sin ese dato; sin ninguna de las tres
 columnas, la provisión es exactamente la de antes.
 
-## Con escenarios económicos (experimental)
+## Con escenarios económicos
 
 IFRS 9 pide una pérdida ponderada por la probabilidad de varios escenarios, con las condiciones
 actuales y las previsiones (5.5.17): la curva de PD sola es un promedio del ciclo. Con dos tablas
@@ -307,7 +308,7 @@ Lending Club (corte 2019, desempleo bajo el de la historia de su curva) baja un 
 curva sola, y la de las hipotecas de Freddie Mac (corte 2026, con un severo de 10 % de desempleo)
 sube un 12,9 %.
 
-## Con la PD de tu modelo (experimental)
+## Con la PD de tu modelo
 
 La curva de PD sale de la historia de incumplimientos de la cartera; tu scorecard o tu modelo de
 rating ya dice cuánto riesgo tiene cada operación hoy. Con dos columnas más, la provisión los usa:
@@ -377,21 +378,42 @@ bayesrisk-ui
 
 El trabajo «Provisiones IFRS 9 / ECL» pregunta lo mismo que la puerta guiada y nada más: no pide
 qué es un cliente malo ni cómo separar muestras —los muestra como «No aplica en una corrida de
-cartera»— y sí la duración, el evento, la unidad y el horizonte de la curva. La curva abre sus
-cinco campos esenciales y la provisión sus doce —las tres columnas opcionales del contrato van
-juntas bajo «Si tienes las fechas y la cuota del contrato», y las dos PD de tu modelo bajo «Si
-tienes la PD de tu modelo»—; el resto queda en «Avanzado». Los
-12 meses del Stage 1 se infieren de la unidad, como en la puerta guiada. Resultados pinta el mismo
-resumen, con sus supuestos, la curva de PD por cartera y la ECL por cartera y etapa.
+cartera»— y sí la duración, el evento, la unidad y el horizonte de la curva. Parte de las mismas
+constantes que la puerta guiada, así que con las mismas columnas calcula la misma provisión. La
+curva abre sus cinco campos esenciales y la provisión sus doce —las tres columnas opcionales del
+contrato van juntas bajo «Si tienes las fechas y la cuota del contrato», y las dos PD de tu modelo
+bajo «Si tienes la PD de tu modelo»—; el resto queda en «Avanzado». Los 12 meses del Stage 1 se
+infieren de la unidad, como en la puerta guiada.
+
+Los escenarios están en «Escenarios económicos», apagados hasta que subes tus dos tablas —la
+historia y los escenarios, con las mismas columnas que arriba—: la pantalla las lee con la misma
+regla que la puerta guiada —una tabla que ésta rechaza, la pantalla también, con el mismo motivo—,
+enciende la sección con lo que leyó y pone la provisión en el ajuste por ciclo; «Quitar los
+escenarios» la devuelve a lo largo del ciclo. La sección abre tres campos: la tabla de historia, la
+columna de la tasa de referencia (`default_rate`, si la tuya se llama distinto) y los escenarios
+con sus pesos. Resultados pinta el mismo resumen, con sus supuestos, la curva de PD por cartera
+—con escenarios, la curva que consumió la provisión: la ECL de cada escenario frente a la de la
+curva a lo largo del ciclo y el desplazamiento de cada tramo— y la ECL por cartera y etapa.
+
+Las tres puertas corren el mismo config: el YAML de la puerta guiada, cargado en la pantalla, da el
+mismo `config_hash` y la misma cifra. Armado en el formulario, la cifra es la misma y el
+`config_hash` difiere sólo en lo que la puerta guiada declara además —el esquema de tus columnas,
+los 12 meses que infirió y su semilla—. Dónde quedan tus dos tablas no cambia la identidad: el
+`config_hash` mira su contenido, por su huella, no su ubicación.
 
 ## Lo que entrega
 
 - **El informe** (HTML; Word, PDF y fuente editable si los pides): abre con la página «Resumen de
   la corrida» —ejecución, supuestos, las cinco cifras, qué revisar, decisiones y archivos— y su
   capítulo de provisiones publica la curva de PD por período y cartera, los coeficientes del
-  ajuste y la ECL por cartera y etapa.
-- **El Excel**, si lo pides con `ecl.export_excel()` (extra `excel`): un libro por etapa y uno de
-  decisiones.
+  ajuste y la ECL por cartera y etapa. Con escenarios, «Escenarios y ajuste por ciclo» dice la
+  sensibilidad estimada, el ancla, tus escenarios con sus pesos y la huella de las dos tablas, la
+  ECL de cada escenario frente a la de la curva a lo largo del ciclo y el desplazamiento de cada
+  tramo; con las dos PD de tu modelo, «La PD de tu modelo y el aumento significativo del riesgo»
+  dice tu PD frente a la de la curva y cuántas operaciones movió la comparación por tramo.
+- **El Excel**, si lo pides con `ecl.export_excel()` (extra `excel`): un libro por etapa
+  —`01 Cartera`, `02 Curva de PD`, `03 Escenarios` si los hay, `04 Provisión IFRS 9`— y
+  `05 Decisiones`.
 - **La evidencia**: el config, la copia de tus datos con su huella, el registro de auditoría y la
   ficha, en `bayesrisk-runs/<nombre>/`; `ecl.export()` la empaqueta.
 

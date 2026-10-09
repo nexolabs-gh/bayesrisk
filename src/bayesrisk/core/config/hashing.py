@@ -13,10 +13,16 @@ del dataset, así que el mismo dato en otra ruta (o el preset con ``source=None`
 con la ruta real) debe producir el MISMO ``config_hash``. Incluir la ruta era un defecto que rompía
 esa equivalencia y desalineaba el hash entre la app y el informe.
 
+Por la misma razón, desde la 2.10.0 se excluyen las rutas de las dos tablas de los escenarios de
+la institución (``forward.input.macro_source.path`` y ``forward.scenarios.scenarios[*].
+macro_path_path``): su contenido lo anclan sus huellas en ``("forward", "cycle_model")``.
+
 **Estabilidad (SemVer):** el algoritmo de canonicalización es estable dentro de 2.x. La exclusión de
 ``data.load.source`` se introdujo en **1.4.0** como corrección de defecto: recalcula la identidad de
 los configs que fijaban una ruta de dataset (antes la ruta contaminaba el hash). El hash del config
-por defecto no cambia (``data`` es ``None``).
+por defecto no cambia (``data`` es ``None``). La de las dos tablas de ``forward``, en la **2.10.0**
+(Cami, 2026-10-09): recalcula sólo la identidad de los configs con esas rutas; ningún preset las
+trae.
 """
 
 from __future__ import annotations
@@ -39,14 +45,28 @@ INFRA_SECTIONS: frozenset[str] = frozenset(
 
 
 def _hash_exclude() -> dict[str, Any]:
-    """Exclusión efectiva del hash: las secciones INFRA completas + la ruta ``data.load.source``.
+    """Exclusión efectiva del hash: las secciones INFRA completas y la ubicación de tres insumos.
 
-    Se construye por llamada (dict mutable) para no exponer un singleton mutable. La ruta del
-    dataset se excluye de forma **anidada** (``{"data": {"load": {"source": True}}}``): sólo cae ese
-    campo, el resto de ``data`` (panel transversal, columnas, particiones…) sí entra a la identidad.
+    Se construye por llamada (dict mutable) para no exponer un singleton mutable. Cada ruta se
+    excluye de forma **anidada**: sólo cae ese campo, y el resto de su sección sí entra a la
+    identidad. La ubicación de un archivo es plomería local (SDD-01 §329); su contenido lo ancla
+    una huella aparte:
+
+    - ``data.load.source``, el dataset, desde la 1.4.0 (su huella es el ``data_hash`` del lineage);
+    - ``forward.input.macro_source.path`` y ``forward.scenarios.scenarios[*].macro_path_path``, la
+      historia de la tasa de referencia y la trayectoria de cada escenario, desde la 2.10.0
+      (IFRS9-FIRMABLE capa C; Cami, 2026-10-09): la misma provisión con las mismas tablas tiene la
+      misma identidad venga de ``bayesrisk.Ecl``, de un YAML o de la pantalla, en cualquier
+      carpeta. Su huella viaja en ``("forward", "cycle_model")`` y en el trail. El resto de
+      ``forward`` —pesos, nombres, variables, columna de la tasa— sigue en la identidad, y también
+      cualquier otra ruta del config.
     """
     exclude: dict[str, Any] = dict.fromkeys(INFRA_SECTIONS, True)
     exclude["data"] = {"load": {"source": True}}
+    exclude["forward"] = {
+        "input": {"macro_source": {"path": True}},
+        "scenarios": {"scenarios": {"__all__": {"macro_path_path": True}}},
+    }
     return exclude
 
 
@@ -120,9 +140,9 @@ def config_hash(cfg: BayesRiskConfig) -> str:
     Returns
     -------
     str
-        Digest hexadecimal SHA-256 del config sin las :data:`INFRA_SECTIONS` ni la ruta
-        ``data.load.source`` (la identidad depende del CONTENIDO del dato, vía ``data_hash``, no de
-        su ubicación en disco).
+        Digest hexadecimal SHA-256 del config sin las :data:`INFRA_SECTIONS` ni las rutas que
+        excluye :func:`_hash_exclude` (la identidad depende del CONTENIDO de cada insumo, vía su
+        huella, no de su ubicación en disco).
     """
     cfg = _coaccionar_secciones_opacas(cfg)
     payload = cfg.model_dump(mode="json", by_alias=True, exclude=_hash_exclude())

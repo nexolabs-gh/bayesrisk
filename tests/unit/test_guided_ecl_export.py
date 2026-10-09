@@ -1,10 +1,11 @@
 """El Excel opcional y el paquete de ``bayesrisk.Ecl`` (FLUJO-GUIADO-IFRS9 capa B, D-ECL-10).
 
 §3.11 de la enmienda: ``ecl.export_excel()`` escribe ``01 Cartera.xlsx``, ``02 Curva de PD.xlsx``,
-``03 Provisión IFRS 9.xlsx`` y ``04 Decisiones.xlsx`` con la misma mecánica, protección de celdas
-y regla de numeración que el scorecard (el número es la posición de la etapa y no se mueve en una
-corrida parcial); cada tabla del informe del dominio está en el libro de su etapa **celda a celda**
-igual a como la escribe el informe, y las tablas adicionales del resumen —la curva por sus
+``04 Provisión IFRS 9.xlsx`` y ``05 Decisiones.xlsx`` —el ``03`` es «Escenarios», que una corrida
+sin escenarios no tiene (IFRS9-FIRMABLE capa C, Cami 2026-10-09)— con la misma mecánica, protección
+de celdas y regla de numeración que el scorecard (el número es la posición de la etapa y no se mueve
+en una corrida parcial); cada tabla del informe del dominio está en el libro de su etapa **celda a
+celda** igual a como la escribe el informe, y las tablas adicionales del resumen —la curva por sus
 coeficientes y por cartera, la provisión por etapa y gatillo— tienen hoja propia con las mismas
 celdas que el resumen. ``ecl.export()`` empaqueta el Excel con la corrida.
 """
@@ -28,7 +29,7 @@ from bayesrisk.ui import datasets
 openpyxl = pytest.importorskip("openpyxl", reason="el Excel opcional exige bayesrisk[excel]")
 pytest.importorskip("statsmodels", reason="la curva de PD exige el extra scoring")
 
-_LIBROS = ("01 Cartera.xlsx", "02 Curva de PD.xlsx", "03 Provisión IFRS 9.xlsx")
+_LIBROS = ("01 Cartera.xlsx", "02 Curva de PD.xlsx", "04 Provisión IFRS 9.xlsx")
 
 
 def _ecl(datos: Path, run_dir: Path, **cambios: Any) -> Ecl:
@@ -123,18 +124,19 @@ def _indice(ruta: Path) -> pd.DataFrame:
 def test_un_libro_numerado_por_etapa_de_la_provision_y_el_de_decisiones(
     corrida: Ecl, libros: dict[str, Path]
 ) -> None:
-    assert list(libros) == [*_LIBROS, "04 Decisiones.xlsx"]
+    assert list(libros) == [*_LIBROS, "05 Decisiones.xlsx"]
     assert all(ruta.parent == corrida.project_dir / EXCEL_SUBDIR for ruta in libros.values())
     # La numeración y los nombres son los de la familia: los rótulos de sus etapas, sin «report».
-    assert list(stage_books("cartera").values()) == list(_LIBROS)
-    assert decisions_book("cartera") == "04 Decisiones.xlsx"
+    # Sin escenarios falta el `03`, como en una corrida parcial (IFRS9-FIRMABLE capa C).
+    assert list(stage_books("cartera").values()) == [*_LIBROS[:2], "03 Escenarios.xlsx", _LIBROS[2]]
+    assert decisions_book("cartera") == "05 Decisiones.xlsx"
     # Y el scorecard no se movió.
     assert stage_books("scorecard")["validation"] == "10 Validación formal.xlsx"
     assert decisions_book("scorecard") == "11 Decisiones.xlsx"
     for nombre in _LIBROS:
         hojas = _hojas(libros[nombre])
         assert hojas[0] == "Resumen" and hojas[1] == "Decisión" and hojas[-1] == "Índice", nombre
-    humanas = _filas(libros["04 Decisiones.xlsx"], "Decisiones humanas")
+    humanas = _filas(libros["05 Decisiones.xlsx"], "Decisiones humanas")
     assert any("efecto nulo y sin sentido de negocio" in fila for fila in humanas[1:]), humanas
 
 
@@ -144,6 +146,8 @@ def test_el_resumen_y_las_tablas_adicionales_son_las_del_resumen_de_la_etapa(
     """La misma fuente que ``summary()``: líneas, tabla de decisión y cada tabla adicional."""
     comparadas = 0
     for stage, nombre in stage_books("cartera").items():
+        if nombre not in libros:  # «Escenarios»: esta corrida no los trae
+            continue
         resumen = corrida.summary(stage)
         libro = libros[nombre]
         lineas = [fila[0] for fila in _filas(libro, "Resumen")[1:]]
@@ -183,6 +187,8 @@ def test_cada_tabla_del_informe_esta_celda_a_celda_en_el_libro_de_su_etapa(
     tablas = ReportBuilder(config).collect(corrida.study).tables
     comparadas = 0
     for stage, nombre in stage_books("cartera").items():
+        if nombre not in libros:  # «Escenarios»: esta corrida no los trae
+            continue
         indice = _indice(libros[nombre])
         for clave in sorted(k for k in tablas if k.startswith(f"{stage}.")):
             # Como la escribe el informe (con índice) o, si es la tabla adicional del resumen que
@@ -213,7 +219,7 @@ def test_una_corrida_parcial_deja_los_primeros_libros_sin_mover_los_numeros(
     assert [ruta.name for ruta in ecl.export_excel()] == [
         "01 Cartera.xlsx",
         "02 Curva de PD.xlsx",
-        "04 Decisiones.xlsx",
+        "05 Decisiones.xlsx",
     ]
 
 

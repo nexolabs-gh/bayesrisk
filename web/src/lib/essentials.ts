@@ -127,6 +127,13 @@ export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
     "provisioning_ifrs9.staging.is_default_col",
     "provisioning_ifrs9.staging.origination_pd_12m_col",
   ],
+  // IFRS9-FIRMABLE D-FIR-11 (§13, capa C): la tabla de historia, la columna de la tasa de referencia
+  // —con su default— y los escenarios con sus pesos. Sólo la ofrece el trabajo de IFRS 9, latente.
+  forward: [
+    "forward.input.macro_source.path",
+    "forward.satellite.reference_rate_col",
+    "forward.scenarios.scenarios",
+  ],
 }
 
 /** Rótulo del bloque plegado. Copy público: una palabra que el modelador entiende. */
