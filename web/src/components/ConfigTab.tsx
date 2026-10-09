@@ -1423,6 +1423,7 @@ export function ConfigTab({
                 onQuitar={() => toggleSection(false)}
                 tablas={scenarioTables}
                 setTablas={setScenarioTables}
+                config={config}
               />
             ) : null}
             {sectionEntry.nullable ? (

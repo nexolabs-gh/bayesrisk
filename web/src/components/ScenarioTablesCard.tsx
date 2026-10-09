@@ -11,7 +11,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ApiError, scenarioTables, uploadDataset } from "@/lib/api"
 import { ALLOWED_DATA_EXTENSIONS, isAllowedDataFile } from "@/lib/datasets"
-import type { ScenarioTablesState, TablaSubida } from "@/lib/scenario-tables"
+import {
+  leerTablasVigentes,
+  type ScenarioTablesState,
+  type TablaSubida,
+} from "@/lib/scenario-tables"
 import { describeApiError } from "@/lib/validation"
 
 type Tabla = "historia" | "escenarios"
@@ -30,6 +34,8 @@ interface ScenarioTablesCardProps {
   /** Las dos tablas subidas, del store: sobreviven a cambiar de sección. */
   tablas: ScenarioTablesState
   setTablas: Dispatch<SetStateAction<ScenarioTablesState>>
+  /** El config vigente: una lectura sólo se aplica si no cambió mientras se leía. */
+  config: Record<string, unknown>
 }
 
 /**
@@ -51,7 +57,12 @@ export function ScenarioTablesCard({
   onQuitar,
   tablas,
   setTablas,
+  config,
 }: ScenarioTablesCardProps) {
+  // El config de ESTE render, para comparar al volver de una lectura: el store crea un objeto nuevo
+  // en cada cambio, así que «el mismo objeto» es «nadie lo tocó mientras se leía».
+  const configVigente = useRef(config)
+  configVigente.current = config
   const { historia, escenarios } = tablas
   // Lo leído sólo se dice mientras la sección siga encendida: apagada, ya no describe la corrida.
   const leido = active ? tablas.leido : null
@@ -70,24 +81,36 @@ export function ScenarioTablesCard({
   async function leer(h: TablaSubida, e: TablaSubida, nuevo?: string) {
     setOcupado("leer")
     setError(null)
-    try {
-      const resp = await scenarioTables({
-        history_dataset_id: h.datasetId,
-        scenarios_dataset_id: e.datasetId,
-        reference_rate_col: referenceRateCol,
-        portfolio_dataset_id: portfolioDatasetId,
-        as_of_col: asOfCol,
-      })
-      onTablas(resp.forward)
-      setTablas({ historia: h, escenarios: e, leido: resp.summary })
-    } catch (err) {
-      const motivo = mensajeDeError(err)
-      const siguen =
-        active && tablas.leido !== null ? " La sección sigue con las tablas que se leyeron antes." : ""
-      setError(nuevo ? `No se leyó «${nuevo}»: ${motivo}${siguen}` : `${motivo}${siguen}`)
-    } finally {
-      setOcupado(null)
+    const resultado = await leerTablasVigentes({
+      historia: h,
+      escenarios: e,
+      pedir: (historia, escenarios) =>
+        scenarioTables({
+          history_dataset_id: historia.datasetId,
+          scenarios_dataset_id: escenarios.datasetId,
+          reference_rate_col: referenceRateCol,
+          portfolio_dataset_id: portfolioDatasetId,
+          as_of_col: asOfCol,
+        }),
+      configAlPedir: configVigente.current,
+      configActual: () => configVigente.current,
+      describirError: mensajeDeError,
+    })
+    setOcupado(null)
+    if (resultado.kind === "aplicar") {
+      onTablas(resultado.forward)
+      setTablas({ historia: h, escenarios: e, leido: resultado.summary })
+      return
     }
+    const siguen =
+      active && tablas.leido !== null ? " La sección sigue con las tablas que se leyeron antes." : ""
+    if (resultado.kind === "descartada") {
+      setError(`${resultado.mensaje}${siguen}`)
+      return
+    }
+    setError(
+      nuevo ? `No se leyó «${nuevo}»: ${resultado.mensaje}${siguen}` : `${resultado.mensaje}${siguen}`,
+    )
   }
 
   async function subir(cual: Tabla, event: ChangeEvent<HTMLInputElement>) {

@@ -1352,6 +1352,43 @@ describe("encender y apagar una sección latente (IFRS9-FIRMABLE capa C)", () =>
     })
   })
 
+  it("restaurar la provisión la reconcilia con el estado de los escenarios (pasada 1 de Codex)", () => {
+    // Apagar la provisión, encender los escenarios y restaurarla: el gesto no pudo escribir en la
+    // provisión apagada, y la restauración traía `ttc_only`. Sin reconciliar, los escenarios
+    // corrían y la provisión no los consumía.
+    const apagada = { forward: null, provisioning_ifrs9: null }
+    const conEscenarios = encenderSeccion(apagada, "forward", {}, ifrs9)
+    const restaurada = encenderSeccion(
+      conEscenarios,
+      "provisioning_ifrs9",
+      { pd: { pit_mode: "ttc_only" }, scenarios: { source: "single" } },
+      ifrs9,
+    ) as Record<string, any>
+    expect(restaurada.provisioning_ifrs9.pd.pit_mode).toBe("cycle")
+    expect(restaurada.provisioning_ifrs9.scenarios.source).toBe("forward")
+    // Y al revés: los escenarios apagados mientras la provisión lo estaba, restaurada con `cycle`.
+    const sinEscenarios = apagarSeccion(
+      { forward: { satellite: {} }, provisioning_ifrs9: null },
+      "forward",
+      ifrs9,
+    )
+    const otra = encenderSeccion(
+      sinEscenarios,
+      "provisioning_ifrs9",
+      { pd: { pit_mode: "cycle" }, scenarios: { source: "forward" } },
+      ifrs9,
+    ) as Record<string, any>
+    expect(otra.provisioning_ifrs9.pd.pit_mode).toBe("ttc_only")
+    expect(otra.provisioning_ifrs9.scenarios.source).toBe("single")
+    // Lo que el gesto escribe DENTRO de los escenarios no se toca al reconciliar otra sección.
+    const editada = {
+      forward: { satellite: { mode: "fixed_coefficients" } },
+      provisioning_ifrs9: null,
+    }
+    const tras = encenderSeccion(editada, "provisioning_ifrs9", { pd: {} }, ifrs9) as Record<string, any>
+    expect(tras.forward.satellite.mode).toBe("fixed_coefficients")
+  })
+
   it("un gesto sobre una sección apagada no la crea", () => {
     const sinProvision = { forward: null, provisioning_ifrs9: null }
     const cfg = encenderSeccion(sinProvision, "forward", {}, ifrs9)

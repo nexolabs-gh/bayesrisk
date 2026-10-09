@@ -523,6 +523,7 @@ export function encenderSeccion(
   if (encima) {
     salida[seccion] = fusionar(salida[seccion] as Record<string, unknown>, encima)
   }
+  reconciliarGestos(salida, job)
   return salida
 }
 
@@ -537,7 +538,25 @@ export function apagarSeccion(
   for (const [ruta, valor] of job?.toggle_overrides?.[seccion]?.off ?? []) {
     escribirRuta(salida, ruta, valor)
   }
+  reconciliarGestos(salida, job)
   return salida
+}
+
+/**
+ * Lo que un gesto escribe en OTRA sección es una función del estado de la suya: con los escenarios
+ * encendidos la provisión está en el ajuste por ciclo, y apagados, a lo largo del ciclo. Un gesto
+ * no puede escribir en una sección apagada, así que restaurar después esa sección traía su valor
+ * viejo —escenarios encendidos con la provisión TTC, o el ciclo sin escenarios— (pasada 1 de Codex
+ * sobre la capa C). Tras cada interruptor se reaplican, según el estado vigente de cada sección con
+ * gestos, sus hojas que viven en otra sección; las de la propia no se tocan (son editables en ella).
+ */
+function reconciliarGestos(config: Record<string, unknown>, job: Job | null): void {
+  for (const [seccion, gestos] of Object.entries(job?.toggle_overrides ?? {})) {
+    const encendida = typeof config[seccion] === "object" && config[seccion] !== null
+    for (const [ruta, valor] of encendida ? gestos.on : gestos.off) {
+      if (ruta.split(".")[0] !== seccion) escribirRuta(config, ruta, valor)
+    }
+  }
 }
 
 /**

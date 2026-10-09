@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import json
 import math
 import warnings
 from collections.abc import Mapping, Sequence
@@ -293,13 +294,12 @@ class ForwardStep(AuditableMixin):
         )
         # La huella del contenido de cada tabla viaja con el modelo: su ruta no entra al
         # `config_hash` (IFRS9-FIRMABLE capa C; Cami, 2026-10-09), así que el contenido lo ancla
-        # ella, como el `data_hash` al dataset. Es la misma que ya registraba el trail.
-        huellas = {
-            nombre: _logical_frame_hash(frame, pd=pd) for nombre, frame in trayectorias.items()
-        }
+        # ella, como el `data_hash` al dataset; la misma que registra el trail. Firma también los
+        # encabezados (pasada 1 de Codex sobre la capa C).
+        huellas = {nombre: _content_hash(frame, pd=pd) for nombre, frame in trayectorias.items()}
         modelo = modelo.model_copy(
             update={
-                "history_hash": _logical_frame_hash(historia, pd=pd),
+                "history_hash": _content_hash(historia, pd=pd),
                 "scenarios": tuple(
                     escenario.model_copy(update={"content_hash": huellas[escenario.name]})
                     for escenario in modelo.scenarios
@@ -1055,6 +1055,23 @@ def _as_warning_tuple(value: Any) -> tuple[str, ...]:
     if isinstance(value, Sequence):
         return tuple(str(item) for item in value if item not in (None, ""))
     return (str(value),)
+
+
+def _content_hash(frame: DataFrame, *, pd: Any) -> str:
+    """La huella del CONTENIDO de una tabla de los escenarios: sus encabezados y sus valores.
+
+    Desde la capa C de IFRS9-FIRMABLE la ruta de la historia y la de cada escenario no entran al
+    ``config_hash`` (Cami, 2026-10-09): esta huella es lo que ancla qué tablas leyó la corrida. El
+    hash lógico de pandas firma los valores por fila pero no los nombres de las columnas, y en
+    estas tablas el nombre ES el significado —cuál es la tasa de referencia, cuál cada variable—:
+    dos historias con los mismos valores y los encabezados intercambiados estiman satélites
+    distintos (pasada 1 de Codex sobre la capa C). Por eso se firman también, en orden.
+    """
+    digest = hashlib.sha256()
+    digest.update(b"bayesrisk.forward.content.v1")
+    digest.update(json.dumps([str(c) for c in frame.columns], ensure_ascii=False).encode("utf-8"))
+    digest.update(_logical_frame_hash(frame, pd=pd).encode("ascii"))
+    return str(digest.hexdigest())
 
 
 def _logical_frame_hash(frame: DataFrame, *, pd: Any) -> str:

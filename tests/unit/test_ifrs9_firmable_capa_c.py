@@ -197,6 +197,40 @@ def test_otro_contenido_cambia_la_huella_y_no_el_config_hash(
     assert a.scenarios[1].content_hash != b.scenarios[1].content_hash  # «adverso» sí
 
 
+def test_la_huella_firma_tambien_los_encabezados_de_cada_tabla(
+    datos: Path, tmp_path: Path, _semilla: None
+) -> None:
+    """Pasada 1 de Codex sobre la capa C: la huella lógica de pandas no firma los nombres de las
+    columnas. Dos historias con los mismos valores y los encabezados de la tasa y de la variable
+    intercambiados —las dos válidas— estiman satélites distintos: sin la ruta en el `config_hash`,
+    la huella es lo único que las distingue."""
+    trimestres = pd.date_range("2005-01-01", "2025-04-01", freq="QS")
+    a = 0.02 + 0.01 * np.sin(np.arange(len(trimestres)) / 6.0)
+    b = 0.05 + 0.01 * np.cos(np.arange(len(trimestres)) / 5.0)
+    # Los mismos valores en las mismas posiciones; sólo cambian los nombres de las dos columnas.
+    historias = [
+        pd.DataFrame({"date": trimestres, "default_rate": a, "x": b}),
+        pd.DataFrame({"date": trimestres, "x": a, "default_rate": b}),
+    ]
+    futuro = pd.date_range("2025-07-01", periods=8, freq="QS")
+    escenarios = pd.DataFrame(
+        {
+            "scenario": ["base"] * 8 + ["adverso"] * 8,
+            "weight": [0.7] * 8 + [0.3] * 8,
+            "date": list(futuro) * 2,
+            "x": [0.05] * 8 + [0.06] * 8,
+        }
+    )
+    modelos = []
+    for i, historia in enumerate(historias):
+        ecl = _ecl(datos, tmp_path / f"h{i}", history=historia, scenarios=escenarios)
+        ecl.run(until="forward")
+        assert ecl.study.run_context.status == "done", ecl.study.run_context.error
+        modelos.append(ecl.study.artifacts.get("forward", "cycle_model"))
+    assert modelos[0].coefficients != modelos[1].coefficients
+    assert modelos[0].history_hash != modelos[1].history_hash
+
+
 # ─────────────────────────── 2. «Escenarios» tiene su libro ───────────────────────────
 
 
@@ -672,12 +706,17 @@ def test_el_informe_cuenta_los_escenarios_y_el_ajuste_por_ciclo(firmable: dict[s
     for linea in escenarios.lines:
         assert linea in cuerpo, linea
     assert "Huella del contenido" in cuerpo
-    # Con las fechas del contrato, una fila por escenario y tramo: la ventana completa de cada uno
-    # (el artefacto trae además las parciales de las operaciones que vencen dentro del tramo).
+    # Con las fechas del contrato, cada ventana que la provisión consumió de verdad: la completa de
+    # cada tramo y las parciales de las operaciones que vencen dentro de él, que pueden llevar otro
+    # desplazamiento (pasada 1 de Codex sobre la capa C: quedarse con la completa las perdía).
     tramos = bundle.tables["provisioning_ifrs9.shift_by_period"]
     ciclo = ecl.study.artifacts.get("provisioning_ifrs9", "cycle_by_period")
-    assert len(ciclo) > len(tramos) == ciclo[["scenario", "period"]].drop_duplicates().shape[0]
-    assert not tramos.duplicated(["Escenario", "Tramo"]).any()
+    assert len(tramos) == len(ciclo) > ciclo[["scenario", "period"]].drop_duplicates().shape[0]
+    assert not tramos.duplicated(["Escenario", "Tramo", "Desde", "Hasta"]).any()
+    por_tramo = tramos.groupby(["Escenario", "Tramo"])["Desplazamiento"].nunique()
+    assert (por_tramo > 1).any(), (
+        "ninguna ventana parcial con otro desplazamiento: el caso es vacuo"
+    )
     modelo = ecl.study.artifacts.get("forward", "cycle_model")
     assert modelo.history_hash is not None and modelo.history_hash[:16] in cuerpo
     assert "ECL ponderada por 3 escenarios" in cuerpo

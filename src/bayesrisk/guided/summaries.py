@@ -3249,21 +3249,13 @@ def _tabla_del_desplazamiento(
     reversión o del largo plazo— leída de ``("provisioning_ifrs9", "cycle_by_period")``. Es lo que
     Resultados pinta como la curva consumida (abierto desde S32; IFRS9-FIRMABLE capa C).
 
-    Con las fechas del contrato, el artefacto trae además las ventanas parciales que usaron las
-    operaciones que vencen dentro de un tramo (medido en S40: 144 filas para 3 escenarios × 16
-    tramos); la tabla dice la ventana completa de cada tramo —la más larga— y el artefacto las
-    conserva todas.
+    Con las fechas del contrato, cada tramo trae además las ventanas parciales que usaron las
+    operaciones que vencen dentro de él (medido en S40: 144 filas para 3 escenarios × 16 tramos),
+    y una parcial puede llevar otro desplazamiento que la completa —la macro cambia dentro del
+    tramo—: la tabla las dice todas, en el orden del artefacto (pasada 1 de Codex sobre la capa C).
     """
     if not isinstance(ciclo, pd.DataFrame) or ciclo.empty:
         return None
-    ciclo = (
-        ciclo.assign(_orden=range(len(ciclo)))
-        .sort_values(["window_end", "_orden"], kind="stable")
-        .drop_duplicates(["scenario", "period"], keep="last")
-        .sort_values("_orden", kind="stable")
-        .drop(columns="_orden")
-        .reset_index(drop=True)
-    )
     fijas = {
         "scenario",
         "period",
