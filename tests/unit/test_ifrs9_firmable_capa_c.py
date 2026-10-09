@@ -338,7 +338,9 @@ def _trabajo_ifrs9() -> dict[str, Any]:
     return next(j for j in list_jobs(incluir_referencia=True) if j["id"] == "provisiones_ifrs9")
 
 
-def _config_de_la_pantalla(datos: Path, forward: dict[str, Any] | None = None) -> BayesRiskConfig:
+def _config_de_la_pantalla(
+    datos: Path, forward: dict[str, Any] | None = None, provision: dict[str, Any] | None = None
+) -> BayesRiskConfig:
     from test_jobs_ejecutables import _esqueleto, _hijos_de, _proyeccion_canonica
 
     from bayesrisk.core.config.effective_defaults import build_effective_defaults
@@ -356,6 +358,9 @@ def _config_de_la_pantalla(datos: Path, forward: dict[str, Any] | None = None) -
         for ruta, valor in job["toggle_overrides"]["forward"]["on"]:
             _poner_ruta(cfg, ruta, valor)
         cfg["forward"] = _fusionar(cfg["forward"], forward)
+    if provision is not None:
+        # Réplica de `aplicarLecturaDeEscenarios`: lo que la provisión necesita, desde el servidor.
+        cfg["provisioning_ifrs9"] = _fusionar(cfg["provisioning_ifrs9"], provision)
     return BayesRiskConfig.model_validate(cfg)
 
 
@@ -495,7 +500,15 @@ def test_las_dos_tablas_por_la_pantalla_arman_la_seccion_de_la_puerta_guiada(
     assert respuesta.status_code == 200, respuesta.text
     cuerpo = respuesta.json()
     assert "Escenarios: 2 (base, adverso)" in cuerpo["summary"]
-    pantalla = _config_de_la_pantalla(datos, forward=cuerpo["forward"])
+    # Lo que la provisión necesita con escenarios viaja en la respuesta, también sin trabajo
+    # (pasada 2 de Codex): es lo mismo que escribe la puerta guiada.
+    assert cuerpo["provisioning_ifrs9"] == {
+        "pd": {"pit_mode": "cycle"},
+        "scenarios": {"source": "forward"},
+    }
+    pantalla = _config_de_la_pantalla(
+        datos, forward=cuerpo["forward"], provision=cuerpo["provisioning_ifrs9"]
+    )
     guiada = _ecl(datos, tmp_path / "guiada", history=_historia(), scenarios=_escenarios()).config
     assert _diferencias(pantalla, guiada) == _DIFERENCIAS_DECLARADAS
     # Las tablas quedaron en el `workdir` del servidor, una por escenario, y existen.
@@ -862,7 +875,11 @@ def test_el_formulario_con_las_dos_tablas_da_la_cifra_de_la_puerta_guiada(
         },
     )
     assert respuesta.status_code == 200, respuesta.text
-    pantalla = _config_de_la_pantalla(datos, forward=respuesta.json()["forward"])
+    pantalla = _config_de_la_pantalla(
+        datos,
+        forward=respuesta.json()["forward"],
+        provision=respuesta.json()["provisioning_ifrs9"],
+    )
     estudio = bayesrisk.run(pantalla, run_dir=tmp_path / "pantalla")
     assert estudio.run_context.status == "done", estudio.run_context.error
     assert _total(estudio) == _total(con_escenarios.study)

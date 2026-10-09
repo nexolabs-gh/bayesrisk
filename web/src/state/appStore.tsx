@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -69,6 +70,12 @@ export interface AppState {
   setJob: Dispatch<SetStateAction<Job | null>>
   config: Record<string, unknown>
   setConfig: Dispatch<SetStateAction<Record<string, unknown>>>
+  /**
+   * El config vigente AHORA, para quien vuelve de una espera (las dos tablas de escenarios): el
+   * `config` de un render ya pasado puede ser viejo, y una copia local en un componente se queda
+   * vieja si éste se desmonta (pasada 2 de Codex sobre la capa C). Lee el ref del proveedor.
+   */
+  getConfig: () => Record<string, unknown>
   /** Qué config está sembrado (preset / defaults / fallback); `null` mientras arranca. */
   seed: SeedState | null
   setSeed: Dispatch<SetStateAction<SeedState | null>>
@@ -157,6 +164,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // su efecto). Asignar en el cuerpo del render es el patrón de «ref al último valor».
   const configRef = useRef(config)
   configRef.current = config
+  const getConfig = useCallback(() => configRef.current, [])
 
   // Arranque de la sesión: carga el schema y siembra el PRESET ESTÁNDAR (config completo +
   // dataset recomendado) SIN depender de que se abra Configuración → entrar al workspace basta
@@ -284,6 +292,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setJob,
       config,
       setConfig,
+      getConfig,
       seed,
       setSeed,
       datasetId,

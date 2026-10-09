@@ -16,6 +16,7 @@ import { FieldRenderer } from "@/components/FieldRenderer"
 import { PreflightNotice } from "@/components/PreflightNotice"
 import { applyPreset } from "@/components/RunTab"
 import { ScenarioTablesCard } from "@/components/ScenarioTablesCard"
+import type { TablasLeidas } from "@/lib/scenario-tables"
 import {
   Accordion,
   AccordionContent,
@@ -41,6 +42,7 @@ import {
   type JobSwitch,
   type MethodologyStatus,
   apagarSeccion,
+  aplicarLecturaDeEscenarios,
   decisionStatuses,
   encenderSeccion,
   jobSwitchForConfig,
@@ -962,6 +964,7 @@ export function ConfigTab({
     externalInputs,
     scenarioTables,
     setScenarioTables,
+    getConfig,
     focusField,
   } = useAppState()
   const [yamlError, setYamlError] = useState<string | null>(null)
@@ -1179,10 +1182,17 @@ export function ConfigTab({
       setConfig((actual) => apagarSeccion(actual, section, job))
     }
   }
-  // Las dos tablas de escenarios, leídas por el servidor: la sección se enciende con ellas encima.
-  const aplicarTablasDeEscenarios = (forward: Record<string, unknown>) => {
+  // Las dos tablas de escenarios, leídas por el servidor: la sección se enciende con ellas encima y
+  // la provisión toma lo que necesita para consumirlas, haya o no trabajo (pasada 2 de Codex).
+  const aplicarTablasDeEscenarios = (leidas: TablasLeidas) => {
     const base = baseDeLaSeccion()
-    setConfig((actual) => encenderSeccion(actual, section, base, job, forward))
+    const { forward, provisioning_ifrs9 } = leidas
+    setConfig((actual) =>
+      aplicarLecturaDeEscenarios(actual, base, job, {
+        forward,
+        ...(provisioning_ifrs9 ? { provisioning_ifrs9 } : {}),
+      }),
+    )
   }
   const banner = SOURCE_BANNER[source]
   const errorLookup =
@@ -1423,7 +1433,7 @@ export function ConfigTab({
                 onQuitar={() => toggleSection(false)}
                 tablas={scenarioTables}
                 setTablas={setScenarioTables}
-                config={config}
+                getConfig={getConfig}
               />
             ) : null}
             {sectionEntry.nullable ? (

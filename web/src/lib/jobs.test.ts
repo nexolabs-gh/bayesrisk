@@ -15,6 +15,7 @@ import configTabSource from "@/components/ConfigTab.tsx?raw"
 import { configEditadoRespectoDelPreset } from "@/lib/bootstrap"
 import {
   FIXTURE_JOBS,
+  aplicarLecturaDeEscenarios,
   apagarSeccion,
   decisionStatuses,
   encenderSeccion,
@@ -1387,6 +1388,59 @@ describe("encender y apagar una sección latente (IFRS9-FIRMABLE capa C)", () =>
     }
     const tras = encenderSeccion(editada, "provisioning_ifrs9", { pd: {} }, ifrs9) as Record<string, any>
     expect(tras.forward.satellite.mode).toBe("fixed_coefficients")
+  })
+
+  it("un interruptor ajeno no cambia la provisión (pasada 2 de Codex)", () => {
+    // Un YAML con `forward` en otra modalidad —coeficientes fijos, la curva de forward por edad—
+    // y la provisión que la consume: encender Gobernanza no puede cambiarle el método.
+    const yaml = {
+      forward: { satellite: { mode: "fixed_coefficients" }, macro: { kind: "arima" } },
+      provisioning_ifrs9: { pd: { pit_mode: "consume_pit" }, scenarios: { source: "forward" } },
+      governance: null,
+    }
+    const tras = encenderSeccion(yaml, "governance", { purpose: "" }, ifrs9) as Record<string, any>
+    expect(tras.provisioning_ifrs9).toEqual(yaml.provisioning_ifrs9)
+    // Ni restaurar la provisión con esa modalidad de forward la pasa al ciclo.
+    const restaurada = encenderSeccion(
+      { ...yaml, provisioning_ifrs9: null },
+      "provisioning_ifrs9",
+      yaml.provisioning_ifrs9,
+      ifrs9,
+    ) as Record<string, any>
+    expect(restaurada.provisioning_ifrs9.pd.pit_mode).toBe("consume_pit")
+  })
+
+  it("apagar los escenarios sólo deshace lo que su gesto puso (pasada 2 de Codex)", () => {
+    const encendido = encenderSeccion(
+      { forward: null, provisioning_ifrs9: { pd: { pit_mode: "ttc_only" }, scenarios: {} } },
+      "forward",
+      {},
+      ifrs9,
+    ) as Record<string, any>
+    // El usuario eligió después otro método para la PD (Vasicek, que no necesita escenarios).
+    encendido.provisioning_ifrs9.pd.pit_mode = "apply_vasicek"
+    const apagado = apagarSeccion(encendido, "forward", ifrs9) as Record<string, any>
+    expect(apagado.provisioning_ifrs9.pd.pit_mode).toBe("apply_vasicek")
+    expect(apagado.provisioning_ifrs9.scenarios.source).toBe("single")
+  })
+
+  it("las tablas leídas ponen la provisión en el ciclo también sin trabajo (pasada 2 de Codex)", () => {
+    // Un YAML de IFRS 9 con `eda` no calza con ningún trabajo (`job` null): la provisión que
+    // necesitan los escenarios viene en la respuesta del servidor, no del catálogo.
+    const sinTrabajo = {
+      forward: null,
+      eda: {},
+      provisioning_ifrs9: { pd: { pit_mode: "ttc_only" }, scenarios: { source: "single" } },
+    }
+    const cfg = aplicarLecturaDeEscenarios(sinTrabajo, {}, null, {
+      forward: { satellite: { mode: "reference_rate" }, macro: { kind: "scenario_paths" } },
+      provisioning_ifrs9: { pd: { pit_mode: "cycle" }, scenarios: { source: "forward" } },
+      summary: "Escenarios: 2",
+    }) as Record<string, any>
+    expect(cfg.forward.macro.kind).toBe("scenario_paths")
+    expect(cfg.provisioning_ifrs9.pd.pit_mode).toBe("cycle")
+    expect(cfg.provisioning_ifrs9.scenarios.source).toBe("forward")
+    expect(cfg.eda).toEqual({})
   })
 
   it("un gesto sobre una sección apagada no la crea", () => {

@@ -490,6 +490,8 @@ export async function uploadDataset(file: File): Promise<UploadedDataset> {
 export interface ScenarioTablesResponse {
   /** La parte de la sección `forward` que sale de las dos tablas: rutas, variables y pesos. */
   forward: Record<string, unknown>
+  /** Lo que la provisión IFRS 9 necesita para consumirlos: el ajuste por ciclo. */
+  provisioning_ifrs9: Record<string, unknown>
   /** Lo que se leyó, en una línea («Escenarios: 3 (base, adverso, severo), trimestrales; …»). */
   summary: string
 }

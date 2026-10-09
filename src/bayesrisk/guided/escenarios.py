@@ -40,6 +40,7 @@ __all__ = [
     "COLUMNA_FECHA",
     "COLUMNA_PESO",
     "COLUMNA_TASA",
+    "PROVISION_CON_ESCENARIOS",
     "ScenarioTablesError",
     "TablasDeEscenarios",
     "contenido_parquet",
@@ -58,6 +59,15 @@ COLUMNA_PESO: Final = "weight"
 TOL_PESOS: Final = 1e-9
 
 _FRECUENCIAS: Final[dict[int, str]] = {1: "mensual", 3: "trimestral", 12: "anual"}
+
+#: Lo que la provisión IFRS 9 necesita para consumir los escenarios de la institución (D-FIR-1):
+#: el ajuste por ciclo y los escenarios de `forward`. Lo escribe `Ecl(history=, scenarios=)` y lo
+#: devuelve `POST /api/scenario-tables` junto con la sección `forward`, también cuando la pantalla
+#: no tiene un trabajo que lo siembre (pasada 2 de Codex sobre la capa C).
+PROVISION_CON_ESCENARIOS: Final[dict[str, dict[str, str]]] = {
+    "pd": {"pit_mode": "cycle"},
+    "scenarios": {"source": "forward"},
+}
 
 
 class ScenarioTablesError(ConfigError):

@@ -24,6 +24,8 @@ export const SIN_TABLAS: ScenarioTablesState = { historia: null, escenarios: nul
 /** Lo que devuelve el servidor al leer las dos tablas (`POST /api/scenario-tables`). */
 export interface TablasLeidas {
   forward: Record<string, unknown>
+  /** Lo que la provisión necesita para consumirlos (el ajuste por ciclo); ausente en un mock. */
+  provisioning_ifrs9?: Record<string, unknown>
   summary: string
 }
 

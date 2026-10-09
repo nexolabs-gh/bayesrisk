@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import tarjetaFuente from "@/components/ScenarioTablesCard.tsx?raw"
 import { leerTablasVigentes, SIN_TABLAS } from "@/lib/scenario-tables"
 
 /** Una promesa que el test resuelve cuando quiere: la respuesta «tardía» del servidor. */
@@ -59,5 +60,17 @@ describe("la lectura de las dos tablas sólo se aplica si el config no cambió (
     })
     expect(resultado).toEqual({ kind: "error", mensaje: "Hacen falta al menos dos escenarios" })
     expect(SIN_TABLAS.leido).toBeNull()
+  })
+})
+
+describe("la tarjeta compara contra el config del store (pasada 2 de Codex)", () => {
+  it("no guarda su propia copia del config y lo captura antes de subir", () => {
+    // Una copia local (`useRef(config)`) se queda vieja si la tarjeta se desmonta y otro YAML se
+    // carga en otra sección: la lectura vieja se aplicaba sobre el config nuevo.
+    expect(tarjetaFuente).not.toMatch(/useRef\(config\)/)
+    expect(tarjetaFuente).toMatch(/configActual: getConfig/)
+    // Y la referencia se toma al empezar la subida, no al volver de ella.
+    const subir = tarjetaFuente.slice(tarjetaFuente.indexOf("async function subir"))
+    expect(subir.indexOf("getConfig()")).toBeLessThan(subir.indexOf("await uploadDataset"))
   })
 })

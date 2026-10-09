@@ -698,12 +698,12 @@ def scenario_tables_payload(payload: Any, *, workdir: Path) -> dict[str, Any]:
     """Lee las dos tablas de escenarios subidas y arma la sección ``forward`` (IFRS9-FIRMABLE C).
 
     ``{history_dataset_id, scenarios_dataset_id, reference_rate_col?, portfolio_dataset_id?,
-    as_of_col?}`` → ``{forward, summary}``. Las dos tablas llegan por ``POST /api/upload`` como
-    cualquier archivo; aquí se leen y se validan con **la misma función** que
-    ``bayesrisk.Ecl(history=, scenarios=)`` (:mod:`bayesrisk.guided.escenarios`), así que una tabla
-    que la puerta guiada rechaza, la pantalla también, con el mismo motivo. Con la cartera y su
-    columna de corte, comprueba además —antes de correr, como la puerta guiada— que los escenarios
-    cubran los 12 meses siguientes al corte.
+    as_of_col?}`` → ``{forward, provisioning_ifrs9, summary}``. Las dos tablas llegan por ``POST
+    /api/upload`` como cualquier archivo; aquí se leen y se validan con **la misma función** que
+    ``bayesrisk.Ecl(history=, scenarios=)`` (:mod:`bayesrisk.guided.escenarios`), así que una
+    tabla que la puerta guiada rechaza, la pantalla también, con el mismo motivo. Con la cartera
+    y su columna de corte, comprueba además —antes de correr, como la puerta guiada— que los
+    escenarios cubran los 12 meses siguientes al corte.
 
     La historia y cada escenario quedan en ``workdir/scenario_tables/`` con su huella en el nombre;
     la sección que se devuelve las lee desde ahí. El front la escribe encima de lo que el trabajo
@@ -743,6 +743,7 @@ def scenario_tables_payload(payload: Any, *, workdir: Path) -> dict[str, Any]:
             cortes = cartera[corte_col].dropna().astype(str).str.strip().unique().tolist()
     # Import perezoso (D-HASH-5): la capa `ui` no carga dominios al importarse.
     from bayesrisk.guided.escenarios import (
+        PROVISION_CON_ESCENARIOS,
         ScenarioTablesError,
         escribir_tabla,
         leer_tabla,
@@ -769,6 +770,8 @@ def scenario_tables_payload(payload: Any, *, workdir: Path) -> dict[str, Any]:
     }
     return {
         "forward": seccion_forward(tablas, ruta_historia=str(ruta_historia), rutas=rutas),
+        # Lo que la provisión necesita para consumirlos, también sin un trabajo que lo siembre.
+        "provisioning_ifrs9": copy.deepcopy(PROVISION_CON_ESCENARIOS),
         "summary": tablas.linea,
     }
 

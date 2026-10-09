@@ -473,10 +473,13 @@ class Ecl(_PuertaGuiada):
         ifrs["pd"]["pd_12m_col"] = modelo["pd"]
         ifrs["staging"]["origination_pd_12m_col"] = modelo["origination_pd"]
         if ciclo is not None:
-            # IFRS9-FIRMABLE D-FIR-1…4: la vía de los escenarios de la institución.
+            # IFRS9-FIRMABLE D-FIR-1…4: la vía de los escenarios de la institución, con la misma
+            # parte de la provisión que devuelve la pantalla (`PROVISION_CON_ESCENARIOS`).
+            from bayesrisk.guided.escenarios import PROVISION_CON_ESCENARIOS
+
             cfg["forward"] = ciclo["forward"]
-            ifrs["pd"]["pit_mode"] = "cycle"
-            ifrs["scenarios"]["source"] = "forward"
+            for bloque, hojas in PROVISION_CON_ESCENARIOS.items():
+                ifrs[bloque].update(hojas)
         report = cfg["report"]
         report["output_dir"] = str(self._reports_dir)
         if document:

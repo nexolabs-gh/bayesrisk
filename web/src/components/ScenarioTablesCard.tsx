@@ -15,6 +15,7 @@ import {
   leerTablasVigentes,
   type ScenarioTablesState,
   type TablaSubida,
+  type TablasLeidas,
 } from "@/lib/scenario-tables"
 import { describeApiError } from "@/lib/validation"
 
@@ -28,14 +29,14 @@ interface ScenarioTablesCardProps {
   /** El archivo de cartera y su columna de corte: con los dos, se comprueba la cobertura antes. */
   portfolioDatasetId: string | null
   asOfCol: string | null
-  /** La sección armada con las dos tablas: el `ConfigTab` la escribe al encenderla. */
-  onTablas: (forward: Record<string, unknown>) => void
+  /** Lo leído de las dos tablas: el `ConfigTab` enciende la sección con ello. */
+  onTablas: (leidas: TablasLeidas) => void
   onQuitar: () => void
   /** Las dos tablas subidas, del store: sobreviven a cambiar de sección. */
   tablas: ScenarioTablesState
   setTablas: Dispatch<SetStateAction<ScenarioTablesState>>
-  /** El config vigente: una lectura sólo se aplica si no cambió mientras se leía. */
-  config: Record<string, unknown>
+  /** El config vigente del store: una lectura sólo se aplica si no cambió mientras se esperaba. */
+  getConfig: () => Record<string, unknown>
 }
 
 /**
@@ -57,12 +58,8 @@ export function ScenarioTablesCard({
   onQuitar,
   tablas,
   setTablas,
-  config,
+  getConfig,
 }: ScenarioTablesCardProps) {
-  // El config de ESTE render, para comparar al volver de una lectura: el store crea un objeto nuevo
-  // en cada cambio, así que «el mismo objeto» es «nadie lo tocó mientras se leía».
-  const configVigente = useRef(config)
-  configVigente.current = config
   const { historia, escenarios } = tablas
   // Lo leído sólo se dice mientras la sección siga encendida: apagada, ya no describe la corrida.
   const leido = active ? tablas.leido : null
@@ -78,7 +75,17 @@ export function ScenarioTablesCard({
    * rechazado no reemplaza al último leído, porque la sección sigue con esas tablas y la tarjeta
    * no puede mostrar otras (medido en vivo en S40).
    */
-  async function leer(h: TablaSubida, e: TablaSubida, nuevo?: string) {
+  /**
+   * `alPedir` es el config del store cuando empezó el gesto —antes de subir, si hubo subida—: el
+   * store crea un objeto nuevo en cada cambio, así que «el mismo objeto» al volver es «nadie lo
+   * tocó mientras se esperaba» (apagar la sección, editar otro campo, cargar otro YAML).
+   */
+  async function leer(
+    h: TablaSubida,
+    e: TablaSubida,
+    alPedir: Record<string, unknown>,
+    nuevo?: string,
+  ) {
     setOcupado("leer")
     setError(null)
     const resultado = await leerTablasVigentes({
@@ -92,13 +99,13 @@ export function ScenarioTablesCard({
           portfolio_dataset_id: portfolioDatasetId,
           as_of_col: asOfCol,
         }),
-      configAlPedir: configVigente.current,
-      configActual: () => configVigente.current,
+      configAlPedir: alPedir,
+      configActual: getConfig,
       describirError: mensajeDeError,
     })
     setOcupado(null)
     if (resultado.kind === "aplicar") {
-      onTablas(resultado.forward)
+      onTablas(resultado)
       setTablas({ historia: h, escenarios: e, leido: resultado.summary })
       return
     }
@@ -117,6 +124,7 @@ export function ScenarioTablesCard({
     const file = event.target.files?.[0]
     event.target.value = "" // permite volver a subir el mismo archivo
     if (!file) return
+    const alPedir = getConfig() // antes de la primera espera: la subida también tarda
     setError(null)
     if (!isAllowedDataFile(file.name)) {
       setError(`Formato no soportado: usa ${ALLOWED_DATA_EXTENSIONS.join(", ")}.`)
@@ -136,7 +144,7 @@ export function ScenarioTablesCard({
     const h = cual === "historia" ? subida : historia
     const e = cual === "escenarios" ? subida : escenarios
     if (h && e) {
-      await leer(h, e, file.name)
+      await leer(h, e, alPedir, file.name)
     } else {
       // La primera de las dos: todavía no hay qué leer, así que se guarda tal cual.
       setTablas((actual) =>
@@ -232,7 +240,7 @@ export function ScenarioTablesCard({
               variant="ghost"
               size="sm"
               disabled={ocupado !== null}
-              onClick={() => void leer(historia, escenarios)}
+              onClick={() => void leer(historia, escenarios, getConfig())}
             >
               <RefreshCw className="size-3.5" aria-hidden="true" />
               Volver a leer las tablas

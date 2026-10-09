@@ -505,6 +505,10 @@ function fusionar(
  * ciclo—. Con `encima`, una parte de la sección que llega armada desde el servidor (las dos tablas
  * de escenarios, `POST /api/scenario-tables`) se escribe al final. Pura: devuelve un config nuevo.
  *
+ * Si lo que se enciende es una sección a la que OTRA le escribe con su gesto —restaurar la
+ * provisión—, se reconcilia con el estado de esa otra (`reconciliarAlRestaurar`, pasadas 1 y 2 de
+ * Codex sobre la capa C). Nada más se toca: un interruptor ajeno no cambia ningún método.
+ *
  * La réplica Python vive en `test_ifrs9_firmable_capa_c.py` (`_config_de_la_pantalla`), que mide
  * con ella que la pantalla arma el mismo config que `bayesrisk.Ecl`.
  */
@@ -523,11 +527,15 @@ export function encenderSeccion(
   if (encima) {
     salida[seccion] = fusionar(salida[seccion] as Record<string, unknown>, encima)
   }
-  reconciliarGestos(salida, job)
+  reconciliarAlRestaurar(salida, seccion, job)
   return salida
 }
 
-/** Apaga una sección (`null`) y aplica lo que el trabajo declara para ese gesto (`off`). */
+/**
+ * Apaga una sección (`null`) y deshace lo que su gesto de encendido puso en otras secciones: cada
+ * hoja de `off` sólo se escribe si esa hoja todavía tiene el valor que puso `on`. Si el usuario
+ * eligió otra cosa después —Vasicek para la PD—, se respeta (pasada 2 de Codex sobre la capa C).
+ */
 export function apagarSeccion(
   config: Record<string, unknown>,
   seccion: string,
@@ -535,26 +543,107 @@ export function apagarSeccion(
 ): Record<string, unknown> {
   const salida = structuredClone(config)
   salida[seccion] = null
-  for (const [ruta, valor] of job?.toggle_overrides?.[seccion]?.off ?? []) {
-    escribirRuta(salida, ruta, valor)
-  }
-  reconciliarGestos(salida, job)
+  deshacerGesto(salida, seccion, job)
   return salida
 }
 
 /**
- * Lo que un gesto escribe en OTRA sección es una función del estado de la suya: con los escenarios
- * encendidos la provisión está en el ajuste por ciclo, y apagados, a lo largo del ciclo. Un gesto
- * no puede escribir en una sección apagada, así que restaurar después esa sección traía su valor
- * viejo —escenarios encendidos con la provisión TTC, o el ciclo sin escenarios— (pasada 1 de Codex
- * sobre la capa C). Tras cada interruptor se reaplican, según el estado vigente de cada sección con
- * gestos, sus hojas que viven en otra sección; las de la propia no se tocan (son editables en ella).
+ * Lo que vuelve de leer las dos tablas de escenarios (`POST /api/scenario-tables`): la sección
+ * `forward` armada y, aparte, lo que la provisión IFRS 9 necesita para consumirla. Encender la
+ * sección con lo leído y escribir esa parte de la provisión —si está encendida— no depende del
+ * trabajo de la sesión: con un YAML que no calza con ninguno (`job` nulo), sin esto los escenarios
+ * quedaban cargados y la provisión no los consumía (pasada 2 de Codex sobre la capa C).
  */
-function reconciliarGestos(config: Record<string, unknown>, job: Job | null): void {
+export function aplicarLecturaDeEscenarios(
+  config: Record<string, unknown>,
+  base: unknown,
+  job: Job | null,
+  leidas: { forward: Record<string, unknown>; [seccion: string]: unknown },
+): Record<string, unknown> {
+  const { forward, ...otras } = leidas
+  const salida = encenderSeccion(config, "forward", base, job, forward)
+  for (const [seccion, parte] of Object.entries(otras)) {
+    const actual = salida[seccion]
+    const esObjeto = (v: unknown) => typeof v === "object" && v !== null && !Array.isArray(v)
+    if (esObjeto(actual) && esObjeto(parte)) {
+      salida[seccion] = fusionar(actual as Record<string, unknown>, parte as Record<string, unknown>)
+    }
+  }
+  return salida
+}
+
+/** Valor en una ruta con puntos; `undefined` si falta un tramo. */
+function leerRuta(config: Record<string, unknown>, ruta: string): unknown {
+  let nodo: unknown = config
+  for (const tramo of ruta.split(".")) {
+    if (typeof nodo !== "object" || nodo === null) return undefined
+    nodo = (nodo as Record<string, unknown>)[tramo]
+  }
+  return nodo
+}
+
+const mismoValor = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+
+/** Las parejas de un gesto que viven FUERA de su sección y dentro de `destino`. */
+function parejasHacia(
+  pares: [string, unknown][],
+  propia: string,
+  destino: string,
+): [string, unknown][] {
+  return pares.filter(([ruta]) => {
+    const raiz = ruta.split(".")[0]
+    return raiz !== propia && raiz === destino
+  })
+}
+
+/**
+ * Deshace en las otras secciones lo que puso el gesto `on` de `seccion`, hoja por hoja; con
+ * `soloEn`, sólo en esa sección.
+ */
+function deshacerGesto(
+  config: Record<string, unknown>,
+  seccion: string,
+  job: Job | null,
+  soloEn?: string,
+): void {
+  const gestos = job?.toggle_overrides?.[seccion]
+  if (!gestos) return
+  const puesto = new Map(gestos.on.map(([ruta, valor]) => [ruta, valor]))
+  for (const [ruta, valor] of gestos.off) {
+    const raiz = ruta.split(".")[0]
+    if (raiz === seccion || !puesto.has(ruta) || (soloEn !== undefined && raiz !== soloEn)) {
+      continue
+    }
+    if (mismoValor(leerRuta(config, ruta), puesto.get(ruta))) escribirRuta(config, ruta, valor)
+  }
+}
+
+/**
+ * Al restaurar `destino`, lo que otra sección con gestos le escribe se vuelve a aplicar según el
+ * estado vigente de esa otra: un gesto no puede escribir en una sección apagada, así que la
+ * restauración traía su valor viejo (pasada 1 de Codex). Con dos guardas (pasada 2):
+ * - encendida, sólo si está en la modalidad que su gesto crea —sus propias hojas de `on` siguen
+ *   como él las puso—: `forward` con coeficientes fijos de un YAML no pasa la provisión al ciclo;
+ * - apagada, sólo se deshace lo que su gesto puso (`deshacerGesto`).
+ */
+function reconciliarAlRestaurar(
+  config: Record<string, unknown>,
+  destino: string,
+  job: Job | null,
+): void {
   for (const [seccion, gestos] of Object.entries(job?.toggle_overrides ?? {})) {
+    if (seccion === destino) continue
     const encendida = typeof config[seccion] === "object" && config[seccion] !== null
-    for (const [ruta, valor] of encendida ? gestos.on : gestos.off) {
-      if (ruta.split(".")[0] !== seccion) escribirRuta(config, ruta, valor)
+    if (!encendida) {
+      deshacerGesto(config, seccion, job, destino)
+      continue
+    }
+    const enSuModalidad = gestos.on
+      .filter(([ruta]) => ruta.split(".")[0] === seccion)
+      .every(([ruta, valor]) => mismoValor(leerRuta(config, ruta), valor))
+    if (!enSuModalidad) continue
+    for (const [ruta, valor] of parejasHacia(gestos.on, seccion, destino)) {
+      escribirRuta(config, ruta, valor)
     }
   }
 }
