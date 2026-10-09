@@ -1045,6 +1045,30 @@ ventanas parciales, el capítulo sin la subsección, las tablas del informe con 
 el informe sin las alertas, la columna de la tasa sin su marca, el copy de `forward` con «True»,
 apagar en el front sin el gesto y la sección de Resultados sin escenarios—.
 
+**Revisión adversarial de Codex** (tope declarado de tres pasadas; la cuarta y la quinta, de
+confirmación, autorizadas por Cami al cierre). La pasada 1, sobre `80877c5`, encontró cuatro defectos —restaurar la
+provisión la desacoplaba de los escenarios; la huella no firmaba los encabezados (dos historias con
+los nombres de la tasa y de la variable intercambiados daban la misma huella y satélites
+distintos); una lectura tardía volvía a encender escenarios ya descartados; «Desplazamiento por
+tramo» omitía las ventanas parciales que la provisión sí consumió— (`3409cea`). La pasada 2, tres
+—con un YAML que no calza con ningún trabajo, las tablas quedaban cargadas y la provisión no las
+consumía (la ruta devuelve ahora también `PROVISION_CON_ESCENARIOS`, la misma fuente que `Ecl`); la
+guarda de la tarjeta no cubría la subida; reconciliar por la sola presencia de `forward` pisaba los
+métodos explícitos de un YAML— (`fe7edc7`). La pasada 3, dos —sin trabajo, restaurar la provisión
+o quitar los escenarios no se reconciliaba (sin trabajo, los gestos salen del catálogo); una subida
+vieja de la primera tabla que volvía tarde pisaba a una más nueva (una marca por subida en el
+store)— (`db5e864`). La pasada 4, uno —con las dos tablas, la marca se liberaba antes de terminar
+la lectura y una lectura vieja podía aplicarse y descartar a la nueva: cada gesto (subir una tabla,
+volver a leer, quitar los escenarios) es ahora uno solo en el store, desde la subida hasta su
+lectura, y la secuencia vive en `lib/scenario-tables`, probada con promesas diferidas en los dos
+órdenes— (`2540e6b`). Ninguno fue contractual: todos de implementación, cada uno con su test nacido
+rojo y su control negativo (4 + 6 + 3 + 3, rojos por su motivo y restaurados byte a byte;
+`evidencia/s40/salidas/cn_*`), y los del front verificados en vivo —la carrera de subidas,
+reproducida con una subida demorada; la sesión sin trabajo, con un YAML de IFRS 9 cargado—.
+La pasada 5, de confirmación sobre `2540e6b`: **approve**, sin hallazgos materiales ni regresiones
+de las anteriores (revisó las carreras entre subidas, relecturas, retiradas y errores tardíos sobre
+el bundle distribuido). Capa C: 4 → 3 → 2 → 1 → 0.
+
 ## 13. Simplicidad (SDD-31)
 
 - **Entrada mínima:** la de CASO-REAL más, opcionales, dos tablas (historia de la tasa de referencia
