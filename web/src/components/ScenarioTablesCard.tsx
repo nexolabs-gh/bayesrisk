@@ -13,6 +13,7 @@ import { ApiError, scenarioTables, uploadDataset } from "@/lib/api"
 import { ALLOWED_DATA_EXTENSIONS, isAllowedDataFile } from "@/lib/datasets"
 import {
   leerTablasVigentes,
+  resolverSubida,
   type ScenarioTablesState,
   type TablaSubida,
   type TablasLeidas,
@@ -37,7 +38,13 @@ interface ScenarioTablesCardProps {
   setTablas: Dispatch<SetStateAction<ScenarioTablesState>>
   /** El config vigente del store: una lectura sólo se aplica si no cambió mientras se esperaba. */
   getConfig: () => Record<string, unknown>
+  /** Las tablas vigentes del store, para quien vuelve de una subida. */
+  getTablas: () => ScenarioTablesState
 }
+
+// Una marca por subida, fuera del componente: sobrevive a que la tarjeta se desmonte y se vuelva a
+// montar mientras un archivo sigue subiendo.
+let ultimaMarca = 0
 
 /**
  * Las dos tablas de los escenarios de la institución (IFRS9-FIRMABLE capa C, D-FIR-11).
@@ -59,6 +66,7 @@ export function ScenarioTablesCard({
   tablas,
   setTablas,
   getConfig,
+  getTablas,
 }: ScenarioTablesCardProps) {
   const { historia, escenarios } = tablas
   // Lo leído sólo se dice mientras la sección siga encendida: apagada, ya no describe la corrida.
@@ -106,7 +114,7 @@ export function ScenarioTablesCard({
     setOcupado(null)
     if (resultado.kind === "aplicar") {
       onTablas(resultado)
-      setTablas({ historia: h, escenarios: e, leido: resultado.summary })
+      setTablas((actual) => ({ ...actual, historia: h, escenarios: e, leido: resultado.summary }))
       return
     }
     const siguen =
@@ -130,26 +138,42 @@ export function ScenarioTablesCard({
       setError(`Formato no soportado: usa ${ALLOWED_DATA_EXTENSIONS.join(", ")}.`)
       return
     }
+    // Sólo la última subida que se pidió para esta tabla puede guardarse: una vieja que vuelve tarde
+    // —la tarjeta se desmontó y se volvió a montar entretanto— no pisa a la nueva.
+    const marca = String(++ultimaMarca)
+    setTablas((actual) => ({ ...actual, pendiente: { ...actual.pendiente, [cual]: marca } }))
     setOcupado(cual)
     let subida: TablaSubida
     try {
       const resp = await uploadDataset(file)
       subida = { datasetId: resp.dataset_id, fileName: file.name }
     } catch (err) {
+      setTablas((actual) => liberar(actual, cual, marca))
       setError(mensajeDeError(err))
       setOcupado(null)
       return
     }
     setOcupado(null)
-    const h = cual === "historia" ? subida : historia
-    const e = cual === "escenarios" ? subida : escenarios
+    const resultado = resolverSubida(getTablas(), cual, marca, subida, getConfig(), alPedir)
+    if (resultado.kind === "descartar") {
+      setTablas((actual) => liberar(actual, cual, marca))
+      setError(
+        `«${file.name}» terminó de subir cuando ya se había pedido otra tabla o había cambiado la ` +
+          "configuración, así que no se usó. Vuelve a subirlo si es el que quieres.",
+      )
+      return
+    }
+    const { siguiente } = resultado
+    const h = siguiente.historia
+    const e = siguiente.escenarios
     if (h && e) {
+      // Con las dos, la nueva queda sólo si el servidor la lee: un archivo rechazado no reemplaza
+      // al último leído.
+      setTablas((actual) => liberar(actual, cual, marca))
       await leer(h, e, alPedir, file.name)
     } else {
       // La primera de las dos: todavía no hay qué leer, así que se guarda tal cual.
-      setTablas((actual) =>
-        cual === "historia" ? { ...actual, historia: subida } : { ...actual, escenarios: subida },
-      )
+      setTablas(siguiente)
     }
   }
 
@@ -266,6 +290,17 @@ export function ScenarioTablesCard({
       </CardContent>
     </Card>
   )
+}
+
+/** Quita la marca de una subida si sigue siendo la pendiente de esa tabla. */
+function liberar(
+  estado: ScenarioTablesState,
+  cual: Tabla,
+  marca: string,
+): ScenarioTablesState {
+  if (estado.pendiente?.[cual] !== marca) return estado
+  const { [cual]: _liberada, ...resto } = estado.pendiente
+  return { ...estado, pendiente: resto }
 }
 
 function mensajeDeError(err: unknown): string {

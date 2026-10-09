@@ -1443,6 +1443,29 @@ describe("encender y apagar una sección latente (IFRS9-FIRMABLE capa C)", () =>
     expect(cfg.eda).toEqual({})
   })
 
+  it("sin trabajo, restaurar la provisión y quitar los escenarios también se reconcilian (pasada 3 de Codex)", () => {
+    // Un YAML de IFRS 9 con `eda` no calza con ningún trabajo (`job` nulo): los gestos de los
+    // escenarios son los del catálogo, no los de la sesión.
+    const lectura = {
+      forward: { satellite: { mode: "reference_rate" }, macro: { kind: "scenario_paths" } },
+      provisioning_ifrs9: { pd: { pit_mode: "cycle" }, scenarios: { source: "forward" } },
+    }
+    const apagada = { forward: null, eda: {}, provisioning_ifrs9: null }
+    const conEscenarios = aplicarLecturaDeEscenarios(apagada, {}, null, lectura)
+    expect(conEscenarios.provisioning_ifrs9).toBeNull()
+    const restaurada = encenderSeccion(
+      conEscenarios,
+      "provisioning_ifrs9",
+      { pd: { pit_mode: "ttc_only" }, scenarios: { source: "single" } },
+      null,
+    ) as Record<string, any>
+    expect(restaurada.provisioning_ifrs9.pd.pit_mode).toBe("cycle")
+    expect(restaurada.provisioning_ifrs9.scenarios.source).toBe("forward")
+    const quitados = apagarSeccion(restaurada, "forward", null) as Record<string, any>
+    expect(quitados.provisioning_ifrs9.pd.pit_mode).toBe("ttc_only")
+    expect(quitados.provisioning_ifrs9.scenarios.source).toBe("single")
+  })
+
   it("un gesto sobre una sección apagada no la crea", () => {
     const sinProvision = { forward: null, provisioning_ifrs9: null }
     const cfg = encenderSeccion(sinProvision, "forward", {}, ifrs9)

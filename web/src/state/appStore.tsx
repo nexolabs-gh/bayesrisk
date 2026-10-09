@@ -94,6 +94,8 @@ export interface AppState {
   /** Las dos tablas de escenarios subidas (IFRS9-FIRMABLE capa C); persisten entre pestañas. */
   scenarioTables: ScenarioTablesState
   setScenarioTables: Dispatch<SetStateAction<ScenarioTablesState>>
+  /** Las dos tablas AHORA, para quien vuelve de una subida (como `getConfig`). */
+  getScenarioTables: () => ScenarioTablesState
   /** Los insumos que el trabajo pide CON EL CONFIG ACTUAL, ya resueltas sus condiciones. */
   requiredExternals: ExternalArtifact[]
   /** El cuerpo que viaja al backend: una referencia por insumo pedido y ya cubierto. */
@@ -135,7 +137,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [externalInputs, setExternalInputs] = useState<
     Record<string, ExternalInput>
   >({})
-  const [scenarioTables, setScenarioTables] = useState<ScenarioTablesState>(SIN_TABLAS)
+  const [scenarioTables, setScenarioTablesEstado] = useState<ScenarioTablesState>(SIN_TABLAS)
   const [selectedDataset, setSelectedDataset] =
     useState<SelectedDataset | null>(null)
   const [validation, setValidation] = useState<ValidationState>({ kind: "idle" })
@@ -165,6 +167,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const configRef = useRef(config)
   configRef.current = config
   const getConfig = useCallback(() => configRef.current, [])
+  // Las tablas de escenarios se leen al volver de una subida, quizás antes del render siguiente: el
+  // ref se actualiza en el mismo gesto que el estado, no en el render, para que una marca recién
+  // puesta ya se vea (pasada 3 de Codex sobre la capa C).
+  const scenarioTablesRef = useRef(scenarioTables)
+  const setScenarioTables = useCallback<Dispatch<SetStateAction<ScenarioTablesState>>>((valor) => {
+    const siguiente = typeof valor === "function" ? valor(scenarioTablesRef.current) : valor
+    scenarioTablesRef.current = siguiente
+    setScenarioTablesEstado(siguiente)
+  }, [])
+  const getScenarioTables = useCallback(() => scenarioTablesRef.current, [])
 
   // Arranque de la sesión: carga el schema y siembra el PRESET ESTÁNDAR (config completo +
   // dataset recomendado) SIN depender de que se abra Configuración → entrar al workspace basta
@@ -301,6 +313,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setExternalInputs,
       scenarioTables,
       setScenarioTables,
+      getScenarioTables,
       requiredExternals,
       externalRefs,
       selectedDataset,
@@ -334,6 +347,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       lastRun,
       results,
       welcomeDismissed,
+      // Estables (`useCallback` sin dependencias): no recalculan nada, pero el lint los exige.
+      getConfig,
+      getScenarioTables,
+      setScenarioTables,
     ],
   )
 

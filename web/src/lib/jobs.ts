@@ -521,7 +521,7 @@ export function encenderSeccion(
 ): Record<string, unknown> {
   const salida = structuredClone(config)
   salida[seccion] = structuredClone(base ?? {})
-  for (const [ruta, valor] of job?.toggle_overrides?.[seccion]?.on ?? []) {
+  for (const [ruta, valor] of gestosDe(job)[seccion]?.on ?? []) {
     escribirRuta(salida, ruta, valor)
   }
   if (encima) {
@@ -572,6 +572,27 @@ export function aplicarLecturaDeEscenarios(
   return salida
 }
 
+type Gestos = Record<string, { on: [string, unknown][]; off: [string, unknown][] }>
+
+/**
+ * Los gestos que rigen esta sesión: los del trabajo elegido o, sin trabajo —un YAML que no calza
+ * con ninguno, `job` nulo—, los que declara el catálogo para sus secciones. Que una sección esté
+ * acoplada a otra (los escenarios a la provisión) es una propiedad de esas secciones, no de cómo
+ * se llegó a ellas: sin esto, sin trabajo, restaurar la provisión o quitar los escenarios no se
+ * reconciliaba (pasada 3 de Codex sobre la capa C). Es el catálogo que trae el bundle, el mismo
+ * que `loadJobs` usa de respaldo y que el gate de `test_jobs_catalogo.py` ata al backend.
+ */
+function gestosDe(job: Job | null): Gestos {
+  if (job !== null) return job.toggle_overrides ?? {}
+  const delCatalogo: Gestos = {}
+  for (const trabajo of FIXTURE_JOBS.jobs) {
+    for (const [seccion, gestos] of Object.entries(trabajo.toggle_overrides ?? {})) {
+      delCatalogo[seccion] ??= gestos
+    }
+  }
+  return delCatalogo
+}
+
 /** Valor en una ruta con puntos; `undefined` si falta un tramo. */
 function leerRuta(config: Record<string, unknown>, ruta: string): unknown {
   let nodo: unknown = config
@@ -606,7 +627,7 @@ function deshacerGesto(
   job: Job | null,
   soloEn?: string,
 ): void {
-  const gestos = job?.toggle_overrides?.[seccion]
+  const gestos = gestosDe(job)[seccion]
   if (!gestos) return
   const puesto = new Map(gestos.on.map(([ruta, valor]) => [ruta, valor]))
   for (const [ruta, valor] of gestos.off) {
@@ -631,7 +652,7 @@ function reconciliarAlRestaurar(
   destino: string,
   job: Job | null,
 ): void {
-  for (const [seccion, gestos] of Object.entries(job?.toggle_overrides ?? {})) {
+  for (const [seccion, gestos] of Object.entries(gestosDe(job))) {
     if (seccion === destino) continue
     const encendida = typeof config[seccion] === "object" && config[seccion] !== null
     if (!encendida) {

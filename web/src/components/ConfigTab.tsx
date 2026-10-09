@@ -965,6 +965,7 @@ export function ConfigTab({
     scenarioTables,
     setScenarioTables,
     getConfig,
+    getScenarioTables,
     focusField,
   } = useAppState()
   const [yamlError, setYamlError] = useState<string | null>(null)
@@ -1434,6 +1435,7 @@ export function ConfigTab({
                 tablas={scenarioTables}
                 setTablas={setScenarioTables}
                 getConfig={getConfig}
+                getTablas={getScenarioTables}
               />
             ) : null}
             {sectionEntry.nullable ? (

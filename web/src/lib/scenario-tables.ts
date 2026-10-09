@@ -17,6 +17,11 @@ export interface ScenarioTablesState {
   escenarios: TablaSubida | null
   /** Lo que el servidor leyó la última vez, en una línea; `null` si todavía no las leyó. */
   leido: string | null
+  /**
+   * La marca de la subida en curso de cada tabla: sólo la última que se pidió puede guardarse
+   * (pasada 3 de Codex sobre la capa C). Ausente cuando no hay ninguna en curso.
+   */
+  pendiente?: Partial<Record<"historia" | "escenarios", string>>
 }
 
 export const SIN_TABLAS: ScenarioTablesState = { historia: null, escenarios: null, leido: null }
@@ -69,4 +74,29 @@ export async function leerTablasVigentes(args: {
     }
   }
   return { kind: "aplicar", ...leidas }
+}
+
+export type ResultadoDeSubida =
+  | { kind: "guardar"; siguiente: ScenarioTablesState }
+  | { kind: "descartar" }
+
+/**
+ * Decide qué hacer con una tabla que terminó de subir. Se guarda sólo si es la última que se pidió
+ * para esa tabla —su marca sigue pendiente— y si el config no cambió mientras subía; si no, se
+ * descarta: una subida vieja que vuelve tarde pisaba a una más nueva y la lectura siguiente usaba
+ * la historia que el usuario había reemplazado (pasada 3 de Codex sobre la capa C). Pura.
+ */
+export function resolverSubida(
+  vigente: ScenarioTablesState,
+  cual: "historia" | "escenarios",
+  marca: string,
+  subida: TablaSubida,
+  configActual: unknown,
+  configAlPedir: unknown,
+): ResultadoDeSubida {
+  if (vigente.pendiente?.[cual] !== marca || configActual !== configAlPedir) {
+    return { kind: "descartar" }
+  }
+  const { [cual]: _liberada, ...resto } = vigente.pendiente ?? {}
+  return { kind: "guardar", siguiente: { ...vigente, [cual]: subida, pendiente: resto } }
 }
