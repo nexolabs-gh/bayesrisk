@@ -17,6 +17,14 @@
 > procedencia real— (§5.3, §12-4, contractual); y la comparación de reglas de §12-1 se rehízo con la
 > PD propuesta —el rojo que citaba era de la otra PD— y con el Gini que conserva cada escala (§0.3).
 > Informe: `evidencia/s41/codex_p1_raw.txt`.
+> **Pasada 2** (un high y tres medium, los cuatro reales; uno contractual): una sola regla de corte
+> —`s ≥ c` al lado de puntaje mayor en las dos direcciones— y rótulos derivados de la tarjeta, porque
+> `⌊c⌋` con dirección invertida y un corte entero aprobaba una solicitud que la asignación dejaba
+> fuera (§3.2, §3.5, §4.2); el contraste en Desarrollo es un diagnóstico real cuando la PD se aparta
+> de la tasa (igualación o ancla externa) y se alerta (§3.4); §12-4, §4.3 y §11 dicen la misma
+> garantía de identidad, con `bundle_hash` como procedencia (contractual); y el oráculo de la PD es
+> uno nuevo que calcula D-ESC-2, porque `medir_h5.py` asigna la PD descartada (§11). Informe:
+> `evidencia/s41/codex_p2_raw.txt`.
 >
 > **Base medida:** `main` = `e6bba24` (bayesrisk 2.10.0). Las cifras «después» se midieron **fuera
 > del motor**, con las reglas exactas que propone este documento, sobre las corridas de la puerta
@@ -267,23 +275,31 @@ El número de tramos **no se configura**: es el que los datos sostienen con esas
 (§0.3 mide cuántos salen). Si la institución ya opera con sus cortes —la `lista_ptos_corte` del
 flujo del banco—, los fija con motivo (§4.2) y la escala usa esos.
 
-**Los cortes son exactos y siguen la dirección del puntaje** (la lección de D-CPY-3,
-`_ENMIENDA-COPY-PRUEBA-REAL-SBA.md` §11-2). OptBinning corta en puntos medios entre puntajes
-observados (en float32) y deja `s < c` a la izquierda y `s ≥ c` a la derecha. Una sola regla, que
-comparten la asignación, la tabla de cortes, el corte de la institución y el bundle:
+**Una sola regla de corte, exacta** (la lección de D-CPY-3, `_ENMIENDA-COPY-PRUEBA-REAL-SBA.md`
+§11-2). Todo corte `c` —los que forma OptBinning (puntos medios entre puntajes observados, en
+float32), los de la institución (`set_grades`) y el de aprobación (`set_cutoff`)— separa con **el
+mismo predicado en las dos direcciones**: `s ≥ c` va al lado de puntaje mayor y `s < c` al de
+puntaje menor, como ya hace OptBinning. La dirección del puntaje sólo dice cuál de los dos lados es
+el de menor riesgo y, por tanto, el que se aprueba. La asignación, la tabla de cortes, el corte de
+la institución y el bundle guardan y comparan `c` exacto, nunca un valor redondeado:
 
-| Dirección del puntaje | El lado de menor riesgo de un corte `c` | Corte publicado con puntaje entero | «Aprobar los tramos 1…k» |
+| Dirección del puntaje | Lado de menor riesgo (y aprobado) de `c` | Rótulo cuando la tarjeta sólo produce enteros | Rótulo en otro caso |
 |---|---|---|---|
-| `higher_is_lower_risk` (fábrica) | `s ≥ c` | `⌈c⌉`: «desde 541 puntos» | `s ≥` el corte publicado entre `k` y `k + 1` |
-| `higher_is_higher_risk` | `s < c` | `⌊c⌋`: «hasta 540 puntos» | `s ≤` el corte publicado entre `k` y `k + 1` |
+| `higher_is_lower_risk` (fábrica) | `s ≥ c` | «desde ⌈c⌉ puntos» | «desde c puntos» |
+| `higher_is_higher_risk` | `s < c` | «hasta ⌈c⌉ − 1 puntos» | «menos de c puntos» |
 
-Con puntaje entero, el corte publicado es exacto para todo puntaje (un punto medio entre enteros,
-`x,5`, es exacto en float32, y `⌈c⌉`/`⌊c⌋` separan los mismos enteros que `c`); con puntaje sin
-redondeo, se publica `c` con la representación decimal más corta que vuelve al mismo `float`, nunca
-redondeada, y el predicado es el de la segunda columna. Los rótulos salen de `core/tramos.py` («≥ 541
-y < 563») y viajan por posición del tramo, no por su texto. Un test fija los vecinos del borde (el
-corte, el entero anterior y el siguiente; con puntaje sin redondeo, `nextafter` a cada lado) en las
-dos direcciones.
+«La tarjeta sólo produce enteros» se lee de la propia tarjeta, no de los datos ni sólo de
+`rounding_method`: todos sus puntos por atributo, sus ajustes manuales (`point_overrides`) y sus
+límites de recorte son enteros. Entonces todo puntaje posible es entero y `⌈c⌉` (o `⌈c⌉ − 1`) separa
+exactamente los mismos puntajes que `c`, sea `c` un punto medio `x,5` (exacto en float32) o un
+entero (un punto medio entre puntajes no consecutivos, o un corte de la institución); si no, el
+rótulo dice `c` con la representación decimal más corta que vuelve al mismo `float`. Para la
+institución, «aprobar desde 541» con la dirección de fábrica es `set_cutoff(541)`; con la invertida,
+`set_cutoff(541)` aprueba los puntajes **menores** que 541 («hasta 540»). Los rótulos salen de
+`core/tramos.py` y viajan por posición del tramo, no por su texto. Un test fija, en las dos
+direcciones, los vecinos del borde —el corte, el entero anterior y el siguiente, y `nextafter` a
+cada lado— para cortes `x,5` y enteros, y comprueba que «aprobar los tramos 1…k» y aplicar el corte
+publicado seleccionan las mismas operaciones.
 
 ### 3.3 La PD de cada tramo (D-ESC-2; §12-2)
 
@@ -335,10 +351,15 @@ participación `n_{g,m} / N_m`, malos `d_{g,m}` y tasa de malos `d_{g,m} / n_{g,
 `PD_g`; y el **contraste de Jeffreys** de esa PD —el de la validación, `binomial_by_grade`, con la
 forma literal del BCE: `p = Beta(PD_g; d + ½, n − d + ½)`, unilateral, la hipótesis nula «la PD del
 tramo no subestima»— con el semáforo de la validación (verde `p ≥ 0,05`, ámbar `0,01 ≤ p < 0,05`,
-rojo `p < 0,01`; D-VAL-5/15). En Desarrollo el contraste es trivial con la PD de D-ESC-2 (la PD
-sale de esa tasa) y se publica como «por construcción»; la prueba es Holdout y OOT. Un tramo con
-menos de 30 operaciones en la muestra (el mínimo de la validación, `min_rows_per_group`) queda «No
-evaluable».
+rojo `p < 0,01`; D-VAL-5/15). **En Desarrollo** el contraste se publica como diagnóstico dentro de
+muestra: con los tramos formados y el ancla observada casi no se mueve (la PD sale de esa tasa), pero
+**no es trivial** cuando la PD se aparta de la tasa del tramo —tramos igualados por §12-8 o un ancla
+de negocio o regulatoria por debajo de la tasa observada—: con dos tramos de la institución `(n, d)
+= (1000, 500)` y `(1000, 100)`, la igualación y el ancla dejan 30 % en los dos y el primero sale
+rojo. Un tramo rojo en Desarrollo se alerta en «Qué revisar» («la PD final subestima el tramo 1 en
+Desarrollo: lo causa la igualación o el ancla»). **Holdout y OOT** son la evaluación independiente.
+Un tramo con menos de 30 operaciones en la muestra (el mínimo de la validación,
+`min_rows_per_group`) queda «No evaluable».
 
 Por muestra, además: si la tasa de malos sigue el orden de los tramos, **sobre los tramos
 evaluables** (la misma alerta que el binning da por variable, D-FLU-6; medido: sin esa condición,
@@ -351,8 +372,8 @@ acotan al formar, y un umbral propio sería una perilla sin evidencia (medido: e
 
 ### 3.5 La tabla de puntos de corte (D-ESC-4)
 
-Aprobar los tramos `1…k` es el predicado de §3.2 en el corte publicado entre `k` y `k + 1` (`s ≥`
-con la dirección de fábrica, `s ≤` con la invertida). Por cada `k = 1…K` y cada muestra `m`
+Aprobar los tramos `1…k` es aprobar el lado de menor riesgo del corte `c` entre `k` y `k + 1`, con
+la regla única de §3.2. Por cada `k = 1…K` y cada muestra `m`
 —«Aprobados» sobre todas las operaciones puntuadas de la muestra; el resto, sobre las que tienen
 desenlace—:
 
@@ -428,8 +449,10 @@ sc.resume()
 - `set_grades(cuts, *, reason)`: fija los cortes de los tramos en puntos (en cualquier orden; se
   ordenan), escribe `master_scale.grade_edges` y la decisión con autor y motivo (D-SIM-6). Es el
   `set_bins` de la escala.
-- `set_cutoff(score, *, reason)`: declara el puntaje mínimo de aprobación, escribe
-  `master_scale.approval_cutoff`. El corte no tiene que ser un límite de tramo.
+- `set_cutoff(score, *, reason)`: declara el corte de aprobación, escribe
+  `master_scale.approval_cutoff`; se aprueba su lado de menor riesgo con la regla de §3.2 (con la
+  dirección de fábrica, el puntaje mínimo: `s ≥ score`). El corte no tiene que ser un límite de
+  tramo.
 - Las dos van a la sección `decisions` del YAML (D-DEC) como acciones nuevas `set_grades` y
   `set_cutoff`, con su efecto en esas hojas, y el cotejo de D-DEC-3 las trata igual que a las demás
   (sin efecto: aviso y registro conservado, no error).
@@ -438,8 +461,10 @@ sc.resume()
 
 - `FittedScorecardBundle.from_study(study)` congela, si la corrida tiene escala, sus cortes, la PD
   de cada tramo, el corte de aprobación (si hay) y la dirección del puntaje. Sin escala, el bundle
-  no gana ningún bloque y `apply` devuelve las mismas columnas y valores que hoy (su manifest sigue
-  llevando, como siempre, las versiones y la huella de distribución de la corrida).
+  no gana ningún bloque y `apply` devuelve las mismas columnas y los mismos valores computacionales
+  que hoy; la procedencia sigue siendo la real: el manifest y el `bundle_hash` de cada fila llevan,
+  como siempre, la versión, el commit y la huella de distribución de la corrida que construyó el
+  bundle, y cambian de una versión a otra.
 - `apply(frame)` / `bayesrisk.apply(bundle, frame)` agregan `grade` (entero, 1 = menor riesgo),
   `grade_pd` y, con corte, `decision` (`"approve"` / `"reject"`): identificadores en inglés, como
   `scoring_status`; los rótulos en español van al Excel y a la pantalla. Una fila que no se puntúa
@@ -603,11 +628,16 @@ pertenece al extra `scoring` como el resto del pipeline F1.
   evitados = malos; las celdas con denominador cero quedan vacías (rechazo total, una muestra sin
   malos o sin buenos, un corte que sólo aprueba solicitudes sin desenlace); las dos direcciones del
   puntaje dan la misma tabla espejada.
-- **Oráculo**: sobre `consumo_comportamiento`, el motor reproduce los cortes y las cifras de la
-  regla A de `medir_h5.py` (§0), fijados en un golden.
+- **Oráculos**: sobre `consumo_comportamiento`, el motor reproduce (i) los cortes y los conteos por
+  tramo y muestra de la regla A de `medir_h5.py` (§0) —sólo eso: ese guion asigna como PD la media
+  de la PD calibrada, la alternativa descartada—, y (ii) la PD de cada tramo, su `δ` y sus
+  contrastes de `oraculo_pd_tramo.py` (repo privado, `evidencia/s41/`), que calcula D-ESC-2 tal cual
+  —conteos enteros, suavizado, PAVA, `δ` por bisección y Jeffreys—; los dos, fijados en un golden.
+  Casos fijos: el contraejemplo `(30, 0)`, `(300, 1)` y el de §3.4 `(1000, 500)`, `(1000, 100)`.
 - **Sin la sección** (D-ESC-7): el `config_hash` y el YAML del preset F1 iguales byte a byte a los
   de la 2.10.0; la proyección canónica de una corrida F1 del preset, igual; `apply` del bundle de esa
-  corrida, mismas columnas y valores (la procedencia de lineage y manifest, la de cada versión).
+  corrida, mismas columnas y valores por una proyección que excluye `bundle_hash`, y aparte, que el
+  `bundle_hash` de cada fila es el del bundle que la puntuó.
 - **La tarjeta**: guardar y cargar el bundle; `apply` sobre las operaciones de Desarrollo devuelve
   el tramo y la PD de `assignment`, y la decisión con el predicado de §3.2 en las dos direcciones;
   filas `"scored"` y `"not_scorable"` mezcladas.
@@ -632,7 +662,7 @@ pertenece al extra `scoring` como el resto del pipeline F1.
 | 12-1 | Cómo se forman los tramos (D-ESC-1) | (a) **los datos deciden cuántos**: ≥ 5 % de Desarrollo, vecinos distintos con p ≤ 0,05, monótonos, hasta 10; (b) la regla del banco: hasta 5 tramos, entre 10 % y 70 % cada uno; (c) siete tramos fijos (Basilea II §404) | **(a)**: es la única que no inventa un número —5, 7, 6 y 10 tramos en las cuatro carteras— y su separación es la que impide las inversiones fuera de Desarrollo (§0.3); (b) junta tramos que se distinguen —en la SBA, uno de tasa 51 % reúne los tramos de 43 % y 56 % de (a)— y conserva menos discriminación fuera de Desarrollo en 3 de 4 Holdout y en las 3 OOT (Gini de la escala, §0.3); (c) parte tramos que no se distinguen en carteras chicas y junta los que sí en las grandes |
 | 12-2 | La PD de cada tramo (D-ESC-2) | (a) **la tasa de malos observada del tramo en Desarrollo, llevada al ancla de la calibración**; (b) la media de la PD calibrada de sus operaciones | **(a)**: Basilea II §447 y el flujo del banco; ajusta mejor fuera de muestra en las dos carteras reales (SBA Holdout 1,08 frente a 1,87 puntos, ningún tramo rojo frente a uno) y corrige la descalibración del modelo en las colas en vez de heredarla. (b) gana por poco en las sintéticas, que se generan con una logística |
 | 12-3 | El corte de aprobación (D-ESC-5) | (a) **un corte**: aprobar o rechazar; (b) dos cortes, con una zona de revisión manual entre ellos | **(a)**: la tabla ya muestra todos los cortes posibles, y una zona de revisión se expresa en el sistema del banco con los tramos («del 5 al 6, a comité»); (b) es una perilla más sin un caso que la pida |
-| 12-4 | Identidad de una sección nueva (D-ESC-7) | (a) **una sección de dominio nacida después de la 2.10.0 se serializa sólo cuando está declarada**: sin `master_scale`, `config_hash`, YAML, lineage y artefactos idénticos a la 2.10.0; (b) aceptar que se mueva el `config_hash` de todo config en un minor | **(a)**: el `config_hash` es la identidad del inventario de los usuarios; moverlo entero por una sección que no usan rompe esa promesa. Es regla general: vale también para H4 y lo que venga |
+| 12-4 | Identidad de una sección nueva (D-ESC-7) | (a) **una sección de dominio nacida después de la 2.10.0 se serializa sólo cuando está declarada**: sin `master_scale`, el `config_hash` y el YAML del config son los de la 2.10.0 byte a byte, los resultados computacionales son iguales (la proyección canónica de los artefactos y de `apply`), y la procedencia —versión, commit y huella de distribución en el lineage, en el manifest y en el `bundle_hash` de cada fila de `apply`— sigue siendo la real de cada versión (§5.3); (b) aceptar que se mueva el `config_hash` de todo config en un minor | **(a)**: el `config_hash` es la identidad del inventario de los usuarios; moverlo entero por una sección que no usan rompe esa promesa. Es regla general: vale también para H4 y lo que venga |
 | 12-5 | ¿Corre por defecto? (D-ESC-8) | (a) **sí**: la puerta guiada y los trabajos del scorecard de la pantalla la corren sin pedirla (cambia el `config_hash` de esas corridas, no el de ningún preset); (b) sólo si se pide | **(a)**: «el escaparate se juzga por lo que funciona sin tocar nada» (SDD-31); cuesta 0,1 s y no pide nada; quien no la quiere la quita del config |
 | 12-6 | Una escala maestra de la institución (límites de PD comunes a varios modelos) | (a) **fuera de esta versión**: candidato, con su evidencia pendiente; (b) dentro, como hoja opcional (los límites de PD de cada grado) | **(a)**: el ROADMAP pide tramos por modelo; una escala común tiene sentido cuando el banco opera dos o más modelos, y ningún caso medido la pide aún (SDD-31 D-SIM-3) |
 | 12-7 | Capas, releases y la demo (D-ESC-9) | (a) **A** —motor, puerta guiada con `apply`, tarjeta, resumen, guía— en la **2.11.0**; **B** —pantalla, informe, Excel; la etapa deja de ser experimental— en la **2.12.0**, y la demo del scorecard gana la escala en B (recaptura, con su OK); (b) A y B juntas en la 2.11.0; (c) como (a), pero la demo queda igual | **(a)**: A ya cambia cómo se opera la tarjeta y merece salir sola; B mueve front, informe y goldens. Que la demo la muestre es parte del escaparate |
