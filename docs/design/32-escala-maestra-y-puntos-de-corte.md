@@ -1,7 +1,13 @@
 # SDD-32 — Escala maestra y puntos de corte (`bayesrisk.master_scale`)
 
-> **Estado: EN REVISIÓN** (S41, 2026-10-11). Diseño sin código: nada se programa hasta el OK de Cami
-> a las decisiones de §12. Es el hito **H5** del ROADMAP, el segundo eslabón de la cadena del banco
+> **Estado: APROBADO por Cami el 2026-10-11** (S41, interactivo), con la recomendación de cada una
+> de las nueve decisiones de §12: tramos que forman los datos; la PD del tramo desde su tasa
+> observada llevada al ancla; un corte; una sección nacida ausente no entra a la identidad; la etapa
+> corre por defecto; sin escala de la institución; capa A en la 2.11.0 y B en la 2.12.0 con la demo;
+> los tramos invertidos se igualan con alerta; y la tarjeta respeta `clip` en todo bundle nuevo.
+> Diseño sin código: **la capa A se programa en la sesión siguiente** (S42), con tests nacidos rojos,
+> controles negativos y Codex sobre el código; cada release y la recaptura piden su OK aparte. Es el
+> hito **H5** del ROADMAP, el segundo eslabón de la cadena del banco
 > que Cami puso primero el 2026-10-07 (IFRS 9 firmable → **H5** → H4; H2b al final), y el «módulo
 > propio» que la decisión 8-3 de [`_ENMIENDA-FLUJO-GUIADO-SCORECARD.md`](_ENMIENDA-FLUJO-GUIADO-SCORECARD.md)
 > (Cami, 2026-09-18) separó del scorecard.
@@ -51,7 +57,7 @@
 | **Módulo** | `bayesrisk.master_scale` (dominio y etapa nuevos); toca `guided/scorecard.py` y `guided/summaries.py`, `scorecard/bundle.py` (`apply`), `core/config` (la sección), `core/decisions` (dos acciones), `report`, `ui/jobs.py` + `web/` (capa B) y `docs_site/` |
 | **Fase** | F1 (el scorecard, en operación) |
 | **Tanda de producción** | T9 (SDD-31: un módulo a la vez, con su §13) |
-| **Estado** | En revisión |
+| **Estado** | Aprobado por Cami el 2026-10-11 (§12) |
 | **Depende de** | SDD-09 (`scorecard`: el puntaje), SDD-10 (`calibration`: la PD calibrada), SDD-22 (`validation`: el contraste de Jeffreys por grado, reutilizado), SDD-31, FLUJO-GUIADO-SCORECARD (D-FLU), HL-Y-DECISIONES-EN-EL-YAML (D-DEC) |
 | **Lo consumen** | La guía del scorecard, el trabajo `scorecard_pd` de la pantalla, el informe, el bundle de aplicación; H4 (monitoreo: la tasa de malos por tramo en el tiempo), H2b (comparar modelos), H8 (originación) |
 | **Autor / Fecha** | Claude Code / 2026-10-11 |
@@ -684,6 +690,16 @@ pertenece al extra `scoring` como el resto del pipeline F1.
 | 12-7 | Capas, releases y la demo (D-ESC-9) | (a) **A** —motor, puerta guiada con `apply`, tarjeta, resumen, guía— en la **2.11.0**; **B** —pantalla, informe, Excel; la etapa deja de ser experimental— en la **2.12.0**, y la demo del scorecard gana la escala en B (recaptura, con su OK); (b) A y B juntas en la 2.11.0; (c) como (a), pero la demo queda igual | **(a)**: A ya cambia cómo se opera la tarjeta y merece salir sola; B mueve front, informe y goldens. Que la demo la muestre es parte del escaparate |
 | 12-8 | Tramos que invierten el orden en Desarrollo (D-ESC-2; elevada por la revisión adversarial) | (a) **igualar**: los tramos vecinos invertidos comparten la PD de la regresión isotónica (PAVA ponderado por operaciones) sobre las tasas suavizadas, con alerta, y la corrida sigue; (b) detener la etapa y pedir que se unan los tramos | **(a)**: vale igual para los tramos formados y para los de la institución, nunca detiene la corrida por un detalle de suavizado, es el estimador monótono estándar y la alerta deja la decisión de unirlos a la persona. Con los tramos formados no ocurrió en ninguna de las cuatro carteras; es la salvaguarda de los cortes de la institución y de los tramos chicos |
 | 12-9 | El recorte del puntaje en la tarjeta (elevada por la pasada 3; defecto preexistente) | (a) **la tarjeta respeta `clip` como la corrida en todo bundle nuevo**: congela `clip` y recorta sólo si está encendido; los bundles ya guardados, sin esa clave, conservan su comportamiento (recortar siempre). Excepción declarada a D-ESC-7: cambia `apply` sólo con límites de puntaje declarados y `clip=False`; (b) corregirlo sólo en los bundles con escala; (c) dejarlo y declarar el abierto | **(a)**: hoy, con límites declarados y `clip=False`, la corrida publica 475,58 y `apply` recorta a 490 (el caso de `test_scorecard_scaler.py`, sin redondeo y con límites 490–500): con la escala, la tabla rechazaría una operación que la tarjeta aprobaría. Es un defecto de la tarjeta, no de la escala, y corregirlo sólo con escala dejaría dos tarjetas que puntúan distinto. Ni el preset ni la puerta guiada declaran límites: sin ellos nada cambia |
+
+**Respuestas de Cami (2026-10-11, interactivas): la recomendación (a) en las nueve.** Vigente:
+D-ESC-1 (los datos deciden cuántos tramos), D-ESC-2 con la tasa observada del tramo llevada al ancla
+y, ante inversiones, la igualación por regresión isotónica con alerta (§12-8), un solo corte
+(D-ESC-5), D-ESC-7 (una sección de dominio nacida después de la 2.10.0 se serializa sólo cuando está
+declarada) con la excepción de §12-9 (la tarjeta respeta `clip` en todo bundle nuevo; los ya
+guardados conservan su comportamiento), D-ESC-8 (corre por defecto en la puerta guiada y en los
+trabajos del scorecard de la pantalla), la escala común de la institución fuera de esta versión, y
+D-ESC-9: capa A → 2.11.0, capa B → 2.12.0 con la demo del scorecard ganando la escala (recaptura
+con su OK). La capa A se programa en S42.
 
 **Riesgos y mitigación.** (1) Dos PD por solicitud —la de la operación y la de su tramo— pueden
 confundir: la guía dice cuál usa cada cosa y la tarjeta publica las dos con nombres distintos. (2) La
