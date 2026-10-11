@@ -25,6 +25,12 @@
 > garantía de identidad, con `bundle_hash` como procedencia (contractual); y el oráculo de la PD es
 > uno nuevo que calcula D-ESC-2, porque `medir_h5.py` asigna la PD descartada (§11). Informe:
 > `evidencia/s41/codex_p2_raw.txt`.
+> **Pasada 3, la última del tope declarado** (un high y un medium, reales): las entradas de la etapa
+> se completan —la tabla y la ficha de la tarjeta para los rótulos, `calibration.parameters` para el
+> ancla efectiva— (§2, §6.1, §3.3); y un **defecto preexistente** de la tarjeta —con límites de
+> puntaje declarados y `clip=False`, la corrida no recorta y `apply` sí— se eleva a Cami como §12-9.
+> Cada pasada encontró menos y más acotado (7 → 4 → 2); con esto se cierra la revisión del documento
+> sin cuarta pasada, por el criterio declarado. Informe: `evidencia/s41/codex_p3_raw.txt`.
 >
 > **Base medida:** `main` = `e6bba24` (bayesrisk 2.10.0). Las cifras «después» se midieron **fuera
 > del motor**, con las reglas exactas que propone este documento, sobre las corridas de la puerta
@@ -76,7 +82,7 @@ Una etapa nueva, **«Escala maestra»**, al final del scorecard, que corre sola 
 
 Cero perillas además de las dos decisiones; esenciales 2; el notebook mínimo no cambia (15 líneas,
 5 conceptos). Capa A (motor, puerta guiada, tarjeta, resumen, guía) → 2.11.0; capa B (pantalla,
-informe, Excel; estable) → 2.12.0. Ocho decisiones para Cami en §12.
+informe, Excel; estable) → 2.12.0. Nueve decisiones para Cami en §12.
 
 ## 0. El estado, medido
 
@@ -227,8 +233,11 @@ de deciles que se recalcula en cada muestra; el paso que el flujo del banco llam
 
 - **Un dominio y una etapa nuevos**, `master_scale` («Escala maestra»), en el pipeline del
   scorecard **después de `validation` y antes de `report`**. Consume lo que ya publican
-  `("scorecard", "score")`, `("scorecard", "out_of_model_score")` y
-  `("calibration", "calibrated_pd_frame")`; no consume ni modifica nada más (CT-1, CT-2). Va al
+  `("scorecard", "score")`, `("scorecard", "out_of_model_score")`, `("scorecard", "scorecard")` y
+  `("scorecard", "card")` (los puntos posibles y los límites de la tarjeta, para los rótulos de
+  §3.2), `("calibration", "calibrated_pd_frame")` y `("calibration", "parameters")` (el ancla efectiva
+  de §3.3), todos declarados en su `requires` y exigidos antes de correr; no consume ni modifica nada
+  más (CT-1, CT-2). Va al
   final porque es la capa operativa del modelo ya validado y porque así sólo el libro de
   decisiones cambia de número en el Excel (§6.4).
 - **Las tres puertas** (SDD-31 D-SIM-1): la guiada (`Scorecard` la corre por defecto, §4.1), la
@@ -311,7 +320,8 @@ r_g  = (d_g + ½) / (n_g + 1)                       la tasa del tramo (media de 
 PD_g = logit⁻¹( logit(r_g) + δ )                    con δ único tal que  Σ_g (n_g/|D|) · PD_g = ancla
 ```
 
-El ancla es la tendencia central que fijó la calibración (SDD-10): con la de fábrica,
+El ancla es la tendencia central que fijó la calibración (SDD-10), leída de
+`("calibration", "parameters")`: con la de fábrica,
 `development_observed`, la tasa de malos de Desarrollo, y `δ` sólo corrige el suavizado (≈ 0); con un
 ancla de negocio o regulatoria, ésa, y `δ` traslada toda la escala como el `intercept_offset` traslada
 cada operación. Por qué esta regla:
@@ -529,8 +539,14 @@ Alternativa descartada: aceptar que todo hash se mueva en un minor.
 ### 6.1 Entrada
 
 `("scorecard", "score")` (puntaje, muestra, desenlace), `("calibration", "calibrated_pd_frame")`
-(la PD calibrada, con el mismo índice), `("scorecard", "out_of_model_score")` (las solicitudes sin
-desenlace, opcional). La dirección del puntaje, del config de `scorecard`.
+(la PD calibrada, con el mismo índice), `("scorecard", "out_of_model_score")` (las operaciones fuera
+del ajuste, opcional), `("scorecard", "scorecard")` y `("scorecard", "card")` (todos los puntos
+posibles por atributo —también los de tramos que ninguna muestra trae—, los ajustes manuales y los
+límites de recorte: de ahí sale si la tarjeta sólo produce enteros, §3.2) y
+`("calibration", "parameters")` (el ancla efectiva: su fuente, su tipo y su valor; la media de
+`pd_calibrated` sólo la aproxima dentro de `target_tolerance`, así que `δ` se resuelve contra el
+valor publicado, §3.3). La dirección del puntaje, del config de `scorecard`. Sin alguno de los
+obligatorios, la etapa no corre y dice cuál falta.
 
 ### 6.2 Salida (`("master_scale", clave)`)
 
@@ -667,6 +683,7 @@ pertenece al extra `scoring` como el resto del pipeline F1.
 | 12-6 | Una escala maestra de la institución (límites de PD comunes a varios modelos) | (a) **fuera de esta versión**: candidato, con su evidencia pendiente; (b) dentro, como hoja opcional (los límites de PD de cada grado) | **(a)**: el ROADMAP pide tramos por modelo; una escala común tiene sentido cuando el banco opera dos o más modelos, y ningún caso medido la pide aún (SDD-31 D-SIM-3) |
 | 12-7 | Capas, releases y la demo (D-ESC-9) | (a) **A** —motor, puerta guiada con `apply`, tarjeta, resumen, guía— en la **2.11.0**; **B** —pantalla, informe, Excel; la etapa deja de ser experimental— en la **2.12.0**, y la demo del scorecard gana la escala en B (recaptura, con su OK); (b) A y B juntas en la 2.11.0; (c) como (a), pero la demo queda igual | **(a)**: A ya cambia cómo se opera la tarjeta y merece salir sola; B mueve front, informe y goldens. Que la demo la muestre es parte del escaparate |
 | 12-8 | Tramos que invierten el orden en Desarrollo (D-ESC-2; elevada por la revisión adversarial) | (a) **igualar**: los tramos vecinos invertidos comparten la PD de la regresión isotónica (PAVA ponderado por operaciones) sobre las tasas suavizadas, con alerta, y la corrida sigue; (b) detener la etapa y pedir que se unan los tramos | **(a)**: vale igual para los tramos formados y para los de la institución, nunca detiene la corrida por un detalle de suavizado, es el estimador monótono estándar y la alerta deja la decisión de unirlos a la persona. Con los tramos formados no ocurrió en ninguna de las cuatro carteras; es la salvaguarda de los cortes de la institución y de los tramos chicos |
+| 12-9 | El recorte del puntaje en la tarjeta (elevada por la pasada 3; defecto preexistente) | (a) **la tarjeta respeta `clip` como la corrida en todo bundle nuevo**: congela `clip` y recorta sólo si está encendido; los bundles ya guardados, sin esa clave, conservan su comportamiento (recortar siempre). Excepción declarada a D-ESC-7: cambia `apply` sólo con límites de puntaje declarados y `clip=False`; (b) corregirlo sólo en los bundles con escala; (c) dejarlo y declarar el abierto | **(a)**: hoy, con límites declarados y `clip=False`, la corrida publica 475,58 y `apply` recorta a 490 (el caso de `test_scorecard_scaler.py`, sin redondeo y con límites 490–500): con la escala, la tabla rechazaría una operación que la tarjeta aprobaría. Es un defecto de la tarjeta, no de la escala, y corregirlo sólo con escala dejaría dos tarjetas que puntúan distinto. Ni el preset ni la puerta guiada declaran límites: sin ellos nada cambia |
 
 **Riesgos y mitigación.** (1) Dos PD por solicitud —la de la operación y la de su tramo— pueden
 confundir: la guía dice cuál usa cada cosa y la tarjeta publica las dos con nombres distintos. (2) La
