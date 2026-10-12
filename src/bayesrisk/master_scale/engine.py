@@ -51,6 +51,7 @@ __all__ = [
     "pd_por_tramo",
     "tabla_de_cortes",
     "tabla_por_tramo",
+    "vecinos_que_no_se_distinguen",
     "z_entre_vecinos",
 ]
 
@@ -244,13 +245,31 @@ def pava(
 
 
 def _logit(p: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-    salida: np.ndarray[Any, Any] = np.log(p / (1.0 - p))
+    from scipy.special import logit
+
+    salida: np.ndarray[Any, Any] = logit(p)
     return salida
 
 
 def _expit(x: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-    salida: np.ndarray[Any, Any] = 1.0 / (1.0 + np.exp(-x))
+    """La sigmoide sin desbordar y sin perder los subnormales.
+
+    Con ``x < 0`` se escribe ``exp(x)/(1 + exp(x))``: ``1/(1 + exp(-x))`` se iría a 0 bajo -709
+    (pasada 2 de Codex: un ancla de 1e-310).
+    """
+    valores = np.asarray(x, dtype="float64")
+    salida: np.ndarray[Any, Any] = np.empty_like(valores)
+    positivos = valores >= 0
+    salida[positivos] = 1.0 / (1.0 + np.exp(-valores[positivos]))
+    exponencial = np.exp(valores[~positivos])
+    salida[~positivos] = exponencial / (1.0 + exponencial)
     return salida
+
+
+#: Los extremos representables del intervalo abierto (0, 1): una PD de tramo nunca es 0 ni 1 (la
+#: tarjeta lo exige). Junto a los bordes el `float` redondea a 0 o 1; se acota al vecino interior.
+_PD_MINIMA: Final = float(np.nextafter(0.0, 1.0))
+_PD_MAXIMA: Final = float(np.nextafter(1.0, 0.0))
 
 
 def pd_por_tramo(n: Sequence[int], d: Sequence[int], *, ancla: float) -> PdDeTramos:
@@ -284,8 +303,13 @@ def pd_por_tramo(n: Sequence[int], d: Sequence[int], *, ancla: float) -> PdDeTra
     # Un ±20 fijo no cambiaba de signo con anclas extremas (pasada 1 de Codex).
     centro = float(_logit(np.asarray([float(ancla)]))[0])
     bajo, alto = centro - float(base.max()) - 1.0, centro - float(base.min()) + 1.0
-    delta = float(brentq(brecha, bajo, alto, xtol=1e-14, rtol=4 * np.finfo(float).eps))
-    pd_final = _expit(base + delta)
+    try:
+        delta = float(brentq(brecha, bajo, alto, xtol=1e-14, rtol=4 * np.finfo(float).eps))
+    except (ValueError, RuntimeError) as exc:  # un fallo numérico es de la etapa, no de Python
+        raise MasterScaleFitError(
+            f"La PD de los tramos no se pudo reconciliar con el ancla {ancla!r}: {exc}"
+        ) from exc
+    pd_final = np.clip(_expit(base + delta), _PD_MINIMA, _PD_MAXIMA)
     igualados = tuple(tuple(p + 1 for p in b) for b in bloques if len(b) > 1)
     return PdDeTramos(
         pd=tuple(float(x) for x in pd_final),
@@ -293,6 +317,19 @@ def pd_por_tramo(n: Sequence[int], d: Sequence[int], *, ancla: float) -> PdDeTra
         delta=delta,
         anchor=float(ancla),
         equalized=igualados,
+    )
+
+
+def vecinos_que_no_se_distinguen(
+    n: Sequence[int], d: Sequence[int]
+) -> tuple[tuple[int, int, float | None], ...]:
+    """Los pares de tramos vecinos cuyas tasas de malos no se distinguen (p > 0,05 o sin varianza).
+
+    Sin varianza —los dos sin malos, o los dos sólo con malos— las tasas son iguales y no hay
+    p-valor que publicar: el par se declara con ``None`` (pasada 2 de Codex).
+    """
+    return tuple(
+        (g, g + 1, p) for g, p in enumerate(z_entre_vecinos(n, d), 1) if p is None or p > MAX_PVALUE
     )
 
 

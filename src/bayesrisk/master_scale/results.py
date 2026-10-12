@@ -61,7 +61,7 @@ class MasterScaleCardSection(BaseModel):
     anchor_source: str
     delta: float
     equalized_grades: tuple[tuple[int, ...], ...]
-    neighbours_not_distinct: tuple[tuple[int, int, float], ...]
+    neighbours_not_distinct: tuple[tuple[int, int, float | None], ...]
     approval_cutoff: float | None
     cutoff_out_of_range: bool
     samples: tuple[str, ...]

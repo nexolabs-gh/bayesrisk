@@ -3867,9 +3867,14 @@ def _alertas_de_la_escala(card: Mapping[str, Any]) -> list[str]:
         )
     if card.get("source") == "institution":
         for a, b, p in card.get("neighbours_not_distinct") or ():
+            motivo = (
+                "la misma tasa (sin malos, o sólo malos, en los dos)"
+                if p is None
+                else f"p = {_cifra(p, decimales=3)}"
+            )
             alertas.append(
                 f"Los tramos {a} y {b} de la institución no tienen tasas de malos "
-                f"significativamente distintas en Desarrollo (p = {_cifra(p, decimales=3)})."
+                f"significativamente distintas en Desarrollo ({motivo})."
             )
     diagnosticos: Mapping[str, Any] = card.get("diagnostics") or {}
     for muestra, diag in diagnosticos.items():

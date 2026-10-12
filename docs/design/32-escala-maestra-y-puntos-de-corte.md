@@ -774,14 +774,16 @@ entonces la etapa deja de ser experimental.
 Implementada el 2026-10-11 sobre `77a873b` (2.10.0), sin publicar. Nada de esto reabre una
 decisión de §12; son precisiones de implementación, medidas.
 
-- **D-ESC-7 en el campo.** Cada sección de `SECCIONES_NACIDAS_DESPUES_DE_2_10_0` (hoy sólo
-  `master_scale`) declara `exclude_if=_ausente` (Pydantic): ausente o `None`, no se serializa por
-  ninguna vía —`config_hash`, `dump_config`, el `config.yaml` de la evidencia, los defaults del
-  schema de la pantalla—, y los schemas JSON de validación y de serialización siguen siendo uno
-  solo, como en la 2.10.0 (medido). La primera versión usaba un `model_serializer` envolvente cuya
-  anotación de retorno vaciaba el schema de serialización (pasada 1 de Codex). Un gate exige la
-  lista en los dos sentidos: toda sección nueva de la raíz está en ella y la lista sólo nombra
-  secciones nuevas. Medido sobre `77a873b` y
+- **D-ESC-7 en un solo punto.** Un `model_serializer` envolvente de `BayesRiskConfig`, **sin
+  anotación de retorno**, omite las secciones de `SECCIONES_NACIDAS_DESPUES_DE_2_10_0` (hoy sólo
+  `master_scale`) cuando valen `None`: ninguna serialización del config las ve —`config_hash`,
+  `dump_config`, el `config.yaml` de la evidencia, los defaults del schema de la pantalla— y los
+  schemas JSON de validación y de serialización siguen siendo uno, como en la 2.10.0. Con `-> Any`
+  Pydantic vaciaba el de serialización (pasada 1 de Codex); `Field(exclude_if=…)` existe recién
+  desde Pydantic 2.12 y la librería declara `pydantic>=2.5` (pasada 2). Medido igual en Pydantic
+  2.5.3, 2.11.10 y 2.13.4 (`evidencia/s42/prueba_pydantic.py`). Un gate exige la lista en los dos
+  sentidos —toda sección nueva de la raíz está en ella y la lista sólo nombra secciones nuevas—,
+  otro que los dos schemas sean uno y otro que nada use lo que el piso de Pydantic no trae. Medido sobre `77a873b` y
   reproducido: el `config_hash` y el YAML (completo y de los campos provistos) de los cuatro
   presets y del config vacío, iguales byte a byte; la proyección canónica de una corrida F1 del
   preset, 0 diferencias (`evidencia/s42/`). El YAML **completo** depende de qué capas importó el
@@ -834,3 +836,11 @@ decisión de §12; son precisiones de implementación, medidas.
   una huella de decisión editada con texto abortaba la corrida (ahora queda sin efecto, D-DEC-3); y
   el resumen afirmaba «sigue el orden» de una muestra sin tramos evaluables (ahora dice «sin
   contraste»).
+- **Pasada 2 de Codex** (`4225b09`; cuatro hallazgos, uno high, ninguno contractual; cada uno con
+  su test nacido rojo y su control negativo): `exclude_if` no existe en las versiones de Pydantic
+  que la librería admite (arriba); la PD del tramo con anclas al borde de (0, 1) —una sigmoide que
+  no desborda ni pierde los subnormales, y la PD acotada a los vecinos interiores de 0 y 1, que la
+  tarjeta exige—; las huellas de `set_grades`/`set_cutoff` viajan enteras en el trail (no son
+  listas de variables) y su cotejo es total (texto, listas anidadas, enteros gigantes); y dos tramos
+  de la institución con la misma tasa sin varianza (los dos sin malos) también se alertan como
+  indistinguibles, sin inventar un p-valor.

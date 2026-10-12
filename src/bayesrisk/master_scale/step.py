@@ -181,11 +181,7 @@ class MasterScaleStep(AuditableMixin):
 
         # ── la PD de cada tramo (D-ESC-2) ────────────────────────────────────────────────
         pd_tramos = engine.pd_por_tramo(n, d, ancla=ancla)
-        no_distintos = tuple(
-            (g, g + 1, float(p))
-            for g, p in enumerate(engine.z_entre_vecinos(n, d), 1)
-            if p is not None and p > engine.MAX_PVALUE
-        )
+        no_distintos = engine.vecinos_que_no_se_distinguen(n, d)
 
         # ── las muestras (D-ESC-3) ───────────────────────────────────────────────────────
         muestras: dict[str, DataFrame] = {}

@@ -515,3 +515,38 @@ def test_conteos_imposibles_son_un_error_de_la_etapa() -> None:
         pd_por_tramo([10, 0], [1, 0], ancla=0.1)
     with pytest.raises(MasterScaleFitError, match="ancla"):
         pd_por_tramo([10], [1], ancla=1.0)
+
+
+@pytest.mark.parametrize(
+    ("n", "d", "ancla"),
+    [([100], [1], 1e-310), ([100, 100], [0, 100], 1 - 1e-12), ([50, 50], [0, 50], 1e-300)],
+)
+def test_la_pd_del_tramo_queda_dentro_de_cero_y_uno_con_anclas_al_borde(
+    n: list[int], d: list[int], ancla: float
+) -> None:
+    """Pasada 2 de Codex: con un ancla subnormal la sigmoide desbordaba y brentq fallaba fuera de
+    la etapa; con un ancla junto a 1 una PD llegaba a 1,0 y la tarjeta la rechazaba."""
+    from bayesrisk.scorecard.bundle import _validate_master_scale
+
+    pds = pd_por_tramo(n, d, ancla=ancla)
+    assert all(0.0 < p < 1.0 for p in pds.pd), pds.pd
+    assert list(pds.pd) == sorted(pds.pd)
+    _validate_master_scale(
+        {
+            "cuts": [500.5 + i for i in range(len(n) - 1)],
+            "grade_pd": list(pds.pd),
+            "approval_cutoff": None,
+            "source": "formed",
+        }
+    )
+
+
+def test_vecinos_sin_varianza_tampoco_se_distinguen() -> None:
+    """Pasada 2 de Codex: dos tramos de la institución sin malos tienen la misma tasa; el Z no
+    tiene varianza (p indefinido) y no se alertaba. Se declaran sin p-valor."""
+    from bayesrisk.master_scale.engine import vecinos_que_no_se_distinguen
+
+    assert vecinos_que_no_se_distinguen([200, 100, 100], [0, 0, 20]) == ((1, 2, None),)
+    assert vecinos_que_no_se_distinguen([100, 100], [10, 30]) == ()
+    (par,) = vecinos_que_no_se_distinguen([100, 100], [10, 12])
+    assert par[:2] == (1, 2) and par[2] is not None and par[2] > 0.05

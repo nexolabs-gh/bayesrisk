@@ -88,6 +88,9 @@ _HOJAS_DE_LA_ESCALA: Final[Mapping[str, str]] = {
     "set_grades": "master_scale.grade_edges",
     "set_cutoff": "master_scale.approval_cutoff",
 }
+#: Hojas cuyo contenido es un valor del sujeto y no una lista de variables: no se filtran por
+#: variable ni se leen como nombres al cotejar la huella acumulada.
+_HOJAS_DE_VALOR: Final = frozenset(_HOJAS_DE_LA_ESCALA.values())
 
 
 def _familia(registro: DecisionEntry) -> str:
@@ -205,6 +208,8 @@ def _ajenas_no_vigentes(
     propias = set(registro.columns)
     retiradas: set[str] = set()
     for hoja, contenido in registro.value.items():
+        if hoja in _HOJAS_DE_VALOR:
+            continue
         if not isinstance(contenido, Sequence) or isinstance(contenido, str | bytes):
             continue
         seccion, _, campo = hoja.partition(".")
@@ -221,10 +226,12 @@ def _ajenas_no_vigentes(
 
 
 def _huella_sin(valor: Mapping[str, Any], variables: set[str]) -> dict[str, Any]:
-    """La huella sin los elementos que nombran ``variables``."""
+    """La huella sin los elementos que nombran ``variables`` (las hojas de valor, enteras)."""
     salida: dict[str, Any] = {}
     for hoja, contenido in valor.items():
-        if isinstance(contenido, Sequence) and not isinstance(contenido, str | bytes):
+        if hoja in _HOJAS_DE_VALOR:
+            salida[hoja] = copy.deepcopy(contenido)
+        elif isinstance(contenido, Sequence) and not isinstance(contenido, str | bytes):
             salida[hoja] = [
                 copy.deepcopy(item)
                 for item in contenido
@@ -301,7 +308,7 @@ def _mismo_valor(guardado: Any, vigente: Any) -> bool:
                 return False
             return [float(v) for v in guardado] == [float(v) for v in vigente]
         return float(guardado) == float(vigente)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return False
 
 
@@ -357,11 +364,17 @@ def _cortes(hoja: Mapping[str, Any]) -> tuple[tuple[float, ...], tuple[bool, ...
 
 
 def _huella_restringida(valor: Mapping[str, Any], variables: Sequence[str]) -> dict[str, Any]:
-    """La huella filtrada a ``variables``: cada hoja lista conserva sólo sus elementos."""
+    """La huella filtrada a ``variables``: cada hoja lista conserva sólo sus elementos.
+
+    Las hojas de la escala no son listas de variables —son los cortes o el corte del único sujeto,
+    el puntaje— y viajan enteras (pasada 2 de Codex).
+    """
     nombres = set(variables)
     salida: dict[str, Any] = {}
     for hoja, contenido in valor.items():
-        if isinstance(contenido, Sequence) and not isinstance(contenido, str | bytes):
+        if hoja in _HOJAS_DE_VALOR:
+            salida[hoja] = copy.deepcopy(contenido)
+        elif isinstance(contenido, Sequence) and not isinstance(contenido, str | bytes):
             salida[hoja] = [
                 copy.deepcopy(item)
                 for item in contenido

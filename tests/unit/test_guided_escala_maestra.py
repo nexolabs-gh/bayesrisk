@@ -256,3 +256,35 @@ def test_una_huella_que_no_es_un_numero_queda_sin_efecto_y_la_corrida_sigue() ->
     )
     eventos = eventos_de_decisiones(cfg)
     assert [e["regla"] for e in eventos] == [REGLA_DECISION_SIN_EFECTO] * 3
+
+
+@pytest.mark.parametrize(
+    ("accion", "huella", "vigente"),
+    [
+        ("set_grades", [500, 520], {"grade_edges": [505.0, 520.0]}),
+        ("set_grades", [[500]], {"grade_edges": [505.0, 520.0]}),
+        ("set_cutoff", 10**400, {"approval_cutoff": 520.0}),
+    ],
+)
+def test_las_huellas_de_la_escala_viajan_enteras_y_el_cotejo_es_total(
+    accion: str, huella: object, vigente: dict[str, object]
+) -> None:
+    """Pasada 2 de Codex: la huella de una hoja de la escala no es una lista de variables —se
+    restringía a [] o reventaba con [[500]]— y un entero gigante desbordaba el cotejo."""
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.core.config.schema import DecisionEntry
+    from bayesrisk.core.decisions import eventos_de_decisiones
+
+    hoja = "master_scale.grade_edges" if accion == "set_grades" else "master_scale.approval_cutoff"
+    registro = DecisionEntry(
+        action=accion,  # type: ignore[arg-type]
+        columns=("score",),
+        reason="editada a mano",
+        value={hoja: huella},
+    )
+    cfg = BayesRiskConfig.model_validate(
+        {"master_scale": vigente, "decisions": [registro.model_dump()]}
+    )
+    (evento,) = eventos_de_decisiones(cfg)
+    assert evento["regla"] == REGLA_DECISION_SIN_EFECTO
+    assert evento["valor"] == {hoja: huella}

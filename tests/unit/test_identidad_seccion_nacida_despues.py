@@ -223,5 +223,25 @@ def test_los_dos_schemas_del_config_siguen_siendo_el_mismo() -> None:
     serializacion = BayesRiskConfig.model_json_schema(mode="serialization")
     assert serializacion == validacion
     assert "master_scale" in serializacion["properties"]
-    for seccion in SECCIONES_NACIDAS_DESPUES_DE_2_10_0:
-        assert BayesRiskConfig.model_fields[seccion].exclude_if is not None, seccion
+
+
+def test_la_regla_no_usa_lo_que_el_piso_declarado_de_pydantic_no_trae() -> None:
+    """``exclude_if`` existe desde Pydantic 2.12 y la librería declara ``pydantic>=2.5``: con una
+    2.11 el argumento caía a ``json_schema_extra``, la sección volvía a serializarse y el schema no
+    se generaba (pasada 2 de Codex). La regla vive en un ``model_serializer`` (desde 2.0), medido
+    igual en 2.5.3, 2.11.10 y 2.13.4 (``privado/evidencia/s42/prueba_pydantic.py``).
+    """
+    import re
+    import tomllib
+    from pathlib import Path
+
+    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    dependencias = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["dependencies"]
+    (piso,) = [
+        tuple(int(x) for x in m.group(1).split("."))
+        for d in dependencias
+        if (m := re.fullmatch(r"pydantic>=([\d.]+)", d.replace(" ", "")))
+    ]
+    if piso < (2, 12):
+        for nombre, campo in BayesRiskConfig.model_fields.items():
+            assert getattr(campo, "exclude_if", None) is None, nombre
