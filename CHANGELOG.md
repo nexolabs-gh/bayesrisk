@@ -7,6 +7,28 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **La escala maestra en la pantalla, el informe y el Excel.** Los trabajos «Scorecard de
+  comportamiento (PD)» y «PD + LGD en una corrida» la corren por defecto, con su sección «Escala
+  maestra» en la configuración —los cortes de los tramos y el puntaje de aprobación de la
+  institución, en blanco de fábrica—; Resultados muestra los tramos con su PD y la tabla de
+  puntos de corte; el informe gana la subsección «Escala maestra y puntos de corte» en
+  «Resultados», con las tablas completas en el anexo; y el Excel opcional, el libro
+  `11 Escala maestra.xlsx`. Todo sale del mismo resumen de la etapa: lo que dice el notebook lo
+  dicen la pantalla, el informe y el Excel.
+
+### Cambiado
+
+- **La escala maestra es estable** (SemVer 2.x): la etapa, `set_grades`, `set_cutoff` y
+  `Scorecard.apply`, con sus tres puertas cerradas.
+- **El libro de decisiones del Excel pasa de `11 Decisiones.xlsx` a `12 Decisiones.xlsx`**: el
+  número es la posición de la etapa, y la escala maestra es la última del scorecard.
+- Las corridas de los dos trabajos del scorecard en la pantalla cambian de `config_hash`, porque
+  su config gana la sección `master_scale`; el de ningún preset ni el de un YAML sin la sección.
+
 ## [2.11.0] — 2026-10-12
 
 ### Añadido

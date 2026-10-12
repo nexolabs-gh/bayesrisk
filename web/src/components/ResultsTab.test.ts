@@ -1734,6 +1734,48 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     expect(sin).not.toContain(titulo)
   })
 
+  it("con la escala maestra, Resultados pinta sus tramos y la tabla de cortes (SDD-32 capa B)", () => {
+    // La sección sale del MISMO resumen de la etapa «Escala maestra» —lo que dicen el notebook, el
+    // Excel y el informe—, sin formato propio; sin la etapa en el resumen, la sección no existe.
+    const escala = {
+      stage: "master_scale",
+      label: "Escala maestra",
+      lines: [
+        "5 tramos de puntaje, del 1, de menor riesgo, al 5; cada uno con al menos el 5 % de Desarrollo y una tasa de malos distinta de la de sus vecinos.",
+        "Corte de la institución: aprobar desde 512 puntos.",
+      ],
+      alerts: ["El tramo 1 subestima su PD en Fuera de tiempo (OOT)."],
+      table: {
+        columns: ["Tramo", "Puntaje", "PD del tramo", "Participación Desarrollo"],
+        rows: [
+          ["1", "≥ 556", "4,77 %", "21,3 %"],
+          ["2", "527 a 555", "13,96 %", "19,8 %"],
+        ],
+      },
+      extra_tables: [
+        {
+          title: "Tabla de puntos de corte",
+          columns: ["Muestra", "Aprobar", "Puntaje", "Aprobados", "Malos evitados", "Buenos rechazados"],
+          rows: [["Desarrollo", "Corte de la institución", "≥ 512", "61,4 %", "83,2 %", "28,1 %"]],
+        },
+      ],
+    }
+    const titulo = "Escala maestra y puntos de corte"
+    const con = render({
+      ...minima(null),
+      summaries: { ...resumenes, stages: [...resumenes.stages, escala] },
+    })
+    expect(con).toContain(titulo)
+    expect(con).toContain("Los tramos")
+    // Cada cifra, plegada en su etapa del resumen Y en la sección visible: dos veces.
+    expect(ocurrencias(con, "13,96 %")).toBe(2)
+    expect(ocurrencias(con, "Corte de la institución: aprobar desde 512 puntos.")).toBe(2)
+    expect(ocurrencias(con, "83,2 %")).toBe(2)
+    expect(ocurrencias(con, "El tramo 1 subestima su PD en Fuera de tiempo (OOT).")).toBe(2)
+    const sin = render({ ...minima(null), summaries: resumenes })
+    expect(sin).not.toContain(titulo)
+  })
+
   it("la nota del runoff dice la tabla de pagos cuando alguna operación la sigue", () => {
     // CASO-REAL-IFRS9 D-CRE-3: con la cuota del contrato, «EAD constante» deja de ser cierto para
     // las operaciones que siguen su tabla de pagos.

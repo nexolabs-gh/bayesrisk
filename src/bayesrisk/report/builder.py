@@ -106,6 +106,9 @@ _CARD_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     # Resumen de validación formal (SDD-22). El capítulo se gatea por el ``result`` atómico,
     # no por esta card aislada; ambos son opcionales para report.
     ("validation", "card"),
+    # La escala maestra (SDD-32, capa B). Opcional como las demás: sin la etapa no hay card y la
+    # subsección de «Resultados» no se emite.
+    ("master_scale", "card"),
 )
 _CARD_KEY_BY_DOMAIN: Final[dict[str, str]] = dict(_CARD_ARTIFACTS)
 _RESULT_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (("validation", "result"),)
@@ -160,6 +163,12 @@ _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     # ``term_structure`` (una fila por operación y período); su PD por período y cartera la arma
     # :func:`_curva_de_pd_por_cartera` con la función del resumen.
     ("survival", "coefficients"),
+    # La escala maestra (SDD-32, capa B): los artefactos agregados completos, para el anexo y el
+    # Excel. NUNCA ``assignment`` (una fila por operación). El cuerpo muestra sus dos tablas
+    # legibles, que arma :func:`_escala_maestra` con la función del resumen.
+    ("master_scale", "grades"),
+    ("master_scale", "grade_table"),
+    ("master_scale", "cutoff_table"),
 )
 #: Las claves de la puntuación fuera del ajuste (enmienda PUNTUAR-POBLACION-TTD, D-TTD-2) se
 #: publican siempre, vacías cuando la corrida no tiene esas filas. Una tabla sin filas no es
@@ -186,6 +195,7 @@ _PARAM_DOMAINS: Final[tuple[str, ...]] = (
     *PROVISION_DOMAINS,
     "provisioning_ifrs9",
     "validation",
+    "master_scale",
 )
 
 
@@ -214,6 +224,8 @@ class ReportBuilder:
         tables.update(_curva_de_pd_por_cartera(study))
         ifrs9_extras, tablas_ifrs9 = _escenarios_y_pd_del_modelo(study)
         tables.update(tablas_ifrs9)
+        master_scale_body, tablas_escala = _escala_maestra(study)
+        tables.update(tablas_escala)
         tables.update(_extract_card_dataframes(cards))
         figures = self._collect_figures(study)
         pipeline_params = _collect_pipeline_params(study)
@@ -242,6 +254,8 @@ class ReportBuilder:
             eda_numeric_profiles=_perfiles_numericos(study),
             # IFRS9-FIRMABLE capa C: los escenarios y la PD del modelo, desde los resúmenes.
             ifrs9_extras=ifrs9_extras,
+            # SDD-32 capa B: el cuerpo de «Escala maestra y puntos de corte», desde su resumen.
+            master_scale_body=master_scale_body,
         )
         return bundle.model_copy(update={"sections": self.build_sections(bundle)})
 
@@ -1130,6 +1144,36 @@ def _escenarios_y_pd_del_modelo(
         for clave, columnas, filas in contenido["tables"]:
             tablas[clave] = cast(DataFrameLike, pd.DataFrame(filas, columns=columnas))
     return cuerpos, tablas
+
+
+def _escala_maestra(study: Study) -> tuple[tuple[str, ...], dict[str, DataFrameLike]]:
+    """El cuerpo y las dos tablas de «Escala maestra y puntos de corte» (SDD-32, capa B).
+
+    Los arma :func:`bayesrisk.guided.summaries.master_scale_report_extras` (import perezoso:
+    arrastra los mapas de rótulos de los dominios): las mismas líneas, alertas y tablas que el
+    resumen de la etapa, ya escritas. El informe no recalcula nada. Las alertas se dicen como «Qué
+    revisar». Sin la etapa, nada: el informe es el de siempre.
+    """
+    if not study.artifacts.has("master_scale", "card"):
+        return (), {}
+    from bayesrisk.guided.summaries import master_scale_report_extras
+
+    contenido = master_scale_report_extras(study)
+    if not contenido:
+        return (), {}
+    pd = importlib.import_module("pandas")
+    cuerpo = (
+        *(linea if linea.endswith(".") else f"{linea}." for linea in contenido["lines"]),
+        *(
+            f"Qué revisar: {alerta}" if alerta.endswith(".") else f"Qué revisar: {alerta}."
+            for alerta in contenido["alerts"]
+        ),
+    )
+    tablas: dict[str, DataFrameLike] = {
+        clave: cast(DataFrameLike, pd.DataFrame(filas, columns=columnas))
+        for clave, columnas, filas in contenido["tables"]
+    }
+    return cuerpo, tablas
 
 
 def _curva_de_pd_por_cartera(study: Study) -> dict[str, DataFrameLike]:

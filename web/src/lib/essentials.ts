@@ -91,6 +91,8 @@ export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
   performance: ["performance.n_deciles"],
   stability: ["stability.psi_review_threshold", "stability.psi_stable_threshold"],
   validation: ["validation.families"],
+  // SDD-32 §13: las dos decisiones de la institución; la sección no tiene «Avanzado».
+  master_scale: ["master_scale.approval_cutoff", "master_scale.grade_edges"],
   report: [
     "report.document.author",
     "report.document.entity",

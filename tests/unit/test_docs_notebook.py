@@ -217,7 +217,8 @@ def test_el_cuaderno_corre_de_punta_a_punta_y_publica_las_salidas_de_hoy(
     assert (proyecto / "reports" / "scorecard_report.html").is_file()
     assert (proyecto / "reports" / "scorecard_report.docx").is_file()
     libros = sorted((proyecto / "excel").glob("*.xlsx"))
-    assert len(libros) == 11, [libro.name for libro in libros]
+    # 12 desde la capa B del SDD-32: «11 Escala maestra» y las decisiones en el 12.
+    assert len(libros) == 12, [libro.name for libro in libros]
 
 
 def test_la_guia_enlaza_el_cuaderno() -> None:

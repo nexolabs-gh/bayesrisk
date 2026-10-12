@@ -201,6 +201,13 @@ EXENTAS: dict[str, str] = {
     # aparte, que se validan al subirlas (`POST /api/scenario-tables`, con las reglas del motor) y
     # otra vez antes de correr; un requisito sobre las columnas de la cartera no tendría qué mirar.
     "forward": "lee sus dos tablas aparte, validadas al subirlas: no columnas de la cartera",
+    # SDD-32 capa B: la escala maestra corre sobre lo que publican `scorecard` y `calibration` —el
+    # puntaje, la PD calibrada y el ancla—, que el DAG exige por su `requires`; lo que se exige a sí
+    # misma (cortes finitos y distintos, corte finito) lo levanta su `model_validator`.
+    "master_scale": (
+        "no lee columnas del archivo: corre sobre el puntaje y la PD que publican scorecard y "
+        "calibration (el DAG lo exige), y sus cortes los valida su `model_validator`"
+    ),
     # --- camino F1: miradas una por una en el censo del 2026-07-29 ---
     "selection": "sus 4 campos son `derived`: la candidatura la produce binning al correr",
     "model": "sus overrides se contrastan contra lo que sobrevivió a selection, que aún no existe",

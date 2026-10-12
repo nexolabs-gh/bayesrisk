@@ -53,6 +53,10 @@ STABLE_DOMAINS: Final[tuple[str, ...]] = (
     # tres puertas cerraron el 2026-09-21 (S18: pantalla, Excel opcional y cortes por variable).
     # Su firma y sus resúmenes sólo crecen de forma aditiva en 2.x.
     "guided",
+    # La escala maestra (SDD-32 D-ESC-9): salió en la 2.11.0 como adelanto declarado por la
+    # puerta guiada y el config completo, y entra a la garantía en la 2.12.0, al cerrar sus tres
+    # puertas (pantalla, informe y Excel). Es la última etapa del scorecard F1.
+    "master_scale",
 )
 """Dominios bajo garantía SemVer 2.x: su API pública no rompe hasta un 3.0."""
 
@@ -61,9 +65,6 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
     "forward",
     "governance",
     "markov",
-    # La escala maestra (SDD-32 D-ESC-9): adelanto declarado por la puerta guiada y el config
-    # completo en la 2.11.0; deja de ser experimental cuando la pantalla cierre sus tres puertas.
-    "master_scale",
     "ml",
     "provisioning",
     "stress",

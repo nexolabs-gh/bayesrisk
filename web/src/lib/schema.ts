@@ -149,6 +149,15 @@ export const CONFIG_SECTIONS: ConfigSectionDef[] = [
       "Las pruebas que documentan el modelo: discriminación, calibración, estabilidad y backtesting.",
   },
   {
+    // La última etapa del scorecard, antes del informe (SDD-32, capa B): agrupa el puntaje en tramos
+    // de riesgo con su PD y publica la tabla de puntos de corte. Corre por defecto (D-ESC-8): sus
+    // dos campos son las decisiones de la institución y en blanco la escala la forman los datos.
+    key: "master_scale",
+    label: "Escala maestra",
+    description:
+      "Los tramos de riesgo del puntaje con su PD y el puntaje de aprobación de la institución.",
+  },
+  {
     key: "survival",
     label: "Survival — PD lifetime",
     description:

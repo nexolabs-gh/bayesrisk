@@ -251,3 +251,21 @@ def test_sin_el_override_del_catalogo_la_corrida_se_rompe(tmp_path: Path) -> Non
     )
     error = str(runs.load_results(resultado["run_id"], workdir=tmp_path).get("error") or "")
     assert "grade" in error, f"falló por otra razón que la columna de grado: {error!r}"
+
+
+def test_la_corrida_del_trabajo_publica_la_escala_maestra(corrida: dict[str, Any]) -> None:
+    """SDD-32 capa B (D-ESC-8): el trabajo la siembra encendida y, con el motor real, la corrida la
+    publica en Resultados —sus tramos y la tabla de cortes, desde el resumen de la etapa— y en el
+    informe, como subsección de «Resultados»."""
+    etapas = {e["stage"]: e for e in _resultados(corrida)["summaries"]["stages"]}
+    escala = etapas["master_scale"]
+    assert escala["table"]["columns"][:3] == ["Tramo", "Puntaje", "PD del tramo"]
+    assert len(escala["table"]["rows"]) >= 2, "el puntaje real distingue al menos dos tramos"
+    assert [t["title"] for t in escala.get("extra_tables", [])] == ["Tabla de puntos de corte"]
+    informes = list(Path(corrida["workdir"]).rglob("report.html"))
+    assert len(informes) == 1, informes
+    html = informes[0].read_text(encoding="utf-8")
+    inicio = html.index('data-section-id="results.master_scale"')
+    subseccion = html[inicio : html.index("</section>", inicio)]
+    assert "Escala maestra y puntos de corte" in subseccion
+    assert "Tabla de puntos de corte" in subseccion

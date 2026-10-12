@@ -7,8 +7,8 @@ moverla sin actualizar el número y decir por qué, no. Línea base medida sobre
 | Cifra | Antes (quickstart del preset) | Después (notebook mínimo) | Objetivo |
 |---|---|---|---|
 | Líneas de usuario | 17 (y 83 + ~60 en la Clase 6) | 15 | ≤ 25 |
-| Esenciales visibles a la vez, por sección | todos (409 en 12) | 35 (máx. 6) | ≤ 6 por sección |
-| Perillas de las doce secciones | 409 | 409 (A) · 413 (B, §8-9 (a)) | sin crecer salvo excepción |
+| Esenciales visibles a la vez | todos (409 en 12) | 35 (máx. 6) · 37 (SDD-32 B) | ≤ 6 c/u |
+| Perillas de las secciones | 409 | 409 · 413 (§8-9 (a)) · 414 (SDD-32 B) | sin crecer |
 | Segundos hasta el primer resumen | sin resumen (9,9 s a ``done``) | ≈ 1 s (datos) | ≤ 30 s |
 | Conceptos antes del primer resultado | 11 | 5 | ≤ 5 |
 """
@@ -50,7 +50,10 @@ TOPE_CONCEPTOS: Final = 5
 #: `set_bins`, que no existía en ninguna puerta—; ambas plegadas en «Avanzado». 411 el
 #: 2026-09-28 con D-NOV-2 (CATEGORIAS-NO-VISTAS): `binning.cat_unknown` sale de la pantalla
 #: (`hidden`) porque sólo admite el vacío; es un campo, pero el formulario lo pintaba como dos
-#: nodos —número o texto—.
+#: nodos —número o texto—. 414 el 2026-10-12 con la capa B del SDD-32: la sección
+#: `master_scale` entra al formulario con sus dos decisiones de la institución
+#: (`grade_edges`, que cuenta además su fila, y `approval_cutoff`; tres nodos, medidos en S42),
+#: ambas esenciales; las reglas de formación y de la PD del tramo son constantes (§13).
 SECCIONES_DEL_SCORECARD: Final[tuple[str, ...]] = (
     "data",
     "eda",
@@ -62,10 +65,11 @@ SECCIONES_DEL_SCORECARD: Final[tuple[str, ...]] = (
     "performance",
     "stability",
     "validation",
+    "master_scale",
     "report",
     "governance",
 )
-PERILLAS_DE_LAS_DOCE_SECCIONES: Final = 411
+PERILLAS_DE_LAS_DOCE_SECCIONES: Final = 414
 
 #: Cifra 4: segundos hasta el primer resumen (el de «Datos y muestras») con el dataset del
 #: paquete. Medido el 2026-09-19 en el entorno de referencia: 1,0 s; la corrida completa, 10,2 s.
@@ -112,7 +116,8 @@ def test_cifra_2_esenciales_por_seccion_bajo_el_tope() -> None:
         s: n for s, n in ESENCIALES_VISIBLES_A_LA_VEZ.items() if s in SECCIONES_DEL_SCORECARD
     }
     assert set(del_scorecard) == set(SECCIONES_DEL_SCORECARD)
-    assert sum(del_scorecard.values()) == 35
+    # 37 desde la capa B del SDD-32 (2026-10-12): `master_scale` 2.
+    assert sum(del_scorecard.values()) == 37
     assert max(del_scorecard.values()) <= TOPE_ESENCIALES_POR_SECCION
 
 

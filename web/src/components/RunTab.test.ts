@@ -236,7 +236,8 @@ describe("efecto medido sobre los ejemplos publicados (y sobre la demo estática
       // pendiente. El ejemplo F1 ya traía `validation` encendida en su config, así que hasta
       // ahora el sidebar la escondía — que es el defecto que el test de más abajo vigila.
       // 11 → 12 con D-SC-4: el análisis exploratorio entra a los dos trabajos del scorecard.
-      secciones: 12,
+      // 12 → 13 con la capa B del SDD-32: la escala maestra, tras la validación formal.
+      secciones: 13,
     },
     {
       // 🔴 El caso «ningún trabajo casa» se conserva con un config SINTÉTICO. Hasta D-JUR-9.7 lo

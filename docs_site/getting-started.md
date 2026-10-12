@@ -178,7 +178,7 @@ Holdout / Fuera de tiempo»). Sólo alertan; el descarte sigue siendo decisión 
 
 Dos entregables opcionales, a pedido y nunca la vía para ver un resultado: `sc.export_excel()`
 escribe en `bayesrisk-runs/consumo_v01/excel/` un libro por etapa —`01 Datos y muestras.xlsx` …
-`10 Validación formal.xlsx`, más `11 Decisiones.xlsx` con las decisiones del registro de
+`11 Escala maestra.xlsx`, más `12 Decisiones.xlsx` con las decisiones del registro de
 auditoría—, cada uno con el resumen de la etapa, su tabla de decisión y las tablas completas que
 el informe publica para ese dominio (exige el extra `excel`); y `sc.export("corrida.zip")`
 empaqueta la carpeta del proyecto entera —config, datos, evidencia, informe y Excel— para

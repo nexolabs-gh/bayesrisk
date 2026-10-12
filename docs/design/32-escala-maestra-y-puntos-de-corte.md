@@ -853,3 +853,44 @@ decisión de §12; son precisiones de implementación, medidas.
   En el mismo cierre, el CI de Windows acusó que el oráculo en subproceso decodificaba en UTF-8 la
   salida de un hijo que escribía en cp1252: el hijo corre ahora con UTF-8 (reproducido en local con
   el padre en cp1252: 1 error antes, verde después).
+
+## 15. Capa B implementada (S43) — lo que el código precisó
+
+Implementada el 2026-10-12 sobre `422fe0f` (2.11.0 publicada), sin publicar. Nada de esto reabre
+una decisión de §12; son precisiones de implementación, medidas.
+
+- **La pantalla (D-ESC-8).** `master_scale` entra a los trabajos `scorecard_pd` y `pd_y_lgd`, tras
+  `validation`, sembrada en blanco (`grade_edges` y `approval_cutoff` en `None`: los tramos los
+  forman los datos y no hay corte); validada, es la misma sección que siembra la puerta guiada. La
+  sección declara sus dos esenciales (`declara_esenciales` y `ui_essential`; `grade_edges` como
+  lista de números, `approval_cutoff` como número, cada una con su ayuda) y no tiene «Avanzado».
+  La `description` de `approval_cutoff` se acortó a 136 caracteres —el tope del placeholder es 160—
+  y el detalle bajó a `ui_help`. Un ejemplo publicado sin la sección (el preset F1) carga sin ella
+  y su corrida no la corre: su `config_hash` no cambia (D-ESC-7).
+- **Resultados** gana «Escala maestra y puntos de corte» tras la validación formal: las líneas, las
+  alertas, la tabla de los tramos y la de puntos de corte del **mismo resumen** de la etapa
+  (`StageSummary.to_dict`), sin formato propio en el front.
+- **El informe** gana la subsección «Escala maestra y puntos de corte» dentro de «Resultados» (no un
+  capítulo nuevo: no mueve la numeración de ningún informe sin la escala). Su cuerpo son las líneas
+  y las alertas («Qué revisar») del resumen y sus dos tablas, las del resumen ya escritas
+  (`master_scale.scale`, `master_scale.cutoffs`), las arma
+  `guided.summaries.master_scale_report_extras` —una sola fuente, como las de escenarios de
+  IFRS9-FIRMABLE—. Los artefactos completos (`grades`, `grade_table`, `cutoff_table`) van al anexo
+  de tablas; `assignment` (una fila por operación) no. La sección del config va al anexo de
+  parámetros. Sin la etapa no hay card ni subsección: el informe es el de siempre (medido con su
+  control negativo).
+- **El Excel** gana `11 Escala maestra.xlsx` —resumen, tramos, tabla de cortes y las tablas
+  completas del informe— y las decisiones pasan a `12 Decisiones.xlsx`. Las dos tablas que el
+  informe arma desde el resumen no se repiten como texto en el libro: ya son sus hojas «Decisión» y
+  «Tabla de puntos de corte», con sus números.
+- **Las tres puertas** (D-SIM-1): la guiada, el YAML por `bayesrisk.run` y la pantalla
+  (`/api/config/from-yaml` → `/api/run`) dan el mismo `config_hash`, los mismos artefactos de la
+  escala (`grades`, `grade_table`, `cutoff_table`, `assignment`, iguales por `assert_frame_equal`),
+  el mismo resumen en Resultados y la misma subsección del informe. Con las tres cerradas, la
+  etapa y `set_grades`/`set_cutoff`/`apply` son **estables** (`STABLE_DOMAINS`).
+- **Las cinco cifras después:** **15 · 37 · 414 · ≈ 1 s · 5** —la sección suma 2 esenciales y 3
+  nodos (`grade_edges`, su fila y `approval_cutoff`, enumerados contra la 2.11.0)—. Censos movidos:
+  `HOJAS_DEL_FORMULARIO` 633 → 636, `HOJAS_CON_DEFAULT_EFECTIVO` 517 → 520, secciones del
+  formulario 18 → 19, esenciales en 16 secciones y 59 caminos, el sidebar del ejemplo F1 12 → 13,
+  la política de invariantes (`master_scale` exenta: no lee columnas del archivo), el golden de
+  campos de `ReportInputBundle` y el cuaderno publicado (12 libros).

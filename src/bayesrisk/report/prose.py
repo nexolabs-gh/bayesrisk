@@ -1024,6 +1024,9 @@ def results_body(bundle: ReportInputBundle, domain: str) -> tuple[str, ...]:
         return _results_provisioning_ifrs9(bundle)
     if domain == "survival":
         return _results_survival(bundle)
+    if domain == "master_scale":
+        # SDD-32 capa B: lo escribe el resumen de la etapa (una sola fuente, D-SIM-5).
+        return bundle.master_scale_body
     return ()
 
 

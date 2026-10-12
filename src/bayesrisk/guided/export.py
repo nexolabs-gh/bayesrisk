@@ -3,8 +3,9 @@
 ``export_excel()`` escribe en ``<run_dir>/<name>/excel/`` un libro por etapa, numerado en el orden
 de las etapas (§3.2 de la enmienda) y rotulado con el mismo nombre que el resumen, más un último
 libro con las decisiones. Cada familia de resúmenes numera sus propias etapas: el scorecard, de ``01
-Datos y muestras`` a ``11 Decisiones``; la provisión IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-10), de ``01
-Cartera`` a ``05 Decisiones`` (``03 Escenarios`` desde IFRS9-FIRMABLE capa C). Cada libro lleva el
+Datos y muestras`` a ``12 Decisiones`` (``11 Escala maestra`` desde la capa B del SDD-32); la
+provisión IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-10), de ``01 Cartera`` a ``05 Decisiones`` (``03
+Escenarios`` desde IFRS9-FIRMABLE capa C). Cada libro lleva el
 resumen de la etapa, su **tabla de decisión** (la de ``sc.results[<etapa>]``, con rótulos en
 español) y las **tablas completas** que el informe publica para ese dominio —las del anexo y las que
 el informe entrega por observación como exports—, escritas por :mod:`bayesrisk.report.exports` con
@@ -34,7 +35,11 @@ from typing import TYPE_CHECKING, Any, Final
 
 from bayesrisk.core.exceptions import MissingDependencyError
 from bayesrisk.guided.summaries import StageSummary, stage_labels
-from bayesrisk.report.document import table_title
+from bayesrisk.report.document import (
+    MASTER_SCALE_CUTOFFS_TABLE,
+    MASTER_SCALE_SCALE_TABLE,
+    table_title,
+)
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -57,9 +62,15 @@ __all__ = [
 EXCEL_SUBDIR: Final = "excel"
 
 
-#: Las etapas sin libro: el informe (su entregable es el documento) y, hasta la capa B del
-#: SDD-32, la escala maestra.
-_SIN_LIBRO: Final = frozenset({"report", "master_scale"})
+#: Las etapas sin libro: sólo el informe (su entregable es el documento).
+_SIN_LIBRO: Final = frozenset({"report"})
+
+#: Las tablas del cuerpo del informe que el informe arma desde el resumen de la etapa y escribe como
+#: texto (SDD-32, capa B): en el libro ya son la hoja «Decisión» y la de la tabla adicional, con sus
+#: números; repetirlas como texto daría dos hojas con lo mismo.
+_TABLAS_DEL_INFORME_DESDE_EL_RESUMEN: Final = frozenset(
+    {MASTER_SCALE_SCALE_TABLE, MASTER_SCALE_CUTOFFS_TABLE}
+)
 
 
 def stage_books(family: str = "scorecard") -> dict[str, str]:
@@ -72,8 +83,9 @@ def stage_books(family: str = "scorecard") -> dict[str, str]:
     rotulos = stage_labels(family)
     # «Escenarios» (IFRS9-FIRMABLE) tiene su libro desde la capa C, con el número de su posición
     # (Cami, 2026-10-09): `03 Escenarios.xlsx`, y la provisión en el `04` también sin escenarios.
-    # «Escala maestra» (SDD-32) gana su libro `11 Escala maestra` —y las decisiones pasan al `12`—
-    # en la capa B, con la pantalla y el informe (D-ESC-9); en la capa A el Excel no cambia.
+    # «Escala maestra» (SDD-32 §6.4) tiene su libro `11 Escala maestra` desde la capa B, con la
+    # pantalla y el informe (D-ESC-9), y las decisiones pasan al `12`: la etapa va al final del
+    # scorecard y por eso sólo mueve ese número.
     etapas = [stage for stage in rotulos if stage not in _SIN_LIBRO]
     return {stage: f"{numero:02d} {rotulos[stage]}.xlsx" for numero, stage in enumerate(etapas, 1)}
 
@@ -83,9 +95,9 @@ def decisions_book(family: str = "scorecard") -> str:
     return f"{len(stage_books(family)) + 1:02d} Decisiones.xlsx"
 
 
-#: Los libros del scorecard: ``01 Datos y muestras.xlsx`` … ``10 Validación formal.xlsx``.
+#: Los libros del scorecard: ``01 Datos y muestras.xlsx`` … ``11 Escala maestra.xlsx``.
 STAGE_BOOKS: Final[dict[str, str]] = stage_books("scorecard")
-#: El último libro del scorecard: ``11 Decisiones.xlsx``.
+#: El último libro del scorecard: ``12 Decisiones.xlsx``.
 DECISIONS_BOOK: Final = decisions_book("scorecard")
 
 _SHEET_SUMMARY: Final = "Resumen"
@@ -244,6 +256,8 @@ def _hojas_de_la_etapa(
         indice.append({"Hoja": hoja, "Contenido": titulo, "Filas": len(tabla.index)})
     adicionales = [tabla for _titulo, tabla, _formatos in resumen.extra_tables]
     for clave in sorted(k for k in tablas if k.startswith(f"{stage}.")):
+        if clave in _TABLAS_DEL_INFORME_DESDE_EL_RESUMEN:
+            continue
         tabla = tablas[clave]
         if any(tabla.equals(adicional) for adicional in adicionales):
             # La tabla del informe que ES una tabla adicional del resumen —la PD por período y

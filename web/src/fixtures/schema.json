@@ -13594,8 +13594,13 @@
                   }
                 ],
                 "default": null,
-                "description": "El puntaje desde el que la institución aprueba: se aprueba el lado de menor riesgo del corte. Vacío, no hay decisión y la tabla de cortes muestra todos los posibles.",
-                "title": "Puntaje de aprobación"
+                "description": "El puntaje desde el que la institución aprueba: el lado de menor riesgo del corte. Vacío, la tabla de cortes muestra todos los posibles.",
+                "title": "Puntaje de aprobación",
+                "ui_essential": true,
+                "ui_group": "Decisiones de la institución",
+                "ui_help": "El corte de aprobación es apetito de riesgo: ningún valor de fábrica es defendible. Se aprueba el lado de menor riesgo del corte y no tiene que ser un límite de tramo. Vacío, no hay decisión: la tabla de puntos de corte muestra, para cada límite, cuánto se aprueba, la tasa de malos, los malos evitados y los buenos rechazados.",
+                "ui_order": 2,
+                "ui_widget": "number_input"
               },
               "grade_edges": {
                 "anyOf": [
@@ -13611,11 +13616,17 @@
                 ],
                 "default": null,
                 "description": "Los cortes en puntos con que la institución fija sus tramos. Vacío, los tramos los forman los datos: al menos el 5 % de Desarrollo cada uno, con tasas de malos distintas de las de sus vecinos, ordenados y hasta diez.",
-                "title": "Cortes de los tramos"
+                "title": "Cortes de los tramos",
+                "ui_essential": true,
+                "ui_group": "Decisiones de la institución",
+                "ui_help": "Los límites entre tramos que la institución ya usa, en puntos (por ejemplo 563, 541, 520 y 498). Cada valor cierra un tramo y abre el siguiente; el tramo 1 es el de menor riesgo. En blanco, los tramos los forman los datos.",
+                "ui_order": 1,
+                "ui_widget": "number_list"
               }
             },
             "title": "MasterScaleConfig",
-            "type": "object"
+            "type": "object",
+            "ui_essentials_declared": true
           },
           {
             "type": "null"

@@ -68,6 +68,8 @@ ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
     "performance": ("performance.n_deciles",),
     "stability": ("stability.psi_review_threshold", "stability.psi_stable_threshold"),
     "validation": ("validation.families",),
+    # SDD-32 §13: las dos decisiones de la institución; la sección no tiene «Avanzado».
+    "master_scale": ("master_scale.approval_cutoff", "master_scale.grade_edges"),
     "report": (
         "report.document.author",
         "report.document.entity",
@@ -126,6 +128,7 @@ ESENCIALES_VISIBLES_A_LA_VEZ: Final[dict[str, int]] = {
     "performance": 1,
     "stability": 2,
     "validation": 1,
+    "master_scale": 2,
     "report": 5,
     "governance": 3,
     "survival": 5,
@@ -208,13 +211,14 @@ def _secciones() -> dict[str, dict[str, Any]]:
     }
 
 
-def test_el_golden_cubre_las_quince_secciones() -> None:
-    """Las doce del scorecard y las tres de cálculo de IFRS 9: survival, forward y la provisión."""
-    assert len(ESENCIALES_POR_SECCION) == 15
+def test_el_golden_cubre_las_dieciseis_secciones() -> None:
+    """Las trece del scorecard y las tres de cálculo de IFRS 9: survival, forward y la provisión."""
+    assert len(ESENCIALES_POR_SECCION) == 16
     assert set(_secciones()) == set(ESENCIALES_POR_SECCION)
-    # 37 caminos del scorecard (39 marcas: un camino de la partición vive en varias ramas) y 20
-    # de IFRS 9 (12 hasta CASO-REAL-IFRS9 §8-3; 15 hasta IFRS9-FIRMABLE §8-5; 17 hasta su capa C).
-    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 57
+    # 39 caminos del scorecard (37 hasta la capa B del SDD-32, que suma los dos de la escala;
+    # 41 marcas: un camino de la partición vive en varias ramas) y 20 de IFRS 9 (12 hasta
+    # CASO-REAL-IFRS9 §8-3; 15 hasta IFRS9-FIRMABLE §8-5; 17 hasta su capa C).
+    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 59
 
 
 def test_cada_marca_del_schema_esta_en_el_golden_y_cada_entrada_del_golden_esta_marcada() -> None:
@@ -263,8 +267,8 @@ def _rama_de_seccion(nodo: Any, defs: dict[str, Any]) -> dict[str, Any]:
     return _resolver(nodo, defs)
 
 
-def test_las_quince_secciones_declaran_sus_esenciales_y_ninguna_otra() -> None:
-    """``ui_essentials_declared`` (``declara_esenciales``) va en las quince y en ninguna más.
+def test_las_dieciseis_secciones_declaran_sus_esenciales_y_ninguna_otra() -> None:
+    """``ui_essentials_declared`` (``declara_esenciales``) va en las dieciséis y en ninguna más.
 
     Es la marca que hace que la pantalla divida la sección (D-FLU-8): sin ella se pinta entera.
     No se deduce contando marcas porque ``eda`` declara cero esenciales y también se divide.

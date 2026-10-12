@@ -389,6 +389,9 @@ export function ResultsPanel({
   // provisión es la de la etapa desplazada en logit, tramo a tramo y escenario por escenario: se
   // pinta desde el MISMO resumen de «Provisión IFRS 9» —la ECL por escenario frente a la TTC y el
   // desplazamiento de cada tramo—, que es lo que dicen también el Excel y el informe.
+  // La escala maestra (SDD-32, capa B): los tramos y la tabla de puntos de corte se pintan desde
+  // el MISMO resumen de la etapa —lo que dicen también el notebook, el Excel y el informe—.
+  const escala = results.summaries?.stages.find((etapa) => etapa.stage === "master_scale") ?? null
   const tablasDelCiclo =
     ifrs9?.pit_mode === "cycle"
       ? (results.summaries?.stages
@@ -1579,6 +1582,33 @@ export function ResultsPanel({
               </div>
             </Subchart>
           ) : null}
+        </ResultsSection>
+      ) : null}
+
+      {/* a.4 Escala maestra (SDD-32, capa B): la última etapa del scorecard. Las líneas, las
+          alertas y las dos tablas son las del resumen de la etapa, sin formato propio. Guard por
+          presencia: sin la etapa la sección no se renderiza. */}
+      {escala ? (
+        <ResultsSection
+          title="Escala maestra y puntos de corte"
+          description="Los tramos de riesgo en que se agrupa el puntaje, del 1, el de menor riesgo, al último, cada uno con su PD; y, para cada punto de corte, cuánto se aprueba, con qué tasa de malos, cuántos malos se evitan y cuántos buenos se rechazan. Para fijar los tramos o el puntaje de aprobación de tu institución, complétalos en «Escala maestra» y vuelve a correr."
+        >
+          <ul className="space-y-1 text-sm text-foreground/90">
+            {escala.lines.map((linea) => (
+              <li key={linea}>{linea}</li>
+            ))}
+          </ul>
+          {escala.alerts.length > 0 ? (
+            <ul className="mt-2 space-y-1 text-sm text-amber-200/90">
+              {escala.alerts.map((alerta) => (
+                <li key={alerta}>⚠ {alerta}</li>
+              ))}
+            </ul>
+          ) : null}
+          {escala.table ? <SummaryTableView table={escala.table} title="Los tramos" /> : null}
+          {(escala.extra_tables ?? []).map((tabla) => (
+            <SummaryTableView key={tabla.title} table={tabla} title={tabla.title} />
+          ))}
         </ResultsSection>
       ) : null}
 

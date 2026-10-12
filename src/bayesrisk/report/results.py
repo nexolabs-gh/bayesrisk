@@ -201,6 +201,13 @@ class ReportInputBundle(_ReportBaseModel):
     resúmenes de etapa. Aditivo (default vacío): sin escenarios ni las dos PD, el documento es byte
     a byte el de siempre.
     """
+    master_scale_body: tuple[str, ...] = Field(default=())
+    """El cuerpo de «Escala maestra y puntos de corte» (SDD-32, capa B), escrito por el resumen.
+
+    Las líneas y las alertas («Qué revisar») del resumen de la etapa «Escala maestra»: una sola
+    fuente con el notebook, la pantalla y el Excel (D-SIM-5). Aditivo (default vacío): sin la
+    etapa, el documento es byte a byte el de siempre.
+    """
     eda_numeric_profiles: tuple[str, ...] = Field(default=())
     """Las columnas que el EDA perfiló como numéricas (D-PAN-4, CIFRAS-EN-PANTALLA).
 

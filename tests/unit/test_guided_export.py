@@ -98,13 +98,14 @@ def test_export_excel_escribe_un_libro_numerado_por_etapa_y_el_de_decisiones(
         "08 Desempeño.xlsx",
         "09 Estabilidad.xlsx",
         "10 Validación formal.xlsx",
-        "11 Decisiones.xlsx",
+        "11 Escala maestra.xlsx",
+        "12 Decisiones.xlsx",
     ]
     # La numeración y los nombres son constantes (D-FLU-12): el orden de §3.2 y sus rótulos.
-    # La escala maestra (SDD-32) no tiene libro hasta su capa B: el Excel de la capa A no cambia.
-    assert list(STAGE_BOOKS) == [s for s in STAGE_LABELS if s not in {"report", "master_scale"}]
+    # La escala maestra (SDD-32) tiene su libro desde la capa B, el 11: sólo el informe no tiene.
+    assert list(STAGE_BOOKS) == [s for s in STAGE_LABELS if s != "report"]
     assert all(STAGE_LABELS[s] in nombre for s, nombre in STAGE_BOOKS.items())
-    assert DECISIONS_BOOK == "11 Decisiones.xlsx"
+    assert DECISIONS_BOOK == "12 Decisiones.xlsx"
 
     # Cada libro: el resumen, la tabla de decisión, las tablas del informe del dominio y el índice.
     binning = carpeta / STAGE_BOOKS["binning"]
@@ -134,7 +135,7 @@ def test_tras_run_until_quedan_solo_los_libros_de_las_etapas_que_corrieron(
         "02 Análisis exploratorio.xlsx",
         "03 Tramos y WoE.xlsx",
         "04 Selección de variables.xlsx",
-        "11 Decisiones.xlsx",
+        "12 Decisiones.xlsx",
     ]
 
 
@@ -331,7 +332,7 @@ def test_export_excel_reemplaza_la_carpeta_entera_y_un_fallo_no_deja_una_mezcla(
     """
     sc = _puerta(fuente, tmp_path).run()
     completa = {p.name: p.read_bytes() for p in sc.export_excel()}
-    assert len(completa) == 11
+    assert len(completa) == 12  # 11 etapas con libro (la escala, desde la capa B) + decisiones
     sc.run(until="selection")
     parcial = {p.name for p in sc.export_excel()}
     carpeta = sc.project_dir / EXCEL_SUBDIR
@@ -341,7 +342,7 @@ def test_export_excel_reemplaza_la_carpeta_entera_y_un_fallo_no_deja_una_mezcla(
         "02 Análisis exploratorio.xlsx",
         "03 Tramos y WoE.xlsx",
         "04 Selección de variables.xlsx",
-        "11 Decisiones.xlsx",
+        "12 Decisiones.xlsx",
     }
     antes = {p.name: p.read_bytes() for p in carpeta.iterdir()}
 

@@ -5,7 +5,7 @@ sobre lo que ya publicaron ``scorecard`` y ``calibration``: el puntaje por opera
 (sus puntos y sus límites, para los rótulos), la PD calibrada y el ancla efectiva de la
 calibración. No consume ni modifica nada más.
 
-**Experimental (fuera de la garantía SemVer 2.x).**
+**Estable (SemVer 2.x).**
 """
 
 from __future__ import annotations

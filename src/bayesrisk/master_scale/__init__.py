@@ -4,9 +4,10 @@ Al importarse, registra :class:`MasterScaleConfig` en el hook diferido de
 :mod:`bayesrisk.core.config.schema` y el paso con ``@register("standard", domain="master_scale")``,
 sin arrastrar pandas/scipy/OptBinning: el motor se carga al ejecutar.
 
-**Experimental (fuera de la garantía SemVer 2.x).**
-La etapa sale por la puerta guiada y la completa en la 2.11.0 (capa A del SDD-32) y deja de
-serlo cuando la pantalla cierre sus tres puertas (capa B).
+**Estable (SemVer 2.x).**
+Salió en la 2.11.0 como adelanto experimental por la puerta guiada y la completa (capa A del
+SDD-32) y es estable desde la 2.12.0, con sus tres puertas cerradas (capa B: pantalla, informe
+y Excel).
 """
 
 from __future__ import annotations

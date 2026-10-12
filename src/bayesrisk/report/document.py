@@ -57,6 +57,8 @@ __all__ = [
     "IFRS9_DOMAINS",
     "IFRS9_EXTRA_SECTIONS",
     "KEY_TABLES",
+    "MASTER_SCALE_CUTOFFS_TABLE",
+    "MASTER_SCALE_SCALE_TABLE",
     "METHODOLOGY_STEPS",
     "PER_OBSERVATION_TABLES",
     "PIPELINE_DOMAINS",
@@ -96,6 +98,7 @@ DOMAIN_TITLES: Final[dict[str, str]] = {
     "performance": "Desempeño y discriminación",
     "stability": "Estabilidad",
     "validation": "Validación formal",
+    "master_scale": "Escala maestra y puntos de corte",
     "survival": "Supervivencia y curva PD lifetime",
     "markov": "Matrices de transición",
     "forward": "Escenarios forward-looking",
@@ -156,6 +159,9 @@ RESULT_DOMAINS: Final[tuple[str, ...]] = (
     "calibration",
     "performance",
     "stability",
+    # La escala maestra (SDD-32, capa B): la última etapa del scorecard, con su card. Sin la etapa
+    # no hay card y la subsección no se emite: el informe de una corrida sin escala no cambia.
+    "master_scale",
 )
 # Subsecciones del capítulo CONDICIONAL de provisiones (SDD-28 D5). El orquestador primero (es el
 # titular: la provisión a constituir y el sobrecosto del estándar), luego el desglose de cada
@@ -205,6 +211,8 @@ APPENDIX_PARAMETER_DOMAINS: Final[tuple[str, ...]] = (
     *PROVISION_DOMAINS,
     "provisioning_ifrs9",
     "validation",
+    # Los cortes y el puntaje de aprobación que declaró la institución (SDD-32, capa B).
+    "master_scale",
 )
 
 APPENDIX_LINEAGE_ID: Final = "appendix_lineage"
@@ -229,6 +237,15 @@ METHODOLOGY_STEPS: Final[tuple[tuple[str, str], ...]] = (
 #: la arma el builder con la misma función que la etapa «Curva de PD» del resumen
 #: (:func:`bayesrisk.guided.summaries.pd_curve_by_portfolio`), una sola fuente (D-SIM-5).
 SURVIVAL_PD_BY_PERIOD_TABLE: Final = "survival.pd_by_period"
+
+#: Las dos tablas del cuerpo de «Escala maestra y puntos de corte» (SDD-32, capa B): los tramos con
+#: su PD y su lectura por muestra, y la tabla de puntos de corte. No son artefactos del motor: las
+#: arma el builder con la MISMA función que el resumen de la etapa
+#: (:func:`bayesrisk.guided.summaries.master_scale_report_extras`), ya escritas como las lee una
+#: persona; los artefactos completos (``master_scale.grades``, ``grade_table``, ``cutoff_table``)
+#: van al anexo de tablas.
+MASTER_SCALE_SCALE_TABLE: Final = "master_scale.scale"
+MASTER_SCALE_CUTOFFS_TABLE: Final = "master_scale.cutoffs"
 
 # Tablas que el CUERPO del informe muestra por dominio: las que un validador necesita leer para
 # formarse un juicio. El Anexo de tablas publica el RESTO de las tablas agregadas de la corrida —lo
@@ -265,6 +282,7 @@ KEY_TABLES: Final[dict[str, tuple[str, ...]]] = {
         "provisioning_ifrs9.ecl_by_scenario",
         "provisioning_ifrs9.shift_by_period",
     ),
+    "master_scale": (MASTER_SCALE_SCALE_TABLE, MASTER_SCALE_CUTOFFS_TABLE),
 }
 
 #: La tabla de la tasa por período o cohorte, que además del máximo configurable de filas por
@@ -360,6 +378,12 @@ _TABLE_TITLES: Final[dict[str, str]] = {
         "ECL por escenario frente a la curva a lo largo del ciclo"
     ),
     "provisioning_ifrs9.shift_by_period": "Desplazamiento por tramo",
+    # SDD-32 capa B: las dos tablas del cuerpo (desde el resumen) y los artefactos completos.
+    MASTER_SCALE_SCALE_TABLE: "Escala maestra — los tramos y su PD",
+    MASTER_SCALE_CUTOFFS_TABLE: "Tabla de puntos de corte",
+    "master_scale.grades": "Tramos de la escala maestra",
+    "master_scale.grade_table": "Escala maestra por muestra y tramo",
+    "master_scale.cutoff_table": "Puntos de corte por muestra",
 }
 _BINNING_TABLE_PREFIX: Final = "binning.tables."
 #: Prefijo de los perfiles por variable del análisis exploratorio (`UnivariateResult.profiles`,

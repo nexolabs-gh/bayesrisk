@@ -3369,6 +3369,33 @@ def ifrs9_report_extras(study: Study) -> dict[str, dict[str, Any]]:
     return salida
 
 
+def master_scale_report_extras(study: Study) -> dict[str, Any]:
+    """Lo que el informe cuenta de la escala maestra (SDD-32, capa B).
+
+    **Una sola fuente**: las líneas, las alertas y las dos tablas del resumen de la etapa «Escala
+    maestra» —la de los tramos y la de puntos de corte—, ya escritas como las lee una persona, con
+    las claves ``master_scale.scale`` y ``master_scale.cutoffs`` del informe. Trae ``lines``,
+    ``alerts`` y ``tables`` (``(clave, columnas, filas)``). Sin la etapa, ``{}``.
+    """
+    from bayesrisk.report.document import MASTER_SCALE_CUTOFFS_TABLE, MASTER_SCALE_SCALE_TABLE
+
+    if _card(study, "master_scale", "card") is None:
+        return {}
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="", partition_label="")
+    resumen = _resumen_master_scale(study, contexto)
+    tablas: list[tuple[str, dict[str, Any] | None]] = [
+        (MASTER_SCALE_SCALE_TABLE, _tabla_transportable(resumen.table, resumen.formats)),
+    ]
+    for titulo, tabla, formatos in resumen.extra_tables:
+        if titulo == TITULO_TABLA_DE_CORTES:
+            tablas.append((MASTER_SCALE_CUTOFFS_TABLE, _tabla_transportable(tabla, formatos)))
+    return {
+        "lines": list(resumen.lines),
+        "alerts": list(resumen.alerts),
+        "tables": [(k, t["columns"], t["rows"]) for k, t in tablas if t is not None],
+    }
+
+
 def _lineas_de_la_pd_del_modelo(card: Mapping[str, Any]) -> tuple[list[str], list[str]]:
     """Lo que «Provisión IFRS 9» cuenta de las dos PD del modelo (IFRS9-FIRMABLE §3.7, §3.8, §13).
 
@@ -3780,7 +3807,7 @@ def _resumen_master_scale(study: Study, context: SummaryContext) -> StageSummary
     if isinstance(cutoff_table, pd.DataFrame):
         extra.append(
             (
-                "Tabla de puntos de corte",
+                TITULO_TABLA_DE_CORTES,
                 _tabla_de_cortes_legible(
                     cutoff_table,
                     grades,
@@ -3941,6 +3968,10 @@ def _tabla_de_la_escala(grades: pd.DataFrame, grade_table: pd.DataFrame) -> pd.D
             ]
     return tabla
 
+
+#: El título de la tabla adicional de «Escala maestra»: el que leen la pantalla, el Excel y el
+#: informe (SDD-32, capa B).
+TITULO_TABLA_DE_CORTES: Final = "Tabla de puntos de corte"
 
 _FORMATOS_CORTES: Final[dict[str, _Kind]] = {
     "Aprobados": "pct",

@@ -45,6 +45,8 @@ EXTRA_POR_SECCION = {
     # binomial/Jeffreys y el t-test, que importan `scipy` de forma perezosa y traducen su ausencia
     # a «requiere scipy; instale bayesrisk[scoring]». Ningún extra propio: `scoring` ya lo trae.
     "validation": "scoring",
+    # SDD-32 capa B: la escala forma los tramos con OptBinning (`master_scale/engine.py`).
+    "master_scale": "scoring",
     "survival": "survival",  # además de `scoring`: `cox_ph`/`aft` exigen lifelines (KM no)
     # IFRS9-FIRMABLE capa C: lo que la pantalla ofrece de `forward` es la vía de los escenarios de
     # la institución, que el trabajo IFRS 9 enciende al subir las dos tablas, y corre con el núcleo

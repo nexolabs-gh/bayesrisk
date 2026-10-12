@@ -1022,9 +1022,6 @@ class Scorecard(_PuertaGuiada):
         formarlos. Cada corte separa con la regla única: ``s ≥ c`` al lado de puntaje mayor. Un
         corte que deje un tramo sin operaciones de Desarrollo detiene la etapa con el tramo y el
         rango del puntaje.
-
-        **Experimental (fuera de la garantía SemVer 2.x).**
-        Hasta que la pantalla ofrezca la escala (capa B del SDD-32).
         """
         motivo = self._motivo(reason, "set_grades")
         try:
@@ -1046,9 +1043,6 @@ class Scorecard(_PuertaGuiada):
         —con «más puntaje, menos riesgo», ``s ≥ score``; con la dirección invertida, ``s < score``—
         y la tabla de cortes gana su fila, calculada exactamente en ese puntaje. No tiene que ser
         un límite de tramo.
-
-        **Experimental (fuera de la garantía SemVer 2.x).**
-        Hasta que la pantalla ofrezca la escala (capa B del SDD-32).
         """
         motivo = self._motivo(reason, "set_cutoff")
         try:
@@ -1108,9 +1102,6 @@ class Scorecard(_PuertaGuiada):
         que no se puede puntuar (``scoring_status == "not_scorable"``) no recibe tramo ni
         decisión. Para llevar la tarjeta a otro sistema, ``bayesrisk.FittedScorecardBundle.
         from_study(sc.study).save(ruta)``.
-
-        **Experimental (fuera de la garantía SemVer 2.x).**
-        Hasta que la pantalla ofrezca la escala (capa B del SDD-32).
         """
         if self._study is None or self._study.run_context.status != "done":
             raise ScorecardInputError(
@@ -1150,10 +1141,10 @@ class Scorecard(_PuertaGuiada):
     def export_excel(self) -> tuple[Path, ...]:
         """Un libro Excel por etapa, numerado, en ``<run_dir>/<name>/excel/`` (D-FLU-5, D-SIM-7).
 
-        ``01 Datos y muestras.xlsx`` … ``10 Validación formal.xlsx`` para las etapas que corrieron
+        ``01 Datos y muestras.xlsx`` … ``11 Escala maestra.xlsx`` para las etapas que corrieron
         —cada uno con el resumen, la tabla de decisión y las tablas completas que el informe
         publica para ese dominio, con la misma protección de celdas que los exports del informe—
-        más ``11 Decisiones.xlsx`` con las decisiones del registro de auditoría (humanas, de la
+        más ``12 Decisiones.xlsx`` con las decisiones del registro de auditoría (humanas, de la
         puerta y del motor). Opcional: nunca es la vía para ver un resultado. Exige el extra
         ``excel`` (``openpyxl``); sin él se detiene con el comando de instalación.
         """

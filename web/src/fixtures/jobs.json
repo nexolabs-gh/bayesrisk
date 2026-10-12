@@ -1771,6 +1771,7 @@
         "performance",
         "stability",
         "validation",
+        "master_scale",
         "report",
         "governance"
       ],
@@ -6436,6 +6437,7 @@
         "performance",
         "stability",
         "validation",
+        "master_scale",
         "provisioning_internal",
         "report",
         "governance"

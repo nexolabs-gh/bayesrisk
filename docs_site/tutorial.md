@@ -53,17 +53,15 @@ sc.resume()                         # corrida nueva y completa con la decisión;
 
 ## Escala maestra y puntos de corte
 
-!!! note "Experimental"
-    La etapa «Escala maestra» sale primero por la puerta guiada y el config completo; la pantalla,
-    el informe y el Excel la reciben en la versión siguiente.
-
 La última etapa de la corrida, **«Escala maestra»**, agrupa el puntaje en **tramos de riesgo**, del
 1 (el de menor riesgo) al último: los forman los datos —cada uno con al menos el 5 % de Desarrollo
 y una tasa de malos distinta de la de sus vecinos, hasta diez—. Cada tramo recibe **su PD**, que es
 su tasa de malos de Desarrollo llevada al ancla de la calibración, y se lee en Holdout y fuera de
 tiempo con el mismo contraste de la validación. La **tabla de puntos de corte** dice, para cada
 límite, cuánto se aprueba, con qué tasa de malos, **cuántos malos se evitan y cuántos buenos se
-rechazan**: es la tabla con que el comité elige su corte sabiendo lo que cuesta.
+rechazan**: es la tabla con que el comité elige su corte sabiendo lo que cuesta. La misma escala
+sale en la pantalla (Resultados, «Escala maestra y puntos de corte»), en el informe y en el libro
+`11 Escala maestra.xlsx` del Excel.
 
 Con el corte elegido, `set_cutoff` lo declara con su motivo y `apply` puntúa solicitudes nuevas con
 la tarjeta de la corrida —su puntaje, su tramo, la PD del tramo y la decisión—:

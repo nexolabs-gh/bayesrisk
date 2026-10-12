@@ -135,7 +135,10 @@ from bayesrisk.ui.routes import schema_payload
 #: ``target_components[]``, ``ljung_box_lags[]``). Los dos que faltan son ``schema_version`` y
 #: ``type``, ``hidden``. La enmienda estimó «44 + 1» contando campos Pydantic;
 #: el barrido del formulario cuenta 54 (la cifra 3 de IFRS 9 queda en 289, no en 280).
-HOJAS_DEL_FORMULARIO = 633
+#: 633 → 636 el 2026-10-12 con la capa B del SDD-32: `master_scale` entra al formulario y el
+#: barrido suma, enumerados contra la 2.11.0, **0 desapariciones y 3 apariciones**:
+#: ``master_scale.grade_edges``, su fila ``grade_edges[]`` y ``master_scale.approval_cutoff``.
+HOJAS_DEL_FORMULARIO = 636
 
 #: Hojas que el barrido de PARIDAD contra el catálogo de defaults efectivos resuelve.
 #:
@@ -176,8 +179,10 @@ HOJAS_DEL_FORMULARIO = 633
 #: del golden de arriba: la sección no tiene uniones discriminadas, así que las dos cifras suben lo
 #: mismo. ``input.macro_source.variable_cols`` y ``satellite.factor_cols`` cuentan como resueltos
 #: porque el catálogo los publica como descriptores sin default (``has_default: false``): son
-#: decisiones obligatorias, que la pantalla llena al leer las dos tablas.
-HOJAS_CON_DEFAULT_EFECTIVO = 517
+#: decisiones obligatorias, que la pantalla llena al leer las dos tablas. 517 → 520 el
+#: 2026-10-12 con la capa B del SDD-32: los mismos tres nodos de ``master_scale`` del golden de
+#: arriba (sin uniones discriminadas, las dos cifras suben lo mismo).
+HOJAS_CON_DEFAULT_EFECTIVO = 520
 
 #: Descriptores de hoja que el barrido de paridad compara, en las DOS coordenadas (`$defs` y
 #: `sections`). Segundo golden, por la misma razón que el de 394: un barrido que recorra menos
@@ -294,7 +299,7 @@ HOJAS_CON_DEFAULT_EFECTIVO = 517
 DESCRIPTORES_TOTALES = 1096
 
 
-#: Las 16 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de
+#: Las 19 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de
 #: ``test_copy_del_formulario.py``; el gate de deriva de ese catálogo vive en
 #: ``test_column_roles.py``. ``governance`` entró con D-GOB-11: es INFRA sin ``Step`` y vive en el
 #: mapa expandible, no en el de dominios, así que los barridos de abajo preguntan por la unión.
@@ -309,6 +314,8 @@ SECCIONES_ESPERADAS = (
     "performance",
     "stability",
     "validation",
+    # SDD-32 capa B: la escala maestra, la última etapa del scorecard, antes del informe.
+    "master_scale",
     "survival",
     "forward",
     "provisioning_cmf",
@@ -321,7 +328,7 @@ SECCIONES_ESPERADAS = (
 
 
 def _formulario_completo() -> bool:
-    """¿Están las 16 secciones del formulario expandidas en esta instalación?
+    """¿Están las 19 secciones del formulario expandidas en esta instalación?
 
     Los dos goldens de cifra —394 hojas y los descriptores— sólo son comparables con **todos** los
     extras: el job matriz del CI instala sólo ``scoring``, y ahí ``survival`` (lifelines) y las de
@@ -889,7 +896,7 @@ def _hojas_del_formulario() -> list[tuple[str, list[str]]]:
     return hojas
 
 
-#: Un ancla concreta por cada una de las 16 secciones. Escritas a mano: derivarlas del propio
+#: Un ancla concreta por cada una de las 19 secciones. Escritas a mano: derivarlas del propio
 #: recorrido convertiría el gate en una tautología, que es el defecto que ya se pagó una vez.
 ANCLAS_POR_SECCION: dict[str, str] = {
     "data": "data.schema.columns[].name",
@@ -902,6 +909,7 @@ ANCLAS_POR_SECCION: dict[str, str] = {
     "performance": "performance.n_deciles",
     "stability": "stability.psi_bins",
     "validation": "validation.calibration.hl_n_groups",
+    "master_scale": "master_scale.approval_cutoff",
     "survival": "survival.method",
     "forward": "forward.satellite.reference_rate_col",
     "provisioning_cmf": "provisioning_cmf.matrices.active_version",
@@ -922,7 +930,7 @@ def test_el_espejo_de_secciones_es_el_mismo_que_el_del_gate_de_copy() -> None:
 
 
 def test_el_catalogo_recorre_las_hojas_del_formulario() -> None:
-    """Golden de cobertura: los nodos visibles y un ancla nombrada por cada una de las 17 secciones.
+    """Golden de cobertura: los nodos visibles y un ancla nombrada por cada una de las 19 secciones.
 
     Cambiar la cifra es legítimo cuando el formulario crece o encoge; hacerlo sin actualizar este
     golden y sus anclas, no. La razón está pagada: un gate que recorre cero campos da verde.

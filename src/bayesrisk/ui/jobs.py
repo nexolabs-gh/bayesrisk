@@ -124,6 +124,9 @@ _JOBS: tuple[dict[str, Any], ...] = (
             "performance",
             "stability",
             "validation",
+            # SDD-32 D-ESC-8: la escala maestra corre por defecto en los trabajos del scorecard,
+            # sembrada vacía (los tramos los forman los datos; sin corte de la institución).
+            "master_scale",
             "report",
             "governance",
         ),
@@ -371,6 +374,8 @@ _JOBS: tuple[dict[str, Any], ...] = (
             "performance",
             "stability",
             "validation",
+            # SDD-32 D-ESC-8, como en «Scorecard de comportamiento (PD)».
+            "master_scale",
             "provisioning_internal",
             "report",
             "governance",

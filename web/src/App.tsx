@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import {
   Activity,
   Boxes,
+  ChartBarIncreasing,
   ChartColumn,
   ChartSpline,
   ClipboardCheck,
@@ -79,6 +80,8 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   stability: Waves,
   // La validación formal es el acta de las pruebas del modelo (D-SC-6).
   validation: ClipboardCheck,
+  // Los tramos de riesgo del puntaje, de menor a mayor riesgo (SDD-32, capa B).
+  master_scale: ChartBarIncreasing,
   survival: TrendingDown,
   // Los escenarios de la institución: trayectorias que desplazan la curva (IFRS9-FIRMABLE capa C).
   forward: ChartSpline,

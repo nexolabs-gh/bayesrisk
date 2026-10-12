@@ -132,7 +132,7 @@ def test_un_libro_numerado_por_etapa_de_la_provision_y_el_de_decisiones(
     assert decisions_book("cartera") == "05 Decisiones.xlsx"
     # Y el scorecard no se movió.
     assert stage_books("scorecard")["validation"] == "10 Validación formal.xlsx"
-    assert decisions_book("scorecard") == "11 Decisiones.xlsx"
+    assert decisions_book("scorecard") == "12 Decisiones.xlsx"
     for nombre in _LIBROS:
         hojas = _hojas(libros[nombre])
         assert hojas[0] == "Resumen" and hojas[1] == "Decisión" and hojas[-1] == "Índice", nombre
