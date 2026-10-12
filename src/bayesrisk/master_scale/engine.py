@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
 
 from bayesrisk.core.exceptions import MissingDependencyError
+from bayesrisk.master_scale.exceptions import MasterScaleFitError
 
 __all__ = [
     "CUTOFF_TABLE_COLUMNS",
@@ -64,8 +65,6 @@ MAX_GRADES: Final = 10
 #: D-ESC-3: bajo 30 operaciones con desenlace un tramo no se contrasta («No evaluable»); es el
 #: mínimo de la validación (``validation.min_rows_per_group``).
 MIN_ROWS_EVALUABLE: Final = 30
-#: El intervalo donde se busca ``δ`` (en logit): ±20 cubre toda ancla en (0, 1) con holgura.
-_DELTA_INTERVALO: Final = (-20.0, 20.0)
 #: El solver del binning de la librería (``binning.solver`` de fábrica): ``cp`` se cuelga en
 #: variables continuas con ortools ≥ 9.12 (D-ABA-5). Medido en S42: sobre las dos carteras del
 #: paquete forma los mismos cortes que el ``cp`` de la medición de S41.
@@ -267,9 +266,11 @@ def pd_por_tramo(n: Sequence[int], d: Sequence[int], *, ancla: float) -> PdDeTra
     n_arr = np.asarray(n, dtype="float64")
     d_arr = np.asarray(d, dtype="float64")
     if n_arr.size == 0 or np.any(n_arr <= 0):
-        raise ValueError("Cada tramo necesita al menos una operación de Desarrollo.")
+        raise MasterScaleFitError("Cada tramo necesita al menos una operación de Desarrollo.")
     if not 0.0 < float(ancla) < 1.0:
-        raise ValueError(f"El ancla de la calibración debe estar en (0, 1); recibido {ancla!r}.")
+        raise MasterScaleFitError(
+            f"El ancla de la calibración debe estar en (0, 1); se recibió {ancla!r}."
+        )
     tasa = (d_arr + 0.5) / (n_arr + 1.0)
     ajustada, bloques = pava(tasa.tolist(), n_arr.tolist())
     pesos = n_arr / n_arr.sum()
@@ -278,7 +279,12 @@ def pd_por_tramo(n: Sequence[int], d: Sequence[int], *, ancla: float) -> PdDeTra
     def brecha(delta: float) -> float:
         return float(np.sum(pesos * _expit(base + delta))) - float(ancla)
 
-    delta = float(brentq(brecha, *_DELTA_INTERVALO))
+    # El intervalo sale del ancla y de las tasas: con δ = logit(ancla) - max logit(r) toda PD
+    # queda bajo el ancla (brecha ≤ 0) y con δ = logit(ancla) - min logit(r), sobre ella (≥ 0).
+    # Un ±20 fijo no cambiaba de signo con anclas extremas (pasada 1 de Codex).
+    centro = float(_logit(np.asarray([float(ancla)]))[0])
+    bajo, alto = centro - float(base.max()) - 1.0, centro - float(base.min()) + 1.0
+    delta = float(brentq(brecha, bajo, alto, xtol=1e-14, rtol=4 * np.finfo(float).eps))
     pd_final = _expit(base + delta)
     igualados = tuple(tuple(p + 1 for p in b) for b in bloques if len(b) > 1)
     return PdDeTramos(

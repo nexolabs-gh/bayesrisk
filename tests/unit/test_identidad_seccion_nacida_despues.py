@@ -213,3 +213,15 @@ def test_toda_seccion_nueva_de_la_raiz_esta_en_la_regla() -> None:
     assert set(SECCIONES_DE_LA_2_10_0) <= set(BayesRiskConfig.model_fields)
     for seccion in SECCIONES_NACIDAS_DESPUES_DE_2_10_0:
         assert BayesRiskConfig.model_fields[seccion].default is None
+
+
+def test_los_dos_schemas_del_config_siguen_siendo_el_mismo() -> None:
+    """En la 2.10.0 el schema de validación y el de serialización eran idénticos (medido). La regla
+    no puede costar el segundo: un serializador con retorno ``Any`` lo dejaba vacío (pasada 1 de
+    Codex sobre la capa A)."""
+    validacion = BayesRiskConfig.model_json_schema()
+    serializacion = BayesRiskConfig.model_json_schema(mode="serialization")
+    assert serializacion == validacion
+    assert "master_scale" in serializacion["properties"]
+    for seccion in SECCIONES_NACIDAS_DESPUES_DE_2_10_0:
+        assert BayesRiskConfig.model_fields[seccion].exclude_if is not None, seccion

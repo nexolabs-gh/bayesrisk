@@ -115,3 +115,67 @@ def test_una_tarjeta_sin_redondeo_rotula_los_cortes_exactos(tmp_path: Path) -> N
     assert ficha.integer_card is False
     rotulos = sc.study.artifacts.get("master_scale", "grades")["label"].tolist()
     assert rotulos[0].startswith("desde ") and rotulos[-1].startswith("menos de ")
+
+
+def test_el_resumen_no_afirma_nada_de_una_muestra_sin_tramos_evaluables() -> None:
+    """Pasada 1 de Codex: un Holdout con todos sus tramos bajo 30 operaciones salía «sigue el orden
+    y ningún tramo subestima su PD», sin un solo contraste detrás."""
+    from types import SimpleNamespace
+
+    from bayesrisk.core.artifacts import ArtifactStore
+    from bayesrisk.guided.summaries import SummaryContext, build_stage_summary
+
+    diag = {
+        "monotonic": True,
+        "inversions": (),
+        "hhi": 0.5,
+        "max_share": 0.5,
+        "max_share_grade": 1,
+        "red_grades": (),
+        "amber_grades": (),
+    }
+    card = {
+        "n_grades": 2,
+        "source": "formed",
+        "cuts": (500.5,),
+        "score_direction": "higher_is_lower_risk",
+        "integer_card": True,
+        "formation_cause": None,
+        "pd": (0.1, 0.3),
+        "anchor": 0.2,
+        "equalized_grades": (),
+        "neighbours_not_distinct": (),
+        "approval_cutoff": None,
+        "cutoff_out_of_range": False,
+        "diagnostics": {
+            "desarrollo": {**diag, "not_evaluable_grades": ()},
+            "holdout": {**diag, "not_evaluable_grades": (1, 2)},
+        },
+    }
+    artefactos = ArtifactStore()
+    artefactos.set("master_scale", "card", card)
+    artefactos.set(
+        "master_scale",
+        "grades",
+        pd.DataFrame(
+            {"grade": [1, 2], "label": ["desde 501 puntos", "hasta 500 puntos"], "pd": [0.1, 0.3]}
+        ),
+    )
+    artefactos.set(
+        "master_scale",
+        "grade_table",
+        pd.DataFrame(
+            {
+                "sample": ["desarrollo", "desarrollo", "holdout", "holdout"],
+                "grade": [1, 2, 1, 2],
+                "share": [0.5, 0.5, 0.5, 0.5],
+                "bad_rate": [0.1, 0.3, 0.4, 0.1],
+                "traffic_light": ["green", "green", "not_evaluable", "not_evaluable"],
+            }
+        ),
+    )
+    estudio = SimpleNamespace(artifacts=artefactos, config=None)
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="", partition_label="")
+    texto = build_stage_summary("master_scale", estudio, contexto).text()  # type: ignore[arg-type]
+    assert "sigue el orden" not in texto
+    assert "En Holdout ningún tramo tiene 30 operaciones con desenlace: sin contraste." in texto

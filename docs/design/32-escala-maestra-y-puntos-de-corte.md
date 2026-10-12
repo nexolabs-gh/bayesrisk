@@ -774,12 +774,14 @@ entonces la etapa deja de ser experimental.
 Implementada el 2026-10-11 sobre `77a873b` (2.10.0), sin publicar. Nada de esto reabre una
 decisión de §12; son precisiones de implementación, medidas.
 
-- **D-ESC-7 en un solo punto.** Un `model_serializer` envolvente de `BayesRiskConfig` omite las
-  secciones de `SECCIONES_NACIDAS_DESPUES_DE_2_10_0` (hoy sólo `master_scale`) cuando valen `None`:
-  toda serialización del config pasa por ahí —`config_hash`, `dump_config`, el `config.yaml` de la
-  evidencia, los defaults del schema de la pantalla— y los schemas JSON de validación y de
-  serialización no cambian (medido). Un gate exige la lista en los dos sentidos: toda sección nueva
-  de la raíz está en ella y la lista sólo nombra secciones nuevas. Medido sobre `77a873b` y
+- **D-ESC-7 en el campo.** Cada sección de `SECCIONES_NACIDAS_DESPUES_DE_2_10_0` (hoy sólo
+  `master_scale`) declara `exclude_if=_ausente` (Pydantic): ausente o `None`, no se serializa por
+  ninguna vía —`config_hash`, `dump_config`, el `config.yaml` de la evidencia, los defaults del
+  schema de la pantalla—, y los schemas JSON de validación y de serialización siguen siendo uno
+  solo, como en la 2.10.0 (medido). La primera versión usaba un `model_serializer` envolvente cuya
+  anotación de retorno vaciaba el schema de serialización (pasada 1 de Codex). Un gate exige la
+  lista en los dos sentidos: toda sección nueva de la raíz está en ella y la lista sólo nombra
+  secciones nuevas. Medido sobre `77a873b` y
   reproducido: el `config_hash` y el YAML (completo y de los campos provistos) de los cuatro
   presets y del config vacío, iguales byte a byte; la proyección canónica de una corrida F1 del
   preset, 0 diferencias (`evidencia/s42/`). El YAML **completo** depende de qué capas importó el
@@ -824,3 +826,11 @@ decisión de §12; son precisiones de implementación, medidas.
   perillas a **414** y los esenciales a **37**, como estimó §13. Los tres métodos nuevos de
   `Scorecard` y el dominio se declaran experimentales (`bayesrisk.testing.stability`, sus
   docstrings, `api.md` y el CHANGELOG).
+- **Pasada 1 de Codex sobre el código** (`500f242`; cinco hallazgos, uno high, ninguno
+  contractual; cada uno con su test nacido rojo y su control negativo): `Scorecard.apply` tras una
+  corrida parcial (`run(until=…)`) puntuaba sin el corte declarado —ahora exige una corrida completa
+  con su escala—; el schema de serialización vacío (arriba); el `δ` con anclas extremas (el
+  intervalo sale del ancla y de las tasas; un error de la etapa es de dominio, no un `ValueError`);
+  una huella de decisión editada con texto abortaba la corrida (ahora queda sin efecto, D-DEC-3); y
+  el resumen afirmaba «sigue el orden» de una muestra sin tramos evaluables (ahora dice «sin
+  contraste»).

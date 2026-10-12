@@ -1122,6 +1122,16 @@ class Scorecard(_PuertaGuiada):
                 "Hay decisiones registradas que la tarjeta todavía no lleva: llama a resume() "
                 "antes de apply() para que la corrida nueva las aplique."
             )
+        # Una corrida parcial (`run(until=…)`) limpia la marca de decisiones pendientes pero no
+        # aplica la escala: la tarjeta saldría sin el corte declarado (pasada 1 de Codex).
+        if self._until is not None or (
+            self._config.master_scale is not None
+            and not self._study.artifacts.has("master_scale", "card")
+        ):
+            raise ScorecardInputError(
+                "apply() puntúa con la tarjeta de una corrida completa, con su escala maestra: la "
+                f"última corrió hasta «{self._until}». Llama a resume() para correr todo."
+            )
         from bayesrisk.scorecard.bundle import FittedScorecardBundle
         from bayesrisk.scorecard.exceptions import ScorecardBundleError
 

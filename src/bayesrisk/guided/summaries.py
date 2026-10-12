@@ -3748,18 +3748,7 @@ def _resumen_master_scale(study: Study, context: SummaryContext) -> StageSummary
         f"PD del tramo de {_pct(pds[0])} a {_pct(pds[-1])}; su promedio en Desarrollo es el ancla "
         f"de la calibración, {_pct(card['anchor'])}."
     )
-    fuera = [m for m in diagnosticos if m not in {"desarrollo", "fuera_de_modelo"}]
-    if fuera:
-        ordenadas = all(diagnosticos[m]["monotonic"] for m in fuera)
-        sin_rojos = not any(diagnosticos[m]["red_grades"] for m in fuera)
-        nombres = _enumerar([_muestra(m) for m in fuera])
-        if ordenadas and sin_rojos:
-            lines.append(
-                f"En {nombres} la tasa de malos sigue el orden de los tramos y ningún tramo "
-                "subestima su PD."
-            )
-        else:
-            lines.append(f"En {nombres} hay tramos que revisar (ver «Qué revisar»).")
+    lines.extend(_lineas_fuera_de_desarrollo(diagnosticos, k))
     desarrollo = diagnosticos.get("desarrollo")
     if desarrollo and desarrollo.get("max_share") is not None:
         lines.append(
@@ -3803,6 +3792,35 @@ def _resumen_master_scale(study: Study, context: SummaryContext) -> StageSummary
         formats=formatos,
         extra_tables=tuple(extra),
     )
+
+
+def _lineas_fuera_de_desarrollo(diagnosticos: Mapping[str, Any], k: int) -> list[str]:
+    """La escala en Holdout y fuera de tiempo, afirmando sólo lo que se contrastó.
+
+    Una muestra sin ningún tramo con 30 operaciones con desenlace no tiene contraste ni orden que
+    leer: se dice así, en vez de «sigue el orden» (pasada 1 de Codex sobre la capa A).
+    """
+    fuera = [m for m in diagnosticos if m not in {"desarrollo", "fuera_de_modelo"}]
+    sin_contraste = [m for m in fuera if len(diagnosticos[m]["not_evaluable_grades"] or ()) >= k]
+    evaluadas = [m for m in fuera if m not in sin_contraste]
+    lineas: list[str] = []
+    if evaluadas:
+        nombres = _enumerar([_muestra(m) for m in evaluadas])
+        en_orden = all(diagnosticos[m]["monotonic"] for m in evaluadas)
+        sin_rojos = not any(diagnosticos[m]["red_grades"] for m in evaluadas)
+        if en_orden and sin_rojos:
+            lineas.append(
+                f"En {nombres} la tasa de malos sigue el orden de los tramos con contraste y "
+                "ninguno subestima su PD."
+            )
+        else:
+            lineas.append(f"En {nombres} hay tramos que revisar (ver «Qué revisar»).")
+    if sin_contraste:
+        lineas.append(
+            f"En {_enumerar([_muestra(m) for m in sin_contraste])} ningún tramo tiene 30 "
+            "operaciones con desenlace: sin contraste."
+        )
+    return lineas
 
 
 def _linea_del_corte(

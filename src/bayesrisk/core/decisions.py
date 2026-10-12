@@ -290,12 +290,16 @@ def _hojas_que_no_coinciden(
 
 
 def _mismo_valor(guardado: Any, vigente: Any) -> bool:
-    """Un número o una lista de números de la huella frente a la hoja vigente, exactos."""
-    if isinstance(guardado, Sequence) and not isinstance(guardado, str | bytes):
-        if not isinstance(vigente, Iterable) or isinstance(vigente, str | bytes):
-            return False
-        return [float(v) for v in guardado] == [float(v) for v in vigente]
+    """Un número o una lista de números de la huella frente a la hoja vigente, exactos.
+
+    Total: una huella editada a mano con texto o vacía no coincide (D-DEC-3: se declara sin
+    efecto), nunca aborta la corrida (pasada 1 de Codex sobre la capa A).
+    """
     try:
+        if isinstance(guardado, Sequence) and not isinstance(guardado, str | bytes):
+            if not isinstance(vigente, Iterable) or isinstance(vigente, str | bytes):
+                return False
+            return [float(v) for v in guardado] == [float(v) for v in vigente]
         return float(guardado) == float(vigente)
     except (TypeError, ValueError):
         return False

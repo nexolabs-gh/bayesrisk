@@ -32,15 +32,7 @@ import json
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal, Self
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    SerializerFunctionWrapHandler,
-    field_validator,
-    model_serializer,
-    model_validator,
-)
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 if TYPE_CHECKING:
     from bayesrisk.audit.config import AuditConfig
@@ -304,8 +296,21 @@ class DecisionEntry(BayesRiskBaseConfig):
 #: movido la identidad de todo config existente —la que los usuarios usan para su inventario— y el
 #: YAML de toda corrida. Una sección de esta lista se serializa **sólo cuando está declarada**:
 #: ausente (o ``None``), el ``config_hash`` y el YAML son byte a byte los de la 2.10.0. Toda sección
-#: que se agregue a la raíz entra aquí (un gate lo exige en los dos sentidos).
+#: que se agregue a la raíz entra aquí y declara ``exclude_if=_ausente`` (un gate lo exige en los
+#: dos sentidos).
 SECCIONES_NACIDAS_DESPUES_DE_2_10_0: frozenset[str] = frozenset({"master_scale"})
+
+
+def _ausente(valor: Any) -> bool:
+    """Una sección nacida después de la 2.10.0 sin declarar no se serializa (D-ESC-7).
+
+    Es el ``exclude_if`` de cada campo de :data:`SECCIONES_NACIDAS_DESPUES_DE_2_10_0`: toda
+    serialización del config pasa por él —``config_hash``, ``dump_config``, el ``config.yaml`` de
+    la evidencia, los defaults del schema de la pantalla— y los schemas JSON de validación y de
+    serialización no cambian (medido; un ``model_serializer`` con retorno ``Any`` vaciaba el de
+    serialización, pasada 1 de Codex sobre la capa A).
+    """
+    return valor is None
 
 
 class BayesRiskConfig(BayesRiskBaseConfig):
@@ -620,6 +625,7 @@ class BayesRiskConfig(BayesRiskBaseConfig):
     else:
         master_scale: Any = Field(
             default=None,
+            exclude_if=_ausente,
             title="Escala maestra",
             description=(
                 "Agrupa el puntaje en tramos de riesgo con su PD y publica, para cada punto de "
@@ -1380,22 +1386,6 @@ class BayesRiskConfig(BayesRiskBaseConfig):
             if inactivas:
                 raise ValueError(f"run.steps referencia secciones inactivas (None): {inactivas}.")
         return self
-
-    @model_serializer(mode="wrap")
-    def _omitir_secciones_nuevas_ausentes(self, handler: SerializerFunctionWrapHandler) -> Any:
-        """Una sección nacida después de la 2.10.0 sólo se serializa si está declarada (D-ESC-7).
-
-        Es el único punto por el que pasa toda serialización del config —``config_hash``,
-        ``dump_config``, el ``config.yaml`` de la evidencia, los defaults del schema de la
-        pantalla—, así que ninguna puede olvidarlo. Sin anotación de retorno a propósito: los
-        schemas JSON de validación y de serialización quedan los de siempre (medido).
-        """
-        volcado = handler(self)
-        if isinstance(volcado, dict):
-            for seccion in SECCIONES_NACIDAS_DESPUES_DE_2_10_0:
-                if volcado.get(seccion, ...) is None:
-                    del volcado[seccion]
-        return volcado
 
 
 #: Nombres anteriores al renombre (nikodym ≤ 1.20): alias del MISMO objeto, sin aviso, para que

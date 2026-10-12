@@ -494,3 +494,24 @@ def test_un_solver_sin_particion_deja_un_tramo_y_dice_por_que(
     monkeypatch.setattr(motor, "_import_optimal_binning", lambda: Roto)
     roto = motor.formar_cortes(np.array([1.0]), np.array([0]), mayor_es_menor_riesgo=True)
     assert roto.cuts == () and roto.status == "ERROR" and "sin memoria" in str(roto.cause)
+
+
+@pytest.mark.parametrize("ancla", [1e-10, 1e-6, 0.5, 1 - 1e-6, 1 - 1e-10])
+def test_el_delta_se_encuentra_con_anclas_extremas(ancla: float) -> None:
+    """El intervalo de ``δ`` sale del ancla y de las tasas, no de ±20 fijo (pasada 1 de Codex):
+    con un ancla de 1e-10 el ±20 no cambiaba de signo y la etapa abortaba."""
+    pds = pd_por_tramo([100, 200, 50], [3, 30, 25], ancla=ancla)
+    promedio = sum(n * p for n, p in zip([100, 200, 50], pds.pd, strict=True)) / 350
+    assert promedio == pytest.approx(ancla, rel=1e-6)
+    assert all(0.0 < p < 1.0 for p in pds.pd)
+    assert list(pds.pd) == sorted(pds.pd)
+
+
+def test_conteos_imposibles_son_un_error_de_la_etapa() -> None:
+    """Un error de la escala es de dominio (la corrida lo absorbe y lo dice), no un ValueError."""
+    from bayesrisk.master_scale.exceptions import MasterScaleFitError
+
+    with pytest.raises(MasterScaleFitError, match="al menos una operación"):
+        pd_por_tramo([10, 0], [1, 0], ancla=0.1)
+    with pytest.raises(MasterScaleFitError, match="ancla"):
+        pd_por_tramo([10], [1], ancla=1.0)

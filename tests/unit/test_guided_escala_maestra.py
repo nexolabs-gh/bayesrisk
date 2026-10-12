@@ -205,3 +205,54 @@ def test_cortes_que_dejan_un_tramo_vacio_detienen_la_etapa_y_conservan_lo_anteri
     error = sc.study.run_context.error
     assert error is not None and "tramo 1 sin operaciones de Desarrollo" in error.message
     assert "validation" in {d for d, _k in sc.study.artifacts.keys()}  # noqa: SIM118
+
+
+def test_apply_tras_una_corrida_parcial_exige_completar_la_escala(
+    fuente: Path, tmp_path: Path
+) -> None:
+    """Pasada 1 de Codex: ``run(until=…)`` limpiaba la marca de decisiones pendientes y ``apply``
+    puntuaba sin el corte declarado, que la corrida parcial nunca aplicó."""
+    sc = _puerta(fuente, tmp_path).run()
+    corte = float(sc.study.artifacts.get("master_scale", "card").cuts[0])
+    sc.set_cutoff(corte, reason="la del comité")
+    sc.run(until="calibration")
+    assert sc.study.run_context.status == "done"
+    with pytest.raises(ScorecardInputError, match="completa"):
+        sc.apply(pd.read_parquet(fuente))
+
+
+def test_una_huella_que_no_es_un_numero_queda_sin_efecto_y_la_corrida_sigue() -> None:
+    """D-DEC-3 tal cual (pasada 1 de Codex): una huella editada a mano con texto o vacía no
+    aborta la corrida; se declara sin efecto."""
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.core.config.schema import DecisionEntry
+    from bayesrisk.core.decisions import eventos_de_decisiones
+
+    registros = (
+        DecisionEntry(
+            action="set_grades",
+            columns=("score",),
+            reason="editada a mano",
+            value={"master_scale.grade_edges": ["anterior"]},
+        ),
+        DecisionEntry(
+            action="set_cutoff",
+            columns=("score",),
+            reason="editada a mano",
+            value={"master_scale.approval_cutoff": "alto"},
+        ),
+        DecisionEntry(
+            action="set_cutoff",
+            columns=("puntaje",),
+            reason="vacía",
+            value={"master_scale.approval_cutoff": None},
+        ),
+    )
+    cfg = BayesRiskConfig.model_validate(
+        {
+            "master_scale": {"grade_edges": [500.0], "approval_cutoff": 520.0},
+            "decisions": [r.model_dump() for r in registros],
+        }
+    )
+    eventos = eventos_de_decisiones(cfg)
+    assert [e["regla"] for e in eventos] == [REGLA_DECISION_SIN_EFECTO] * 3
