@@ -382,7 +382,7 @@ _TABLE_TITLES: Final[dict[str, str]] = {
     MASTER_SCALE_SCALE_TABLE: "Escala maestra — los tramos y su PD",
     MASTER_SCALE_CUTOFFS_TABLE: "Tabla de puntos de corte",
     "master_scale.grades": "Tramos de la escala maestra",
-    "master_scale.grade_table": "Escala maestra por muestra y tramo",
+    "master_scale.grade_table": "Tramos de la escala por muestra",
     "master_scale.cutoff_table": "Puntos de corte por muestra",
 }
 _BINNING_TABLE_PREFIX: Final = "binning.tables."

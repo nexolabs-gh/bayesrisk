@@ -148,7 +148,9 @@ def test_el_libro_de_la_escala_trae_sus_tablas_sin_repetirlas(fuente: Path, tmp_
     assert lineas[: len(resumen.lines)] == list(resumen.lines)
     # Las tablas completas del informe —por muestra y tramo, y los cortes con sus conteos— van tras
     # las del resumen; las dos que el informe arma desde el resumen no se repiten como texto.
-    assert "Escala maestra por muestra y tramo" in indice, indice
+    assert "Tramos de la escala por muestra" in indice, indice
+    # Los títulos caben en el nombre de una hoja (31 caracteres): ninguna se lee truncada.
+    assert {"Tramos de la escala por muestra", "Puntos de corte por muestra"} <= set(hojas), hojas
     assert "Puntos de corte por muestra" in indice, indice
     assert "Escala maestra — los tramos y su PD" not in indice, indice
     assert indice.count("Tabla de puntos de corte") == 1, indice
@@ -183,7 +185,7 @@ def test_el_informe_trae_la_escala_con_las_lineas_y_tablas_del_resumen(
     assert 'data-section-id="appendix_parameters.master_scale"' in documento
     for titulo in (
         "Tramos de la escala maestra",
-        "Escala maestra por muestra y tramo",
+        "Tramos de la escala por muestra",
         "Puntos de corte por muestra",
     ):
         assert documento.count(titulo) == 1, titulo
