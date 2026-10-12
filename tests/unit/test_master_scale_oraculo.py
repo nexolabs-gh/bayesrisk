@@ -13,6 +13,7 @@ esperados son los de la medición de S41 (repo privado, ``evidencia/s41/``):
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import textwrap
@@ -79,6 +80,9 @@ def medido(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
         capture_output=True,
         text=True,
         encoding="utf-8",
+        # El hijo escribe en UTF-8 aunque la consola de Windows sea cp1252 (sus avisos llevan
+        # tildes): sin esto el hilo lector reventaba en el CI de Windows.
+        env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
         check=False,
     )
     lineas = [ln for ln in proceso.stdout.splitlines() if ln.startswith("JSON ")]

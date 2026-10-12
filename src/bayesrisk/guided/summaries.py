@@ -639,9 +639,21 @@ def decision_line(payload: Mapping[str, Any]) -> str:
         valor = _mapping(payload.get("valor")).get(_HOJA_DE_LA_ESCALA[accion])
         if valor is not None:
             puntos = [valor] if not isinstance(valor, list | tuple) else list(valor)
-            texto = ", ".join(formatear_borde(float(v)) for v in puntos)
+            texto = ", ".join(_punto_legible(v) for v in puntos)
             sujeto += f" ({'cortes' if accion == 'set_grades' else 'corte'} {texto})"
     return f"{sujeto} — «{motivo}»"
+
+
+def _punto_legible(valor: Any) -> str:
+    """Un corte de la huella en es-CL; lo que no es un número finito, tal cual.
+
+    Una huella histórica editada a mano no puede tumbar el resumen (pasada 3 de Codex).
+    """
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError, OverflowError):
+        return str(valor)
+    return formatear_borde(numero) if math.isfinite(numero) else str(valor)
 
 
 #: La hoja que deja escrita cada decisión de la escala maestra (SDD-32 D-ESC-5).

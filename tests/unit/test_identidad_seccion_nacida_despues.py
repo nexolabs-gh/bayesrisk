@@ -14,6 +14,7 @@ y el del preset F1 también en un intérprete sin cargarlas (sección opaca).
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 import sys
 import textwrap
@@ -139,6 +140,9 @@ def test_el_yaml_completo_es_el_de_la_2_10_0_en_un_interprete_fresco() -> None:
         capture_output=True,
         text=True,
         encoding="utf-8",
+        # El hijo escribe en UTF-8 aunque la consola de Windows sea cp1252 (sus avisos llevan
+        # tildes): sin esto el hilo lector reventaba en el CI de Windows.
+        env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
         check=True,
     ).stdout.split()
     medidos = dict(zip(salida[0::2], salida[1::2], strict=True))
@@ -163,6 +167,9 @@ def test_la_identidad_no_depende_de_que_las_capas_esten_cargadas() -> None:
         capture_output=True,
         text=True,
         encoding="utf-8",
+        # El hijo escribe en UTF-8 aunque la consola de Windows sea cp1252 (sus avisos llevan
+        # tildes): sin esto el hilo lector reventaba en el CI de Windows.
+        env={**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
         check=True,
     ).stdout.split()
     assert salida == [IDENTIDAD_2_10_0["f1-estandar-consumo"][0], _YAML_F1_OPACO_2_10_0, "False"]

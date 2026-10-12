@@ -292,11 +292,15 @@ def pd_por_tramo(n: Sequence[int], d: Sequence[int], *, ancla: float) -> PdDeTra
         )
     tasa = (d_arr + 0.5) / (n_arr + 1.0)
     ajustada, bloques = pava(tasa.tolist(), n_arr.tolist())
-    pesos = n_arr / n_arr.sum()
     base = _logit(ajustada)
 
     def brecha(delta: float) -> float:
-        return float(np.sum(pesos * _expit(base + delta))) - float(ancla)
+        # Acumulada por tramo y compensada, Σ n_g·(PD_g - ancla): con pesos n_g/N que en float no
+        # suman 1 exacto, un ancla junto a 1 no se alcanzaba (pasada 3 de Codex).
+        pd_delta = _expit(base + delta)
+        return math.fsum(
+            float(ng) * (float(p) - float(ancla)) for ng, p in zip(n_arr, pd_delta, strict=True)
+        )
 
     # El intervalo sale del ancla y de las tasas: con δ = logit(ancla) - max logit(r) toda PD
     # queda bajo el ancla (brecha ≤ 0) y con δ = logit(ancla) - min logit(r), sobre ella (≥ 0).

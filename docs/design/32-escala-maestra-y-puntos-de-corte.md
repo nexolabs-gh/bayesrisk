@@ -844,3 +844,12 @@ decisión de §12; son precisiones de implementación, medidas.
   listas de variables) y su cotejo es total (texto, listas anidadas, enteros gigantes); y dos tramos
   de la institución con la misma tasa sin varianza (los dos sin malos) también se alertan como
   indistinguibles, sin inventar un p-valor.
+- **Pasada 3 de Codex, la última del tope declarado** (`a25efde`; dos hallazgos medium, ninguno
+  contractual; confirma cerrados los de la pasada 2 sobre D-ESC-7 y los vecinos): la brecha del
+  ancla se acumula por tramo y compensada (`fsum`), porque con pesos que en `float` no suman 1 un
+  ancla de 0,9999999999999999 no se alcanzaba; y la línea de una decisión histórica con una huella
+  ilegible se escribe tal cual en vez de tumbar el resumen final del informe y de Resultados. Los
+  dos con su test nacido rojo y su control negativo; sin cuarta pasada, por el criterio declarado.
+  En el mismo cierre, el CI de Windows acusó que el oráculo en subproceso decodificaba en UTF-8 la
+  salida de un hijo que escribía en cp1252: el hijo corre ahora con UTF-8 (reproducido en local con
+  el padre en cp1252: 1 error antes, verde después).

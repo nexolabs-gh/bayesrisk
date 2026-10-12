@@ -550,3 +550,16 @@ def test_vecinos_sin_varianza_tampoco_se_distinguen() -> None:
     assert vecinos_que_no_se_distinguen([100, 100], [10, 30]) == ()
     (par,) = vecinos_que_no_se_distinguen([100, 100], [10, 12])
     assert par[:2] == (1, 2) and par[2] is not None and par[2] > 0.05
+
+
+def test_el_ancla_se_reconcilia_aunque_los_pesos_no_sumen_uno_exacto() -> None:
+    """Pasada 3 de Codex: con pesos que en float suman 0,9999999999999998, un ancla de
+    0,9999999999999999 no se alcanzaba ni con todas las PD en 1. La brecha se acumula por tramo,
+    compensada, sin depender de que los pesos sumen 1."""
+    n, d, ancla = [100, 100, 300, 100, 100], [1, 10, 60, 40, 70], 0.9999999999999999
+    pds = pd_por_tramo(n, d, ancla=ancla)
+    assert all(0.0 < p < 1.0 for p in pds.pd)
+    assert list(pds.pd) == sorted(pds.pd)
+    assert math.fsum(ng * (p - ancla) for ng, p in zip(n, pds.pd, strict=True)) == pytest.approx(
+        0.0, abs=1e-9
+    )

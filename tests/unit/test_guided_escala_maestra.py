@@ -288,3 +288,43 @@ def test_las_huellas_de_la_escala_viajan_enteras_y_el_cotejo_es_total(
     (evento,) = eventos_de_decisiones(cfg)
     assert evento["regla"] == REGLA_DECISION_SIN_EFECTO
     assert evento["valor"] == {hoja: huella}
+
+
+def test_una_huella_historica_ilegible_no_tumba_los_resumenes() -> None:
+    """Pasada 3 de Codex: la historia conserva la huella entera, y la línea de la decisión hacía
+    float('anterior'): el informe perdía su resumen final y Resultados sus etapas."""
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.core.config.schema import DecisionEntry
+    from bayesrisk.core.decisions import eventos_de_decisiones
+    from bayesrisk.guided.summaries import decision_line, decision_lines_from_preamble
+
+    registros = (
+        DecisionEntry(
+            action="set_grades",
+            columns=("score",),
+            reason="primera",
+            value={"master_scale.grade_edges": ["anterior"]},
+        ),
+        DecisionEntry(
+            action="set_grades",
+            columns=("score",),
+            reason="vigente",
+            value={"master_scale.grade_edges": [500]},
+        ),
+    )
+    cfg = BayesRiskConfig.model_validate(
+        {"master_scale": {"grade_edges": [500.0]}, "decisions": [r.model_dump() for r in registros]}
+    )
+    lineas = decision_lines_from_preamble([("decisions", e) for e in eventos_de_decisiones(cfg)])
+    assert lineas == (
+        "set_grades score (cortes anterior) — «primera»",
+        "set_grades score (cortes 500) — «vigente»",
+    )
+    gigante = {
+        "regla": "decision_del_usuario",
+        "accion": "set_cutoff",
+        "motivo": "m",
+        "variables": ["score"],
+        "valor": {"master_scale.approval_cutoff": 10**400},
+    }
+    assert decision_line(gigante).startswith("set_cutoff score (corte 1")
