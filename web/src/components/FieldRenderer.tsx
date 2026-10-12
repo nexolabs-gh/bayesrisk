@@ -1431,6 +1431,8 @@ function ListRowButton(props: {
 function JsonField(props: FieldRendererProps) {
   const { path, value, onChange, name, schema } = props
   const aviso = useAvisoDeDescarteJson()
+  const avisar = aviso?.avisarDescarteJson
+  const generacion = aviso?.generacionConfig ?? 0
   const rotulo = fieldLabel(name, schema)
   const [estado, setEstado] = useState<EstadoEditorJson>(() => ({
     texto: serializarParaEditor(value),
@@ -1452,6 +1454,9 @@ function JsonField(props: FieldRendererProps) {
   const text = sincronizado.texto
 
   const handleChange = (next: string) => {
+    // En el mismo gesto, no en un efecto: un texto válido que apaga el campo —`null`, o vaciarlo—
+    // desmonta el editor en este render y ningún efecto alcanzaría a correr (pasada 5 de Codex).
+    vigente.current = { ...vigente.current, texto: next }
     setDescartado(null)
     const result = parseJsonInput(next)
     if (result.ok) {
@@ -1470,21 +1475,30 @@ function JsonField(props: FieldRendererProps) {
   const handleBlur = () => {
     const salida = salirDelEditorJson(sincronizado, value)
     if (salida.descartado === null) return
+    vigente.current = { ...vigente.current, texto: salida.estado.texto }
     setEstado(salida.estado)
     setError(null)
     setDescartado(salida.descartado)
-    aviso?.avisarDescarteJson({ rotulo, texto: salida.descartado })
+    avisar?.({ rotulo, texto: salida.descartado }, generacion)
   }
 
   // Red de seguridad: un editor que se desmonta sin que el campo pierda el foco —un desmontaje
   // que no viene de un clic ni del teclado— pierde igual su texto ilegible, y «Ejecutar» tiene que
-  // decirlo. El ref guarda el aviso que correspondería al texto de este render.
-  const avisoAlDesmontar = useRef<(() => void) | null>(null)
+  // decirlo. Lee el texto vigente —al día en cada gesto y tras cada render confirmado— y avisa con
+  // la generación del config en que se escribió: si el config se reemplazó, el store lo ignora.
+  const vigente = useRef({ texto: text, rotulo, generacion, avisar })
   useEffect(() => {
-    avisoAlDesmontar.current =
-      error === null ? null : () => aviso?.avisarDescarteJson({ rotulo, texto: text })
+    vigente.current = { texto: text, rotulo, generacion, avisar }
   })
-  useEffect(() => () => avisoAlDesmontar.current?.(), [])
+  useEffect(
+    () => () => {
+      const ultimo = vigente.current
+      if (!parseJsonInput(ultimo.texto).ok) {
+        ultimo.avisar?.({ rotulo: ultimo.rotulo, texto: ultimo.texto }, ultimo.generacion)
+      }
+    },
+    [],
+  )
 
   return (
     <div className="space-y-1.5">

@@ -219,10 +219,11 @@ describe("guardrail estático: esenciales abiertos y «Avanzado» plegado (D-FLU
   it("un error del backend o un foco pedido dentro del bloque lo abren", () => {
     expect(cuerpo).toMatch(/const abierto = avanzadoAbierto \|\| erroresDentro > 0/)
     expect(cuerpo).toMatch(/if \(focoDentro && !avanzadoAbierto\) setAvanzadoAbierto\(true\)/)
-    // El foco llega desde el store y el formulario se remonta por sección (estado propio).
+    // El foco llega desde el store y el formulario se remonta por sección (estado propio) y por
+    // generación del config (pasada 5 de Codex sobre la capa B del SDD-32).
     const tab = configTabSource.slice(configTabSource.indexOf("export function ConfigTab"))
     expect(tab).toMatch(/focusPath=\{focusField\}/)
-    expect(tab).toMatch(/key=\{section\}\s*\n\s*sectionKey=\{section\}/)
+    expect(tab).toMatch(/key=\{`\$\{section\}:\$\{generacionConfig\}`\}\s*\n\s*sectionKey=\{section\}/)
   })
 
   it("el gate caza lo que promete", () => {

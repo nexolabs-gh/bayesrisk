@@ -132,10 +132,22 @@ export interface AppState {
    * de cero) los retira, porque hablaban del anterior; también «Entendido».
    */
   descartesJson: DescarteJson[]
-  /** Registra un texto descartado (uno igual a otro ya registrado no se repite). */
-  avisarDescarteJson: (descarte: DescarteJson) => void
+  /**
+   * Registra un texto descartado en la generación del config en que se escribió (uno igual a otro
+   * ya registrado no se repite). El de una generación anterior se ignora: un editor que se desmonta
+   * porque el config se reemplazó no habla del config nuevo (pasada 5 de Codex).
+   */
+  avisarDescarteJson: (descarte: DescarteJson, generacion: number) => void
   /** Retira todos los avisos de textos descartados. */
   olvidarDescartesJson: () => void
+  /**
+   * La generación del config: sube con cada siembra (`setSeed`: un ejemplo, un YAML, un trabajo,
+   * empezar de cero). Configuración monta su formulario por generación, así que un config
+   * reemplazado no hereda el estado local de los campos del anterior —un texto a medio escribir, el
+   * aviso bajo un campo— aunque traiga los mismos valores (pasada 5 de Codex sobre la capa B del
+   * SDD-32).
+   */
+  generacionConfig: number
 }
 
 const AppStateContext = createContext<AppState | null>(null)
@@ -146,7 +158,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [job, setJob] = useState<Job | null>(null)
   const [config, setConfig] = useState<Record<string, unknown>>({})
   const [descartesJson, setDescartesJson] = useState<DescarteJson[]>([])
-  const avisarDescarteJson = useCallback((descarte: DescarteJson) => {
+  // La generación vive también en un ref: `setSeed` la sube en el mismo gesto, antes de que los
+  // editores del config anterior se desmonten y avisen con la suya.
+  const generacionRef = useRef(0)
+  const [generacionConfig, setGeneracionConfig] = useState(0)
+  const avisarDescarteJson = useCallback((descarte: DescarteJson, generacion: number) => {
+    if (generacion !== generacionRef.current) return
     setDescartesJson((previos) =>
       previos.some((d) => d.rotulo === descarte.rotulo && d.texto === descarte.texto)
         ? previos
@@ -157,6 +174,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [seed, setSeedState] = useState<SeedState | null>(null)
   // Toda siembra reemplaza el config entero: los avisos de textos descartados hablaban del anterior.
   const setSeed = useCallback<Dispatch<SetStateAction<SeedState | null>>>((siguiente) => {
+    generacionRef.current += 1
+    setGeneracionConfig(generacionRef.current)
     setSeedState(siguiente)
     setDescartesJson([])
   }, [])
@@ -360,6 +379,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       descartesJson,
       avisarDescarteJson,
       olvidarDescartesJson,
+      generacionConfig,
     }),
     [
       schema,
@@ -379,6 +399,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       results,
       welcomeDismissed,
       descartesJson,
+      generacionConfig,
       // Estables (`useCallback` sin dependencias): no recalculan nada, pero el lint los exige.
       avisarDescarteJson,
       olvidarDescartesJson,
@@ -396,7 +417,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
  * El aviso de textos JSON descartados, o `null` fuera del provider: el editor JSON también se pinta
  * en pruebas y vistas sin store, y ahí el aviso es sólo el suyo, bajo el campo.
  */
-export function useAvisoDeDescarteJson(): Pick<AppState, "avisarDescarteJson"> | null {
+export function useAvisoDeDescarteJson(): Pick<
+  AppState,
+  "avisarDescarteJson" | "generacionConfig"
+> | null {
   return useContext(AppStateContext)
 }
 

@@ -967,6 +967,7 @@ export function ConfigTab({
     getConfig,
     getScenarioTables,
     focusField,
+    generacionConfig,
   } = useAppState()
   const [yamlError, setYamlError] = useState<string | null>(null)
   const [yamlBusy, setYamlBusy] = useState(false)
@@ -1448,8 +1449,10 @@ export function ConfigTab({
             {sectionActive ? (
               <ConfigSectionForm
                 // `key`: el estado del bloque «Avanzado» es de CADA sección; sin él, abrirlo en
-                // una dejaría abierto el de la siguiente.
-                key={section}
+                // una dejaría abierto el de la siguiente. Y de cada generación del config: uno
+                // reemplazado (ejemplo, YAML, trabajo, empezar de cero) no hereda el estado local
+                // de los campos del anterior (pasada 5 de Codex sobre la capa B del SDD-32).
+                key={`${section}:${generacionConfig}`}
                 sectionKey={section}
                 schema={resolvedSection}
                 defs={defs}

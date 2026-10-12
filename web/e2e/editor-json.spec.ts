@@ -225,6 +225,8 @@ test.describe("el editor JSON: lo que se ve es lo que corre", () => {
     await expect(page.locator("main")).not.toContainText("Cargado el ejemplo")
     await expect.poll(async () => JSON.parse(await cortes.inputValue())).toEqual([500])
     await expect(page.locator("main")).not.toContainText("JSON inválido")
+    // El aviso bajo el campo hablaba del config anterior (pasada 5 de Codex).
+    await expect(page.locator("main")).not.toContainText("Se descartó")
 
     // Otro valor y de vuelta al primero: nada revive.
     await cargar("con-520.yaml", yaml520)
@@ -236,6 +238,99 @@ test.describe("el editor JSON: lo que se ve es lo que corre", () => {
     await irA(page, /^Ejecutar/)
     await expect(page.getByRole("button", { name: "Ejecutar corrida" })).toBeEnabled()
     // El aviso hablaba del config anterior: reemplazarlo lo retira.
+    await expect(avisoDeDescarte(page)).toHaveCount(0)
+  })
+
+  /**
+   * Pasada 5 de Codex: un texto válido que apaga el campo —`null`, o vaciarlo— desmonta el editor en
+   * el mismo render; la red de seguridad del desmontaje no puede anunciar el texto ilegible que había
+   * justo antes.
+   */
+  test("aceptar un JSON válido que apaga el campo no anuncia un descarte", async ({ page }) => {
+    await cargarElEjemplo(page)
+    await irA(page, /Optimal Binning/)
+    await page.locator('[data-advanced="binning"]').click()
+    await page.locator('[id="binning.variable_overrides"]').click()
+    const base = "binning.variable_overrides.0"
+    await page.locator(`input[id="${base}.name"]`).fill("ingreso_mensual")
+    const interruptor = interruptorDeCampo(page, `${base}.user_splits`)
+    const cortes = editor(page, `${base}.user_splits`)
+
+    // «nul» no se lee; la «l» que falta da `null`, que apaga el campo.
+    await encender(interruptor)
+    await cortes.fill("nul")
+    await cortes.pressSequentially("l")
+    await expect(interruptor).toHaveAttribute("aria-checked", "false")
+    await expect(cortes).toHaveCount(0)
+
+    // Vaciar un texto ilegible también es un valor válido: el campo sin valor.
+    await encender(interruptor)
+    await cortes.fill("[1")
+    await cortes.fill("")
+    await expect(interruptor).toHaveAttribute("aria-checked", "false")
+
+    await irA(page, /^Ejecutar/)
+    await expect(page.getByRole("button", { name: "Ejecutar corrida" })).toBeEnabled()
+    await expect(avisoDeDescarte(page)).toHaveCount(0)
+  })
+
+  /**
+   * Pasada 5 de Codex: un YAML que llega mientras la persona escribe reemplaza el config entero,
+   * también lo que estaba a medio escribir —como cualquier otro campo—, sin dejar un aviso del
+   * config anterior ni el texto en el editor.
+   */
+  test("un YAML que llega mientras se escribe reemplaza también lo escrito", async ({ page }) => {
+    await cargarElEjemplo(page)
+    await irA(page, /Escala maestra/)
+    const [descarga] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Descargar YAML" }).click(),
+    ])
+    const yamlSinEscala = await readFile(await descarga.path(), "utf-8")
+    expect(yamlSinEscala).not.toContain("master_scale")
+
+    await encender(interruptorDeSeccion(page, "master_scale"))
+    await encender(interruptorDeCampo(page, "master_scale.grade_edges"))
+    const cortes = editor(page, "master_scale.grade_edges")
+    await cortes.fill("[500]")
+
+    // La respuesta del backend se demora hasta que la persona deja un texto a medio escribir.
+    const cargarDemorado = async (nombre: string, texto: string, escribir: () => Promise<void>) => {
+      let soltar: () => void = () => undefined
+      const demora = new Promise<void>((resolver) => {
+        soltar = resolver
+      })
+      await page.route("**/api/config/from-yaml", async (ruta) => {
+        await demora
+        await ruta.continue()
+      })
+      const respuesta = page.waitForResponse("**/api/config/from-yaml")
+      await page
+        .locator('input[type="file"][accept=".yaml,.yml"]')
+        .setInputFiles({ name: nombre, mimeType: "text/yaml", buffer: Buffer.from(texto) })
+      await escribir()
+      soltar()
+      await respuesta
+      await page.unroute("**/api/config/from-yaml")
+    }
+
+    // Con el mismo valor: el editor muestra el del YAML, sin el texto ni su error.
+    const [descarga500] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Descargar YAML" }).click(),
+    ])
+    const yaml500 = await readFile(await descarga500.path(), "utf-8")
+    await cargarDemorado("con-500.yaml", yaml500, () => cortes.fill("[500, 550"))
+    await expect(page.locator("main")).not.toContainText("Cargado el ejemplo")
+    await expect.poll(async () => JSON.parse(await cortes.inputValue())).toEqual([500])
+    await expect(page.locator("main")).not.toContainText("JSON inválido")
+
+    // Sin la sección: el YAML la apaga y el editor desmontado no deja aviso.
+    await cargarDemorado("sin-escala.yaml", yamlSinEscala, () => cortes.fill("[500, 550"))
+    await expect(interruptorDeSeccion(page, "master_scale")).toHaveAttribute("aria-checked", "false")
+
+    await irA(page, /^Ejecutar/)
+    await expect(page.getByRole("button", { name: "Ejecutar corrida" })).toBeEnabled()
     await expect(avisoDeDescarte(page)).toHaveCount(0)
   })
 })

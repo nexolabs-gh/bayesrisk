@@ -941,3 +941,15 @@ una decisión de §12; son precisiones de implementación, medidas.
   que el estado propio de sus campos no pasa a la fila que ocupa su lugar. Cada caso con su
   recorrido en un navegador real (`web/e2e/editor-json.spec.ts`, cinco, que corren en el job
   clean-room del CI y nacieron rojos contra `35497e6`) y su control negativo.
+- **Pasada 5 de Codex, de confirmación del arreglo anterior** (`25aa096`; dos hallazgos medium,
+  ninguno contractual): un config reemplazado no reiniciaba el estado local de los editores —el
+  aviso bajo un campo sobrevivía a un YAML con el mismo valor, y un texto escrito mientras el YAML
+  llegaba quedaba en el editor o, si el YAML apagaba la sección, el editor desmontado volvía a
+  avisar sobre el config anterior—; y un texto válido que apaga el campo (`null`, o vaciarlo)
+  desmontaba el editor antes de que un efecto actualizara el texto vigente, así que «Ejecutar»
+  anunciaba un descarte que no existió. Ahora toda siembra (`setSeed`) sube una **generación del
+  config**: Configuración monta su formulario por generación —un config reemplazado no hereda el
+  estado local de los campos del anterior— y el store ignora el aviso de un editor de una
+  generación anterior; y el texto vigente del editor se actualiza en el mismo gesto que lo cambia.
+  Dos recorridos más en `web/e2e/editor-json.spec.ts` (siete), nacidos rojos contra `25aa096`, y
+  tres controles negativos más (diez).
