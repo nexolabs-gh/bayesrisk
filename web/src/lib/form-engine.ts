@@ -691,9 +691,12 @@ export interface EstadoEditorJson {
   visto: string
 }
 
-/** El texto con que el editor JSON muestra un valor del config; vacío si no hay valor. */
+/**
+ * El texto con que el editor JSON muestra un valor del config; vacío si no hay valor (`undefined` o
+ * `null`: un campo encendido en blanco no escribe «null» en el editor).
+ */
 export function serializarParaEditor(valor: unknown): string {
-  return valor === undefined ? "" : JSON.stringify(valor, null, 2)
+  return valor === undefined || valor === null ? "" : JSON.stringify(valor, null, 2)
 }
 
 /** La huella con que el editor reconoce un valor (`undefined` y `null` son el mismo vacío). */

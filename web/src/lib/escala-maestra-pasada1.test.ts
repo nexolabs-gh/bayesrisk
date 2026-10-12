@@ -39,6 +39,8 @@ describe("el editor JSON adopta un valor que cambió desde fuera", () => {
   it("vaciar el campo desde fuera vacía el editor", () => {
     const antes = { texto: serializarParaEditor([500]), visto: huellaDelValor([500]) }
     expect(sincronizarEditorJson(antes, undefined).texto).toBe("")
+    // Un campo encendido en blanco llega en `null`: el editor queda vacío, no dice «null».
+    expect(sincronizarEditorJson(antes, null).texto).toBe("")
   })
 })
 
@@ -56,12 +58,15 @@ describe("encender un número sin valor de fábrica no inventa uno", () => {
     expect(semillaAlActivar(campo, { type: "integer", minimum: 1 }, undefined)).toBe(1)
   })
 
-  it("el puntaje de aprobación de la escala maestra lo declara en el schema publicado", () => {
+  it("los dos campos de la escala maestra lo declaran en el schema publicado", () => {
     const seccion = (
       fixtureSchema as unknown as { json_schema: { properties: Record<string, JsonSchema> } }
     ).json_schema.properties.master_scale
     const rama = seccion?.anyOf?.find((r) => r.properties !== undefined)
-    const campo = rama?.properties?.approval_cutoff as JsonSchema | undefined
-    expect(campo?.ui_activate_blank).toBe(true)
+    for (const hoja of ["approval_cutoff", "grade_edges"]) {
+      const campo = rama?.properties?.[hoja] as JsonSchema | undefined
+      expect(campo?.ui_activate_blank, hoja).toBe(true)
+      expect(campo?.ui_null_label, hoja).toBeTruthy()
+    }
   })
 })

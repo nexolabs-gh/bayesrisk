@@ -50,6 +50,10 @@ class MasterScaleConfig(BayesRiskBaseConfig):
             "ui_widget": "number_list",
             "ui_group": "Decisiones de la institución",
             "ui_order": 1,
+            # En blanco, los tramos los forman los datos: lo dice el interruptor apagado, y
+            # encenderlo no siembra una lista vacía (que no es una escala) sino el editor en blanco.
+            "ui_null_label": "los forman los datos",
+            "ui_activate_blank": True,
             "ui_help": "Los límites entre tramos que la institución ya usa, en puntos (por "
             "ejemplo 563, 541, 520 y 498). Cada valor cierra un tramo y abre el siguiente; el "
             "tramo 1 es el de menor riesgo. En blanco, los tramos los forman los datos.",
@@ -69,6 +73,7 @@ class MasterScaleConfig(BayesRiskBaseConfig):
             "ui_order": 2,
             # Encender el campo lo deja en blanco: un valor sembrado (0) sería un corte que nadie
             # decidió (pasada 1 de Codex sobre la capa B).
+            "ui_null_label": "sin corte declarado",
             "ui_activate_blank": True,
             "ui_help": "El corte de aprobación es apetito de riesgo: ningún valor de fábrica es "
             "defendible. Se aprueba el lado de menor riesgo del corte y no tiene que ser un límite "

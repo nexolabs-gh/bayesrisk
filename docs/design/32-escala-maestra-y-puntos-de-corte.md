@@ -903,3 +903,12 @@ una decisión de §12; son precisiones de implementación, medidas.
   —la marca `ui_activate_blank` lo enciende en blanco—; y el anexo redondeaba los límites de los
   tramos y los cortes que el cuerpo y los parámetros publican exactos —ahora son cortes por
   procedencia, como los del semáforo—.
+- **Recorrido en vivo** (la UI instalable desde `main`, S43): el ejemplo publicado carga con su
+  `config_hash` de siempre (`1063d6cf…`) y la sección «desactivada: el motor no la ejecuta»;
+  cargar un YAML con cortes actualiza el editor; una corrida desde la pantalla publica la escala en
+  Resultados y la subsección «Escala maestra y puntos de corte» del informe, con los cortes
+  exactos y la sección en el anexo de parámetros. Dos defectos encontrados ahí y corregidos con su
+  test nacido rojo: encender `grade_edges` sembraba `[]` —una lista vacía que el motor rechaza al
+  tiro— y los dos campos en blanco decían «desactivado», cuando significan «los tramos los forman
+  los datos» y «sin corte declarado»: los dos se encienden en blanco y dicen lo que significan
+  (`ui_null_label`).

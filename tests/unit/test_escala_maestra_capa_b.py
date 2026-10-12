@@ -307,9 +307,14 @@ def test_los_cortes_de_la_escala_se_escriben_exactos_en_el_informe() -> None:
     assert renderer._format_number(0.123456789, key_path=("master_scale.grades", "pd")) == "0,1235"
 
 
-def test_encender_el_puntaje_de_aprobacion_no_inventa_un_corte() -> None:
-    """§13: el corte es apetito de riesgo; encenderlo en la pantalla lo deja en blanco, no en 0."""
+def test_encender_los_campos_de_la_escala_no_inventa_una_decision() -> None:
+    """§13: el corte es apetito de riesgo y los tramos, de la institución o de los datos; encender
+    un campo en la pantalla lo deja en blanco —ni un 0 que aprueba todo ni una lista vacía—, y en
+    blanco cada uno dice lo que significa."""
     from bayesrisk.master_scale.config import MasterScaleConfig
 
-    nodo = MasterScaleConfig.model_json_schema()["properties"]["approval_cutoff"]
-    assert nodo.get("ui_activate_blank") is True
+    propiedades = MasterScaleConfig.model_json_schema()["properties"]
+    assert propiedades["approval_cutoff"].get("ui_activate_blank") is True
+    assert propiedades["grade_edges"].get("ui_activate_blank") is True
+    assert propiedades["grade_edges"]["ui_null_label"] == "los forman los datos"
+    assert propiedades["approval_cutoff"]["ui_null_label"] == "sin corte declarado"
