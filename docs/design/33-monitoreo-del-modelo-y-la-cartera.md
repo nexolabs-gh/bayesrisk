@@ -38,6 +38,15 @@
 > `stability` —sólo las proporciones cero— (§3.2). Informe: `evidencia/s44/codex_sdd33_p2_raw.txt`;
 > medición: `salidas/medir_h4_d.txt`.
 >
+> **Pasada 3, la última del tope declarado** (un high y dos medium, reales; el high, contractual,
+> elevado): con la pendiente en 0,5 y el AUC de 0,738 a 0,633, una recalibración de pendiente
+> (Platt, SDD-10) deja las PD exactas pero **no recupera la discriminación perdida**; si ese caso es
+> «redesarrollar» o «recalibrar» lo decide Cami en §12-5, con el caso. Corregidos: la pendiente es
+> «no evaluable» si los tramos con desenlace no tienen al menos dos PD distintas (PAVA puede igualar
+> tramos) o su matriz de información no es invertible (§3.4); y los artefactos publican las dos colas
+> con su dirección y la regla con que el veredicto las consolida (§6.2). Sin cuarta pasada, por el
+> criterio declarado. Informe: `evidencia/s44/codex_sdd33_p3_raw.txt`.
+>
 > **No toca:** el pipeline del scorecard, `stability`, `validation`, `performance`, la escala
 > maestra, IFRS 9, CMF ni el arnés H9R. Sin la sección nueva, ninguna corrida, artefacto, YAML ni
 > `config_hash` cambia (D-ESC-7). **No autoriza** bump, tag, PyPI ni recaptura.
@@ -287,8 +296,11 @@ sea menor que 1. **No evaluable** —nunca verde (IHN-010)— con
 menos de 2 malos o de 2 buenos en `M_t` (la plantilla del BCE no calcula con menos de 2
 incumplimientos), o si `s_t²` no es finito y positivo (por ejemplo, todas las operaciones con
 desenlace en un solo tramo: todas las contribuciones valen ½ y la varianza es cero); la pendiente,
-además, con menos de dos tramos con desenlace o si el ajuste no converge (separación perfecta), con
-su causa.
+además, si los tramos con desenlace no tienen **al menos dos PD distintas** (la igualación de PAVA
+en la escala puede dar a dos tramos la misma PD: el logit es constante y la pendiente no se
+identifica), si la matriz de información no es invertible, si el error estándar no es finito y
+positivo o si el ajuste no converge (separación perfecta), con su causa; los demás indicadores se
+calculan igual.
 Semáforo con los cortes 0,05/0,01 (política institucional, como el de Jeffreys: el BCE no los fija).
 **La discriminación es roja sólo si las dos pruebas son rojas** (§3.5, §12-5); cada una se publica
 con su p-valor, y el informe dice cuál de las dos falló.
@@ -422,10 +434,13 @@ cuentan y se excluyen de los indicadores, con su motivo.
 
 - `periods`: una fila por periodo —`n`, puntuadas, con desenlace, malos, PSI del puntaje y de
   tramos con su banda, la PD media de las puntuadas (descriptiva), la tasa de malos y la PD esperada
-  sobre `M_t` con su p-valor y semáforo, el AUC del periodo con su `s_t`, `AUC₀`, `S`, su p-valor y
+  sobre `M_t` con los p-valores y semáforos de las dos colas, su dirección y el consolidado, el AUC del periodo con su `s_t`, `AUC₀`, `S`, su p-valor y
   semáforo, la pendiente `b` con su error, p-valor y semáforo, tramos rojos, lo no evaluable con su causa y el veredicto—.
-- `grades_by_period`: tramo × periodo, la salida de `tabla_por_tramo`, más la participación del
-  tramo y la de Desarrollo.
+- `grades_by_period`: tramo × periodo, la salida de `tabla_por_tramo` (sin cambiarla), más la
+  participación del tramo y la de Desarrollo y, con §12-10 (a), el p-valor y el semáforo del espejo
+  (PD demasiado alta) junto a los del contraste del BCE (PD demasiado baja), con la **dirección** de
+  cada rojo («subestima» o «sobrestima») y el semáforo consolidado que usa el veredicto (el peor de
+  las dos colas).
 - `variables_by_period`: el CSI de cada variable por periodo.
 - `verdict`: el veredicto de la corrida con su periodo, su acción y la razón en una línea.
 - `card`: la referencia usada (`source` de `AUC₀`, `bundle_hash`), las constantes y las alertas.
@@ -496,8 +511,11 @@ y `scipy` (ya dependencias del núcleo). Ninguna nueva.
   otra PD) no altera el contraste de cartera; un periodo con todas las operaciones con desenlace en
   un solo tramo deja el AUC «no evaluable» por varianza nula; un periodo con un malo, «evidencia
   parcial».
-- **Los contraejemplos de las pasadas 1 y 2**: el de composición y el de intercepto dan pendiente 1 y
-  no dan «redesarrollar» (el de intercepto da «recalibrar»).
+- **Los contraejemplos de las pasadas 1, 2 y 3**: el de composición y el de intercepto dan pendiente
+  1 y no dan «redesarrollar» (el de intercepto da «recalibrar» con §12-10 (a)); el de pendiente 0,5
+  (10.000 por tramo, PD 10 %/50 %, malos de 1.000/5.000 a 2.500/5.000) da lo que Cami decida en §12-5.
+- **Pendiente no identificable**: dos tramos con la misma PD (30 %, 1.000 operaciones y 300 malos
+  cada uno) dejan la pendiente «no evaluable» con su causa y el AUC evaluable.
 - **Tarjeta estricta**: una tarjeta con `extra_columns="forbid"` se monitorea con el periodo y el
   desenlace en la cartera.
 - **El PSI**: equivalencia con `stability` con proporciones positivas menores que 10⁻⁶ (referencia
@@ -524,7 +542,7 @@ y `scipy` (ya dependencias del núcleo). Ninguna nueva.
 | 12-2 | Qué tarjetas se monitorean (elevada por la pasada 1) | (a) **sólo las de esquema 4**, que congelan su referencia al guardarse (desde la versión que trae el monitoreo); una de la 2.11 o la 2.12 se vuelve a guardar re-corriendo su desarrollo con esa versión (mismo config, mismo `config_hash`, mismo modelo); (b) también las de esquema 3, con una muestra de desarrollo que traiga su columna de partición (Desarrollo para la población, Holdout para el AUC inicial), con su propia huella en el lineage y en la ficha | **(a)**: una tarjeta de esquema 3 no conserva el AUC de Holdout y una muestra externa cambia los resultados sin cambiar ninguna huella declarada (pasada 1: el PSI de una misma cartera pasa de 0 a 0,879 con otra referencia); las tarjetas con escala existen sólo desde la 2.11.0 (2026-10-12); y (a) deja la sección con tres campos en vez de cuatro |
 | 12-3 | El AUC inicial | (a) **el de Holdout sobre los tramos** —la validación inicial, fuera de la muestra de ajuste—; sin Holdout, el de Desarrollo, declarado; (b) el de Desarrollo siempre | **(a)**: medido, Desarrollo es optimista (0,709 vs 0,682) y con él la OOT de las dos carteras sale roja (p = 0,004 y 0,008) cuando contra Holdout es verde (0,09 y 0,92) (§0.4-1) |
 | 12-4 | Qué se mide | (a) **los cuatro indicadores** de §3 y el CSI como diagnóstico; (b) más las migraciones de clientes del BCE | **(a)**: las migraciones exigen el mismo cliente en dos fechas (un panel), que una cartera de originación no tiene; quedan para cuando un caso real lo pida |
-| 12-5 | La tabla de decisión (ampliada por las pasadas 1 y 2) | (a) **la de §3.5**: redesarrollar sólo si el AUC cae contra la validación inicial (BCE) **y** la pendiente de calibración queda bajo 1; recalibrar con la cartera roja, ≥ 2 tramos rojos o el mismo tramo dos periodos; vigilar con la población roja o ámbar, un tramo aislado o una sola prueba de discriminación roja; un periodo sin desenlace nunca es «sin acción»; lo no evaluable no cuenta como verde; (b) la prueba del BCE sola para redesarrollar; (c) el mapa banda → acción de `stability` (PSI rojo → redesarrollar); (d) sólo semáforos, sin acción | **(a)**: medido en siete casos (§0.3, §0.4), acierta en todos; (b) pide redesarrollar con un cambio de mezcla (0,716 → 0,525) o de intercepto (0,738 → 0,707) con las PD que recalibrar arregla; (c) pediría redesarrollar con el PSI en 0,75 y el modelo sano, y nada con cuatro tramos rojos y el PSI en 0,007; (d) deja al modelador sin la respuesta que vino a buscar |
+| 12-5 | La tabla de decisión (ampliada por las pasadas 1, 2 y 3) | (a) **la de §3.5**: redesarrollar cuando la discriminación cayó —el AUC contra la validación inicial (BCE) **y** la pendiente de calibración bajo 1, las dos rojas—, aunque una recalibración de pendiente pueda devolver las PD (no devuelve la discriminación: con la pendiente en 0,5 el AUC pasa de 0,738 a 0,633 y queda ahí, contraejemplo de la pasada 3); recalibrar con la cartera roja, ≥ 2 tramos rojos o el mismo tramo dos periodos; vigilar con la población roja o ámbar, un tramo aislado o una sola prueba de discriminación roja; un periodo sin desenlace nunca es «sin acción»; lo no evaluable no cuenta como verde; (b) como (a), pero con la pendiente positiva y los tramos todavía ordenados el veredicto es «recalibrar» (Platt, SDD-10), y redesarrollar sólo si el orden de los tramos se invierte; (c) la prueba del BCE sola para redesarrollar; (d) el mapa banda → acción de `stability`; (e) sólo semáforos | **(a)**: medido en siete casos (§0.3, §0.4), acierta en todos; la prueba del BCE existe para vigilar el poder de discriminación, y un modelo que separa la mitad de lo que separaba aprueba más malos con el mismo corte aunque sus PD vuelvan a cuadrar; (b) mantiene en uso un modelo con AUC 0,633 sin pedir revisarlo; (c) pide redesarrollar con un cambio de mezcla o de intercepto; (d) pediría redesarrollar con el PSI en 0,75 y el modelo sano; (e) deja al modelador sin la respuesta que vino a buscar |
 | 12-6 | Umbrales | (a) **constantes**: PSI 0,10/0,25 y p-valores 0,05/0,01, los que la librería ya usa, nombrados en el informe como política; (b) configurables en la sección | **(a)**: SDD-31 (perillas nacen en cero); en las cuatro carteras medidas ninguno produce un veredicto que no se explique; una institución con otra política es un caso real que se mide cuando llegue |
 | 12-7 | Historia entre corridas | (a) **cada corrida recibe todos los periodos y recalcula la serie** (determinista, inmutable); (b) un almacén que acumula corridas | **(a)**: IHN-011 —ninguna corrida histórica se muta—, sin estado que pueda quedar viejo; calcular seis periodos toma 0,03 s |
 | 12-8 | Capas y releases | (a) **A** —motor, `bayesrisk.Monitor`, tarjeta de esquema 4, resumen, guía con un bloque que entrena en `consumo_comportamiento` y monitorea `consumo_drift`— en la **2.13.0**, experimental; **B** —pantalla (la tarjeta de una corrida de la pantalla o un `.zip`), informe con su capítulo, Excel; estable— en la **2.14.0**; (b) A y B juntas | **(a)**: como H5; A ya da la respuesta en el notebook, B mueve front, informe y goldens |
