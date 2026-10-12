@@ -270,3 +270,28 @@ def test_todo_fragmento_que_corre_un_preset_dice_donde_queda_la_evidencia() -> N
         f"fragmentos que corren un preset sin `run_dir=`: {sin_run_dir}. Con la auditoría que el "
         "preset trae encendida, esa llamada levanta ConfigError en vez de correr."
     )
+
+
+#: El bloque «Escala maestra y puntos de corte» del tutorial (SDD-32 §13): sigue al notebook
+#: mínimo con el mismo `sc` —declara un corte, corre de nuevo y puntúa solicitudes nuevas—.
+_ESCALA_MAESTRA = "escala-maestra"
+
+
+def test_la_escala_maestra_de_la_guia_corre_tras_el_notebook_minimo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    origen = _DOCS / "tutorial.md"
+    texto = origen.read_text(encoding="utf-8")
+    codigo = "\n".join(
+        _bloque(texto, nombre, origen.name) for nombre in (_PRIMER_SCORECARD, _ESCALA_MAESTRA)
+    )
+    assert "set_cutoff(" in codigo and "sc.apply(" in codigo and codigo.count("sc.resume()") == 2
+    espacio = _ejecutar(codigo, origen, tmp_path, monkeypatch)
+    sc = espacio["sc"]
+    assert sc.study.run_context.status == "done", sc.study.run_context.error
+    assert sc.config.master_scale.approval_cutoff == 512.0
+    nuevas = espacio["nuevas"]
+    assert len(nuevas.index) == 5
+    esperada = ["approve" if s >= 512 else "reject" for s in nuevas["score"].astype(float)]
+    assert nuevas["decision"].tolist() == esperada
+    assert nuevas["grade"].notna().all() and nuevas["grade_pd"].notna().all()

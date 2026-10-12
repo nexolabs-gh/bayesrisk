@@ -52,12 +52,18 @@ __all__ = [
 ]
 
 #: El esquema que se escribe. El 2 (D-NOV-1 §1.2) puntúa una categoría no vista con los puntos de
-#: su tramo de referencia, congelados en ``unseen_reference``; el 1 la rechaza. El lector acepta los
-#: dos y despacha por la política declarada: un bundle ya entregado no cambia su resultado.
-_BUNDLE_SCHEMA: Final = 2
-_BUNDLE_SCHEMAS_LEIDOS: Final = frozenset({1, 2})
+#: su tramo de referencia, congelados en ``unseen_reference``; el 1 la rechaza. El 3 (SDD-32,
+#: 2.11.0) congela ``model.clip`` y lo respeta —con límites de puntaje y ``clip=False`` la corrida
+#: no recorta y la tarjeta tampoco (§12-9)— y puede llevar la escala maestra (``master_scale``: sus
+#: cortes, la PD de cada tramo y el corte de aprobación; D-ESC-6). El lector acepta los tres y
+#: despacha por lo declarado: un bundle ya entregado no cambia su resultado (uno sin ``clip``
+#: recorta como siempre).
+_BUNDLE_SCHEMA: Final = 3
+_BUNDLE_SCHEMAS_LEIDOS: Final = frozenset({1, 2, 3})
 #: La política de categorías no vistas de cada esquema.
-_UNSEEN_POLICY: Final[dict[int, str]] = {1: "not_scorable", 2: "reference_bin"}
+_UNSEEN_POLICY: Final[dict[int, str]] = {1: "not_scorable", 2: "reference_bin", 3: "reference_bin"}
+#: Las claves del bloque de la escala maestra (esquema 3, opcional).
+_MASTER_SCALE_KEYS: Final = frozenset({"cuts", "grade_pd", "approval_cutoff", "source"})
 _UNSEEN_REFERENCE_KEYS: Final = frozenset({"bin_index", "woe", "raw_points", "points"})
 _BUNDLE_FILES: Final = frozenset({"manifest.json", "bins.parquet"})
 _MAX_MANIFEST_BYTES: Final = 2 * 1024 * 1024
@@ -253,6 +259,8 @@ class FittedScorecardBundle:
             "rounding_method": str(card.rounding_method),
             "min_score": card.min_score,
             "max_score": card.max_score,
+            # §12-9 (SDD-32): la tarjeta recorta como la corrida, sólo con `clip` encendido.
+            "clip": _clip_de_la_corrida(study),
             "calibration": calibration.model_dump(mode="json"),
         }
         manifest: dict[str, Any] = {
@@ -269,6 +277,9 @@ class FittedScorecardBundle:
             "bundle_hash": "",
             "unseen_reference": unseen_reference,
         }
+        escala = _escala_de_la_corrida(study)
+        if escala is not None:
+            manifest["master_scale"] = escala
         manifest["bundle_hash"] = _bundle_hash(manifest)
         return cls(manifest=manifest, rules=rules)
 
@@ -426,10 +437,12 @@ class FittedScorecardBundle:
             score_unrounded += raw_points_matrix[:, position]
             score += points_matrix[:, position]
         minimum, maximum = model["min_score"], model["max_score"]
-        if minimum is not None:
-            score = np.maximum(score, float(minimum))
-        if maximum is not None:
-            score = np.minimum(score, float(maximum))
+        # Un bundle sin `clip` (esquemas 1 y 2) recorta siempre, como antes de la 2.11.0.
+        if model.get("clip", True):
+            if minimum is not None:
+                score = np.maximum(score, float(minimum))
+            if maximum is not None:
+                score = np.minimum(score, float(maximum))
         pd_raw = _expit_array(eta)
         pd_calibrated = _calibrate_array(eta, model["calibration"])
         for output in (eta, score_unrounded, score, pd_raw, pd_calibrated):
@@ -519,6 +532,9 @@ class FittedScorecardBundle:
             }
         )
         application["treatment_trace_hash"] = _trace_hashes(trace, rows=rows)
+        escala = self._manifest.get("master_scale")
+        if escala is not None:
+            _aplicar_escala(application, escala, score_direction=str(model["score_direction"]))
         counts = application["scoring_status"].value_counts().to_dict()
         summary = {
             "input_rows": len(raw.index),
@@ -1880,6 +1896,9 @@ def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
         raise ScorecardBundleError("Schema o formato de bundle no soportado.")
     if schema >= 2:
         required = required | {"unseen_reference"}
+    # El bloque de la escala maestra es opcional y sólo existe desde el esquema 3 (D-ESC-6).
+    if schema >= 3 and "master_scale" in value:
+        required = required | {"master_scale"}
     if set(value) != required:
         raise ScorecardBundleError(
             f"Claves de manifest inválidas: faltan={sorted(required - set(value))}, "
@@ -1909,8 +1928,12 @@ def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
         "max_score",
         "calibration",
     }
+    if schema >= 3:
+        model_keys = model_keys | {"clip"}
     if not isinstance(model, dict) or set(model) != model_keys:
         raise ScorecardBundleError("Schema de manifest.model inválido.")
+    if schema >= 3 and not isinstance(model["clip"], bool):
+        raise ScorecardBundleError("manifest.model.clip debe ser verdadero o falso.")
     features = model["features"]
     woe_columns = model["woe_columns"]
     if (
@@ -1948,6 +1971,8 @@ def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
         raise ScorecardBundleError("max_score debe ser finito o null.")
     if minimum is not None and maximum is not None and float(minimum) > float(maximum):
         raise ScorecardBundleError("min_score no puede exceder max_score.")
+    if "master_scale" in value:
+        _validate_master_scale(value["master_scale"])
     try:
         from bayesrisk.calibration.results import CalibrationParameters
 
@@ -1983,6 +2008,90 @@ def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
             raise ScorecardBundleError(f"fit_lineage.{hash_field} no es SHA-256.")
     _canonical_json(value)
     return cast("dict[str, Any]", json.loads(_canonical_json(value)))
+
+
+def _validate_master_scale(value: Any) -> None:
+    """El bloque de la escala maestra: cortes crecientes, una PD en (0, 1) por tramo (D-ESC-6)."""
+    if not isinstance(value, dict) or set(value) != _MASTER_SCALE_KEYS:
+        raise ScorecardBundleError("Schema de manifest.master_scale inválido.")
+    cuts, grade_pd = value["cuts"], value["grade_pd"]
+    if (
+        not isinstance(cuts, list)
+        or not all(_is_finite_number(c) for c in cuts)
+        or any(float(b) <= float(a) for a, b in pairwise(cuts))
+    ):
+        raise ScorecardBundleError("manifest.master_scale.cuts debe ser una lista creciente.")
+    if (
+        not isinstance(grade_pd, list)
+        or len(grade_pd) != len(cuts) + 1
+        or not all(_is_finite_number(p) and 0.0 < float(p) < 1.0 for p in grade_pd)
+    ):
+        raise ScorecardBundleError(
+            "manifest.master_scale.grade_pd debe traer una PD en (0, 1) por tramo."
+        )
+    cutoff = value["approval_cutoff"]
+    if cutoff is not None and not _is_finite_number(cutoff):
+        raise ScorecardBundleError("manifest.master_scale.approval_cutoff debe ser finito o null.")
+    if value["source"] not in {"formed", "institution"}:
+        raise ScorecardBundleError("manifest.master_scale.source inválido.")
+
+
+def _clip_de_la_corrida(study: Study) -> bool:
+    """El ``scorecard.clip`` con que corrió el ``Study`` (§12-9 del SDD-32)."""
+    seccion = getattr(study.config, "scorecard", None)
+    valor = seccion.get("clip") if isinstance(seccion, Mapping) else getattr(seccion, "clip", None)
+    return bool(valor)
+
+
+def _escala_de_la_corrida(study: Study) -> dict[str, Any] | None:
+    """El bloque de la escala que congela la tarjeta, o ``None`` si la corrida no la tiene."""
+    if not study.artifacts.has("master_scale", "card"):
+        return None
+    card = study.artifacts.get("master_scale", "card")
+
+    def campo(nombre: str) -> Any:
+        return card.get(nombre) if isinstance(card, Mapping) else getattr(card, nombre, None)
+
+    corte = campo("approval_cutoff")
+    return {
+        "cuts": [float(c) for c in campo("cuts")],
+        "grade_pd": [float(p) for p in campo("pd")],
+        "approval_cutoff": None if corte is None else float(corte),
+        "source": str(campo("source")),
+    }
+
+
+def _aplicar_escala(
+    application: pd.DataFrame, escala: Mapping[str, Any], *, score_direction: str
+) -> None:
+    """Agrega ``grade``, ``grade_pd`` y —con corte— ``decision`` con la regla única de §3.2.
+
+    Una fila que no se puntúa (``scoring_status == "not_scorable"``) no recibe tramo ni decisión.
+    """
+    from bayesrisk.master_scale.engine import aprobar, asignar_tramos
+
+    mayor_es_menor_riesgo = score_direction == "higher_is_lower_risk"
+    puntaje = application["score"].to_numpy(dtype="float64", na_value=np.nan)
+    puntuada = application["scoring_status"].to_numpy() == "scored"
+    puntaje = np.where(puntuada, puntaje, np.nan)
+    tramos = asignar_tramos(puntaje, escala["cuts"], mayor_es_menor_riesgo=mayor_es_menor_riesgo)
+    pd_tramo = np.asarray(escala["grade_pd"], dtype="float64")
+    application["grade"] = pd.array([int(g) if g > 0 else None for g in tramos], dtype="Int64")
+    application["grade_pd"] = pd.array(
+        [float(pd_tramo[g - 1]) if g > 0 else None for g in tramos], dtype="Float64"
+    )
+    if escala["approval_cutoff"] is not None:
+        aprobada = aprobar(
+            puntaje, escala["approval_cutoff"], mayor_es_menor_riesgo=mayor_es_menor_riesgo
+        )
+        application["decision"] = pd.Series(
+            [
+                ("approve" if a else "reject") if not math.isnan(s) else None
+                for s, a in zip(puntaje.tolist(), aprobada.tolist(), strict=True)
+            ],
+            index=application.index,
+            dtype=object,
+        )
 
 
 def _is_finite_number(value: Any) -> bool:

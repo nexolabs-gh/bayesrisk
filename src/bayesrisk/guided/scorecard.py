@@ -192,6 +192,8 @@ class Scorecard(_PuertaGuiada):
         formats: Sequence[str] | None = None,
     ) -> None:
         self._iniciar(name, run_dir)
+        #: La tarjeta de aplicación de la última corrida, construida una vez por `Study` (apply).
+        self._bundle: tuple[Any, Any] | None = None
         try:
             frame, source, source_label = self._cargar(data)
             self._construir(
@@ -514,6 +516,10 @@ class Scorecard(_PuertaGuiada):
             }
         if track is not None:
             cfg["tracking"] = {"enabled": True, "tracking_uri": str(track)}
+        # D-ESC-8 (SDD-32 §12-5, Cami 2026-10-11): la escala maestra corre por defecto en la puerta
+        # guiada —cuesta décimas de segundo y no pide nada—; sus dos hojas son las decisiones de
+        # la institución (`set_grades`, `set_cutoff`). Quien no la quiere la quita del config.
+        cfg["master_scale"] = {}
         self._config = self._validar_config(cfg)
         self._config, self._steps = self._resolver_pipeline(self._config)
         self._publicar_snapshot()
@@ -1006,6 +1012,129 @@ class Scorecard(_PuertaGuiada):
         tabla = self.bins(column)
         return "\n".join(f"  {int(f['Tramo'])}: {f['Rango']}" for _, f in tabla.iterrows())
 
+    # ── escala maestra: set_grades / set_cutoff / apply (SDD-32 D-ESC-5, D-ESC-6) ─────────
+
+    def set_grades(self, cuts: Sequence[float], *, reason: str) -> Scorecard:
+        """Fija los cortes de los tramos de la escala maestra, en puntos, con motivo.
+
+        Es el ``set_bins`` de la escala: escribe ``master_scale.grade_edges`` (los cortes, en
+        cualquier orden, se guardan ordenados) y la corrida siguiente usa esos tramos en vez de
+        formarlos. Cada corte separa con la regla única: ``s ≥ c`` al lado de puntaje mayor. Un
+        corte que deje un tramo sin operaciones de Desarrollo detiene la etapa con el tramo y el
+        rango del puntaje.
+
+        **Experimental (fuera de la garantía SemVer 2.x).**
+        Hasta que la pantalla ofrezca la escala (capa B del SDD-32).
+        """
+        motivo = self._motivo(reason, "set_grades")
+        try:
+            cortes = sorted(float(c) for c in cuts)
+        except (TypeError, ValueError) as exc:
+            raise ScorecardInputError(
+                f"set_grades(): los cortes tienen que ser números; recibió {list(cuts)!r}."
+            ) from exc
+        if not cortes:
+            raise ScorecardInputError("set_grades() necesita al menos un corte.")
+        return self._decidir_escala(
+            "set_grades", {"grade_edges": tuple(cortes)}, motivo=motivo, texto=f"cortes {cortes}"
+        )
+
+    def set_cutoff(self, score: float, *, reason: str) -> Scorecard:
+        """Declara el puntaje de aprobación de la institución, con motivo.
+
+        Escribe ``master_scale.approval_cutoff``: se aprueba el lado de menor riesgo del corte
+        —con «más puntaje, menos riesgo», ``s ≥ score``; con la dirección invertida, ``s < score``—
+        y la tabla de cortes gana su fila, calculada exactamente en ese puntaje. No tiene que ser
+        un límite de tramo.
+
+        **Experimental (fuera de la garantía SemVer 2.x).**
+        Hasta que la pantalla ofrezca la escala (capa B del SDD-32).
+        """
+        motivo = self._motivo(reason, "set_cutoff")
+        try:
+            corte = float(score)
+        except (TypeError, ValueError) as exc:
+            raise ScorecardInputError(
+                f"set_cutoff(): el puntaje tiene que ser un número; recibió {score!r}."
+            ) from exc
+        return self._decidir_escala(
+            "set_cutoff", {"approval_cutoff": corte}, motivo=motivo, texto=f"corte {corte:g}"
+        )
+
+    def _decidir_escala(
+        self, accion: str, campos: Mapping[str, Any], *, motivo: str, texto: str
+    ) -> Scorecard:
+        """Escribe una hoja de ``master_scale`` y registra la decisión sobre el puntaje (D-DEC)."""
+        if self._config.master_scale is None:
+            self._config = self._validar_config(
+                {**self._config.model_dump(mode="python", by_alias=True), "master_scale": {}}
+            )
+        anterior = self._config
+        try:
+            self._actualizar_seccion("master_scale", campos)
+        except ScorecardInputError:
+            raise
+        except ConfigError as exc:
+            # El validador de la sección levanta `ConfigError`, que Pydantic no envuelve (no
+            # hereda de `ValueError`, D-ANC-10): se dice como un argumento de la puerta.
+            self._config = anterior
+            raise ScorecardInputError(f"{accion}(): {exc}") from exc
+        escala = self._config.master_scale
+        assert escala is not None  # recién validada
+        hojas = {f"master_scale.{hoja}": _jsonable(getattr(escala, hoja)) for hoja in campos}
+        columna = self._config.scorecard.score_column if self._config.scorecard else "score"
+        try:
+            registro = self._nuevo_registro(accion, [columna], motivo, hojas)
+        except BaseException:
+            self._config = anterior
+            raise
+        self._agregar_registro(registro)
+        self._pending_decisions = True
+        self._config, self._steps = self._resolver_pipeline(self._config)
+        self._final = None
+        self._echo(
+            f"Decisión registrada: {accion} → {texto} — «{motivo}». Se aplica en la corrida "
+            "siguiente: resume()."
+        )
+        return self
+
+    def apply(self, frame: pd.DataFrame) -> pd.DataFrame:
+        """Puntúa solicitudes nuevas con la tarjeta de la última corrida (SDD-32 D-ESC-6).
+
+        Es el ``apply`` del bundle de aplicación (:class:`~bayesrisk.scorecard.bundle.
+        FittedScorecardBundle`): una fila por solicitud con su puntaje, la PD calibrada y, con la
+        escala maestra, su tramo (``grade``, 1 = menor riesgo), la PD del tramo (``grade_pd``) y,
+        si hay corte declarado, la decisión (``decision``: ``"approve"``/``"reject"``). Una fila
+        que no se puede puntuar (``scoring_status == "not_scorable"``) no recibe tramo ni
+        decisión. Para llevar la tarjeta a otro sistema, ``bayesrisk.FittedScorecardBundle.
+        from_study(sc.study).save(ruta)``.
+
+        **Experimental (fuera de la garantía SemVer 2.x).**
+        Hasta que la pantalla ofrezca la escala (capa B del SDD-32).
+        """
+        if self._study is None or self._study.run_context.status != "done":
+            raise ScorecardInputError(
+                "apply() puntúa con la tarjeta de la última corrida terminada: llama a run() "
+                "primero."
+            )
+        if self._pending_decisions:
+            raise ScorecardInputError(
+                "Hay decisiones registradas que la tarjeta todavía no lleva: llama a resume() "
+                "antes de apply() para que la corrida nueva las aplique."
+            )
+        from bayesrisk.scorecard.bundle import FittedScorecardBundle
+        from bayesrisk.scorecard.exceptions import ScorecardBundleError
+
+        if self._bundle is None or self._bundle[0] is not self._study:
+            try:
+                self._bundle = (self._study, FittedScorecardBundle.from_study(self._study))
+            except ScorecardBundleError as exc:
+                raise ScorecardInputError(
+                    f"La última corrida no deja una tarjeta aplicable: {exc} Corre el pipeline "
+                    "completo (run() sin until=)."
+                ) from exc
+        return self._bundle[1].apply(frame).application_frame
+
     # ── exportar (D-FLU-5) ──────────────────────────────────────────────────────────────
 
     def export_excel(self) -> tuple[Path, ...]:
@@ -1071,6 +1200,11 @@ class Scorecard(_PuertaGuiada):
             lines=lines,
             table=pd.DataFrame(filas),
         )
+
+
+def _jsonable(valor: Any) -> Any:
+    """Una hoja como la guarda la huella de una decisión: listas en vez de tuplas."""
+    return list(valor) if isinstance(valor, tuple) else valor
 
 
 def _variables_finales(study: Any) -> tuple[str, ...]:

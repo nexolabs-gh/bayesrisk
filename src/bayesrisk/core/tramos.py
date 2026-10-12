@@ -25,10 +25,12 @@ __all__ = [
     "es_fila_de_totales",
     "filas_que_casan",
     "formatear_borde",
+    "rotulo_de_corte_de_puntaje",
     "rotulo_de_intervalo",
     "rotulo_de_no_vistas",
     "rotulo_de_rango",
     "rotulo_de_tramo",
+    "rotulo_de_tramo_de_puntaje",
     "rotulos_por_fila",
 ]
 
@@ -188,3 +190,57 @@ def filas_que_casan(etiqueta: str, crudas: list[str], legibles: list[str]) -> li
         return exactas
     por_rotulo = [posicion for posicion, legible in enumerate(legibles) if legible == etiqueta]
     return por_rotulo if len(por_rotulo) == 1 else []
+
+
+# ───────────────────── escala maestra: cortes y tramos de puntaje (SDD-32 §3.2) ─────────────────
+
+
+def _puntos(valor: float, *, enteros: bool) -> str:
+    """Un puntaje en es-CL: entero cuando la tarjeta sólo produce enteros, exacto si no."""
+    return formatear_borde(float(valor)) if not enteros else formatear_borde(float(int(valor)))
+
+
+def rotulo_de_corte_de_puntaje(corte: float, *, enteros: bool, mayor_es_menor_riesgo: bool) -> str:
+    """El lado aprobado de un corte de puntaje, con la regla única de §3.2 del SDD-32.
+
+    Todo corte ``c`` separa con el mismo predicado en las dos direcciones: ``s ≥ c`` al lado de
+    puntaje mayor y ``s < c`` al de menor. La dirección sólo dice cuál es el lado de menor riesgo
+    (el aprobado). Si la tarjeta sólo produce enteros, ``⌈c⌉`` separa exactamente los mismos
+    puntajes que ``c`` —sea ``c`` un punto medio ``x,5`` o un entero— y el rótulo lo usa; si no,
+    dice ``c`` exacto (:func:`formatear_borde`).
+    """
+    if mayor_es_menor_riesgo:
+        if enteros:
+            return f"desde {_puntos(math.ceil(corte), enteros=True)} puntos"
+        return f"desde {formatear_borde(corte)} puntos"
+    if enteros:
+        return f"hasta {_puntos(math.ceil(corte) - 1, enteros=True)} puntos"
+    return f"menos de {formatear_borde(corte)} puntos"
+
+
+def rotulo_de_tramo_de_puntaje(
+    inferior: float | None, superior: float | None, *, enteros: bool
+) -> str:
+    """Un tramo de puntaje ``[inferior, superior)`` dicho en puntos, con los extremos abiertos.
+
+    ``None`` es un extremo abierto (el tramo de mayor o de menor puntaje). Con una tarjeta que sólo
+    produce enteros, el tramo ``[c₁, c₂)`` es «de ⌈c₁⌉ a ⌈c₂⌉ - 1 puntos»; si no, «desde c₁ y menos
+    de c₂ puntos».
+    """
+    if inferior is None and superior is None:
+        return "todos los puntajes"
+    if enteros:
+        desde = None if inferior is None else math.ceil(inferior)
+        hasta = None if superior is None else math.ceil(superior) - 1
+        if desde is None:
+            return f"hasta {_puntos(hasta, enteros=True)} puntos"  # type: ignore[arg-type]
+        if hasta is None:
+            return f"desde {_puntos(desde, enteros=True)} puntos"
+        if desde == hasta:
+            return f"{_puntos(desde, enteros=True)} puntos"
+        return f"de {_puntos(desde, enteros=True)} a {_puntos(hasta, enteros=True)} puntos"
+    if inferior is None:
+        return f"menos de {formatear_borde(superior)} puntos"  # type: ignore[arg-type]
+    if superior is None:
+        return f"desde {formatear_borde(inferior)} puntos"
+    return f"desde {formatear_borde(inferior)} y menos de {formatear_borde(superior)} puntos"

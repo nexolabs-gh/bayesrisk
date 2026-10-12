@@ -51,6 +51,50 @@ sc.resume()                         # corrida nueva y completa con la decisión;
 ```
 <!-- primer-scorecard:end -->
 
+## Escala maestra y puntos de corte
+
+!!! note "Experimental"
+    La etapa «Escala maestra» sale primero por la puerta guiada y el config completo; la pantalla,
+    el informe y el Excel la reciben en la versión siguiente.
+
+La última etapa de la corrida, **«Escala maestra»**, agrupa el puntaje en **tramos de riesgo**, del
+1 (el de menor riesgo) al último: los forman los datos —cada uno con al menos el 5 % de Desarrollo
+y una tasa de malos distinta de la de sus vecinos, hasta diez—. Cada tramo recibe **su PD**, que es
+su tasa de malos de Desarrollo llevada al ancla de la calibración, y se lee en Holdout y fuera de
+tiempo con el mismo contraste de la validación. La **tabla de puntos de corte** dice, para cada
+límite, cuánto se aprueba, con qué tasa de malos, **cuántos malos se evitan y cuántos buenos se
+rechazan**: es la tabla con que el comité elige su corte sabiendo lo que cuesta.
+
+Con el corte elegido, `set_cutoff` lo declara con su motivo y `apply` puntúa solicitudes nuevas con
+la tarjeta de la corrida —su puntaje, su tramo, la PD del tramo y la decisión—:
+
+<!-- escala-maestra:start -->
+```python
+import pandas as pd
+
+print(sc.summary("master_scale"))   # los tramos, su PD y la tabla de puntos de corte
+sc.set_cutoff(512, reason="aprobar los tramos 1 a 3: tasa de malos de los aprobados bajo 17 %")
+sc.resume()                          # corrida nueva con el corte de la institución
+solicitudes = pd.read_parquet(datos).head(5)
+nuevas = sc.apply(solicitudes)       # puntaje, tramo, PD del tramo y decisión por solicitud
+print(nuevas[["score", "grade", "grade_pd", "decision"]])
+```
+<!-- escala-maestra:end -->
+
+Dos PD conviven, y cada una tiene su uso: **la del tramo** (`grade_pd`) es la que opera la política
+—la tabla de cortes, la decisión—; **la de cada operación** (`pd_calibrated`) es la que ya consumen
+otras etapas, como la provisión con `bayesrisk.Ecl(pd=…)`. Si la institución ya opera con sus
+cortes de tramo, `sc.set_grades([563, 541, 520, 498], reason=…)` los fija y la escala usa esos.
+Para llevar la tarjeta a otro sistema, `bayesrisk.FittedScorecardBundle.from_study(sc.study)
+.save(ruta)` la guarda con la escala; quien la cargue obtiene las mismas columnas con
+`bayesrisk.apply`.
+
+!!! tip "Cómo leer la tabla de cortes"
+    Bajar el puntaje mínimo aprueba más, con más malos entre los aprobados: menos malos evitados y
+    menos buenos rechazados. En una cartera de comportamiento, «aprobar» se lee como «quedar sobre
+    el corte» (una oferta, un aumento de cupo). Y en una cartera de aprobados la tabla mide a quien
+    pasó la política anterior: la tasa de malos de quien hoy se rechaza no está en los datos.
+
 Lo que sigue abre la **puerta completa**: el `BayesRiskConfig` sección por sección, para entender
 qué decide cada etapa y qué artefacto deja.
 

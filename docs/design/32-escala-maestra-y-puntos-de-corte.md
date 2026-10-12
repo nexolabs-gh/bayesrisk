@@ -768,3 +768,59 @@ a SQL (transversal del ROADMAP).
 Las tres puertas (D-SIM-1): la guiada y la completa en la capa A —experimentales, marcadas—; la
 pantalla en la B, con el gate de las tres puertas (mismo `config_hash` y mismos artefactos), y
 entonces la etapa deja de ser experimental.
+
+## 14. Capa A implementada (S42) — lo que el código precisó
+
+Implementada el 2026-10-11 sobre `77a873b` (2.10.0), sin publicar. Nada de esto reabre una
+decisión de §12; son precisiones de implementación, medidas.
+
+- **D-ESC-7 en un solo punto.** Un `model_serializer` envolvente de `BayesRiskConfig` omite las
+  secciones de `SECCIONES_NACIDAS_DESPUES_DE_2_10_0` (hoy sólo `master_scale`) cuando valen `None`:
+  toda serialización del config pasa por ahí —`config_hash`, `dump_config`, el `config.yaml` de la
+  evidencia, los defaults del schema de la pantalla— y los schemas JSON de validación y de
+  serialización no cambian (medido). Un gate exige la lista en los dos sentidos: toda sección nueva
+  de la raíz está en ella y la lista sólo nombra secciones nuevas. Medido sobre `77a873b` y
+  reproducido: el `config_hash` y el YAML (completo y de los campos provistos) de los cuatro
+  presets y del config vacío, iguales byte a byte; la proyección canónica de una corrida F1 del
+  preset, 0 diferencias (`evidencia/s42/`). El YAML **completo** depende de qué capas importó el
+  proceso —preexistente y documentado en `dump_config`—, así que su literal se mide en un
+  intérprete fresco con las capas de dominio cargadas.
+- **El solver de la formación es el de la librería** (`mip`/`bop`), no el `cp` por omisión de
+  OptBinning que usó la medición de S41: `cp` está vetado en la librería porque se cuelga en
+  variables continuas (D-ABA-5). Medido en S42 sobre las dos carteras del paquete: los mismos cortes
+  (`consumo_comportamiento` 493,5 · 511,5 · 526,5 · 555,5; `consumo_drift` seis cortes), estado
+  `OPTIMAL`, en la mitad del tiempo. El oráculo de §11 (cortes, conteos por tramo y muestra, PD,
+  `δ` y semáforos de S41) se reproduce exacto con OptBinning real, en un subproceso.
+- **PAVA agrupa también los empates exactos**: dos tramos vecinos con la misma tasa suavizada no se
+  distinguen y comparten PD con la misma alerta, de modo que la PD sólo empata donde §12-8 igualó
+  (§6.3; lo encontró una propiedad de Hypothesis). El ajuste no cambia y ningún caso medido tiene
+  empates.
+- **Columnas de los artefactos (aditivas a §6.2).** `grades` gana `label` (el tramo en puntos, con
+  la regla de §3.2) y `n_bad_development`; `grade_table`, `sample` y `n_with_outcome`;
+  `cutoff_table`, `sample` y `grades_approved` (vacío en la fila de la institución). Una celda sin
+  denominador queda vacía (`NaN`, el vacío de pandas), nunca en 0. En la muestra «Fuera del
+  ajuste» la participación es sobre todas sus operaciones puntuadas y la tasa de malos y el
+  contraste, sólo sobre las que tienen desenlace.
+- **Las dos decisiones** (`set_grades`, `set_cutoff`) tienen como sujeto la columna del puntaje
+  (`scorecard.score_column`) y se cotejan en familias propias (`escala_tramos`, `escala_corte`):
+  un `set_cutoff` posterior no reemplaza un `set_grades`. La línea de la decisión dice los cortes o
+  el corte.
+- **La tarjeta se guarda con el esquema 3**: `model.clip` congelado (§12-9) y el bloque opcional
+  `master_scale` (`cuts`, `grade_pd`, `approval_cutoff`, `source`). Un bundle de esquema 1 o 2 se
+  lee y aplica como antes (recorta siempre); una versión anterior de la librería rechaza el esquema
+  3 con su mensaje de esquema no soportado. `Scorecard.apply` exige una corrida terminada y sin
+  decisiones pendientes (si no, la tarjeta no llevaría la última decisión).
+- **«Fuera del rango del puntaje»** (§8) se lee sobre Desarrollo: el corte de la institución aprueba
+  todo o nada de Desarrollo. **Cortes de la institución que no se distinguen** se alertan con el Z de
+  dos proporciones de OptBinning (bilateral, agrupado). **Un solver sin partición utilizable** (o
+  que falla) deja la escala en un tramo con la causa en el trail y en «Qué revisar»: la corrida no
+  se detiene.
+- **Sin canal de métricas** (`DOMAINS_WITHOUT_METRICS`, con su razón): la lectura de la escala
+  vive en sus artefactos y su resumen; el SDD no pide escalares al canal.
+- **Capa A sin pantalla**: la sección no entra al formulario, no lleva marcas de esencial y el Excel
+  no gana libro (las tres cosas son de la capa B, D-ESC-9). Por eso las cinco cifras de la capa A
+  son las de la 2.10.0 —**15 · 35 · 411 · ≈ 1 s · 5**—; medido, la sección pinta **3** nodos en el
+  barrido del formulario (`grade_edges`, su fila y `approval_cutoff`), así que la B lleva las
+  perillas a **414** y los esenciales a **37**, como estimó §13. Los tres métodos nuevos de
+  `Scorecard` y el dominio se declaran experimentales (`bayesrisk.testing.stability`, sus
+  docstrings, `api.md` y el CHANGELOG).

@@ -66,6 +66,10 @@ DECLARED_METRICS: Final[dict[str, tuple[str, ...]]] = {
 
 DOMAINS_WITHOUT_METRICS: Final[dict[str, str]] = {
     "markov": "Fuera de F1; su SDD declara su lista cuando se aborde.",
+    "master_scale": (
+        "Experimental (SDD-32, capa A): su lectura —los tramos, la tabla de cortes— vive en sus "
+        "artefactos y su resumen; su SDD no pide escalares al canal."
+    ),
     "tuning": "Fuera de F1; su SDD declara su lista cuando se aborde.",
     "ml": "Fuera de F1; su SDD declara su lista cuando se aborde.",
     "explain": "Fuera de F1; su SDD declara su lista cuando se aborde.",

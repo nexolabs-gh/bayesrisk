@@ -85,6 +85,7 @@ _DOMAIN_MODULES: Final[dict[str, str]] = {
     "provisioning_internal": "bayesrisk.provisioning.internal",
     "provisioning": "bayesrisk.provisioning",
     "validation": "bayesrisk.validation",
+    "master_scale": "bayesrisk.master_scale",
 }
 _DOMAIN_CONFIG_CLASSES: Final[dict[str, tuple[str, str]]] = {
     "data": ("bayesrisk.data.config", "DataConfig"),
@@ -115,6 +116,7 @@ _DOMAIN_CONFIG_CLASSES: Final[dict[str, tuple[str, str]]] = {
     ),
     "provisioning": ("bayesrisk.provisioning.config", "ProvisioningConfig"),
     "validation": ("bayesrisk.validation.config", "ValidationConfig"),
+    "master_scale": ("bayesrisk.master_scale.config", "MasterScaleConfig"),
 }
 # Secciones de INFRAESTRUCTURA que el schema de la interfaz expande sin que sean pasos (D-GOB-10).
 # Va aparte de ``_DOMAIN_CONFIG_CLASSES`` a propósito: ``_default_step_names`` deriva el pipeline
@@ -150,6 +152,9 @@ _DEFAULT_DOMAIN_ORDER: Final[tuple[str, ...]] = (
     "provisioning_internal",
     "provisioning",
     "validation",
+    # La escala maestra (SDD-32 §2) es la capa operativa del modelo ya validado: va después de la
+    # validación y antes del informe. Nacida después de la 2.10.0, sólo corre si está declarada.
+    "master_scale",
     # ``report`` corre AL FINAL: es la foto de todo lo que corrió. Antes vivía tras ``stability``,
     # de modo que ``ReportBuilder`` nunca veía las cards de provisiones y su capítulo condicional
     # era inalcanzable (SDD-28 D8). ``report`` es INFRA (no entra al ``config_hash``), así que

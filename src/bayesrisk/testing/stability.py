@@ -61,6 +61,9 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
     "forward",
     "governance",
     "markov",
+    # La escala maestra (SDD-32 D-ESC-9): adelanto declarado por la puerta guiada y el config
+    # completo en la 2.11.0; deja de ser experimental cuando la pantalla cierre sus tres puertas.
+    "master_scale",
     "ml",
     "provisioning",
     "stress",

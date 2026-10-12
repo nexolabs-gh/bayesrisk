@@ -93,13 +93,11 @@ def corrida(tmp_path_factory: pytest.TempPathFactory) -> Scorecard:
     Con alcance de módulo, los fixtures de función del ``conftest`` (semilla de hash y doble de
     OptBinning) todavía no actuaron: se aplican aquí con el mismo mecanismo y el mismo doble.
     """
-    from conftest import FakeBinningProcess
-
-    import bayesrisk.binning.transformer as transformer_module
+    from conftest import parchar_optbinning
 
     with pytest.MonkeyPatch.context() as parche:
         parche.setenv("PYTHONHASHSEED", "0")
-        parche.setattr(transformer_module, "_import_binning_process", lambda: FakeBinningProcess)
+        parchar_optbinning(parche)
         raiz = tmp_path_factory.mktemp("guiada")
         fuente = raiz / "cartera.parquet"
         write_stacked_behavior_parquet(fuente, repeats=50)

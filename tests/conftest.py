@@ -208,12 +208,54 @@ class FakeBinningProcess:
         return pd.DataFrame(transformed, index=x.index)
 
 
+class FakeOptimalBinning:
+    """Doble determinista de ``optbinning.OptimalBinning`` para la escala maestra (SDD-32).
+
+    OR-Tools revienta el proceso de pytest (S20), y desde D-ESC-8 la escala corre en toda corrida
+    guiada. Corta en los quintiles del puntaje —en el punto medio entre dos valores observados,
+    como OptBinning— sin restricciones: lo que pruebe la monotonía o la separación de los tramos
+    formados corre con OptBinning real en un subproceso (``test_master_scale_oraculo.py``).
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.kwargs = kwargs
+        self.splits: list[float] = []
+        self.status = "NOT_FITTED"
+
+    def fit(self, x: Any, y: Any) -> FakeOptimalBinning:
+        import numpy as np
+
+        del y
+        valores = np.unique(np.asarray(x, dtype="float64"))
+        cortes: set[float] = set()
+        if valores.size >= 2:
+            for q in (0.2, 0.4, 0.6, 0.8):
+                umbral = float(np.quantile(np.asarray(x, dtype="float64"), q))
+                posicion = int(np.searchsorted(valores, umbral, side="right"))
+                if 0 < posicion < valores.size:
+                    cortes.add(float((valores[posicion - 1] + valores[posicion]) / 2.0))
+        self.splits = sorted(cortes)
+        self.status = "OPTIMAL"
+        return self
+
+
+def parchar_optbinning(parche: pytest.MonkeyPatch) -> None:
+    """Las dos costuras de OptBinning con sus dobles: el binning de las variables y la escala.
+
+    Para las fixtures de módulo que parchan con ``pytest.MonkeyPatch.context()`` (no pueden pedir
+    la fixture de función): un solo sitio, así una costura nueva no se olvida en ninguna.
+    """
+    import bayesrisk.binning.transformer as transformer_module
+    import bayesrisk.master_scale.engine as master_scale_engine
+
+    parche.setattr(transformer_module, "_import_binning_process", lambda: FakeBinningProcess)
+    parche.setattr(master_scale_engine, "_import_optimal_binning", lambda: FakeOptimalBinning)
+
+
 @pytest.fixture
 def fake_binning_process(monkeypatch: pytest.MonkeyPatch) -> type[FakeBinningProcess]:
-    """Parcha ``WoEBinner`` para usar el doble determinista de OptBinning."""
-    import bayesrisk.binning.transformer as transformer_module
-
-    monkeypatch.setattr(transformer_module, "_import_binning_process", lambda: FakeBinningProcess)
+    """Parcha ``WoEBinner`` y la escala maestra para usar dobles deterministas de OptBinning."""
+    parchar_optbinning(monkeypatch)
     return FakeBinningProcess
 
 

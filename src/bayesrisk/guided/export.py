@@ -57,6 +57,11 @@ __all__ = [
 EXCEL_SUBDIR: Final = "excel"
 
 
+#: Las etapas sin libro: el informe (su entregable es el documento) y, hasta la capa B del
+#: SDD-32, la escala maestra.
+_SIN_LIBRO: Final = frozenset({"report", "master_scale"})
+
+
 def stage_books(family: str = "scorecard") -> dict[str, str]:
     """Nombre de archivo del libro de cada etapa de una familia, en el orden del pipeline.
 
@@ -67,7 +72,9 @@ def stage_books(family: str = "scorecard") -> dict[str, str]:
     rotulos = stage_labels(family)
     # «Escenarios» (IFRS9-FIRMABLE) tiene su libro desde la capa C, con el número de su posición
     # (Cami, 2026-10-09): `03 Escenarios.xlsx`, y la provisión en el `04` también sin escenarios.
-    etapas = [stage for stage in rotulos if stage != "report"]
+    # «Escala maestra» (SDD-32) gana su libro `11 Escala maestra` —y las decisiones pasan al `12`—
+    # en la capa B, con la pantalla y el informe (D-ESC-9); en la capa A el Excel no cambia.
+    etapas = [stage for stage in rotulos if stage not in _SIN_LIBRO]
     return {stage: f"{numero:02d} {rotulos[stage]}.xlsx" for numero, stage in enumerate(etapas, 1)}
 
 

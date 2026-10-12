@@ -101,7 +101,8 @@ def test_export_excel_escribe_un_libro_numerado_por_etapa_y_el_de_decisiones(
         "11 Decisiones.xlsx",
     ]
     # La numeración y los nombres son constantes (D-FLU-12): el orden de §3.2 y sus rótulos.
-    assert list(STAGE_BOOKS) == [s for s in STAGE_LABELS if s != "report"]
+    # La escala maestra (SDD-32) no tiene libro hasta su capa B: el Excel de la capa A no cambia.
+    assert list(STAGE_BOOKS) == [s for s in STAGE_LABELS if s not in {"report", "master_scale"}]
     assert all(STAGE_LABELS[s] in nombre for s, nombre in STAGE_BOOKS.items())
     assert DECISIONS_BOOK == "11 Decisiones.xlsx"
 

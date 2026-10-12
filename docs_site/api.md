@@ -11,8 +11,8 @@ publicado (`2.10.0`).
     informe (`report`), el trail de auditoría (`audit`), porque ya son superficie de integración,
     y la puerta guiada (`guided`, `bayesrisk.Scorecard`), desde que cerraron sus tres puertas.
     Las superficies que aún crecen (modelado ML, provisiones, survival, forward-looking, stress,
-    validación, gobernanza y tracking) están marcadas como **experimentales** en su *docstring*,
-    fuera de la garantía SemVer 2.x.
+    validación, escala maestra, gobernanza y tracking) están marcadas como **experimentales** en su
+    *docstring*, fuera de la garantía SemVer 2.x.
 
     Esa lista no se escribe a mano en tres sitios: la fija `bayesrisk.testing.stability` y la
     verifican los gates del repositorio contra el *docstring* de cada paquete y contra esta página.
@@ -29,7 +29,9 @@ publicado (`2.10.0`).
 mínima; es un cliente de `run` que arma el `BayesRiskConfig`, lo ejecuta y lee sus artefactos.
 Estable bajo SemVer 2.x desde que cerraron sus tres puertas (código, config completo y
 pantalla): su firma, sus resúmenes y sus decisiones (`exclude`, `keep`, `merge_bins`,
-`set_bins`) sólo crecen de forma aditiva.
+`set_bins`) sólo crecen de forma aditiva. Lo que agrega la escala maestra —la etapa «Escala
+maestra», las decisiones `set_grades` y `set_cutoff` y `apply` para puntuar solicitudes nuevas— es
+**experimental** hasta que la pantalla la ofrezca (ver [Escala maestra](#escala-maestra)).
 
 ::: bayesrisk.guided.scorecard.Scorecard
 
@@ -498,6 +500,22 @@ decisiones evaluables de las cuatro familias.
       heading_level: 3
 
 ::: bayesrisk.validation.step.ValidationStep
+    options:
+      heading_level: 3
+
+## Escala maestra
+
+Los tramos de riesgo del puntaje, la PD de cada tramo y la tabla de puntos de corte, al final del
+scorecard. **Experimental**: sale por la puerta guiada (`bayesrisk.Scorecard`, que la corre por
+defecto) y por el config completo; la pantalla, el informe y el Excel llegan después. Sus dos hojas
+son decisiones de la institución —sus cortes de tramo y su puntaje de aprobación—; las reglas de
+formación son constantes del motor.
+
+::: bayesrisk.master_scale.config.MasterScaleConfig
+    options:
+      heading_level: 3
+
+::: bayesrisk.master_scale.step.MasterScaleStep
     options:
       heading_level: 3
 

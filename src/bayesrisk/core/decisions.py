@@ -2,8 +2,9 @@
 
 La sección INFRA ``decisions`` (:class:`~bayesrisk.core.config.schema.DecisionEntry`) es el
 registro, en orden y con su historia, de lo que una persona decidió con ``exclude``, ``keep``,
-``merge_bins`` o ``set_bins`` —en el scorecard— o con ``exclude`` y ``rebut_backstops`` —en una
-provisión IFRS 9 (FLUJO-GUIADO-IFRS9 D-ECL-8)—. :class:`~bayesrisk.core.study.Study` la declara
+``merge_bins`` o ``set_bins`` —en el scorecard—, con ``set_grades`` o ``set_cutoff`` —en su escala
+maestra (SDD-32 D-ESC-5)— o con ``exclude`` y ``rebut_backstops`` —en una provisión IFRS 9
+(FLUJO-GUIADO-IFRS9 D-ECL-8)—. :class:`~bayesrisk.core.study.Study` la declara
 al trail en cada corrida, después del preámbulo que reciba (la entrada y las inferencias de la
 puerta guiada): así la corrida guiada, ``bayesrisk.run(loads_config(yaml))`` y la pantalla dan
 **las mismas** decisiones humanas, con el mismo payload que la puerta emitía antes de la 2.3.0.
@@ -77,6 +78,15 @@ _FAMILIA: Final[Mapping[str, str]] = {
     "merge_bins": "tramos",
     "set_bins": "tramos",
     "rebut_backstops": "presunciones",
+    # La escala maestra (SDD-32 D-ESC-5): los cortes y el puntaje de aprobación son hojas
+    # distintas, así que un `set_cutoff` posterior no reemplaza a un `set_grades`.
+    "set_grades": "escala_tramos",
+    "set_cutoff": "escala_corte",
+}
+#: La hoja que deja escrita cada acción de la escala maestra; su sujeto es la columna del puntaje.
+_HOJAS_DE_LA_ESCALA: Final[Mapping[str, str]] = {
+    "set_grades": "master_scale.grade_edges",
+    "set_cutoff": "master_scale.approval_cutoff",
 }
 
 
@@ -241,6 +251,16 @@ def _hojas_que_no_coinciden(
         if _hoja_escalar(config, _HOJA_COLUMNA_MORA) != variable:
             distintas.append(_HOJA_COLUMNA_MORA)
         return tuple(dict.fromkeys([*faltan, *distintas]))
+    if registro.action in _HOJAS_DE_LA_ESCALA:
+        # La escala maestra: la hoja tiene que seguir con el valor de la huella. Una sección
+        # ausente, una hoja retirada a mano del YAML o un valor cambiado no se atribuyen a quien
+        # decidió (D-DEC-3 tal cual: aviso y registro conservado).
+        hoja = _HOJAS_DE_LA_ESCALA[registro.action]
+        guardado = registro.value.get(hoja)
+        vigente = _hoja_escalar(config, hoja)
+        if guardado is None or vigente is None or not _mismo_valor(guardado, vigente):
+            return (hoja,)
+        return ()
     if registro.action == "exclude" and _HOJA_COVARIABLES in registro.value:
         # Una covariable retirada de la curva: aplicada mientras no vuelva a la lista, y sólo si
         # la curva sigue ahí (sin sección no hay efecto que atribuir).
@@ -267,6 +287,18 @@ def _hojas_que_no_coinciden(
     if guardada is None or vigente is None or _cortes(guardada) != _cortes(vigente):
         return (_HOJA_CORTES,)
     return ()
+
+
+def _mismo_valor(guardado: Any, vigente: Any) -> bool:
+    """Un número o una lista de números de la huella frente a la hoja vigente, exactos."""
+    if isinstance(guardado, Sequence) and not isinstance(guardado, str | bytes):
+        if not isinstance(vigente, Iterable) or isinstance(vigente, str | bytes):
+            return False
+        return [float(v) for v in guardado] == [float(v) for v in vigente]
+    try:
+        return float(guardado) == float(vigente)
+    except (TypeError, ValueError):
+        return False
 
 
 def _lista(config: BayesRiskConfig, seccion: str, campo: str) -> tuple[Any, ...]:

@@ -3340,6 +3340,16 @@
           }
         }
       },
+      "master_scale": {
+        "approval_cutoff": {
+          "has_default": true,
+          "value": null
+        },
+        "grade_edges": {
+          "has_default": true,
+          "value": null
+        }
+      },
       "ml": {
         "backend": {
           "has_default": true,
@@ -5046,13 +5056,15 @@
         "description": "Una decisión humana con motivo, tal como se tomó.\n\nNo es una opción que se configure: es el registro de algo que una persona decidió. Su efecto ya\nestá escrito en las secciones del config que definen el modelo; la huella guarda cómo quedaron\nal decidir, para que cada corrida compruebe que la decisión sigue aplicada.",
         "properties": {
           "action": {
-            "description": "Qué se decidió: excluir o mantener variables, fijar los tramos de una o rebatir los días de mora con que IFRS 9 presume el Stage 2 y el Stage 3.",
+            "description": "Qué se decidió: excluir o mantener variables, fijar los tramos de una, rebatir los días de mora con que IFRS 9 presume el Stage 2 y el Stage 3, o fijar los tramos de la escala maestra o su puntaje de aprobación.",
             "enum": [
               "exclude",
               "keep",
               "merge_bins",
               "set_bins",
-              "rebut_backstops"
+              "rebut_backstops",
+              "set_grades",
+              "set_cutoff"
             ],
             "title": "Acción",
             "type": "string"
@@ -13566,6 +13578,53 @@
         "description": "Estima matrices de migración entre estados de mora y proyecta con ellas la PD lifetime.",
         "title": "Markov"
       },
+      "master_scale": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "description": "Los tramos de riesgo del puntaje, su PD y el punto de corte de la institución.",
+            "properties": {
+              "approval_cutoff": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "El puntaje desde el que la institución aprueba: se aprueba el lado de menor riesgo del corte. Vacío, no hay decisión y la tabla de cortes muestra todos los posibles.",
+                "title": "Puntaje de aprobación"
+              },
+              "grade_edges": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "number"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Los cortes en puntos con que la institución fija sus tramos. Vacío, los tramos los forman los datos: al menos el 5 % de Desarrollo cada uno, con tasas de malos distintas de las de sus vecinos, ordenados y hasta diez.",
+                "title": "Cortes de los tramos"
+              }
+            },
+            "title": "MasterScaleConfig",
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Agrupa el puntaje en tramos de riesgo con su PD y publica, para cada punto de corte, cuánto se aprueba, con qué tasa de malos, cuántos malos se evitan y cuántos buenos se rechazan.",
+        "title": "Escala maestra"
+      },
       "ml": {
         "anyOf": [
           {
@@ -16217,6 +16276,7 @@
     "performance",
     "stability",
     "validation",
+    "master_scale",
     "report",
     "audit",
     "governance",

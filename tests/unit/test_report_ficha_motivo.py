@@ -32,13 +32,11 @@ def _usar_fake_binning_process(fake_binning_process: object) -> None:
 
 
 def _corrida(raiz: Path, *, name: str, decidir: bool) -> Scorecard:
-    from conftest import FakeBinningProcess
-
-    import bayesrisk.binning.transformer as transformer_module
+    from conftest import parchar_optbinning
 
     with pytest.MonkeyPatch.context() as parche:
         parche.setenv("PYTHONHASHSEED", "0")
-        parche.setattr(transformer_module, "_import_binning_process", lambda: FakeBinningProcess)
+        parchar_optbinning(parche)
         fuente = raiz / "cartera.parquet"
         write_stacked_behavior_parquet(fuente, repeats=50)
         sc = Scorecard(

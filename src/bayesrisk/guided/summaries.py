@@ -30,6 +30,8 @@ from bayesrisk.core.time_units import year_fraction
 from bayesrisk.core.tramos import (
     es_fila_de_totales,
     filas_que_casan,
+    formatear_borde,
+    rotulo_de_corte_de_puntaje,
     rotulo_de_no_vistas,
     rotulos_por_fila,
 )
@@ -77,6 +79,7 @@ from bayesrisk.stability.results import (
 from bayesrisk.validation.results import (
     CALIBRATION_TEST_LABELS,
     HL_NOT_EVALUABLE_REASON_LABELS,
+    TRAFFIC_LIGHT_LABELS,
     VALIDATION_DECISION_LABELS,
     VALIDATION_FAMILY_LABELS,
     VALIDATION_STATUS_LABELS,
@@ -122,6 +125,8 @@ STAGE_LABELS: Final[dict[str, str]] = {
     "performance": "Desempeño",
     "stability": "Estabilidad",
     "validation": "Validación formal",
+    # SDD-32 (H5): la capa operativa del modelo ya validado, antes del informe.
+    "master_scale": "Escala maestra",
     "report": "Informe y ficha",
 }
 STAGE_ORDER: Final[tuple[str, ...]] = tuple(STAGE_LABELS)
@@ -629,7 +634,21 @@ def decision_line(payload: Mapping[str, Any]) -> str:
         dias = _dias_de_mora(payload.get("valor"))
         if dias:
             sujeto += f" ({dias})"
+    elif accion in _HOJA_DE_LA_ESCALA:
+        # El sujeto es el puntaje; lo que se decidió son los cortes o el corte (SDD-32 D-ESC-5).
+        valor = _mapping(payload.get("valor")).get(_HOJA_DE_LA_ESCALA[accion])
+        if valor is not None:
+            puntos = [valor] if not isinstance(valor, list | tuple) else list(valor)
+            texto = ", ".join(formatear_borde(float(v)) for v in puntos)
+            sujeto += f" ({'cortes' if accion == 'set_grades' else 'corte'} {texto})"
     return f"{sujeto} — «{motivo}»"
+
+
+#: La hoja que deja escrita cada decisión de la escala maestra (SDD-32 D-ESC-5).
+_HOJA_DE_LA_ESCALA: Final[dict[str, str]] = {
+    "set_grades": "master_scale.grade_edges",
+    "set_cutoff": "master_scale.approval_cutoff",
+}
 
 
 def _dias_de_mora(valor: Any) -> str:
@@ -3679,6 +3698,265 @@ def _alertas_del_contrato(card: Mapping[str, Any], ead: float | None) -> list[st
     return alertas
 
 
+# ────────────────────────────── escala maestra (SDD-32 §13) ──────────────────────────────
+
+
+def _muestra(muestra: str) -> str:
+    return _PARTITION_LABELS.get(muestra, muestra)
+
+
+def _tramos_en_texto(tramos: Sequence[int]) -> str:
+    numeros = [str(t) for t in tramos]
+    return f"el tramo {numeros[0]}" if len(numeros) == 1 else f"los tramos {_enumerar(numeros)}"
+
+
+def _resumen_master_scale(study: Study, context: SummaryContext) -> StageSummary:
+    """Escala maestra (SDD-32 §13): los tramos, su PD, su lectura fuera de Desarrollo y el corte."""
+    del context
+    card = _card(study, "master_scale", "card")
+    grades = _artifact(study, "master_scale", "grades")
+    grade_table = _artifact(study, "master_scale", "grade_table")
+    cutoff_table = _artifact(study, "master_scale", "cutoff_table")
+    if card is None or not isinstance(grades, pd.DataFrame):
+        return StageSummary(
+            stage="master_scale",
+            label=STAGE_LABELS["master_scale"],
+            lines=("La escala maestra no publicó su resumen.",),
+        )
+    lines: list[str] = []
+    k = int(card["n_grades"])
+    pds = [float(p) for p in card["pd"]]
+    enteros = bool(card["integer_card"])
+    mayor_es_menor_riesgo = card["score_direction"] == "higher_is_lower_risk"
+    diagnosticos: Mapping[str, Any] = card.get("diagnostics") or {}
+    if k == 1:
+        lines.append(
+            "Un solo tramo: el puntaje no distingue grupos de riesgo con tasas de malos "
+            "significativamente distintas en Desarrollo."
+        )
+    elif card["source"] == "formed":
+        lines.append(
+            f"{k} tramos de puntaje, del 1, de menor riesgo, al {k}; cada uno con al menos el 5 % "
+            "de Desarrollo y una tasa de malos distinta de la de sus vecinos."
+        )
+    else:
+        lines.append(
+            f"{k} tramos de puntaje con los cortes de la institución, del 1, de menor riesgo, "
+            f"al {k}."
+        )
+    lines.append(
+        f"PD del tramo de {_pct(pds[0])} a {_pct(pds[-1])}; su promedio en Desarrollo es el ancla "
+        f"de la calibración, {_pct(card['anchor'])}."
+    )
+    fuera = [m for m in diagnosticos if m not in {"desarrollo", "fuera_de_modelo"}]
+    if fuera:
+        ordenadas = all(diagnosticos[m]["monotonic"] for m in fuera)
+        sin_rojos = not any(diagnosticos[m]["red_grades"] for m in fuera)
+        nombres = _enumerar([_muestra(m) for m in fuera])
+        if ordenadas and sin_rojos:
+            lines.append(
+                f"En {nombres} la tasa de malos sigue el orden de los tramos y ningún tramo "
+                "subestima su PD."
+            )
+        else:
+            lines.append(f"En {nombres} hay tramos que revisar (ver «Qué revisar»).")
+    desarrollo = diagnosticos.get("desarrollo")
+    if desarrollo and desarrollo.get("max_share") is not None:
+        lines.append(
+            f"El tramo mayor tiene el {_pct(desarrollo['max_share'], decimals=1)} de Desarrollo "
+            f"(tramo {desarrollo['max_share_grade']}); índice de concentración "
+            f"{_cifra(desarrollo['hhi'], decimales=3)}."
+        )
+    lines.append(_linea_del_corte(card, cutoff_table, enteros, mayor_es_menor_riesgo))
+    lines.append(
+        "La PD de cada tramo es su tasa de malos de Desarrollo llevada al ancla de la calibración; "
+        "en una cartera de aprobados, la tabla mide a quien pasó la política anterior."
+    )
+    table = (
+        _tabla_de_la_escala(grades, grade_table) if isinstance(grade_table, pd.DataFrame) else None
+    )
+    extra: list[tuple[str, pd.DataFrame, Mapping[str, _Kind]]] = []
+    if isinstance(cutoff_table, pd.DataFrame):
+        extra.append(
+            (
+                "Tabla de puntos de corte",
+                _tabla_de_cortes_legible(
+                    cutoff_table,
+                    grades,
+                    enteros=enteros,
+                    mayor_es_menor_riesgo=mayor_es_menor_riesgo,
+                ),
+                _FORMATOS_CORTES,
+            )
+        )
+    formatos: dict[str, _Kind] = {"Tramo": "int", "PD del tramo": "pct"}
+    if table is not None:
+        for columna in table.columns:
+            if columna.startswith(("Participación", "Tasa de malos")):
+                formatos[columna] = "pct"
+    return StageSummary(
+        stage="master_scale",
+        label=STAGE_LABELS["master_scale"],
+        lines=tuple(lines),
+        alerts=tuple(_alertas_de_la_escala(card)),
+        table=table,
+        formats=formatos,
+        extra_tables=tuple(extra),
+    )
+
+
+def _linea_del_corte(
+    card: Mapping[str, Any], cutoff_table: Any, enteros: bool, mayor_es_menor_riesgo: bool
+) -> str:
+    """El corte de la institución con sus cuatro cifras en la última muestra con desenlace."""
+    corte = card.get("approval_cutoff")
+    if corte is not None and isinstance(cutoff_table, pd.DataFrame):
+        declaradas = cutoff_table.loc[cutoff_table["declared"].astype(bool)]
+        con_desenlace = declaradas.loc[declaradas["sample"] != "fuera_de_modelo"]
+        if not con_desenlace.empty:
+            fila = con_desenlace.iloc[-1]
+            rotulo = rotulo_de_corte_de_puntaje(
+                float(corte), enteros=enteros, mayor_es_menor_riesgo=mayor_es_menor_riesgo
+            )
+            return (
+                f"Corte de la institución: aprobar {rotulo}. En {_muestra(str(fila['sample']))} "
+                f"aprueba el {_pct(fila['approved_share'], decimals=1)}, con "
+                f"{_pct(fila['approved_bad_rate'], decimals=1)} de malos entre los aprobados; "
+                f"evita el {_pct(fila['bads_avoided_share'], decimals=1)} de los malos y rechaza "
+                f"el {_pct(fila['goods_rejected_share'], decimals=1)} de los buenos."
+            )
+    return (
+        "Sin corte declarado: la tabla de cortes muestra, para cada límite, cuánto se aprueba, "
+        "la tasa de malos, los malos evitados y los buenos rechazados."
+    )
+
+
+def _alertas_de_la_escala(card: Mapping[str, Any]) -> list[str]:
+    """«Qué revisar» de la escala: rojos, inversiones, igualaciones, vecinos y el corte (§13)."""
+    alertas: list[str] = []
+    if int(card["n_grades"]) == 1:
+        causa = card.get("formation_cause")
+        alertas.append(
+            "La escala quedó en un solo tramo: el modelo no separa grupos de riesgo con "
+            "diferencias significativas"
+            + (f" (el solver no formó tramos: {causa})." if causa else ".")
+        )
+    for bloque in card.get("equalized_grades") or ():
+        texto = _tramos_en_texto(list(bloque))
+        alertas.append(
+            f"{texto[0].upper()}{texto[1:]} no se distinguen en Desarrollo: comparten PD; "
+            "conviene unirlos."
+        )
+    if card.get("source") == "institution":
+        for a, b, p in card.get("neighbours_not_distinct") or ():
+            alertas.append(
+                f"Los tramos {a} y {b} de la institución no tienen tasas de malos "
+                f"significativamente distintas en Desarrollo (p = {_cifra(p, decimales=3)})."
+            )
+    diagnosticos: Mapping[str, Any] = card.get("diagnostics") or {}
+    for muestra, diag in diagnosticos.items():
+        nombre = _muestra(muestra)
+        rojos = list(diag.get("red_grades") or ())
+        if rojos and muestra == "desarrollo":
+            alertas.append(
+                f"La PD final subestima {_tramos_en_texto(rojos)} en Desarrollo: lo causa la "
+                "igualación o el ancla."
+            )
+        elif rojos:
+            verbo = "subestima" if len(rojos) == 1 else "subestiman"
+            alertas.append(f"En {nombre}, {_tramos_en_texto(rojos)} {verbo} su PD (rojo).")
+        for a, b in diag.get("inversions") or ():
+            alertas.append(
+                f"En {nombre}, la tasa de malos del tramo {b} es menor que la del tramo {a}: el "
+                "orden de los tramos se invierte."
+            )
+        no_evaluables = list(diag.get("not_evaluable_grades") or ())
+        if no_evaluables and muestra not in {"desarrollo", "fuera_de_modelo"}:
+            verbo = "tiene" if len(no_evaluables) == 1 else "tienen"
+            alertas.append(
+                f"En {nombre}, {_tramos_en_texto(no_evaluables)} {verbo} menos de 30 operaciones "
+                "con desenlace: sin contraste."
+            )
+    if card.get("cutoff_out_of_range"):
+        alertas.append(
+            f"El puntaje de aprobación {formatear_borde(float(card['approval_cutoff']))} queda "
+            "fuera del rango de Desarrollo: aprueba todo o nada."
+        )
+    return alertas
+
+
+def _tabla_de_la_escala(grades: pd.DataFrame, grade_table: pd.DataFrame) -> pd.DataFrame:
+    """La tabla de decisión: cada tramo con su rango, su PD y su lectura en cada muestra."""
+    tabla = pd.DataFrame(
+        {
+            "Tramo": grades["grade"].astype(int).to_numpy(),
+            "Puntaje": grades["label"].astype(str).to_numpy(),
+            "PD del tramo": grades["pd"].astype(float).to_numpy(),
+        }
+    )
+    for muestra, grupo in grade_table.groupby("sample", sort=False):
+        porta = grupo.set_index("grade").reindex(tabla["Tramo"])
+        nombre = _muestra(str(muestra))
+        tabla[f"Participación {nombre}"] = porta["share"].to_numpy()
+        if muestra != "fuera_de_modelo":
+            tabla[f"Tasa de malos {nombre}"] = porta["bad_rate"].to_numpy()
+            tabla[f"Semáforo {nombre}"] = [
+                TRAFFIC_LIGHT_LABELS.get(str(luz), "Sin contraste")
+                for luz in porta["traffic_light"]
+            ]
+    return tabla
+
+
+_FORMATOS_CORTES: Final[dict[str, _Kind]] = {
+    "Aprobados": "pct",
+    "Tasa de malos de los aprobados": "pct",
+    "PD esperada de los aprobados": "pct",
+    "Malos evitados": "pct",
+    "Buenos rechazados": "pct",
+}
+
+
+def _tabla_de_cortes_legible(
+    cutoff_table: pd.DataFrame,
+    grades: pd.DataFrame,
+    *,
+    enteros: bool,
+    mayor_es_menor_riesgo: bool,
+) -> pd.DataFrame:
+    """La tabla de puntos de corte como la lee un comité: qué se aprueba y lo que cuesta."""
+    k_total = len(grades.index)
+    filas: list[dict[str, Any]] = []
+    for fila in cutoff_table.to_dict(orient="records"):
+        tramos = _int(fila["grades_approved"])
+        if bool(fila["declared"]):
+            aprobar = "Corte de la institución"
+        elif tramos is not None and tramos >= k_total:
+            aprobar = "Todos los tramos"
+        else:
+            aprobar = f"Tramos 1 a {tramos}"
+        corte = _float(fila["cutoff_score"])
+        puntaje = (
+            "todos los puntajes"
+            if corte is None
+            else rotulo_de_corte_de_puntaje(
+                corte, enteros=enteros, mayor_es_menor_riesgo=mayor_es_menor_riesgo
+            )
+        )
+        filas.append(
+            {
+                "Muestra": _muestra(str(fila["sample"])),
+                "Aprobar": aprobar,
+                "Puntaje": puntaje,
+                "Aprobados": fila["approved_share"],
+                "Tasa de malos de los aprobados": fila["approved_bad_rate"],
+                "PD esperada de los aprobados": fila["approved_expected_pd"],
+                "Malos evitados": fila["bads_avoided_share"],
+                "Buenos rechazados": fila["goods_rejected_share"],
+            }
+        )
+    return pd.DataFrame(filas)
+
+
 _BUILDERS: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
     "data": _resumen_data,
     "eda": _resumen_eda,
@@ -3690,6 +3968,7 @@ _BUILDERS: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
     "performance": _resumen_performance,
     "stability": _resumen_stability,
     "validation": _resumen_validation,
+    "master_scale": _resumen_master_scale,
     "report": _resumen_report,
 }
 _BUILDERS_CARTERA: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
@@ -3757,6 +4036,10 @@ def _decisiones_sin_efecto(study: Study | None) -> tuple[str, ...]:
             razon = "sus cortes cambiaron en el config"
         elif accion == "rebut_backstops":
             razon = "los días de mora de Stage 2 o Stage 3, o su columna, cambiaron en el config"
+        elif accion == "set_grades":
+            razon = "los cortes de la escala maestra cambiaron o se retiraron del config"
+        elif accion == "set_cutoff":
+            razon = "el puntaje de aprobación cambió o se retiró del config"
         elif accion == "exclude":
             razon = (
                 "las variables ya no están excluidas en el config"

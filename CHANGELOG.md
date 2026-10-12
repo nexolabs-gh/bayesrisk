@@ -7,6 +7,54 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **Escala maestra y puntos de corte (experimental).** Una etapa nueva al final del scorecard,
+  «Escala maestra», que la puerta guiada corre sola: agrupa el puntaje en tramos de riesgo que
+  forman los datos —ordenados, con al menos el 5 % de Desarrollo cada uno, con tasas de malos
+  distintas de las de sus vecinos (p ≤ 0,05) y hasta diez—, le da a cada tramo su PD —su tasa de
+  malos de Desarrollo llevada al ancla de la calibración; dos tramos que invierten el orden
+  comparten PD y se avisa— y lee cada tramo en Holdout y fuera de tiempo con el contraste de
+  Jeffreys de la validación. Publica la **tabla de puntos de corte**: para cada límite, cuánto se
+  aprueba, la tasa de malos y la PD esperada de los aprobados, **los malos que se evitan y los
+  buenos que se rechazan**, también sobre las solicitudes sin desenlace. Se lee con
+  `sc.summary("master_scale")`; sus tablas, en `("master_scale", "grades")`, `"grade_table"`,
+  `"cutoff_table"` y `"assignment"`.
+- **Dos decisiones con motivo**: `sc.set_grades(cortes, reason=…)` fija los tramos de la
+  institución y `sc.set_cutoff(puntaje, reason=…)` su puntaje de aprobación —se aprueba el lado de
+  menor riesgo del corte—. Quedan en la sección `decisions` del YAML, como las demás.
+- **`sc.apply(solicitudes)`**: la puerta guiada puntúa solicitudes nuevas con la tarjeta de su
+  última corrida. Con la escala, cada fila trae su tramo (`grade`), la PD del tramo (`grade_pd`) y,
+  si hay corte, la decisión (`decision`: `"approve"` o `"reject"`). La tarjeta
+  (`FittedScorecardBundle`) congela la escala y `bayesrisk.apply` devuelve las mismas columnas.
+- La guía del scorecard gana «Escala maestra y puntos de corte».
+
+### Cambiado
+
+- **La puerta guiada corre la escala por defecto**, así que el `config_hash` de sus corridas cambia
+  (la sección `master_scale` entra a su config); el de ningún preset.
+- **Una sección del config nacida después de la 2.10.0 sólo se escribe si está declarada**: sin
+  `master_scale`, el `config_hash` y el YAML de todo config son los de la 2.10.0, byte a byte.
+- **La tarjeta se guarda con el esquema 3**: congela `clip` y, si la corrida la tiene, la escala.
+  Un bundle guardado antes se sigue leyendo y aplica igual; una versión anterior de la librería no
+  lee el esquema 3.
+
+### Corregido
+
+- **Con límites de puntaje y `clip=False`, la tarjeta recortaba y la corrida no**: `apply` llevaba
+  el puntaje a los límites aunque la corrida lo publicara sin recortar, y la tabla de cortes podía
+  rechazar una operación que la tarjeta aprobaba. Toda tarjeta nueva recorta exactamente como la
+  corrida; los bundles ya guardados conservan su comportamiento (recortan siempre). Sin límites
+  declarados —el preset y la puerta guiada— nada cambia.
+
+### Sabido
+
+- La escala maestra todavía no está en la pantalla, el informe ni el Excel: llegan en la versión
+  siguiente, con el libro `11 Escala maestra` (las decisiones pasan al `12`). Hasta entonces la
+  etapa es experimental.
+
 ## [2.10.0] — 2026-10-11
 
 ### Añadido

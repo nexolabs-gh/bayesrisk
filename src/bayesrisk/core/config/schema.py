@@ -32,7 +32,15 @@ import json
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 if TYPE_CHECKING:
     from bayesrisk.audit.config import AuditConfig
@@ -44,6 +52,7 @@ if TYPE_CHECKING:
     from bayesrisk.forward.config import ForwardConfig
     from bayesrisk.governance.config import GovernanceConfig
     from bayesrisk.markov.config import MarkovConfig
+    from bayesrisk.master_scale.config import MasterScaleConfig
     from bayesrisk.ml.config import MLConfig
     from bayesrisk.model.config import ModelConfig
     from bayesrisk.performance.config import PerformanceConfig
@@ -63,6 +72,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "DECISION_ACTIONS",
+    "SECCIONES_NACIDAS_DESPUES_DE_2_10_0",
     "BayesRiskBaseConfig",
     "BayesRiskConfig",
     "DecisionEntry",
@@ -112,6 +122,7 @@ _PROVISIONING_CONFIG_CLS: type[BaseModel] | None = None
 _PERFORMANCE_CONFIG_CLS: type[BaseModel] | None = None
 _STABILITY_CONFIG_CLS: type[BaseModel] | None = None
 _VALIDATION_CONFIG_CLS: type[BaseModel] | None = None
+_MASTER_SCALE_CONFIG_CLS: type[BaseModel] | None = None
 _REPORT_CONFIG_CLS: type[BaseModel] | None = None
 _AUDIT_CONFIG_CLS: type[BaseModel] | None = None
 _GOVERNANCE_CONFIG_CLS: type[BaseModel] | None = None
@@ -192,10 +203,19 @@ class RunConfig(BayesRiskBaseConfig):
 
 
 #: Las acciones que las puertas guiadas registran con motivo (D-FLU-3, §8-9 y FLUJO-GUIADO-IFRS9
-#: §3.9): las dos de selección de variables, las dos de tramos y el rebatir de las presunciones de
-#: mora del staging IFRS 9. ``exclude`` también retira covariables de la curva de PD. Cada una deja
-#: su efecto escrito en hojas computacionales.
-DECISION_ACTIONS: tuple[str, ...] = ("exclude", "keep", "merge_bins", "set_bins", "rebut_backstops")
+#: §3.9): las dos de selección de variables, las dos de tramos, el rebatir de las presunciones de
+#: mora del staging IFRS 9 y las dos de la escala maestra (SDD-32 D-ESC-5: los cortes de los tramos
+#: y el puntaje de aprobación de la institución). ``exclude`` también retira covariables de la
+#: curva de PD. Cada una deja su efecto escrito en hojas computacionales.
+DECISION_ACTIONS: tuple[str, ...] = (
+    "exclude",
+    "keep",
+    "merge_bins",
+    "set_bins",
+    "rebut_backstops",
+    "set_grades",
+    "set_cutoff",
+)
 #: Las acciones de tramos fijan los cortes de UNA variable numérica.
 _ACCIONES_DE_TRAMOS: frozenset[str] = frozenset({"merge_bins", "set_bins"})
 
@@ -213,13 +233,18 @@ class DecisionEntry(BayesRiskBaseConfig):
     # la variable —las hojas que sí entran al `config_hash`—; `value` es su huella exacta, que
     # `bayesrisk.core.decisions` coteja (D-DEC-3) y emite como `valor` del evento. En una provisión
     # IFRS 9 (D-ECL-8) el efecto vive en `survival.input.covariate_cols` (`exclude`) o en los dos
-    # días de mora de `provisioning_ifrs9.staging` (`rebut_backstops`).
+    # días de mora de `provisioning_ifrs9.staging` (`rebut_backstops`). En la escala maestra
+    # (SDD-32 D-ESC-5), en `master_scale.grade_edges` (`set_grades`) o
+    # `master_scale.approval_cutoff` (`set_cutoff`); su sujeto es la columna del puntaje.
 
-    action: Literal["exclude", "keep", "merge_bins", "set_bins", "rebut_backstops"] = Field(
+    action: Literal[
+        "exclude", "keep", "merge_bins", "set_bins", "rebut_backstops", "set_grades", "set_cutoff"
+    ] = Field(
         title="Acción",
         description=(
-            "Qué se decidió: excluir o mantener variables, fijar los tramos de una o rebatir los "
-            "días de mora con que IFRS 9 presume el Stage 2 y el Stage 3."
+            "Qué se decidió: excluir o mantener variables, fijar los tramos de una, rebatir los "
+            "días de mora con que IFRS 9 presume el Stage 2 y el Stage 3, o fijar los tramos de "
+            "la escala maestra o su puntaje de aprobación."
         ),
     )
     columns: tuple[str, ...] = Field(
@@ -271,6 +296,16 @@ class DecisionEntry(BayesRiskBaseConfig):
                 f"{self.action} se decide sobre una sola variable; columns={list(self.columns)}."
             )
         return self
+
+
+#: Las secciones de dominio nacidas después de la 2.10.0 (D-ESC-7, SDD-32 §5.3; Cami, 2026-10-11,
+#: regla general). Hasta la 2.10.0 el ``config_hash`` y el YAML serializaban todas las secciones,
+#: también las vacías (``"markov": null``): una sección nueva con ``None`` de fábrica habría
+#: movido la identidad de todo config existente —la que los usuarios usan para su inventario— y el
+#: YAML de toda corrida. Una sección de esta lista se serializa **sólo cuando está declarada**:
+#: ausente (o ``None``), el ``config_hash`` y el YAML son byte a byte los de la 2.10.0. Toda sección
+#: que se agregue a la raíz entra aquí (un gate lo exige en los dos sentidos).
+SECCIONES_NACIDAS_DESPUES_DE_2_10_0: frozenset[str] = frozenset({"master_scale"})
 
 
 class BayesRiskConfig(BayesRiskBaseConfig):
@@ -575,6 +610,21 @@ class BayesRiskConfig(BayesRiskBaseConfig):
             description=(
                 "Valida el modelo con pruebas de calibración y backtesting, y resume el resultado "
                 "en un semáforo."
+            ),
+        )
+    if TYPE_CHECKING:
+        # Vista de mypy: tipo estricto. En runtime el campo es `Any` (rama `else`) y la
+        # validación/coerción a `MasterScaleConfig` la hace `_valida_master_scale` vía hook
+        # diferido. Nacida después de la 2.10.0: sólo se serializa si está declarada (D-ESC-7).
+        master_scale: MasterScaleConfig | None = None
+    else:
+        master_scale: Any = Field(
+            default=None,
+            title="Escala maestra",
+            description=(
+                "Agrupa el puntaje en tramos de riesgo con su PD y publica, para cada punto de "
+                "corte, cuánto se aprueba, con qué tasa de malos, cuántos malos se evitan y "
+                "cuántos buenos se rechazan."
             ),
         )
     if TYPE_CHECKING:
@@ -1177,6 +1227,32 @@ class BayesRiskConfig(BayesRiskBaseConfig):
             ) from exc
         return valor
 
+    @field_validator("master_scale", mode="before")
+    @classmethod
+    def _valida_master_scale(cls, valor: Any) -> Any:
+        """Valida/coacciona la sección ``master_scale`` según haya o no capa cargada.
+
+        Con ``bayesrisk.master_scale`` importado (``_MASTER_SCALE_CONFIG_CLS`` poblado), un ``dict``
+        se valida y coacciona a :class:`MasterScaleConfig`; una instancia ya validada pasa tal cual.
+        Sin la capa cargada, es un *blob* opaco: se exige JSON-canónico y determinista; la identidad
+        la normaliza ``config_hash`` (D-HASH-1).
+        """
+        if valor is None:
+            return valor
+        if _MASTER_SCALE_CONFIG_CLS is not None:
+            if isinstance(valor, _MASTER_SCALE_CONFIG_CLS):
+                return valor
+            return _MASTER_SCALE_CONFIG_CLS.model_validate(valor)
+        try:
+            json.dumps(valor, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "master_scale debe ser JSON-canónico y determinista (sin sets, objetos no "
+                "serializables ni floats no finitos), o importa `bayesrisk.master_scale` para "
+                "validarlo como MasterScaleConfig."
+            ) from exc
+        return valor
+
     @field_validator("validation", mode="before")
     @classmethod
     def _valida_validation(cls, valor: Any) -> Any:
@@ -1304,6 +1380,22 @@ class BayesRiskConfig(BayesRiskBaseConfig):
             if inactivas:
                 raise ValueError(f"run.steps referencia secciones inactivas (None): {inactivas}.")
         return self
+
+    @model_serializer(mode="wrap")
+    def _omitir_secciones_nuevas_ausentes(self, handler: SerializerFunctionWrapHandler) -> Any:
+        """Una sección nacida después de la 2.10.0 sólo se serializa si está declarada (D-ESC-7).
+
+        Es el único punto por el que pasa toda serialización del config —``config_hash``,
+        ``dump_config``, el ``config.yaml`` de la evidencia, los defaults del schema de la
+        pantalla—, así que ninguna puede olvidarlo. Sin anotación de retorno a propósito: los
+        schemas JSON de validación y de serialización quedan los de siempre (medido).
+        """
+        volcado = handler(self)
+        if isinstance(volcado, dict):
+            for seccion in SECCIONES_NACIDAS_DESPUES_DE_2_10_0:
+                if volcado.get(seccion, ...) is None:
+                    del volcado[seccion]
+        return volcado
 
 
 #: Nombres anteriores al renombre (nikodym ≤ 1.20): alias del MISMO objeto, sin aviso, para que

@@ -286,7 +286,12 @@ HOJAS_CON_DEFAULT_EFECTIVO = 517
 #: ``sections.provisioning_ifrs9.pd``; ``$defs.provisioning_ifrs9__IfrsStagingConfig`` y
 #: ``sections.provisioning_ifrs9.staging``—, por la regla de los precedentes. Ningún valor
 #: alterado.
-DESCRIPTORES_TOTALES = 1094
+#:
+#: 1094 → 1096 el 2026-10-11 con la capa A del SDD-32 (S42): la sección nueva ``master_scale``
+#: aparece con sus dos hojas —``sections.master_scale.grade_edges`` y ``.approval_cutoff``, ambas
+#: con default ``null``—, enumeradas contra ``77a873b``: ninguna otra hoja nueva ni retirada. La
+#: sección no entra al formulario hasta la capa B.
+DESCRIPTORES_TOTALES = 1096
 
 
 #: Las 16 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de

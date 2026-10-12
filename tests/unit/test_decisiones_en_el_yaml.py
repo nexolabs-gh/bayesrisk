@@ -391,14 +391,12 @@ def test_set_bins_y_despues_exclude_deja_los_cortes_en_suspenso_no_sin_efecto(
 @pytest.fixture(scope="module")
 def dos_puertas(fuente: Path, tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     """La misma exclusión con motivo, corrida por la puerta guiada y desde su YAML."""
-    from conftest import FakeBinningProcess
-
-    import bayesrisk.binning.transformer as transformer_module
+    from conftest import parchar_optbinning
 
     raiz = tmp_path_factory.mktemp("dos_puertas")
     with pytest.MonkeyPatch.context() as parche:
         parche.setenv("PYTHONHASHSEED", "0")
-        parche.setattr(transformer_module, "_import_binning_process", lambda: FakeBinningProcess)
+        parchar_optbinning(parche)
         sc = _puerta(fuente, raiz, name="guiada")
         sc.exclude("segment", reason=MOTIVO)
         sc.run()
@@ -497,9 +495,8 @@ def test_la_pantalla_dice_las_decisiones_que_trae_el_yaml(dos_puertas: dict[str,
 def test_una_decision_sin_efecto_sale_como_alerta_en_el_resumen_final(
     fuente: Path, tmp_path: Path
 ) -> None:
-    from conftest import FakeBinningProcess
+    from conftest import parchar_optbinning
 
-    import bayesrisk.binning.transformer as transformer_module
     from bayesrisk.ui.summaries import serialize_summaries
 
     sc = _puerta(fuente, tmp_path)
@@ -507,7 +504,7 @@ def test_una_decision_sin_efecto_sale_como_alerta_en_el_resumen_final(
     editado = _con(sc.config, model__force_include=[], selection__force_include=[])
     with pytest.MonkeyPatch.context() as parche:
         parche.setenv("PYTHONHASHSEED", "0")
-        parche.setattr(transformer_module, "_import_binning_process", lambda: FakeBinningProcess)
+        parchar_optbinning(parche)
         study = bayesrisk.run(editado, run_dir=tmp_path / "sin_efecto")
     assert study.run_context.status == "done", study.run_context.error
     reglas = [payload["regla"] for _paso, payload in study.preamble]

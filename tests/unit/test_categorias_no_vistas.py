@@ -114,6 +114,9 @@ def _a_esquema_1(bundle: FittedScorecardBundle) -> FittedScorecardBundle:
     """El manifiesto que escribía una librería anterior a D-NOV, con las mismas reglas."""
     manifest = bundle.manifest
     del manifest["unseen_reference"]
+    # Lo que agregó el esquema 3 (SDD-32, 2.11.0) tampoco existía entonces.
+    manifest.pop("master_scale", None)
+    manifest["model"].pop("clip", None)
     manifest["schema_version"] = 1
     manifest["treatment_policy"]["unseen"] = "not_scorable"
     manifest["bundle_hash"] = _bundle_hash(manifest)
@@ -177,7 +180,9 @@ def test_corrida_y_bundle_dan_los_mismos_puntos_en_oot_y_fuera_del_ajuste(
         tarjeta.loc[tarjeta["feature"].eq("segmento")], {"segmento": referencia}
     ).values()
     bundle = FittedScorecardBundle.from_study(st)
-    assert bundle.manifest["schema_version"] == 2
+    # El 3 desde la 2.11.0 (congela `clip` y la escala maestra); la política de las categorías no
+    # vistas es la del 2.
+    assert bundle.manifest["schema_version"] == 3
     assert bundle.manifest["treatment_policy"]["unseen"] == "reference_bin"
     assert bundle.manifest["unseen_reference"]["segmento"] == {
         "bin_index": fila["bin_index"],
@@ -325,11 +330,11 @@ def test_un_bundle_de_esquema_1_carga_y_sigue_rechazando_la_fila(
         nuevo.apply(datos.loc[nuevas[:3]].drop(columns=["bad_flag"])).lineage[
             "bundle_schema_version"
         ]
-        == 2
+        == 3
     )
 
 
-@pytest.mark.parametrize("defecto", ["puntos", "variable_ausente", "no_categorica", "esquema_3"])
+@pytest.mark.parametrize("defecto", ["puntos", "variable_ausente", "no_categorica", "esquema_4"])
 def test_un_bundle_de_esquema_2_con_una_referencia_que_no_casa_no_carga(
     _corrida: tuple[bayesrisk.Scorecard, pd.DataFrame], defecto: str
 ) -> None:
@@ -344,7 +349,7 @@ def test_un_bundle_de_esquema_2_con_una_referencia_que_no_casa_no_carga(
     elif defecto == "no_categorica":
         manifest["unseen_reference"]["ingreso"] = dict(manifest["unseen_reference"]["segmento"])
     else:
-        manifest["schema_version"] = 3
+        manifest["schema_version"] = 4  # un esquema que esta versión no conoce
     manifest["bundle_hash"] = _bundle_hash(manifest)
     with pytest.raises(ScorecardBundleError, match=r"unseen_reference|no soportado"):
         FittedScorecardBundle(manifest=manifest, rules=bundle._rules)
