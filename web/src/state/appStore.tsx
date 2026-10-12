@@ -33,6 +33,7 @@ import {
 } from "@/lib/external-artifacts"
 import type { ExternalArtifact, Job } from "@/lib/jobs"
 import type { PreflightState } from "@/lib/preflight"
+import type { BorradorJson } from "@/lib/form-engine"
 import type { LoadedSchema } from "@/lib/schema"
 import { buildErrorLookup, type ValidationState } from "@/lib/validation"
 
@@ -123,6 +124,14 @@ export interface AppState {
   /** Tarjeta de bienvenida (get-started) cerrada por el usuario en esta sesión. */
   welcomeDismissed: boolean
   setWelcomeDismissed: Dispatch<SetStateAction<boolean>>
+  /**
+   * Los textos JSON a medio escribir que no se pueden leer, por ruta (pasada 3 de Codex sobre la
+   * capa B del SDD-32). Viven aquí y no en el editor porque el editor se desmonta al salir de
+   * Configuración y quien los necesita es el botón de «Ejecutar»: los vigentes detienen la corrida.
+   */
+  borradoresJson: Record<string, BorradorJson>
+  /** Guarda (o, con `null`, descarta) el borrador ilegible de una ruta. */
+  setBorradorJson: (clave: string, borrador: BorradorJson | null) => void
 }
 
 const AppStateContext = createContext<AppState | null>(null)
@@ -132,6 +141,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [schema, setSchema] = useState<LoadedSchema | null>(null)
   const [job, setJob] = useState<Job | null>(null)
   const [config, setConfig] = useState<Record<string, unknown>>({})
+  const [borradoresJson, setBorradoresJson] = useState<Record<string, BorradorJson>>({})
+  const setBorradorJson = useCallback((clave: string, borrador: BorradorJson | null) => {
+    setBorradoresJson((previos) => {
+      if (borrador === null) {
+        if (!(clave in previos)) return previos
+        const resto = { ...previos }
+        delete resto[clave]
+        return resto
+      }
+      return { ...previos, [clave]: borrador }
+    })
+  }, [])
   const [seed, setSeed] = useState<SeedState | null>(null)
   const [datasetId, setDatasetId] = useState<string | null>(null)
   const [externalInputs, setExternalInputs] = useState<
@@ -329,6 +350,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setResults,
       welcomeDismissed,
       setWelcomeDismissed,
+      borradoresJson,
+      setBorradorJson,
     }),
     [
       schema,
@@ -347,7 +370,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       lastRun,
       results,
       welcomeDismissed,
+      borradoresJson,
       // Estables (`useCallback` sin dependencias): no recalculan nada, pero el lint los exige.
+      setBorradorJson,
       getConfig,
       getScenarioTables,
       setScenarioTables,
@@ -355,6 +380,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   )
 
   return <AppStateContext value={value}>{children}</AppStateContext>
+}
+
+/**
+ * Los borradores JSON del estado compartido, o `null` fuera del provider: el editor JSON también se
+ * pinta en pruebas y vistas sin store, y ahí su error sigue siendo sólo local.
+ */
+export function useBorradoresJson(): Pick<AppState, "borradoresJson" | "setBorradorJson"> | null {
+  return useContext(AppStateContext)
 }
 
 /** Acceso al estado compartido; lanza un error claro si se usa fuera del provider. */

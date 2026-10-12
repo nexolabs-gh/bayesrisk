@@ -15,12 +15,14 @@ import { describe, expect, it } from "vitest"
 import fixtureSchema from "@/fixtures/schema.json"
 import {
   ACTIVAR_EN_BLANCO,
+  borradoresVigentes,
   huellaDelValor,
   semillaAlActivar,
   serializarParaEditor,
   sincronizarEditorJson,
   type JsonSchema,
 } from "@/lib/form-engine"
+import { canRun } from "@/lib/validation"
 
 describe("el editor JSON adopta un valor que cambió desde fuera", () => {
   it("un YAML cargado con otros cortes se ve en el editor", () => {
@@ -68,5 +70,40 @@ describe("encender un número sin valor de fábrica no inventa uno", () => {
       expect(campo?.ui_activate_blank, hoja).toBe(true)
       expect(campo?.ui_null_label, hoja).toBeTruthy()
     }
+  })
+})
+
+/**
+ * Pasada 3 de Codex sobre la capa B: con un campo JSON encendido en blanco, pegar `[500, 550` sólo
+ * marcaba un error local del editor; al ir a «Ejecutar» el editor se desmontaba, el aviso se
+ * perdía y la corrida formaba tramos automáticos con el campo vacío. El texto ilegible vive ahora en
+ * el estado compartido, con la huella del valor sobre el que se escribió, y bloquea la corrida
+ * mientras siga vigente.
+ */
+describe("un JSON a medio escribir bloquea la corrida", () => {
+  const config = { master_scale: { grade_edges: null, approval_cutoff: null } }
+  const borrador = {
+    ruta: ["master_scale", "grade_edges"],
+    texto: "[500, 550",
+    base: huellaDelValor(null),
+    rotulo: "Cortes de los tramos",
+  }
+
+  it("el borrador vigente detiene el gate, también después de navegar", () => {
+    const pendientes = borradoresVigentes({ "master_scale.grade_edges": borrador }, config)
+    expect(pendientes).toEqual([borrador])
+    const gate = canRun({ kind: "valid", hash: "abc", pipeline: null }, "ds", pendientes)
+    expect(gate.ok).toBe(false)
+    expect(gate.reason).toContain("Cortes de los tramos")
+  })
+
+  it("un valor que cambió desde fuera deja el borrador sin vigencia", () => {
+    const otro = { master_scale: { grade_edges: [520], approval_cutoff: null } }
+    expect(borradoresVigentes({ "master_scale.grade_edges": borrador }, otro)).toEqual([])
+  })
+
+  it("sin borradores, el gate de siempre", () => {
+    const gate = canRun({ kind: "valid", hash: "abc", pipeline: null }, "ds", [])
+    expect(gate.ok).toBe(true)
   })
 })

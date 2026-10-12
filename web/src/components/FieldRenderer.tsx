@@ -72,6 +72,7 @@ import {
   variantDefaults,
 } from "@/lib/form-engine"
 import { cn } from "@/lib/utils"
+import { useBorradoresJson } from "@/state/appStore"
 import { marca } from "@/lib/cifras"
 
 export interface FieldRendererProps {
@@ -1404,12 +1405,22 @@ function ListRowButton(props: {
  * Sin Monaco/CodeMirror: un `textarea` basta y evita bundle pesado.
  */
 function JsonField(props: FieldRendererProps) {
-  const { path, value, onChange } = props
+  const { path, value, onChange, name, schema } = props
+  const borradores = useBorradoresJson()
+  const clave = path.join(".")
+  // Un texto ilegible que la persona dejó al salir de Configuración vuelve a verse con su error, si
+  // sigue vigente sobre el valor del config (pasada 3 de Codex sobre la capa B del SDD-32).
+  const guardado = borradores?.borradoresJson[clave]
+  const pendiente = guardado?.base === huellaDelValor(value) ? guardado : undefined
   const [estado, setEstado] = useState<EstadoEditorJson>(() => ({
-    texto: serializarParaEditor(value),
+    texto: pendiente?.texto ?? serializarParaEditor(value),
     visto: huellaDelValor(value),
   }))
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(() => {
+    if (pendiente === undefined) return null
+    const leido = parseJsonInput(pendiente.texto)
+    return leido.ok ? null : leido.error
+  })
   // Un valor que cambió desde fuera —un YAML cargado, otro trabajo— se adopta durante el render
   // (estado derivado, sin efectos): el formulario de la sección conserva su `key` y este editor no
   // se vuelve a montar (pasada 1 de Codex sobre la capa B del SDD-32).
@@ -1425,10 +1436,17 @@ function JsonField(props: FieldRendererProps) {
     if (result.ok) {
       setError(null)
       setEstado({ texto: next, visto: huellaDelValor(result.value) })
+      borradores?.setBorradorJson(clave, null)
       onChange(path, result.value)
     } else {
       setEstado((previo) => ({ ...previo, texto: next }))
       setError(result.error)
+      borradores?.setBorradorJson(clave, {
+        ruta: [...path],
+        texto: next,
+        base: huellaDelValor(value),
+        rotulo: fieldLabel(name, schema),
+      })
     }
   }
 

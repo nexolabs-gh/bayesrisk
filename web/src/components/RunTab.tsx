@@ -42,6 +42,7 @@ import {
 } from "@/lib/jobs"
 import { presetDisplay } from "@/lib/presentation"
 import { runHint } from "@/lib/preflight"
+import { borradoresVigentes } from "@/lib/form-engine"
 import { canRun, describeApiError } from "@/lib/validation"
 import { useAppState, type AppState } from "@/state/appStore"
 
@@ -160,6 +161,7 @@ function runErrorMessage(err: unknown): string {
 export function RunTab({ onNavigate }: RunTabProps) {
   const {
     config,
+    borradoresJson,
     datasetId,
     validation,
     preflight,
@@ -186,7 +188,9 @@ export function RunTab({ onNavigate }: RunTabProps) {
   // Preset al que se quiere cambiar teniendo el config editado: espera confirmación (ver §M5).
   const [confirmar, setConfirmar] = useState<PresetSummary | null>(null)
 
-  const gate = canRun(validation, datasetId)
+  // Los valores a medio escribir que no se pueden leer detienen la corrida (pasada 3 de Codex
+  // sobre la capa B del SDD-32): el config no los trae y correr usaría otro valor sin decirlo.
+  const gate = canRun(validation, datasetId, borradoresVigentes(borradoresJson, config))
   // Aviso del preflight (D-PRE-5): cambia el ASPECTO del botón y pone la advertencia al lado, pero
   // NO toca `disabled`. Informar no es bloquear: la corrida sigue siendo la autoridad sobre sí
   // misma, y quitarle al usuario la posibilidad de intentar sería peor que un aviso que sobre.

@@ -718,6 +718,39 @@ export function sincronizarEditorJson(
   return { texto: serializarParaEditor(valor), visto: huella }
 }
 
+/**
+ * Un texto del editor JSON que no se puede leer, guardado en el estado compartido (pasada 3 de
+ * Codex sobre la capa B del SDD-32): sin él, al salir de Configuración el editor se desmontaba, el
+ * aviso se perdía y la corrida usaba el último valor válido —con un campo encendido en blanco,
+ * ninguno: tramos formados por los datos en vez de los cortes que la persona estaba escribiendo—.
+ * `base` es la huella del valor del config sobre el que se escribió: si ese valor cambia desde
+ * fuera (un YAML, otro trabajo), el borrador deja de estar vigente.
+ */
+export interface BorradorJson {
+  ruta: (string | number)[]
+  texto: string
+  base: string
+  rotulo: string
+}
+
+/** Los borradores que siguen vigentes sobre `config`: los que el gate de la corrida detiene. */
+export function borradoresVigentes(
+  borradores: Record<string, BorradorJson>,
+  config: unknown,
+): BorradorJson[] {
+  return Object.values(borradores).filter((borrador) => {
+    let actual: unknown = config
+    for (const tramo of borrador.ruta) {
+      if (actual === null || typeof actual !== "object") {
+        actual = undefined
+        break
+      }
+      actual = (actual as Record<string | number, unknown>)[tramo]
+    }
+    return huellaDelValor(actual) === borrador.base
+  })
+}
+
 export function defaultForSchema(schema: JsonSchema, defs: Defs = {}): unknown {
   const resolved = resolveRef(schema, defs)
   if (resolved.default !== undefined && resolved.default !== null) {

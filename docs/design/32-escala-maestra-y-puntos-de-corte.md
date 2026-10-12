@@ -912,3 +912,15 @@ una decisión de §12; son precisiones de implementación, medidas.
   tiro— y los dos campos en blanco decían «desactivado», cuando significan «los tramos los forman
   los datos» y «sin corte declarado»: los dos se encienden en blanco y dicen lo que significan
   (`ui_null_label`).
+- **Pasada 2 de Codex** (`5c4cd38`): **approve**, sin hallazgos materiales —estática: el entorno
+  de Codex no pudo ejecutar Python ni Node; la verificación ejecutable la cubren los gates, el
+  recorrido en vivo y la corrida real de Word, QMD y Excel (`evidencia/s43/verificar_informe_real.py`)—.
+- **Pasada 3 de Codex, la última del tope declarado** (`5c6d265`; un hallazgo medium, ninguno
+  contractual, con su test nacido rojo y sus dos controles negativos): con un campo JSON encendido
+  en blanco, pegar `[500, 550` sólo marcaba un error local del editor; al ir a «Ejecutar» el editor
+  se desmontaba, el aviso se perdía y la corrida formaba tramos automáticos. Es la cara visible de
+  un defecto preexistente de todo campo JSON —el texto ilegible no llegaba al gate de la corrida y
+  correr usaba el último valor válido—. Ahora el texto ilegible vive en el estado compartido con la
+  huella del valor sobre el que se escribió: mientras siga vigente, el editor lo vuelve a mostrar
+  con su error y «Ejecutar» se detiene diciendo qué campo corregir; si el valor cambia desde fuera
+  (un YAML, otro trabajo), deja de estar vigente. Sin cuarta pasada, por el criterio declarado.
