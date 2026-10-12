@@ -3,8 +3,8 @@
 La demo pública (``VITE_DEMO_MODE=true``, servida sin backend) monta la app sobre fixtures
 enlatados en ``web/src/fixtures/demo/``. Este script captura el set del preset
 ``f1-estandar-consumo`` —el **scorecard de comportamiento** puro
-(data→binning→selection→model→scorecard→calibration→performance→stability→validation), SIN
-provisiones— corriendo la cadena **de verdad** contra el backend, vía
+(data→binning→selection→model→scorecard→calibration→performance→stability→validation→escala
+maestra), SIN provisiones— corriendo la cadena **de verdad** contra el backend, vía
 :func:`bayesrisk.ui.server.create_app` sobre ``TestClient`` (sin ``uvicorn``).
 
 **No sobrescribe los fixtures F3/F4** (``*.json``/``*-ifrs9.*``, LIVE): escribe archivos NUEVOS con
@@ -102,6 +102,15 @@ DEMO_GOVERNANCE: dict[str, Any] = {
     "estado_validacion": "desarrollo",
     "author": "Bayes Advisory",
 }
+
+# La escala maestra con la que corre la demo (D-ESC-9; decisión de Cami del 2026-10-12): va en la
+# CAPTURA y no en el preset, como la gobernanza, y vacía —los tramos los forman los datos y no hay
+# puntaje de aprobación, que es un dato de la institución que la demo no inventa—. Con ella
+# Resultados muestra los tramos con su PD y la tabla de puntos de corte, y el informe gana la
+# subsección «Escala maestra y puntos de corte». A diferencia de la gobernanza, SÍ mueve el
+# `config_hash` de la corrida de la demo: una sección de dominio declarada entra a la identidad
+# (D-ESC-7). El del preset F1 no cambia (`1063d6cf…`).
+DEMO_MASTER_SCALE: dict[str, Any] = {"grade_edges": None, "approval_cutoff": None}
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _FIXTURES_DIR = _PROJECT_ROOT / "web" / "src" / "fixtures" / "demo"
 _CAPTURE_WORKDIR_NAME = ".bayesrisk-demo-fixtures-f1"
@@ -113,6 +122,7 @@ _IFRS9_TITLE = "Informe de Provisiones IFRS 9 / ECL"
 _VALIDATION_TITLE = "Validación formal"
 _MODEL_CARD_TITLE = "Ficha del modelo"
 _DATA_TITLE = "Población, particiones y exclusiones"
+_MASTER_SCALE_TITLE = "Escala maestra y puntos de corte"
 
 # El catálogo compartido debe listar la cartera IFRS 9 (hoy el fixture versionado está stale y no la
 # trae): el preset F4 la recomienda y sin ella la demo no la ofrece.
@@ -289,9 +299,24 @@ def capture(client: TestClient) -> dict[str, Any]:
     datasets = _get(client, "/api/datasets").json()
 
     preset = _get(client, f"/api/config/preset/{PRESET_ID}").json()
-    # La demo declara gobernanza (D-GOB-9); el preset servido no la trae y no debe traerla.
+    # La demo declara gobernanza (D-GOB-9) y la escala maestra (D-ESC-9); el preset servido no trae
+    # ninguna de las dos y no debe traerlas.
     assert preset["config"].get("governance") is None, "el preset F1 no debe declarar gobernanza"
-    config = {**preset["config"], "governance": deepcopy(DEMO_GOVERNANCE)}
+    assert preset["config"].get("master_scale") is None, (
+        "el preset F1 no debe declarar la escala maestra"
+    )
+    config = {
+        **preset["config"],
+        "governance": deepcopy(DEMO_GOVERNANCE),
+        "master_scale": deepcopy(DEMO_MASTER_SCALE),
+    }
+    # La escala sí entra a la identidad (D-ESC-7): `preset-f1.json` lleva el `config_hash` de SU
+    # config —el que corre la demo—, no el del preset servido, para que la tarjeta del ejemplo y
+    # Resultados digan el mismo.
+    validado = _post(client, "/api/validate", {"config": config}).json()
+    if not validado.get("valid"):
+        raise RuntimeError(f"el config de la demo no valida: {validado.get('errors')}")
+    preset = {**preset, "config_hash": validado["config_hash"]}
     preset = {**preset, "config": config}
     dataset_id = preset["dataset_id"]
 
@@ -500,6 +525,19 @@ def verify_artifacts() -> None:
     )
     assert preset["config"].get("governance") == DEMO_GOVERNANCE, (
         "preset-f1.json no trae la gobernanza con la que corrió la demo"
+    )
+    # La escala maestra (D-ESC-9): declarada en el config, resumida en Resultados y en el informe.
+    assert preset["config"].get("master_scale") == DEMO_MASTER_SCALE, (
+        "preset-f1.json no trae la escala maestra con la que corrió la demo"
+    )
+    etapas = [etapa.get("stage") for etapa in (results.get("summaries") or {}).get("stages") or []]
+    assert "master_scale" in etapas, "results-f1.json no trae el resumen de la escala maestra"
+    assert _MASTER_SCALE_TITLE in html, (
+        "report-f1.html no trae la subsección «Escala maestra y puntos de corte»"
+    )
+    # Una sola identidad en la demo: la del config que corrió.
+    assert preset.get("config_hash") == (results.get("lineage") or {}).get("config_hash"), (
+        "preset-f1.json y results-f1.json firman config_hash distintos"
     )
     # La contraparte visible del `git_dirty` que ya se exigió sobre el lineage: aquí se mide sobre
     # el documento que la demo sirve, que es donde un lector lo leería.
