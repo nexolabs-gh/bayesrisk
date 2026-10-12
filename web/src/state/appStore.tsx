@@ -33,7 +33,7 @@ import {
 } from "@/lib/external-artifacts"
 import type { ExternalArtifact, Job } from "@/lib/jobs"
 import type { PreflightState } from "@/lib/preflight"
-import type { BorradorJson } from "@/lib/form-engine"
+import type { DescarteJson } from "@/lib/form-engine"
 import type { LoadedSchema } from "@/lib/schema"
 import { buildErrorLookup, type ValidationState } from "@/lib/validation"
 
@@ -125,13 +125,17 @@ export interface AppState {
   welcomeDismissed: boolean
   setWelcomeDismissed: Dispatch<SetStateAction<boolean>>
   /**
-   * Los textos JSON a medio escribir que no se pueden leer, por ruta (pasada 3 de Codex sobre la
-   * capa B del SDD-32). Viven aquí y no en el editor porque el editor se desmonta al salir de
-   * Configuración y quien los necesita es el botón de «Ejecutar»: los vigentes detienen la corrida.
+   * Los textos JSON que se descartaron al salir de su campo porque no se podían leer (pasada 4 de
+   * Codex sobre la capa B del SDD-32). Son sólo un aviso para «Ejecutar», que corre con lo que el
+   * config trae —lo que Configuración muestra—: no detienen nada, así que no pueden quedar viejos
+   * bloqueando la corrida. Reemplazar el config (`setSeed`: un ejemplo, un YAML, un trabajo, empezar
+   * de cero) los retira, porque hablaban del anterior; también «Entendido».
    */
-  borradoresJson: Record<string, BorradorJson>
-  /** Guarda (o, con `null`, descarta) el borrador ilegible de una ruta. */
-  setBorradorJson: (clave: string, borrador: BorradorJson | null) => void
+  descartesJson: DescarteJson[]
+  /** Registra un texto descartado (uno igual a otro ya registrado no se repite). */
+  avisarDescarteJson: (descarte: DescarteJson) => void
+  /** Retira todos los avisos de textos descartados. */
+  olvidarDescartesJson: () => void
 }
 
 const AppStateContext = createContext<AppState | null>(null)
@@ -141,19 +145,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [schema, setSchema] = useState<LoadedSchema | null>(null)
   const [job, setJob] = useState<Job | null>(null)
   const [config, setConfig] = useState<Record<string, unknown>>({})
-  const [borradoresJson, setBorradoresJson] = useState<Record<string, BorradorJson>>({})
-  const setBorradorJson = useCallback((clave: string, borrador: BorradorJson | null) => {
-    setBorradoresJson((previos) => {
-      if (borrador === null) {
-        if (!(clave in previos)) return previos
-        const resto = { ...previos }
-        delete resto[clave]
-        return resto
-      }
-      return { ...previos, [clave]: borrador }
-    })
+  const [descartesJson, setDescartesJson] = useState<DescarteJson[]>([])
+  const avisarDescarteJson = useCallback((descarte: DescarteJson) => {
+    setDescartesJson((previos) =>
+      previos.some((d) => d.rotulo === descarte.rotulo && d.texto === descarte.texto)
+        ? previos
+        : [...previos, descarte],
+    )
   }, [])
-  const [seed, setSeed] = useState<SeedState | null>(null)
+  const olvidarDescartesJson = useCallback(() => setDescartesJson([]), [])
+  const [seed, setSeedState] = useState<SeedState | null>(null)
+  // Toda siembra reemplaza el config entero: los avisos de textos descartados hablaban del anterior.
+  const setSeed = useCallback<Dispatch<SetStateAction<SeedState | null>>>((siguiente) => {
+    setSeedState(siguiente)
+    setDescartesJson([])
+  }, [])
   const [datasetId, setDatasetId] = useState<string | null>(null)
   const [externalInputs, setExternalInputs] = useState<
     Record<string, ExternalInput>
@@ -217,7 +223,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       alive = false
     }
-  }, [])
+    // `setSeed` es estable (`useCallback` sin dependencias): el arranque sigue corriendo una vez.
+  }, [setSeed])
 
   // Validación en vivo (SDD-23 §3.3/§7): en cada cambio del config re-valida en el backend con
   // debounce. El timer previo se cancela en el cleanup; el contador `requestSeq` descarta
@@ -350,8 +357,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setResults,
       welcomeDismissed,
       setWelcomeDismissed,
-      borradoresJson,
-      setBorradorJson,
+      descartesJson,
+      avisarDescarteJson,
+      olvidarDescartesJson,
     }),
     [
       schema,
@@ -370,9 +378,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       lastRun,
       results,
       welcomeDismissed,
-      borradoresJson,
+      descartesJson,
       // Estables (`useCallback` sin dependencias): no recalculan nada, pero el lint los exige.
-      setBorradorJson,
+      avisarDescarteJson,
+      olvidarDescartesJson,
+      setSeed,
       getConfig,
       getScenarioTables,
       setScenarioTables,
@@ -383,10 +393,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Los borradores JSON del estado compartido, o `null` fuera del provider: el editor JSON también se
- * pinta en pruebas y vistas sin store, y ahí su error sigue siendo sólo local.
+ * El aviso de textos JSON descartados, o `null` fuera del provider: el editor JSON también se pinta
+ * en pruebas y vistas sin store, y ahí el aviso es sólo el suyo, bajo el campo.
  */
-export function useBorradoresJson(): Pick<AppState, "borradoresJson" | "setBorradorJson"> | null {
+export function useAvisoDeDescarteJson(): Pick<AppState, "avisarDescarteJson"> | null {
   return useContext(AppStateContext)
 }
 

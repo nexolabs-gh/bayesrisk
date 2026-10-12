@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ChevronDown, ChevronUp, Info, Plus, Trash2 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -31,7 +31,7 @@ import {
 import { errorAtPath } from "@/lib/validation"
 import {
   ACTIVAR_EN_BLANCO,
-  borradorVigenteEn,
+  anadirFila,
   type Defs,
   type EstadoEditorJson,
   type JsonSchema,
@@ -42,11 +42,13 @@ import {
   discriminatedBranchRef,
   discriminatedBranches,
   discriminatorProperty,
+  eliminarFila,
   enumOptions,
   fieldHelp,
   fieldLabel,
   appendListItem,
   fieldPlaceholder,
+  filasDeLista,
   hasClosedOptions,
   huellaDelValor,
   itemRefName,
@@ -54,6 +56,7 @@ import {
   listItemLabel,
   listItems,
   moveListItem,
+  moverFila,
   multiselectOptions,
   multiselectOrAllState,
   nextMultiselectOrAllValue,
@@ -65,15 +68,17 @@ import {
   removeListItem,
   resolveRef,
   resolveWidget,
+  salirDelEditorJson,
   semillaAlActivar,
   serializarParaEditor,
   sincronizarEditorJson,
+  textoDelDescarte,
   toggleMultiselect,
   unwrapNullable,
   variantDefaults,
 } from "@/lib/form-engine"
 import { cn } from "@/lib/utils"
-import { useBorradoresJson } from "@/state/appStore"
+import { useAvisoDeDescarteJson } from "@/state/appStore"
 import { marca } from "@/lib/cifras"
 
 export interface FieldRendererProps {
@@ -895,18 +900,12 @@ function NullableField(props: FieldRendererProps & { baseSchema: JsonSchema }) {
   // Encendido en blanco (`ui_activate_blank`): el interruptor está encendido y el config sigue sin
   // valor hasta que la persona lo escriba (el puntaje de aprobación de la escala maestra).
   const [enBlanco, setEnBlanco] = useState(false)
+  const active = (displayed !== null && displayed !== undefined) || enBlanco
   const id = path.join(".")
-  // Un texto a medio escribir en este campo (pasada 3 de Codex sobre la capa B del SDD-32) lo deja
-  // encendido al volver a Configuración: es lo que el aviso de «Ejecutar» pide corregir o borrar.
-  const borradores = useBorradoresJson()
-  const conBorrador = borradorVigenteEn(borradores?.borradoresJson, id, value) !== undefined
-  const active = (displayed !== null && displayed !== undefined) || enBlanco || conBorrador
 
   const handleToggle = (next: boolean) => {
     if (!next) {
-      // Apagar descarta también el texto a medio escribir: es el «bórralo» del aviso.
       setEnBlanco(false)
-      borradores?.setBorradorJson(id, null)
       onChange(path, null)
       return
     }
@@ -1277,6 +1276,17 @@ function ListField(props: FieldRendererProps) {
   // Los defaults de las FILAS viven en el `$def` del elemento: `sections` no puede indexar por
   // índice, así que ésta es la segunda —y última— puerta al catálogo por `$ref`.
   const rowDefaults = defMap(props.effectiveDefaults, itemRefName(schema, defs))
+  // La identidad de cada fila, que se mueve con ella al subirla, bajarla o eliminar otra (pasada 4
+  // de Codex sobre la capa B del SDD-32): con la posición como `key`, el estado propio de sus campos
+  // quedaba en la fila que pasaba a ocupar ese lugar. Estado derivado durante el render, como el
+  // editor JSON: una lista que cambió desde fuera se reconcilia aquí.
+  const [filasGuardadas, setFilas] = useState(() => filasDeLista(items))
+  const filas = filasDeLista(items, filasGuardadas)
+  if (filas !== filasGuardadas) setFilas(filas)
+  const cambiarFilas = (nuevos: unknown[], siguientes: typeof filas) => {
+    setFilas(siguientes)
+    onChange(path, nuevos)
+  }
 
   if (!item) return <JsonField {...props} />
 
@@ -1296,7 +1306,7 @@ function ListField(props: FieldRendererProps) {
             const filaPath = [...path, indice]
             return (
               <li
-                key={indice}
+                key={filas.ids[indice]}
                 className={cn(
                   "space-y-3 rounded-lg border border-border bg-foreground/[0.02] p-3",
                   depth > 0 && "border-l-2 border-l-brand-accent/40",
@@ -1313,20 +1323,29 @@ function ListField(props: FieldRendererProps) {
                     <ListRowButton
                       label={`Subir ${etiqueta ?? indice + 1}`}
                       disabled={indice === 0}
-                      onClick={() => onChange(path, moveListItem(value, indice, -1))}
+                      onClick={() => {
+                        const nuevos = moveListItem(value, indice, -1)
+                        cambiarFilas(nuevos, moverFila(filas, nuevos, indice, -1))
+                      }}
                     >
                       <ChevronUp className="size-3.5" aria-hidden="true" />
                     </ListRowButton>
                     <ListRowButton
                       label={`Bajar ${etiqueta ?? indice + 1}`}
                       disabled={indice === items.length - 1}
-                      onClick={() => onChange(path, moveListItem(value, indice, 1))}
+                      onClick={() => {
+                        const nuevos = moveListItem(value, indice, 1)
+                        cambiarFilas(nuevos, moverFila(filas, nuevos, indice, 1))
+                      }}
                     >
                       <ChevronDown className="size-3.5" aria-hidden="true" />
                     </ListRowButton>
                     <ListRowButton
                       label={`Eliminar ${etiqueta ?? indice + 1}`}
-                      onClick={() => onChange(path, removeListItem(value, indice))}
+                      onClick={() => {
+                        const nuevos = removeListItem(value, indice)
+                        cambiarFilas(nuevos, eliminarFila(filas, nuevos, indice))
+                      }}
                     >
                       <Trash2 className="size-3.5" aria-hidden="true" />
                     </ListRowButton>
@@ -1363,14 +1382,12 @@ function ListField(props: FieldRendererProps) {
         // Añadir una fila es un gesto de ESTRUCTURA (D-FX-8): la fila nace con la proyección
         // canónica del catálogo —todas sus hojas con default, ninguna obligatoria inventada—.
         // `appendListItem` queda de respaldo sin catálogo.
-        onClick={() =>
-          onChange(
-            path,
-            rowDefaults
-              ? [...listItems(value), canonicalProjection(rowDefaults)]
-              : appendListItem(value, item, defs),
-          )
-        }
+        onClick={() => {
+          const nuevos = rowDefaults
+            ? [...listItems(value), canonicalProjection(rowDefaults)]
+            : appendListItem(value, item, defs)
+          cambiarFilas(nuevos, anadirFila(filas, nuevos))
+        }}
         className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1 text-xs text-foreground/90 transition-colors hover:bg-foreground/5"
       >
         <Plus className="size-3.5" aria-hidden="true" />
@@ -1413,20 +1430,16 @@ function ListRowButton(props: {
  */
 function JsonField(props: FieldRendererProps) {
   const { path, value, onChange, name, schema } = props
-  const borradores = useBorradoresJson()
-  const clave = path.join(".")
-  // Un texto ilegible que la persona dejó al salir de Configuración vuelve a verse con su error, si
-  // sigue vigente sobre el valor del config (pasada 3 de Codex sobre la capa B del SDD-32).
-  const pendiente = borradorVigenteEn(borradores?.borradoresJson, clave, value)
+  const aviso = useAvisoDeDescarteJson()
+  const rotulo = fieldLabel(name, schema)
   const [estado, setEstado] = useState<EstadoEditorJson>(() => ({
-    texto: pendiente?.texto ?? serializarParaEditor(value),
+    texto: serializarParaEditor(value),
     visto: huellaDelValor(value),
   }))
-  const [error, setError] = useState<string | null>(() => {
-    if (pendiente === undefined) return null
-    const leido = parseJsonInput(pendiente.texto)
-    return leido.ok ? null : leido.error
-  })
+  const [error, setError] = useState<string | null>(null)
+  // El texto que se descartó al salir del campo, para decirlo bajo el editor (pasada 4 de Codex
+  // sobre la capa B del SDD-32).
+  const [descartado, setDescartado] = useState<string | null>(null)
   // Un valor que cambió desde fuera —un YAML cargado, otro trabajo— se adopta durante el render
   // (estado derivado, sin efectos): el formulario de la sección conserva su `key` y este editor no
   // se vuelve a montar (pasada 1 de Codex sobre la capa B del SDD-32).
@@ -1434,27 +1447,44 @@ function JsonField(props: FieldRendererProps) {
   if (sincronizado !== estado) {
     setEstado(sincronizado)
     setError(null)
+    setDescartado(null)
   }
   const text = sincronizado.texto
 
   const handleChange = (next: string) => {
+    setDescartado(null)
     const result = parseJsonInput(next)
     if (result.ok) {
       setError(null)
       setEstado({ texto: next, visto: huellaDelValor(result.value) })
-      borradores?.setBorradorJson(clave, null)
       onChange(path, result.value)
     } else {
       setEstado((previo) => ({ ...previo, texto: next }))
       setError(result.error)
-      borradores?.setBorradorJson(clave, {
-        ruta: [...path],
-        texto: next,
-        base: huellaDelValor(value),
-        rotulo: fieldLabel(name, schema),
-      })
     }
   }
+
+  // Salir del campo con un texto que no se puede leer lo descarta: el editor vuelve al valor del
+  // config —el que corre— y lo dice aquí y en «Ejecutar» (pasada 4 de Codex sobre la capa B del
+  // SDD-32). Lo que se ve es siempre lo que corre, y no queda ningún borrador guardado aparte.
+  const handleBlur = () => {
+    const salida = salirDelEditorJson(sincronizado, value)
+    if (salida.descartado === null) return
+    setEstado(salida.estado)
+    setError(null)
+    setDescartado(salida.descartado)
+    aviso?.avisarDescarteJson({ rotulo, texto: salida.descartado })
+  }
+
+  // Red de seguridad: un editor que se desmonta sin que el campo pierda el foco —un desmontaje
+  // que no viene de un clic ni del teclado— pierde igual su texto ilegible, y «Ejecutar» tiene que
+  // decirlo. El ref guarda el aviso que correspondería al texto de este render.
+  const avisoAlDesmontar = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    avisoAlDesmontar.current =
+      error === null ? null : () => aviso?.avisarDescarteJson({ rotulo, texto: text })
+  })
+  useEffect(() => () => avisoAlDesmontar.current?.(), [])
 
   return (
     <div className="space-y-1.5">
@@ -1465,6 +1495,7 @@ function JsonField(props: FieldRendererProps) {
         spellCheck={false}
         aria-invalid={error !== null}
         onChange={(event) => handleChange(event.target.value)}
+        onBlur={handleBlur}
         className={cn(
           "w-full rounded-lg border bg-transparent px-2.5 py-1.5 font-mono text-xs outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
           error
@@ -1474,6 +1505,11 @@ function JsonField(props: FieldRendererProps) {
       />
       {error ? (
         <p className="text-xs text-destructive">JSON inválido: {error}</p>
+      ) : descartado !== null ? (
+        <p role="status" className="text-xs text-amber-200/90">
+          Se descartó «{textoDelDescarte(descartado)}»: no era JSON. El campo conserva su valor
+          anterior.
+        </p>
       ) : (
         <p className="text-xs text-muted-foreground">
           Este valor se escribe en formato JSON. Se comprueba al ejecutar la corrida.

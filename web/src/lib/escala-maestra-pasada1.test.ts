@@ -15,15 +15,21 @@ import { describe, expect, it } from "vitest"
 import fixtureSchema from "@/fixtures/schema.json"
 import {
   ACTIVAR_EN_BLANCO,
-  borradorVigenteEn,
-  borradoresVigentes,
+  LARGO_DEL_DESCARTE,
+  anadirFila,
+  eliminarFila,
+  filasDeLista,
   huellaDelValor,
+  moveListItem,
+  moverFila,
+  removeListItem,
+  salirDelEditorJson,
   semillaAlActivar,
   serializarParaEditor,
   sincronizarEditorJson,
+  textoDelDescarte,
   type JsonSchema,
 } from "@/lib/form-engine"
-import { canRun } from "@/lib/validation"
 
 describe("el editor JSON adopta un valor que cambió desde fuera", () => {
   it("un YAML cargado con otros cortes se ve en el editor", () => {
@@ -75,44 +81,90 @@ describe("encender un número sin valor de fábrica no inventa uno", () => {
 })
 
 /**
- * Pasada 3 de Codex sobre la capa B: con un campo JSON encendido en blanco, pegar `[500, 550` sólo
- * marcaba un error local del editor; al ir a «Ejecutar» el editor se desmontaba, el aviso se
- * perdía y la corrida formaba tramos automáticos con el campo vacío. El texto ilegible vive ahora en
- * el estado compartido, con la huella del valor sobre el que se escribió, y bloquea la corrida
- * mientras siga vigente.
+ * Pasadas 3 y 4 de Codex sobre la capa B: un texto que no se puede leer no debe perderse en
+ * silencio al salir de Configuración (pasada 3), pero tampoco quedar guardado aparte, donde se
+ * volvía viejo —una sección apagada, una fila movida, un config reemplazado— y detenía la corrida
+ * (pasada 4). La regla: al salir del campo, el texto ilegible se descarta, el editor vuelve al valor
+ * del config y se avisa. Lo que se ve es lo que corre. Los recorridos con navegador viven en
+ * `e2e/editor-json.spec.ts`.
  */
-describe("un JSON a medio escribir bloquea la corrida", () => {
-  const config = { master_scale: { grade_edges: null, approval_cutoff: null } }
-  const borrador = {
-    ruta: ["master_scale", "grade_edges"],
-    texto: "[500, 550",
-    base: huellaDelValor(null),
-    rotulo: "Cortes de los tramos",
-  }
-
-  it("el borrador vigente detiene el gate, también después de navegar", () => {
-    const pendientes = borradoresVigentes({ "master_scale.grade_edges": borrador }, config)
-    expect(pendientes).toEqual([borrador])
-    const gate = canRun({ kind: "valid", hash: "abc", pipeline: null }, "ds", pendientes)
-    expect(gate.ok).toBe(false)
-    expect(gate.reason).toContain("Cortes de los tramos")
+describe("salir del editor JSON con un texto ilegible lo descarta", () => {
+  it("vuelve al valor del config y entrega el texto descartado", () => {
+    const escribiendo = { texto: "[500, 550", visto: huellaDelValor(null) }
+    const salida = salirDelEditorJson(escribiendo, null)
+    expect(salida.descartado).toBe("[500, 550")
+    expect(salida.estado).toEqual({ texto: "", visto: huellaDelValor(null) })
   })
 
-  it("un valor que cambió desde fuera deja el borrador sin vigencia", () => {
-    const otro = { master_scale: { grade_edges: [520], approval_cutoff: null } }
-    expect(borradoresVigentes({ "master_scale.grade_edges": borrador }, otro)).toEqual([])
+  it("con un valor válido previo, el editor lo vuelve a mostrar", () => {
+    const escribiendo = { texto: "[500, 550", visto: huellaDelValor([500]) }
+    const salida = salirDelEditorJson(escribiendo, [500])
+    expect(salida.descartado).toBe("[500, 550")
+    expect(JSON.parse(salida.estado.texto)).toEqual([500])
   })
 
-  it("el interruptor y el editor leen el mismo borrador vigente", () => {
-    const borradores = { "master_scale.grade_edges": borrador }
-    expect(borradorVigenteEn(borradores, "master_scale.grade_edges", null)).toBe(borrador)
-    expect(borradorVigenteEn(borradores, "master_scale.grade_edges", [520])).toBeUndefined()
-    expect(borradorVigenteEn(borradores, "master_scale.approval_cutoff", null)).toBeUndefined()
-    expect(borradorVigenteEn(undefined, "master_scale.grade_edges", null)).toBeUndefined()
+  it("un texto que se puede leer ya está en el config: nada cambia", () => {
+    const escrito = { texto: "[500,550]", visto: huellaDelValor([500, 550]) }
+    expect(salirDelEditorJson(escrito, [500, 550])).toEqual({ estado: escrito, descartado: null })
+    const vacio = { texto: "  ", visto: huellaDelValor(null) }
+    expect(salirDelEditorJson(vacio, null).descartado).toBeNull()
   })
 
-  it("sin borradores, el gate de siempre", () => {
-    const gate = canRun({ kind: "valid", hash: "abc", pipeline: null }, "ds", [])
-    expect(gate.ok).toBe(true)
+  it("el aviso cita el texto en una línea y recortado si es largo", () => {
+    expect(textoDelDescarte("[500,\n  550")).toBe("[500, 550")
+    const largo = "[" + "1, ".repeat(100)
+    const citado = textoDelDescarte(largo)
+    expect(citado.endsWith("…")).toBe(true)
+    expect(citado.length).toBe(LARGO_DEL_DESCARTE + 1)
+  })
+})
+
+/**
+ * Pasada 4 de Codex sobre la capa B: la `key` de las filas de una lista era su posición, así que
+ * subir, bajar o eliminar una fila dejaba el estado propio de sus campos en la fila que pasaba a
+ * ocupar su lugar. Las identidades se mueven con las filas.
+ */
+describe("las filas de una lista conservan su identidad", () => {
+  const a = { name: "antiguedad_meses", user_splits: [24, 60] }
+  const b = { name: "ingreso_mensual", user_splits: [1000, 5000] }
+  const c = { name: "mora_max_12m", user_splits: [1, 3] }
+
+  it("subir una fila mueve su identidad con ella", () => {
+    const filas = filasDeLista([a, b])
+    const nuevos = moveListItem([a, b], 1, -1)
+    const movidas = moverFila(filas, nuevos, 1, -1)
+    expect(movidas.ids).toEqual([filas.ids[1], filas.ids[0]])
+    // El config vuelve con la lista movida: se reconoce como propia, no como un cambio de fuera.
+    expect(filasDeLista(nuevos, movidas)).toBe(movidas)
+  })
+
+  it("con dos filas iguales, la que se mueve es la que lleva su identidad", () => {
+    const filas = filasDeLista([a, a])
+    const movidas = moverFila(filas, moveListItem([a, a], 1, -1), 1, -1)
+    expect(movidas.ids).toEqual([filas.ids[1], filas.ids[0]])
+  })
+
+  it("eliminar una fila anterior no le pasa su identidad a la siguiente", () => {
+    const filas = filasDeLista([a, b, c])
+    const nuevos = removeListItem([a, b, c], 0)
+    const quedan = eliminarFila(filas, nuevos, 0)
+    expect(quedan.ids).toEqual([filas.ids[1], filas.ids[2]])
+    expect(filasDeLista(nuevos, quedan)).toBe(quedan)
+  })
+
+  it("una fila añadida estrena una identidad que ninguna tuvo", () => {
+    const filas = eliminarFila(filasDeLista([a, b]), [b], 0)
+    const nuevos = [b, c]
+    const conNueva = anadirFila(filas, nuevos)
+    expect(conNueva.ids[1]).not.toBe(0)
+    expect(new Set(conNueva.ids).size).toBe(2)
+  })
+
+  it("una lista que cambió desde fuera con otro largo recibe identidades nuevas", () => {
+    const filas = filasDeLista([a, b])
+    const deFuera = filasDeLista([c], filas)
+    expect(deFuera.ids.some((id) => filas.ids.includes(id))).toBe(false)
+    // Con el mismo largo, las conserva: los campos adoptan los valores nuevos.
+    expect(filasDeLista([c, a], filas).ids).toEqual(filas.ids)
   })
 })

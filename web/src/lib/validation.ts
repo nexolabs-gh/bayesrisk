@@ -298,17 +298,7 @@ export function pipelineWarning(state: ValidationState): string | null {
 export function canRun(
   validation: ValidationState,
   datasetId: string | null,
-  pendientes: readonly { rotulo: string }[] = [],
 ): { ok: boolean; reason?: string } {
-  // Un valor a medio escribir que no se puede leer (pasada 3 de Codex sobre la capa B del SDD-32):
-  // el config no lo trae, así que el backend no lo ve; correr usaría otro valor sin decirlo.
-  if (pendientes.length > 0) {
-    const rotulos = pendientes.map((p) => `«${p.rotulo}»`).join(", ")
-    return {
-      ok: false,
-      reason: `Hay un valor a medio escribir en Configuración (${rotulos}): corrígelo o bórralo para correr`,
-    }
-  }
   switch (validation.kind) {
     case "idle":
       return { ok: false, reason: "Preparando la configuración…" }

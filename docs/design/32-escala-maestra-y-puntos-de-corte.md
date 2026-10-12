@@ -926,3 +926,18 @@ una decisión de §12; son precisiones de implementación, medidas.
   (un YAML, otro trabajo), deja de estar vigente. Medido en el recorrido en vivo: el interruptor
   del campo seguía apagado al volver, así que el borrador vigente lo mantiene encendido y apagarlo
   lo descarta (el «bórralo» del aviso). Sin cuarta pasada, por el criterio declarado.
+- **Pasada 4 de Codex, de confirmación, pedida por Cami** (`dce7a17..35497e6`, S43; tres hallazgos
+  medium sobre el mecanismo de la pasada 3, ninguno contractual; corregidos en S44): el borrador
+  guardado aparte quedaba viejo —una sección apagada lo dejaba vigente y detenía «Ejecutar» por un
+  campo que ya no existía; mover o borrar filas de una lista lo reasignaba por índice; reemplazar
+  el config no lo reiniciaba y, con el mismo valor, revivía—. **El estado compartido se retiró.**
+  Al salir de un campo JSON con un texto que no se puede leer, el texto se descarta, el editor
+  vuelve al valor del config —el último válido— y lo dice bajo el campo y en «Ejecutar», citando
+  el texto para poder volver a escribirlo: **lo que se ve es lo que corre**. Si el editor se
+  desmonta sin que el campo pierda el foco, avisa igual. El aviso de «Ejecutar» informa y no
+  bloquea, como el del preflight; un config reemplazado (ejemplo, YAML, trabajo, empezar de cero)
+  lo retira y «Entendido» también. `canRun` vuelve a depender sólo de la validación y el dataset.
+  Las filas de las listas del formulario reciben una identidad estable que se mueve con ellas, así
+  que el estado propio de sus campos no pasa a la fila que ocupa su lugar. Cada caso con su
+  recorrido en un navegador real (`web/e2e/editor-json.spec.ts`, cinco, que corren en el job
+  clean-room del CI y nacieron rojos contra `35497e6`) y su control negativo.

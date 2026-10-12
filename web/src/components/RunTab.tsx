@@ -42,7 +42,7 @@ import {
 } from "@/lib/jobs"
 import { presetDisplay } from "@/lib/presentation"
 import { runHint } from "@/lib/preflight"
-import { borradoresVigentes } from "@/lib/form-engine"
+import { textoDelDescarte } from "@/lib/form-engine"
 import { canRun, describeApiError } from "@/lib/validation"
 import { useAppState, type AppState } from "@/state/appStore"
 
@@ -161,7 +161,8 @@ function runErrorMessage(err: unknown): string {
 export function RunTab({ onNavigate }: RunTabProps) {
   const {
     config,
-    borradoresJson,
+    descartesJson,
+    olvidarDescartesJson,
     datasetId,
     validation,
     preflight,
@@ -188,9 +189,7 @@ export function RunTab({ onNavigate }: RunTabProps) {
   // Preset al que se quiere cambiar teniendo el config editado: espera confirmación (ver §M5).
   const [confirmar, setConfirmar] = useState<PresetSummary | null>(null)
 
-  // Los valores a medio escribir que no se pueden leer detienen la corrida (pasada 3 de Codex
-  // sobre la capa B del SDD-32): el config no los trae y correr usaría otro valor sin decirlo.
-  const gate = canRun(validation, datasetId, borradoresVigentes(borradoresJson, config))
+  const gate = canRun(validation, datasetId)
   // Aviso del preflight (D-PRE-5): cambia el ASPECTO del botón y pone la advertencia al lado, pero
   // NO toca `disabled`. Informar no es bloquear: la corrida sigue siendo la autoridad sobre sí
   // misma, y quitarle al usuario la posibilidad de intentar sería peor que un aviso que sobre.
@@ -447,6 +446,39 @@ export function RunTab({ onNavigate }: RunTabProps) {
       {/* Controles: botón primario + gate (SDD §8). */}
       <Card className="shadow-card">
         <CardContent className="space-y-4">
+          {/* Lo que se descartó al salir de un campo JSON con un texto que no se podía leer
+              (pasada 4 de Codex sobre la capa B del SDD-32). Informa, no bloquea —como el
+              preflight—: la corrida usa lo que el config trae, que es lo que Configuración
+              muestra; el texto va citado para poder volver a escribirlo. */}
+          {descartesJson.length > 0 ? (
+            <div
+              role="status"
+              aria-live="polite"
+              data-descartes-json="ejecutar"
+              className="space-y-2 rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-3 py-2.5 text-xs text-amber-100/90"
+            >
+              <p className="font-medium">
+                {descartesJson.length === 1
+                  ? "Se descartó un texto que no era JSON al salir de su campo."
+                  : `Se descartaron ${descartesJson.length} textos que no eran JSON al salir de sus campos.`}
+              </p>
+              <ul className="space-y-1">
+                {descartesJson.map((descarte) => (
+                  <li key={`${descarte.rotulo}\u0000${descarte.texto}`}>
+                    «{descarte.rotulo}»:{" "}
+                    <span className="font-mono">{textoDelDescarte(descarte.texto)}</span>
+                  </li>
+                ))}
+              </ul>
+              <p>
+                La corrida usa el valor que muestra Configuración. Si querías otro, vuelve a
+                escribirlo allí.
+              </p>
+              <Button variant="outline" size="sm" onClick={olvidarDescartesJson}>
+                Entendido
+              </Button>
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-3">
             {/* `disabled` NO mira el preflight: sólo el gate de siempre (config válido + dataset).
                 Lo único que cambia con un desajuste es el aspecto y el texto. */}

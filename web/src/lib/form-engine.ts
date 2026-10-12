@@ -10,6 +10,8 @@
  * el toggle activar/None y el editor JSON real quedan STUB para B23.5.
  */
 
+import { parseJsonInput } from "@/lib/config-store"
+
 // ---------------------------------------------------------------------------
 // Tipos del JSON-Schema (subset Draft 2020-12) — este módulo es su dueño para
 // no arrastrar runtime (fetch/fixture) al motor puro.
@@ -719,50 +721,97 @@ export function sincronizarEditorJson(
 }
 
 /**
- * Un texto del editor JSON que no se puede leer, guardado en el estado compartido (pasada 3 de
- * Codex sobre la capa B del SDD-32): sin él, al salir de Configuración el editor se desmontaba, el
- * aviso se perdía y la corrida usaba el último valor válido —con un campo encendido en blanco,
- * ninguno: tramos formados por los datos en vez de los cortes que la persona estaba escribiendo—.
- * `base` es la huella del valor del config sobre el que se escribió: si ese valor cambia desde
- * fuera (un YAML, otro trabajo), el borrador deja de estar vigente.
+ * Un texto del editor JSON que se descartó al salir del campo porque no se podía leer, con el rótulo
+ * del campo: lo que «Ejecutar» avisa (pasada 4 de Codex sobre la capa B del SDD-32).
  */
-export interface BorradorJson {
-  ruta: (string | number)[]
-  texto: string
-  base: string
+export interface DescarteJson {
   rotulo: string
+  texto: string
+}
+
+/** Largo máximo con que un aviso cita el texto descartado: lo justo para reconocerlo. */
+export const LARGO_DEL_DESCARTE = 80
+
+/** El texto descartado tal como lo cita un aviso: en una línea y recortado si es largo. */
+export function textoDelDescarte(texto: string): string {
+  const linea = texto.replace(/\s+/g, " ").trim()
+  return linea.length > LARGO_DEL_DESCARTE ? `${linea.slice(0, LARGO_DEL_DESCARTE)}…` : linea
 }
 
 /**
- * El borrador de `clave` si sigue vigente sobre `valor` (el valor del config en su ruta). Lo leen el
- * editor —que lo vuelve a mostrar con su error— y el interruptor del campo, que sigue encendido
- * mientras haya un borrador que corregir o descartar.
+ * El editor JSON al salir del campo (pasada 4 de Codex sobre la capa B del SDD-32). Un texto que se
+ * puede leer ya está en el config: nada cambia. Uno que no se puede leer se descarta y el editor
+ * vuelve al valor del config —el último válido—, con el texto descartado para avisarlo. Así lo que
+ * se ve es siempre lo que corre, y ningún borrador queda guardado aparte: la pasada 3 lo guardaba en
+ * el estado compartido por ruta y quedaba viejo al apagar una sección, mover una fila o reemplazar
+ * el config.
  */
-export function borradorVigenteEn(
-  borradores: Record<string, BorradorJson> | undefined,
-  clave: string,
+export function salirDelEditorJson(
+  estado: EstadoEditorJson,
   valor: unknown,
-): BorradorJson | undefined {
-  const guardado = borradores?.[clave]
-  return guardado !== undefined && guardado.base === huellaDelValor(valor) ? guardado : undefined
+): { estado: EstadoEditorJson; descartado: string | null } {
+  if (parseJsonInput(estado.texto).ok) return { estado, descartado: null }
+  return {
+    estado: { texto: serializarParaEditor(valor), visto: huellaDelValor(valor) },
+    descartado: estado.texto,
+  }
 }
 
-/** Los borradores que siguen vigentes sobre `config`: los que el gate de la corrida detiene. */
-export function borradoresVigentes(
-  borradores: Record<string, BorradorJson>,
-  config: unknown,
-): BorradorJson[] {
-  return Object.values(borradores).filter((borrador) => {
-    let actual: unknown = config
-    for (const tramo of borrador.ruta) {
-      if (actual === null || typeof actual !== "object") {
-        actual = undefined
-        break
-      }
-      actual = (actual as Record<string | number, unknown>)[tramo]
-    }
-    return huellaDelValor(actual) === borrador.base
-  })
+/**
+ * La identidad de las filas de una lista del formulario: la `key` de cada fila (pasada 4 de Codex
+ * sobre la capa B del SDD-32). Con la posición como `key`, subir, bajar o eliminar una fila dejaba
+ * el estado propio de sus campos —el aviso de un texto descartado, un interruptor encendido en
+ * blanco— en la fila que pasaba a ocupar esa posición. Las identidades se mueven con sus filas; una
+ * lista que cambió desde fuera (un YAML, otro trabajo) conserva las suyas si tiene el mismo largo
+ * —los campos adoptan los valores nuevos— y recibe identidades nuevas si no.
+ */
+export interface FilasDeLista {
+  huella: string
+  ids: number[]
+  siguiente: number
+}
+
+/** Las filas de `items`; con `previas`, las mismas si la lista no cambió desde fuera. */
+export function filasDeLista(items: readonly unknown[], previas?: FilasDeLista): FilasDeLista {
+  const huella = huellaDelValor(items)
+  if (previas === undefined) {
+    return { huella, ids: items.map((_, indice) => indice), siguiente: items.length }
+  }
+  if (previas.huella === huella) return previas
+  if (previas.ids.length === items.length) return { ...previas, huella }
+  return {
+    huella,
+    ids: items.map((_, indice) => previas.siguiente + indice),
+    siguiente: previas.siguiente + items.length,
+  }
+}
+
+/** Las filas tras mover la fila `index` `delta` posiciones (la misma regla que `moveListItem`). */
+export function moverFila(
+  filas: FilasDeLista,
+  nuevos: readonly unknown[],
+  index: number,
+  delta: number,
+): FilasDeLista {
+  return { ...filas, huella: huellaDelValor(nuevos), ids: moveListItem(filas.ids, index, delta) as number[] }
+}
+
+/** Las filas tras eliminar la fila `index` (la misma regla que `removeListItem`). */
+export function eliminarFila(
+  filas: FilasDeLista,
+  nuevos: readonly unknown[],
+  index: number,
+): FilasDeLista {
+  return { ...filas, huella: huellaDelValor(nuevos), ids: removeListItem(filas.ids, index) as number[] }
+}
+
+/** Las filas tras añadir una al final, con una identidad que ninguna otra tuvo. */
+export function anadirFila(filas: FilasDeLista, nuevos: readonly unknown[]): FilasDeLista {
+  return {
+    huella: huellaDelValor(nuevos),
+    ids: [...filas.ids, filas.siguiente],
+    siguiente: filas.siguiente + 1,
+  }
 }
 
 export function defaultForSchema(schema: JsonSchema, defs: Defs = {}): unknown {

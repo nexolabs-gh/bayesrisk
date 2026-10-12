@@ -29,6 +29,15 @@ entradas anteriores conservan el nombre con el que se publicaron.
 - Las corridas de los dos trabajos del scorecard en la pantalla cambian de `config_hash`, porque
   su config gana la sección `master_scale`; el de ningún preset ni el de un YAML sin la sección.
 
+### Corregido
+
+- **Un campo JSON de la configuración muestra siempre lo que corre.** Cargar un YAML, elegir un
+  ejemplo o cambiar de trabajo actualiza el editor, que antes seguía mostrando el valor anterior
+  mientras la corrida usaba el nuevo. Y al salir de un campo con un texto que no es JSON, el texto
+  se descarta, el campo vuelve a su último valor y «Ejecutar» lo avisa citándolo; antes se perdía
+  sin aviso y la corrida usaba otro valor. Las filas de una lista conservan lo suyo al subirlas,
+  bajarlas o eliminar otra.
+
 ## [2.11.0] — 2026-10-12
 
 ### Añadido
