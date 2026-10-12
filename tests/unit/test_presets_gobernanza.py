@@ -89,6 +89,15 @@ def test_encender_audit_no_mueve_el_config_hash_de_ningun_preset() -> None:
         )
 
 
+# Lo que la captura de la demo declara sobre el preset y SÍ entra a la identidad: la escala maestra
+# vacía de `scripts/capture_demo_fixtures_f1.py` (`DEMO_MASTER_SCALE`, D-ESC-9; decisión de Cami del
+# 2026-10-12). La gobernanza también va en la captura, pero no mueve el `config_hash`.
+_DECLARADO_EN_LA_CAPTURA: dict[str, dict[str, object]] = {
+    "f1-estandar-consumo": {"master_scale": {"grade_edges": None, "approval_cutoff": None}},
+    "f4-ifrs9-retail": {},
+}
+
+
 @pytest.mark.parametrize(
     ("fixture", "preset_id"),
     [
@@ -116,7 +125,8 @@ def test_los_fixtures_de_la_demo_conservan_su_config_hash(fixture: str, preset_i
     assert hash_publicado, f"{fixture} no trae config_hash en su lineage"
 
     del publicado
-    esperado = config_hash(BayesRiskConfig.model_validate(_configs_de_preset()[preset_id]))
+    declarado = {**_configs_de_preset()[preset_id], **_DECLARADO_EN_LA_CAPTURA[preset_id]}
+    esperado = config_hash(BayesRiskConfig.model_validate(declarado))
     assert hash_publicado == esperado, (
         f"{fixture} firma {hash_publicado[:16]}… y el preset produce {esperado[:16]}…: la demo "
         "quedó desalineada y su recaptura pasa a ser obligatoria por identidad (D-GOB-9)."

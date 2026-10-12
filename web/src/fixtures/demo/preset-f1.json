@@ -493,9 +493,13 @@
    "estado_validacion": "desarrollo",
    "author": "Bayes Advisory"
   },
-  "tracking": null
+  "tracking": null,
+  "master_scale": {
+   "grade_edges": null,
+   "approval_cutoff": null
+  }
  },
- "config_hash": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
+ "config_hash": "5037311efe486db01b93de8dc89f69e1fe55c1a6da5418ba5c257904e1819c1c",
  "dataset_id": "consumo_comportamiento",
  "name": "Preset estándar F1 — consumo (comportamiento)",
  "description": "Config F1 completo y curado, listo para correr sin tocar nada: scorecard de comportamiento (data→binning→selection→model→scorecard→calibration→performance→stability) sobre el dataset sintético de consumo."

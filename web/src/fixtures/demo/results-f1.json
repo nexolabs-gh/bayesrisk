@@ -1,16 +1,16 @@
 {
  "status": "done",
- "run_id": "664f184c3d004fb2a82af017aa45f378",
+ "run_id": "fac2d6ed783744ccab385cc484be8690",
  "error": null,
  "model_card": {
-  "run_id": "664f184c3d004fb2a82af017aa45f378",
-  "config_hash": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
+  "run_id": "fac2d6ed783744ccab385cc484be8690",
+  "config_hash": "5037311efe486db01b93de8dc89f69e1fe55c1a6da5418ba5c257904e1819c1c",
   "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8",
-  "git_sha": "748831629ae12028915ffd499b11c6e47c30ff01",
+  "git_sha": "267942a265a9df2fa3584001d694bce32abf7acb",
   "git_dirty": false,
   "root_seed": 20240706,
   "schema_version": "1.0.0",
-  "created_at": "2026-10-08T11:47:56.242549Z",
+  "created_at": "2026-10-12T15:46:35.515918Z",
   "purpose": "Demostración pública de bayesrisk: scorecard de comportamiento sobre una cartera de consumo sintética. Ilustra el flujo completo de construcción y validación; no decide sobre ninguna operación real.",
   "assumptions": [
    "Los datos son sintéticos y reproducibles: no representan a ninguna institución.",
@@ -110,7 +110,7 @@
     "umbral": "cohort",
     "valor": "cohort",
     "accion": "aplicar_estrategia",
-    "ts": "2026-10-08T11:47:56.540312Z",
+    "ts": "2026-10-12T15:46:35.828567Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -134,7 +134,7 @@
      }
     },
     "accion": "reportar_particiones",
-    "ts": "2026-10-08T11:47:56.540379Z",
+    "ts": "2026-10-12T15:46:35.828669Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -145,7 +145,7 @@
     "umbral": 0.25,
     "valor": "eje de cohorte sin cronología",
     "accion": "no_evaluable",
-    "ts": "2026-10-08T11:47:56.559691Z",
+    "ts": "2026-10-12T15:46:35.850046Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -159,7 +159,7 @@
      "variable": "ingreso_mensual"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-08T11:48:00.906667Z",
+    "ts": "2026-10-12T15:46:40.307831Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -173,7 +173,7 @@
      "variable": "deuda_ingreso"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-08T11:48:00.906737Z",
+    "ts": "2026-10-12T15:46:40.307918Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -187,7 +187,7 @@
      "variable": "utilizacion_linea"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-08T11:48:00.906764Z",
+    "ts": "2026-10-12T15:46:40.307945Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -201,7 +201,7 @@
      "variable": "mora_max_12m"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-08T11:48:00.906783Z",
+    "ts": "2026-10-12T15:46:40.307964Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -215,7 +215,7 @@
      "variable": "antiguedad_meses"
     },
     "accion": "registrar_tendencia",
-    "ts": "2026-10-08T11:48:00.906799Z",
+    "ts": "2026-10-12T15:46:40.307981Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -229,7 +229,7 @@
      "variable": "utilizacion_linea"
     },
     "accion": "conservar_variable",
-    "ts": "2026-10-08T11:48:00.907405Z",
+    "ts": "2026-10-12T15:46:40.308564Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -243,7 +243,7 @@
      "variable": "segmento"
     },
     "accion": "conservar_variable",
-    "ts": "2026-10-08T11:48:00.907447Z",
+    "ts": "2026-10-12T15:46:40.308605Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -257,7 +257,7 @@
      "variable": "segmento"
     },
     "accion": "diagnosticar_sin_eliminar",
-    "ts": "2026-10-08T11:48:00.907469Z",
+    "ts": "2026-10-12T15:46:40.308628Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -273,7 +273,7 @@
      "woe_column": "segmento__woe"
     },
     "accion": "excluir",
-    "ts": "2026-10-08T11:48:01.160491Z",
+    "ts": "2026-10-12T15:46:40.684450Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -289,7 +289,7 @@
      "p_value": 9.904266606971208e-41
     },
     "accion": "enter",
-    "ts": "2026-10-08T11:48:01.483098Z",
+    "ts": "2026-10-12T15:46:40.901432Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -305,7 +305,7 @@
      "p_value": null
     },
     "accion": "flag",
-    "ts": "2026-10-08T11:48:01.495652Z",
+    "ts": "2026-10-12T15:46:40.913945Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -321,7 +321,7 @@
      "p_value": 4.298619202001231e-28
     },
     "accion": "enter",
-    "ts": "2026-10-08T11:48:01.547049Z",
+    "ts": "2026-10-12T15:46:40.965927Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -337,7 +337,7 @@
      "p_value": 9.970285673886036e-12
     },
     "accion": "enter",
-    "ts": "2026-10-08T11:48:01.603300Z",
+    "ts": "2026-10-12T15:46:41.018289Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -353,7 +353,7 @@
      "p_value": 1.7899471110037847e-07
     },
     "accion": "enter",
-    "ts": "2026-10-08T11:48:01.642903Z",
+    "ts": "2026-10-12T15:46:41.058893Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -369,7 +369,7 @@
      "p_value": 0.00036461213095663236
     },
     "accion": "enter",
-    "ts": "2026-10-08T11:48:01.674456Z",
+    "ts": "2026-10-12T15:46:41.091528Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -389,7 +389,7 @@
      "woe_column": "ingreso_mensual__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-08T11:48:01.738596Z",
+    "ts": "2026-10-12T15:46:41.175781Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -411,7 +411,7 @@
      "woe_column": "ingreso_mensual__woe"
     },
     "accion": "flag",
-    "ts": "2026-10-08T11:48:01.738665Z",
+    "ts": "2026-10-12T15:46:41.175896Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "contribución al IV 1,0000 > máximo 0,90"
@@ -431,7 +431,7 @@
      "woe_column": "deuda_ingreso__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-08T11:48:01.738701Z",
+    "ts": "2026-10-12T15:46:41.175936Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -451,7 +451,7 @@
      "woe_column": "utilizacion_linea__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-08T11:48:01.738729Z",
+    "ts": "2026-10-12T15:46:41.175970Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -471,7 +471,7 @@
      "woe_column": "antiguedad_meses__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-08T11:48:01.738752Z",
+    "ts": "2026-10-12T15:46:41.176000Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -491,7 +491,7 @@
      "woe_column": "mora_max_12m__woe"
     },
     "accion": "entrar",
-    "ts": "2026-10-08T11:48:01.738773Z",
+    "ts": "2026-10-12T15:46:41.176027Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
@@ -509,7 +509,7 @@
      "optimizer": "newton"
     },
     "accion": "aceptar_ajuste",
-    "ts": "2026-10-08T11:48:01.738830Z",
+    "ts": "2026-10-12T15:46:41.176059Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -556,7 +556,7 @@
      }
     ],
     "accion": "usar_punto_determinista",
-    "ts": "2026-10-08T11:48:01.764201Z",
+    "ts": "2026-10-12T15:46:41.208690Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -571,7 +571,7 @@
      "n_variables": 5
     },
     "accion": "publicar_puntos_redondeados",
-    "ts": "2026-10-08T11:48:01.764461Z",
+    "ts": "2026-10-12T15:46:41.209088Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -586,7 +586,7 @@
      "target_pd": 0.23327442565008835
     },
     "accion": "fijar_ancla",
-    "ts": "2026-10-08T11:48:01.854520Z",
+    "ts": "2026-10-12T15:46:41.310639Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -600,7 +600,7 @@
      "n_fit": 3961
     },
     "accion": "ajustar_calibracion",
-    "ts": "2026-10-08T11:48:01.854569Z",
+    "ts": "2026-10-12T15:46:41.310731Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -615,7 +615,7 @@
      "raw_mean_pd_dev": 0.23327442565008835
     },
     "accion": "publicar_pd_calibrada",
-    "ts": "2026-10-08T11:48:01.854598Z",
+    "ts": "2026-10-12T15:46:41.310770Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -629,7 +629,7 @@
      "ties_created": 0
     },
     "accion": "registrar_ranking",
-    "ts": "2026-10-08T11:48:01.854624Z",
+    "ts": "2026-10-12T15:46:41.310799Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -644,7 +644,69 @@
      "statistic": 19.451071238480708
     },
     "accion": "revisar_calibracion",
-    "ts": "2026-10-08T11:48:02.020676Z",
+    "ts": "2026-10-12T15:46:41.447357Z",
+    "autor": null,
+    "motivo": null,
+    "detalle_legible": null
+   },
+   {
+    "step": null,
+    "regla": "master_scale_grades",
+    "umbral": {
+     "monotona": true,
+     "p_valor_maximo_entre_vecinos": 0.05,
+     "participacion_minima": 0.05,
+     "tramos_maximos": 10
+    },
+    "valor": {
+     "causa": null,
+     "cortes": [
+      493.5,
+      511.5,
+      526.5,
+      555.5
+     ],
+     "estado_del_solver": "OPTIMAL",
+     "origen": "formed",
+     "tramos": 5
+    },
+    "accion": "formar_tramos",
+    "ts": "2026-10-12T15:46:41.515908Z",
+    "autor": null,
+    "motivo": null,
+    "detalle_legible": null
+   },
+   {
+    "step": null,
+    "regla": "master_scale_pd",
+    "umbral": "development_observed",
+    "valor": {
+     "ancla": 0.23327442565008835,
+     "delta": -0.0018263473459344541,
+     "igualados": [],
+     "pd": [
+      0.04768122881497633,
+      0.13962309155935385,
+      0.2488747341268789,
+      0.36850072369576287,
+      0.5351540080706614
+     ]
+    },
+    "accion": "asignar_pd_por_tramo",
+    "ts": "2026-10-12T15:46:41.516008Z",
+    "autor": null,
+    "motivo": null,
+    "detalle_legible": null
+   },
+   {
+    "step": null,
+    "regla": "master_scale_tramo_rojo",
+    "umbral": "oot",
+    "valor": {
+     "tramo": 1
+    },
+    "accion": "alertar",
+    "ts": "2026-10-12T15:46:41.516046Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -687,6 +749,7 @@
       "results.calibration",
       "results.performance",
       "results.stability",
+      "results.master_scale",
       "validation",
       "validation.discrimination",
       "validation.calibration",
@@ -705,11 +768,12 @@
       "appendix_parameters.calibration",
       "appendix_parameters.performance",
       "appendix_parameters.stability",
-      "appendix_parameters.validation"
+      "appendix_parameters.validation",
+      "appendix_parameters.master_scale"
      ]
     },
     "accion": "renderizar_reporte",
-    "ts": "2026-10-08T11:48:26.828840Z",
+    "ts": "2026-10-12T15:47:08.702858Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -722,7 +786,7 @@
      "provider": "none"
     },
     "accion": "usar_narrativa_basica",
-    "ts": "2026-10-08T11:48:26.830392Z",
+    "ts": "2026-10-12T15:47:08.718527Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -733,10 +797,10 @@
     "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
     "valor": {
      "path": "scorecard_report.html",
-     "sha256": "ffafc315f9c303ac62d1e1d2dda32321df6eecfb32109777b8a297687f8d731e"
+     "sha256": "71e990f4af12badec9964190ef05649444f00733fb44315c4dccde60a887b8b1"
     },
     "accion": "publicar_html_local",
-    "ts": "2026-10-08T11:48:26.830441Z",
+    "ts": "2026-10-12T15:47:08.718639Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -749,7 +813,7 @@
      "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf"
     },
     "accion": "publicar_pdf_local",
-    "ts": "2026-10-08T11:48:26.830476Z",
+    "ts": "2026-10-12T15:47:08.718673Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -762,7 +826,7 @@
      "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd"
     },
     "accion": "publicar_qmd_local",
-    "ts": "2026-10-08T11:48:26.830496Z",
+    "ts": "2026-10-12T15:47:08.718695Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
@@ -775,20 +839,20 @@
      "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx"
     },
     "accion": "publicar_docx_local",
-    "ts": "2026-10-08T11:48:26.830512Z",
+    "ts": "2026-10-12T15:47:08.718712Z",
     "autor": null,
     "motivo": null,
     "detalle_legible": null
    }
   ],
   "determinism_caveats": [],
-  "review_date": "2026-10-08T11:48:26.838597Z",
-  "next_review_date": "2027-10-08T11:48:26.838597Z",
+  "review_date": "2026-10-12T15:47:08.728244Z",
+  "next_review_date": "2027-10-12T15:47:08.728244Z",
   "environment": {
    "python_version": "3.12.15",
    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
    "library_versions": {
-    "bayesrisk": "2.9.0",
+    "bayesrisk": "2.12.0",
     "numpy": "2.4.6",
     "pandas": "2.3.3",
     "pandera": "0.32.0",
@@ -798,26 +862,26 @@
     "PyYAML": "6.0.3"
    },
    "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
-   "captured_at": "2026-10-08T11:48:26.839546Z"
+   "captured_at": "2026-10-12T15:47:08.729283Z"
   }
  },
  "lineage": {
-  "git_sha": "748831629ae12028915ffd499b11c6e47c30ff01",
+  "git_sha": "267942a265a9df2fa3584001d694bce32abf7acb",
   "git_dirty": false,
   "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8",
-  "config_hash": "1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633",
+  "config_hash": "5037311efe486db01b93de8dc89f69e1fe55c1a6da5418ba5c257904e1819c1c",
   "root_seed": 20240706,
   "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
-  "runtime_environment_hash": "ca7dd4f5e0fd81523427628b015e65878e604320aa67b4b06d19c71ba9298005",
+  "runtime_environment_hash": "ff5ada2a124b9ad420a8412370bace20141d0fa18f4e6d66f4920bd0b1ad2cd6",
   "library_versions": {
-   "bayesrisk": "2.9.0",
+   "bayesrisk": "2.12.0",
    "numpy": "2.4.6",
    "pandas": "2.3.3",
    "pydantic": "2.13.4",
    "PyYAML": "6.0.3"
   },
   "determinism_caveats": [],
-  "created_at": "2026-10-08T11:47:56.242549Z",
+  "created_at": "2026-10-12T15:46:35.515918Z",
   "schema_version": "1.0.0",
   "injected_artifacts": []
  },
@@ -12228,7 +12292,7 @@
      "Archivo: consumo_comportamiento",
      "6.000 filas · 1.407 malos (23,45 %) · 8 columnas",
      "Muestras: Desarrollo 3.961 (23,33 %) · Holdout 1.031 (23,67 %) · Fuera de tiempo (OOT) 1.008 (23,71 %) — cohortes fuera de tiempo: 2024Q2 (columna «cohorte»); holdout 20 % del resto",
-     "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378"
+     "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690"
     ],
     "alerts": [],
     "table": {
@@ -13571,6 +13635,276 @@
     }
    },
    {
+    "stage": "master_scale",
+    "label": "Escala maestra",
+    "lines": [
+     "5 tramos de puntaje, del 1, de menor riesgo, al 5; cada uno con al menos el 5 % de Desarrollo y una tasa de malos distinta de la de sus vecinos.",
+     "PD del tramo de 4,77 % a 53,52 %; su promedio en Desarrollo es el ancla de la calibración, 23,33 %.",
+     "En Holdout y Fuera de tiempo (OOT) hay tramos que revisar (ver «Qué revisar»).",
+     "El tramo mayor tiene el 35,3 % de Desarrollo (tramo 2); índice de concentración 0,244.",
+     "Sin corte declarado: la tabla de cortes muestra, para cada límite, cuánto se aprueba, la tasa de malos, los malos evitados y los buenos rechazados.",
+     "La PD de cada tramo es su tasa de malos de Desarrollo llevada al ancla de la calibración; en una cartera de aprobados, la tabla mide a quien pasó la política anterior."
+    ],
+    "alerts": [
+     "En Fuera de tiempo (OOT), el tramo 1 subestima su PD (rojo)."
+    ],
+    "table": {
+     "columns": [
+      "Tramo",
+      "Puntaje",
+      "PD del tramo",
+      "Participación Desarrollo",
+      "Tasa de malos Desarrollo",
+      "Semáforo Desarrollo",
+      "Participación Holdout",
+      "Tasa de malos Holdout",
+      "Semáforo Holdout",
+      "Participación Fuera de tiempo (OOT)",
+      "Tasa de malos Fuera de tiempo (OOT)",
+      "Semáforo Fuera de tiempo (OOT)"
+     ],
+     "rows": [
+      [
+       "1",
+       "desde 556 puntos",
+       "4,77 %",
+       "12,40 %",
+       "4,68 %",
+       "Verde",
+       "12,71 %",
+       "9,16 %",
+       "Ámbar",
+       "13,39 %",
+       "11,85 %",
+       "Rojo"
+      ],
+      [
+       "2",
+       "de 527 a 555 puntos",
+       "13,96 %",
+       "35,27 %",
+       "13,96 %",
+       "Verde",
+       "34,72 %",
+       "15,36 %",
+       "Verde",
+       "36,61 %",
+       "17,07 %",
+       "Ámbar"
+      ],
+      [
+       "3",
+       "de 512 a 526 puntos",
+       "24,89 %",
+       "24,14 %",
+       "24,90 %",
+       "Verde",
+       "23,28 %",
+       "22,08 %",
+       "Verde",
+       "22,42 %",
+       "22,12 %",
+       "Verde"
+      ],
+      [
+       "4",
+       "de 494 a 511 puntos",
+       "36,85 %",
+       "19,72 %",
+       "36,88 %",
+       "Verde",
+       "20,66 %",
+       "36,62 %",
+       "Verde",
+       "18,85 %",
+       "34,74 %",
+       "Verde"
+      ],
+      [
+       "5",
+       "hasta 493 puntos",
+       "53,52 %",
+       "8,48 %",
+       "53,57 %",
+       "Verde",
+       "8,63 %",
+       "51,69 %",
+       "Verde",
+       "8,73 %",
+       "50,00 %",
+       "Verde"
+      ]
+     ]
+    },
+    "extra_tables": [
+     {
+      "title": "Tabla de puntos de corte",
+      "columns": [
+       "Muestra",
+       "Aprobar",
+       "Puntaje",
+       "Aprobados",
+       "Tasa de malos de los aprobados",
+       "PD esperada de los aprobados",
+       "Malos evitados",
+       "Buenos rechazados"
+      ],
+      "rows": [
+       [
+        "Desarrollo",
+        "Tramos 1 a 1",
+        "desde 556 puntos",
+        "12,40 %",
+        "4,68 %",
+        "4,77 %",
+        "97,51 %",
+        "84,59 %"
+       ],
+       [
+        "Desarrollo",
+        "Tramos 1 a 2",
+        "desde 527 puntos",
+        "47,66 %",
+        "11,55 %",
+        "11,57 %",
+        "76,41 %",
+        "45,01 %"
+       ],
+       [
+        "Desarrollo",
+        "Tramos 1 a 3",
+        "desde 512 puntos",
+        "71,80 %",
+        "16,03 %",
+        "16,05 %",
+        "50,65 %",
+        "21,37 %"
+       ],
+       [
+        "Desarrollo",
+        "Tramos 1 a 4",
+        "desde 494 puntos",
+        "91,52 %",
+        "20,52 %",
+        "20,53 %",
+        "19,48 %",
+        "5,14 %"
+       ],
+       [
+        "Desarrollo",
+        "Todos los tramos",
+        "todos los puntajes",
+        "100,00 %",
+        "23,33 %",
+        "23,33 %",
+        "0,00 %",
+        "0,00 %"
+       ],
+       [
+        "Holdout",
+        "Tramos 1 a 1",
+        "desde 556 puntos",
+        "12,71 %",
+        "9,16 %",
+        "4,77 %",
+        "95,08 %",
+        "84,88 %"
+       ],
+       [
+        "Holdout",
+        "Tramos 1 a 2",
+        "desde 527 puntos",
+        "47,43 %",
+        "13,70 %",
+        "11,50 %",
+        "72,54 %",
+        "46,38 %"
+       ],
+       [
+        "Holdout",
+        "Tramos 1 a 3",
+        "desde 512 puntos",
+        "70,71 %",
+        "16,46 %",
+        "15,91 %",
+        "50,82 %",
+        "22,62 %"
+       ],
+       [
+        "Holdout",
+        "Tramos 1 a 4",
+        "desde 494 puntos",
+        "91,37 %",
+        "21,02 %",
+        "20,64 %",
+        "18,85 %",
+        "5,46 %"
+       ],
+       [
+        "Holdout",
+        "Todos los tramos",
+        "todos los puntajes",
+        "100,00 %",
+        "23,67 %",
+        "23,48 %",
+        "0,00 %",
+        "0,00 %"
+       ],
+       [
+        "Fuera de tiempo (OOT)",
+        "Tramos 1 a 1",
+        "desde 556 puntos",
+        "13,39 %",
+        "11,85 %",
+        "4,77 %",
+        "93,31 %",
+        "84,53 %"
+       ],
+       [
+        "Fuera de tiempo (OOT)",
+        "Tramos 1 a 2",
+        "desde 527 puntos",
+        "50,00 %",
+        "15,67 %",
+        "11,50 %",
+        "66,95 %",
+        "44,73 %"
+       ],
+       [
+        "Fuera de tiempo (OOT)",
+        "Tramos 1 a 3",
+        "desde 512 puntos",
+        "72,42 %",
+        "17,67 %",
+        "15,64 %",
+        "46,03 %",
+        "21,85 %"
+       ],
+       [
+        "Fuera de tiempo (OOT)",
+        "Tramos 1 a 4",
+        "desde 494 puntos",
+        "91,27 %",
+        "21,20 %",
+        "20,02 %",
+        "18,41 %",
+        "5,72 %"
+       ],
+       [
+        "Fuera de tiempo (OOT)",
+        "Todos los tramos",
+        "todos los puntajes",
+        "100,00 %",
+        "23,71 %",
+        "22,95 %",
+        "0,00 %",
+        "0,00 %"
+       ]
+      ]
+     }
+    ]
+   },
+   {
     "stage": "report",
     "label": "Informe y ficha",
     "lines": [
@@ -13578,7 +13912,7 @@
      "Informe Word: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx",
      "Informe PDF: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf",
      "Fuente editable (Quarto): /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd",
-     "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378/audit_trail.jsonl"
+     "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690/audit_trail.jsonl"
     ],
     "alerts": [],
     "table": null
@@ -13615,21 +13949,22 @@
     "Tramos y WoE: ingreso_mensual: la tasa de malos invierte la tendencia en Fuera de tiempo (OOT)",
     "Tramos y WoE: mora_max_12m: la tasa de malos invierte la tendencia en Holdout y Fuera de tiempo (OOT)",
     "Modelo: Concentra más del 90 % del IV del modelo: ingreso_mensual",
-    "Validación formal: Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)"
+    "Validación formal: Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)",
+    "Escala maestra: En Fuera de tiempo (OOT), el tramo 1 subestima su PD (rojo)."
    ],
    "decisions": [],
    "files": [
     [
      "Carpeta del proyecto",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690"
     ],
     [
      "Evidencia de la corrida",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690"
     ],
     [
      "Registro de auditoría",
-     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/664f184c3d004fb2a82af017aa45f378/audit_trail.jsonl"
+     "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690/audit_trail.jsonl"
     ],
     [
      "Informe HTML",

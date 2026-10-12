@@ -720,6 +720,10 @@ describe("cobertura por grado (§0-20): la tabla sola escondería media cartera"
     noEvaluados: ValidationNotEvaluableGrade[],
   ): ResultsResponse => ({
     ...(demoF1 as unknown as ResultsResponse),
+    // Sin el resumen de la corrida: desde la recaptura de la 2.12.0 trae la escala maestra, cuya
+    // tabla pinta su propio semáforo por tramo («Verde», «Ámbar», «Rojo»), y este bloque mide sólo
+    // el panel de la validación (como `conValidacion`).
+    summaries: null,
     validation: {
       ...VALIDATION_F1,
       calibration: [...(VALIDATION_F1.calibration ?? []), ...porGrado],
@@ -1565,15 +1569,16 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
   })
 
   it("los fixtures de la demo traen el resumen desde la recaptura de 1.18.0 y el bloque se pinta una vez", () => {
-    // Una etapa plegada por cada etapa que corrió: once en el scorecard F1; en el IFRS 9, desde la
-    // recaptura de la 2.5.0, las cuatro de una provisión (Cartera, Curva de PD, Provisión IFRS 9,
-    // Informe y ficha), que antes salían con el molde del scorecard (dos).
+    // Una etapa plegada por cada etapa que corrió: doce en el scorecard F1 desde la recaptura de la
+    // 2.12.0, que declara la escala maestra (once antes); en el IFRS 9, desde la recaptura de la
+    // 2.5.0, las cuatro de una provisión (Cartera, Curva de PD, Provisión IFRS 9, Informe y ficha),
+    // que antes salían con el molde del scorecard (dos).
     const plegadas = (html: string): number =>
       ocurrencias(html, '<summary class="cursor-pointer text-sm font-medium text-foreground">')
     const f1 = render(demoF1 as unknown as ResultsResponse)
     expect(ocurrencias(f1, "Resumen de la corrida")).toBe(1)
     expect(ocurrencias(f1, "Resumen por etapa")).toBe(1)
-    expect(plegadas(f1)).toBe(11)
+    expect(plegadas(f1)).toBe(12)
     expect(f1).toContain("completada")
     const f4 = render(demoF4 as unknown as ResultsResponse)
     expect(ocurrencias(f4, "Resumen de la corrida")).toBe(1)

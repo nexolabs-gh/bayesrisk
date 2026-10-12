@@ -1149,6 +1149,7 @@ figcaption {
       <a href="#section-results-calibration" class="lvl-2">Calibración</a>
       <a href="#section-results-performance" class="lvl-2">Desempeño y discriminación</a>
       <a href="#section-results-stability" class="lvl-2">Estabilidad</a>
+      <a href="#section-results-master_scale" class="lvl-2">Escala maestra y puntos de corte</a>
       <a href="#section-validation" class="lvl-1">Validación formal</a>
       <a href="#section-validation-discrimination" class="lvl-2">Discriminación</a>
       <a href="#section-validation-calibration" class="lvl-2">Calibración</a>
@@ -1168,6 +1169,7 @@ figcaption {
       <a href="#section-appendix_parameters-performance" class="lvl-2">Desempeño y discriminación</a>
       <a href="#section-appendix_parameters-stability" class="lvl-2">Estabilidad</a>
       <a href="#section-appendix_parameters-validation" class="lvl-2">Validación formal</a>
+      <a href="#section-appendix_parameters-master_scale" class="lvl-2">Escala maestra y puntos de corte</a>
     </nav>
   </aside>
   <main>
@@ -1200,15 +1202,15 @@ figcaption {
     </div>
     <div class="cover-field">
       <dt>Fecha de emisión</dt>
-      <dd>2026-10-08</dd>
+      <dd>2026-10-12</dd>
     </div>
   </dl>
 
   <div class="lineage-box">
     <p class="lineage-caption">Trazabilidad de la corrida (lineage)</p>
-    <div class="lineage-line"><code>config_hash=1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633</code></div>
+    <div class="lineage-line"><code>config_hash=5037311efe486db01b93de8dc89f69e1fe55c1a6da5418ba5c257904e1819c1c</code></div>
     <div class="lineage-line"><code>data_hash=74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8</code></div>
-    <div class="lineage-line"><code>git_sha=748831629ae12028915ffd499b11c6e47c30ff01</code></div>
+    <div class="lineage-line"><code>git_sha=267942a265a9df2fa3584001d694bce32abf7acb</code></div>
     <div class="lineage-line"><code>root_seed=20240706</code></div>
   </div>
 
@@ -1237,7 +1239,7 @@ figcaption {
   <p>Las rutas son las que el informe escribió al generarse: si la corrida se copia o se archiva después —desde la interfaz, o al apartar una corrida anterior—, los archivos se buscan en su carpeta de destino, y el registro de auditoría deja constancia de cada uno que se escribió.</p>
 
   <dl class="summary-states">
-    <dt>Ejecución</dt><dd>corrieron sin fallos Datos y muestras, Análisis exploratorio, Tramos y WoE, Selección de variables, Modelo, Tarjeta de puntuación, Calibración, Desempeño, Estabilidad y Validación formal; este informe es la última etapa de la corrida</dd>
+    <dt>Ejecución</dt><dd>corrieron sin fallos Datos y muestras, Análisis exploratorio, Tramos y WoE, Selección de variables, Modelo, Tarjeta de puntuación, Calibración, Desempeño, Estabilidad, Validación formal y Escala maestra; este informe es la última etapa de la corrida</dd>
     <dt>Validación técnica</dt><dd>Falla — lo decide Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)</dd>
   </dl>
 
@@ -1260,6 +1262,7 @@ figcaption {
     <li>⚠ Tramos y WoE: mora_max_12m: la tasa de malos invierte la tendencia en Holdout y Fuera de tiempo (OOT)</li>
     <li>⚠ Modelo: Concentra más del 90 % del IV del modelo: ingreso_mensual</li>
     <li>⚠ Validación formal: Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)</li>
+    <li>⚠ Escala maestra: En Fuera de tiempo (OOT), el tramo 1 subestima su PD (rojo).</li>
   </ul>
 
   <h4>Decisiones humanas registradas</h4>
@@ -1489,6 +1492,11 @@ figcaption {
 <span class="toc-number">5.7</span>        <span class="toc-title">Estabilidad</span>
       </a>
     </li>
+    <li class="toc-level-2">
+      <a href="#section-results-master_scale">
+<span class="toc-number">5.8</span>        <span class="toc-title">Escala maestra y puntos de corte</span>
+      </a>
+    </li>
     <li class="toc-level-1">
       <a href="#section-validation">
 <span class="toc-number">6</span>        <span class="toc-title">Validación formal</span>
@@ -1582,6 +1590,11 @@ figcaption {
     <li class="toc-level-2">
       <a href="#section-appendix_parameters-validation">
 <span class="toc-number">C.10</span>        <span class="toc-title">Validación formal</span>
+      </a>
+    </li>
+    <li class="toc-level-2">
+      <a href="#section-appendix_parameters-master_scale">
+<span class="toc-number">C.11</span>        <span class="toc-title">Escala maestra y puntos de corte</span>
       </a>
     </li>
   </ul>
@@ -6179,6 +6192,57 @@ L 357.81 486.278125
 </figure>
 
 </section>
+<section id="section-results-master_scale" data-section-id="results.master_scale" data-kind="data" data-level="2" class="report-section subsection">
+  <h3 class="subsection-title"><span class="section-number">5.8</span>Escala maestra y puntos de corte</h3>
+
+
+  <p>5 tramos de puntaje, del 1, de menor riesgo, al 5; cada uno con al menos el 5 % de Desarrollo y una tasa de malos distinta de la de sus vecinos.</p>
+  <p>PD del tramo de 4,77 % a 53,52 %; su promedio en Desarrollo es el ancla de la calibración, 23,33 %.</p>
+  <p>En Holdout y Fuera de tiempo (OOT) hay tramos que revisar (ver «Qué revisar»).</p>
+  <p>El tramo mayor tiene el 35,3 % de Desarrollo (tramo 2); índice de concentración 0,244.</p>
+  <p>Sin corte declarado: la tabla de cortes muestra, para cada límite, cuánto se aprueba, la tasa de malos, los malos evitados y los buenos rechazados.</p>
+  <p>La PD de cada tramo es su tasa de malos de Desarrollo llevada al ancla de la calibración; en una cartera de aprobados, la tabla mide a quien pasó la política anterior.</p>
+  <p>Qué revisar: En Fuera de tiempo (OOT), el tramo 1 subestima su PD (rojo).</p>
+
+
+<figure class="table-block table-block--wide">
+  <figcaption class="table-title">Escala maestra — los tramos y su PD</figcaption>
+  <table id="table-master_scale-scale" data-table-key="master_scale.scale">
+    <thead><tr><th>Tramo</th><th>Puntaje</th><th>PD del tramo</th><th>Participación Desarrollo</th><th>Tasa de malos Desarrollo</th><th>Semáforo Desarrollo</th><th>Participación Holdout</th><th>Tasa de malos Holdout</th><th>Semáforo Holdout</th><th>Participación Fuera de tiempo (OOT)</th><th>Tasa de malos Fuera de tiempo (OOT)</th><th>Semáforo Fuera de tiempo (OOT)</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>desde 556 puntos</td><td>4,77 %</td><td>12,40 %</td><td>4,68 %</td><td>Verde</td><td>12,71 %</td><td>9,16 %</td><td>Ámbar</td><td>13,39 %</td><td>11,85 %</td><td>Rojo</td></tr>
+      <tr><td>2</td><td>de 527 a 555 puntos</td><td>13,96 %</td><td>35,27 %</td><td>13,96 %</td><td>Verde</td><td>34,72 %</td><td>15,36 %</td><td>Verde</td><td>36,61 %</td><td>17,07 %</td><td>Ámbar</td></tr>
+      <tr><td>3</td><td>de 512 a 526 puntos</td><td>24,89 %</td><td>24,14 %</td><td>24,90 %</td><td>Verde</td><td>23,28 %</td><td>22,08 %</td><td>Verde</td><td>22,42 %</td><td>22,12 %</td><td>Verde</td></tr>
+      <tr><td>4</td><td>de 494 a 511 puntos</td><td>36,85 %</td><td>19,72 %</td><td>36,88 %</td><td>Verde</td><td>20,66 %</td><td>36,62 %</td><td>Verde</td><td>18,85 %</td><td>34,74 %</td><td>Verde</td></tr>
+      <tr><td>5</td><td>hasta 493 puntos</td><td>53,52 %</td><td>8,48 %</td><td>53,57 %</td><td>Verde</td><td>8,63 %</td><td>51,69 %</td><td>Verde</td><td>8,73 %</td><td>50,00 %</td><td>Verde</td></tr>
+    </tbody>
+  </table>
+</figure>
+<figure class="table-block">
+  <figcaption class="table-title">Tabla de puntos de corte</figcaption>
+  <table id="table-master_scale-cutoffs" data-table-key="master_scale.cutoffs">
+    <thead><tr><th>Muestra</th><th>Aprobar</th><th>Puntaje</th><th>Aprobados</th><th>Tasa de malos de los aprobados</th><th>PD esperada de los aprobados</th><th>Malos evitados</th><th>Buenos rechazados</th></tr></thead>
+    <tbody>
+      <tr><td>Desarrollo</td><td>Tramos 1 a 1</td><td>desde 556 puntos</td><td>12,40 %</td><td>4,68 %</td><td>4,77 %</td><td>97,51 %</td><td>84,59 %</td></tr>
+      <tr><td>Desarrollo</td><td>Tramos 1 a 2</td><td>desde 527 puntos</td><td>47,66 %</td><td>11,55 %</td><td>11,57 %</td><td>76,41 %</td><td>45,01 %</td></tr>
+      <tr><td>Desarrollo</td><td>Tramos 1 a 3</td><td>desde 512 puntos</td><td>71,80 %</td><td>16,03 %</td><td>16,05 %</td><td>50,65 %</td><td>21,37 %</td></tr>
+      <tr><td>Desarrollo</td><td>Tramos 1 a 4</td><td>desde 494 puntos</td><td>91,52 %</td><td>20,52 %</td><td>20,53 %</td><td>19,48 %</td><td>5,14 %</td></tr>
+      <tr><td>Desarrollo</td><td>Todos los tramos</td><td>todos los puntajes</td><td>100,00 %</td><td>23,33 %</td><td>23,33 %</td><td>0,00 %</td><td>0,00 %</td></tr>
+      <tr><td>Holdout</td><td>Tramos 1 a 1</td><td>desde 556 puntos</td><td>12,71 %</td><td>9,16 %</td><td>4,77 %</td><td>95,08 %</td><td>84,88 %</td></tr>
+      <tr><td>Holdout</td><td>Tramos 1 a 2</td><td>desde 527 puntos</td><td>47,43 %</td><td>13,70 %</td><td>11,50 %</td><td>72,54 %</td><td>46,38 %</td></tr>
+      <tr><td>Holdout</td><td>Tramos 1 a 3</td><td>desde 512 puntos</td><td>70,71 %</td><td>16,46 %</td><td>15,91 %</td><td>50,82 %</td><td>22,62 %</td></tr>
+      <tr><td>Holdout</td><td>Tramos 1 a 4</td><td>desde 494 puntos</td><td>91,37 %</td><td>21,02 %</td><td>20,64 %</td><td>18,85 %</td><td>5,46 %</td></tr>
+      <tr><td>Holdout</td><td>Todos los tramos</td><td>todos los puntajes</td><td>100,00 %</td><td>23,67 %</td><td>23,48 %</td><td>0,00 %</td><td>0,00 %</td></tr>
+      <tr><td>Fuera de tiempo (OOT)</td><td>Tramos 1 a 1</td><td>desde 556 puntos</td><td>13,39 %</td><td>11,85 %</td><td>4,77 %</td><td>93,31 %</td><td>84,53 %</td></tr>
+      <tr><td>Fuera de tiempo (OOT)</td><td>Tramos 1 a 2</td><td>desde 527 puntos</td><td>50,00 %</td><td>15,67 %</td><td>11,50 %</td><td>66,95 %</td><td>44,73 %</td></tr>
+      <tr><td>Fuera de tiempo (OOT)</td><td>Tramos 1 a 3</td><td>desde 512 puntos</td><td>72,42 %</td><td>17,67 %</td><td>15,64 %</td><td>46,03 %</td><td>21,85 %</td></tr>
+      <tr><td>Fuera de tiempo (OOT)</td><td>Tramos 1 a 4</td><td>desde 494 puntos</td><td>91,27 %</td><td>21,20 %</td><td>20,02 %</td><td>18,41 %</td><td>5,72 %</td></tr>
+      <tr><td>Fuera de tiempo (OOT)</td><td>Todos los tramos</td><td>todos los puntajes</td><td>100,00 %</td><td>23,71 %</td><td>22,95 %</td><td>0,00 %</td><td>0,00 %</td></tr>
+    </tbody>
+  </table>
+</figure>
+
+</section>
 <section id="section-validation" data-section-id="validation" data-kind="prose" data-level="1" class="report-section chapter">
   <h2><span class="section-number">6</span>Validación formal</h2>
 
@@ -6357,21 +6421,21 @@ L 357.81 486.278125
 
   <h4>Parámetros y payload</h4>
   <dl>
-    <dt>config_hash</dt><dd>1063d6cfef0448c502b5f63c7e1f9f5b7ef234b0663b2d02a7527c52652c8633</dd>
-    <dt>created_at</dt><dd>2026-10-08T11:47:56.242549Z</dd>
+    <dt>config_hash</dt><dd>5037311efe486db01b93de8dc89f69e1fe55c1a6da5418ba5c257904e1819c1c</dd>
+    <dt>created_at</dt><dd>2026-10-12T15:46:35.515918Z</dd>
     <dt>data_hash</dt><dd>74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8</dd>
     <dt>determinism_caveats</dt><dd>[]</dd>
     <dt>git_dirty</dt><dd>no</dd>
-    <dt>git_sha</dt><dd>748831629ae12028915ffd499b11c6e47c30ff01</dd>
+    <dt>git_sha</dt><dd>267942a265a9df2fa3584001d694bce32abf7acb</dd>
     <dt>library_versions</dt><dd><pre>{
   &#34;PyYAML&#34;: &#34;6.0.3&#34;,
-  &#34;bayesrisk&#34;: &#34;2.9.0&#34;,
+  &#34;bayesrisk&#34;: &#34;2.12.0&#34;,
   &#34;numpy&#34;: &#34;2.4.6&#34;,
   &#34;pandas&#34;: &#34;2.3.3&#34;,
   &#34;pydantic&#34;: &#34;2.13.4&#34;
 }</pre></dd>
     <dt>root_seed</dt><dd>20240706</dd>
-    <dt>runtime_environment_hash</dt><dd>ca7dd4f5e0fd81523427628b015e65878e604320aa67b4b06d19c71ba9298005</dd>
+    <dt>runtime_environment_hash</dt><dd>ff5ada2a124b9ad420a8412370bace20141d0fa18f4e6d66f4920bd0b1ad2cd6</dd>
     <dt>schema_version</dt><dd>1.0.0</dd>
     <dt>uv_lock_hash</dt><dd>6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322</dd>
   </dl>
@@ -6422,6 +6486,9 @@ L 357.81 486.278125
   &#34;performance.discriminant_metrics&#34;,
   &#34;stability.psi_table&#34;,
   &#34;stability.stability_metrics&#34;,
+  &#34;master_scale.grades&#34;,
+  &#34;master_scale.grade_table&#34;,
+  &#34;master_scale.cutoff_table&#34;,
   &#34;data.states&#34;,
   &#34;data.partitions&#34;,
   &#34;data.exclusions&#34;,
@@ -6430,7 +6497,9 @@ L 357.81 486.278125
   &#34;validation.stability&#34;,
   &#34;validation.hosmer_lemeshow_groups.desarrollo&#34;,
   &#34;validation.hosmer_lemeshow_groups.oot&#34;,
-  &#34;validation.hosmer_lemeshow_groups.holdout&#34;
+  &#34;validation.hosmer_lemeshow_groups.holdout&#34;,
+  &#34;master_scale.scale&#34;,
+  &#34;master_scale.cutoffs&#34;
 ]</pre></dd>
   </dl>
 
@@ -6629,6 +6698,65 @@ L 357.81 486.278125
       <tr><td>&gt; 0,5066 y ≤ 0,5755</td><td class="num">395</td><td class="num">0,0997</td><td class="num">0,23797</td></tr>
       <tr><td>&gt; 0,5755 y ≤ 0,6618</td><td class="num">396</td><td class="num">0,09997</td><td class="num">0,2551</td></tr>
       <tr><td>&gt; 0,6618 y ≤ 0,9724</td><td class="num">396</td><td class="num">0,09997</td><td class="num">0,3106</td></tr>
+    </tbody>
+  </table>
+</figure>
+<figure class="table-block table-block--wide">
+  <figcaption class="table-title">Puntos de corte por muestra</figcaption>
+  <table id="table-master_scale-cutoff_table" data-table-key="master_scale.cutoff_table">
+    <thead><tr><th>sample</th><th class="num">grades_<wbr>approved</th><th class="num">cutoff_<wbr>score</th><th>declared</th><th class="num">n_<wbr>scored</th><th class="num">n_<wbr>with_<wbr>outcome</th><th class="num">n_<wbr>approved</th><th class="num">n_<wbr>approved_<wbr>with_<wbr>outcome</th><th class="num">n_<wbr>bad</th><th class="num">n_<wbr>good</th><th class="num">approved_<wbr>share</th><th class="num">approved_<wbr>bad_<wbr>rate</th><th class="num">approved_<wbr>expected_<wbr>pd</th><th class="num">bads_<wbr>avoided_<wbr>share</th><th class="num">goods_<wbr>rejected_<wbr>share</th></tr></thead>
+    <tbody>
+      <tr><td>desarrollo</td><td class="num">1</td><td class="num">555,50</td><td>no</td><td class="num">3.961</td><td class="num">3.961</td><td class="num">491</td><td class="num">491</td><td class="num">924</td><td class="num">3.037</td><td class="num">0,12396</td><td class="num">0,0468</td><td class="num">0,0477</td><td class="num">0,9751</td><td class="num">0,8459</td></tr>
+      <tr><td>desarrollo</td><td class="num">2</td><td class="num">526,50</td><td>no</td><td class="num">3.961</td><td class="num">3.961</td><td class="num">1.888</td><td class="num">1.888</td><td class="num">924</td><td class="num">3.037</td><td class="num">0,4766</td><td class="num">0,1155</td><td class="num">0,1157</td><td class="num">0,7641</td><td class="num">0,4501</td></tr>
+      <tr><td>desarrollo</td><td class="num">3</td><td class="num">511,50</td><td>no</td><td class="num">3.961</td><td class="num">3.961</td><td class="num">2.844</td><td class="num">2.844</td><td class="num">924</td><td class="num">3.037</td><td class="num">0,718001</td><td class="num">0,1603</td><td class="num">0,1605</td><td class="num">0,5065</td><td class="num">0,2137</td></tr>
+      <tr><td>desarrollo</td><td class="num">4</td><td class="num">493,50</td><td>no</td><td class="num">3.961</td><td class="num">3.961</td><td class="num">3.625</td><td class="num">3.625</td><td class="num">924</td><td class="num">3.037</td><td class="num">0,9152</td><td class="num">0,2052</td><td class="num">0,2053</td><td class="num">0,1948</td><td class="num">0,0514</td></tr>
+      <tr><td>desarrollo</td><td class="num">5</td><td class="num">—</td><td>no</td><td class="num">3.961</td><td class="num">3.961</td><td class="num">3.961</td><td class="num">3.961</td><td class="num">924</td><td class="num">3.037</td><td class="num">1,0000</td><td class="num">0,2333</td><td class="num">0,2333</td><td class="num">0,0000</td><td class="num">0,0000</td></tr>
+      <tr><td>holdout</td><td class="num">1</td><td class="num">555,50</td><td>no</td><td class="num">1.031</td><td class="num">1.031</td><td class="num">131</td><td class="num">131</td><td class="num">244</td><td class="num">787</td><td class="num">0,1271</td><td class="num">0,0916</td><td class="num">0,0477</td><td class="num">0,9508</td><td class="num">0,8488</td></tr>
+      <tr><td>holdout</td><td class="num">2</td><td class="num">526,50</td><td>no</td><td class="num">1.031</td><td class="num">1.031</td><td class="num">489</td><td class="num">489</td><td class="num">244</td><td class="num">787</td><td class="num">0,4743</td><td class="num">0,13701</td><td class="num">0,11499</td><td class="num">0,7254</td><td class="num">0,4638</td></tr>
+      <tr><td>holdout</td><td class="num">3</td><td class="num">511,50</td><td>no</td><td class="num">1.031</td><td class="num">1.031</td><td class="num">729</td><td class="num">729</td><td class="num">244</td><td class="num">787</td><td class="num">0,7071</td><td class="num">0,1646</td><td class="num">0,1591</td><td class="num">0,5082</td><td class="num">0,2262</td></tr>
+      <tr><td>holdout</td><td class="num">4</td><td class="num">493,50</td><td>no</td><td class="num">1.031</td><td class="num">1.031</td><td class="num">942</td><td class="num">942</td><td class="num">244</td><td class="num">787</td><td class="num">0,9137</td><td class="num">0,2102</td><td class="num">0,2064</td><td class="num">0,1885</td><td class="num">0,0546</td></tr>
+      <tr><td>holdout</td><td class="num">5</td><td class="num">—</td><td>no</td><td class="num">1.031</td><td class="num">1.031</td><td class="num">1.031</td><td class="num">1.031</td><td class="num">244</td><td class="num">787</td><td class="num">1,0000</td><td class="num">0,2367</td><td class="num">0,2348</td><td class="num">0,0000</td><td class="num">0,0000</td></tr>
+      <tr><td>oot</td><td class="num">1</td><td class="num">555,50</td><td>no</td><td class="num">1.008</td><td class="num">1.008</td><td class="num">135</td><td class="num">135</td><td class="num">239</td><td class="num">769</td><td class="num">0,1339</td><td class="num">0,1185</td><td class="num">0,0477</td><td class="num">0,9331</td><td class="num">0,8453</td></tr>
+      <tr><td>oot</td><td class="num">2</td><td class="num">526,50</td><td>no</td><td class="num">1.008</td><td class="num">1.008</td><td class="num">504</td><td class="num">504</td><td class="num">239</td><td class="num">769</td><td class="num">0,5000</td><td class="num">0,1567</td><td class="num">0,114996</td><td class="num">0,6695</td><td class="num">0,4473</td></tr>
+      <tr><td>oot</td><td class="num">3</td><td class="num">511,50</td><td>no</td><td class="num">1.008</td><td class="num">1.008</td><td class="num">730</td><td class="num">730</td><td class="num">239</td><td class="num">769</td><td class="num">0,7242</td><td class="num">0,1767</td><td class="num">0,1564</td><td class="num">0,4603</td><td class="num">0,2185</td></tr>
+      <tr><td>oot</td><td class="num">4</td><td class="num">493,50</td><td>no</td><td class="num">1.008</td><td class="num">1.008</td><td class="num">920</td><td class="num">920</td><td class="num">239</td><td class="num">769</td><td class="num">0,9127</td><td class="num">0,21196</td><td class="num">0,2002</td><td class="num">0,1841</td><td class="num">0,0572</td></tr>
+      <tr><td>oot</td><td class="num">5</td><td class="num">—</td><td>no</td><td class="num">1.008</td><td class="num">1.008</td><td class="num">1.008</td><td class="num">1.008</td><td class="num">239</td><td class="num">769</td><td class="num">1,0000</td><td class="num">0,2371</td><td class="num">0,2295</td><td class="num">0,0000</td><td class="num">0,0000</td></tr>
+    </tbody>
+  </table>
+</figure>
+<figure class="table-block table-block--wide">
+  <figcaption class="table-title">Tramos de la escala por muestra</figcaption>
+  <table id="table-master_scale-grade_table" data-table-key="master_scale.grade_table">
+    <thead><tr><th>sample</th><th class="num">grade</th><th class="num">n</th><th class="num">share</th><th class="num">n_<wbr>with_<wbr>outcome</th><th class="num">n_<wbr>bad</th><th class="num">bad_<wbr>rate</th><th class="num">pd</th><th class="num">jeffreys_<wbr>p_<wbr>value</th><th>traffic_<wbr>light</th></tr></thead>
+    <tbody>
+      <tr><td>desarrollo</td><td class="num">1</td><td class="num">491</td><td class="num">0,12396</td><td class="num">491</td><td class="num">23</td><td class="num">0,0468</td><td class="num">0,0477</td><td class="num">0,522</td><td>green</td></tr>
+      <tr><td>desarrollo</td><td class="num">2</td><td class="num">1.397</td><td class="num">0,3527</td><td class="num">1.397</td><td class="num">195</td><td class="num">0,1396</td><td class="num">0,1396</td><td class="num">0,498</td><td>green</td></tr>
+      <tr><td>desarrollo</td><td class="num">3</td><td class="num">956</td><td class="num">0,2414</td><td class="num">956</td><td class="num">238</td><td class="num">0,24895</td><td class="num">0,2489</td><td class="num">0,495</td><td>green</td></tr>
+      <tr><td>desarrollo</td><td class="num">4</td><td class="num">781</td><td class="num">0,1972</td><td class="num">781</td><td class="num">288</td><td class="num">0,3688</td><td class="num">0,3685</td><td class="num">0,493</td><td>green</td></tr>
+      <tr><td>desarrollo</td><td class="num">5</td><td class="num">336</td><td class="num">0,0848</td><td class="num">336</td><td class="num">180</td><td class="num">0,5357</td><td class="num">0,5352</td><td class="num">0,492</td><td>green</td></tr>
+      <tr><td>holdout</td><td class="num">1</td><td class="num">131</td><td class="num">0,1271</td><td class="num">131</td><td class="num">12</td><td class="num">0,0916</td><td class="num">0,0477</td><td class="num">0,015</td><td>amber</td></tr>
+      <tr><td>holdout</td><td class="num">2</td><td class="num">358</td><td class="num">0,3472</td><td class="num">358</td><td class="num">55</td><td class="num">0,1536</td><td class="num">0,1396</td><td class="num">0,2199</td><td>green</td></tr>
+      <tr><td>holdout</td><td class="num">3</td><td class="num">240</td><td class="num">0,2328</td><td class="num">240</td><td class="num">53</td><td class="num">0,2208</td><td class="num">0,2489</td><td class="num">0,843</td><td>green</td></tr>
+      <tr><td>holdout</td><td class="num">4</td><td class="num">213</td><td class="num">0,2066</td><td class="num">213</td><td class="num">78</td><td class="num">0,3662</td><td class="num">0,3685</td><td class="num">0,525</td><td>green</td></tr>
+      <tr><td>holdout</td><td class="num">5</td><td class="num">89</td><td class="num">0,0863</td><td class="num">89</td><td class="num">46</td><td class="num">0,5169</td><td class="num">0,5352</td><td class="num">0,636</td><td>green</td></tr>
+      <tr><td>oot</td><td class="num">1</td><td class="num">135</td><td class="num">0,1339</td><td class="num">135</td><td class="num">16</td><td class="num">0,1185</td><td class="num">0,0477</td><td class="num">&lt; 0,001</td><td>red</td></tr>
+      <tr><td>oot</td><td class="num">2</td><td class="num">369</td><td class="num">0,3661</td><td class="num">369</td><td class="num">63</td><td class="num">0,1707</td><td class="num">0,1396</td><td class="num">0,045</td><td>amber</td></tr>
+      <tr><td>oot</td><td class="num">3</td><td class="num">226</td><td class="num">0,2242</td><td class="num">226</td><td class="num">50</td><td class="num">0,2212</td><td class="num">0,2489</td><td class="num">0,831</td><td>green</td></tr>
+      <tr><td>oot</td><td class="num">4</td><td class="num">190</td><td class="num">0,1885</td><td class="num">190</td><td class="num">66</td><td class="num">0,3474</td><td class="num">0,3685</td><td class="num">0,726</td><td>green</td></tr>
+      <tr><td>oot</td><td class="num">5</td><td class="num">88</td><td class="num">0,0873</td><td class="num">88</td><td class="num">44</td><td class="num">0,5000</td><td class="num">0,5352</td><td class="num">0,746</td><td>green</td></tr>
+    </tbody>
+  </table>
+</figure>
+<figure class="table-block table-block--wide">
+  <figcaption class="table-title">Tramos de la escala maestra</figcaption>
+  <table id="table-master_scale-grades" data-table-key="master_scale.grades">
+    <thead><tr><th class="num">grade</th><th class="num">score_<wbr>min</th><th class="num">score_<wbr>max</th><th>label</th><th class="num">pd</th><th class="num">n_<wbr>development</th><th class="num">share_<wbr>development</th><th class="num">n_<wbr>bad_<wbr>development</th><th class="num">bad_<wbr>rate_<wbr>development</th><th>source</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="num">555,50</td><td class="num">—</td><td>desde 556 puntos</td><td class="num">0,0477</td><td class="num">491</td><td class="num">0,12396</td><td class="num">23</td><td class="num">0,0468</td><td>formed</td></tr>
+      <tr><td class="num">2</td><td class="num">526,50</td><td class="num">555,50</td><td>de 527 a 555 puntos</td><td class="num">0,1396</td><td class="num">1.397</td><td class="num">0,3527</td><td class="num">195</td><td class="num">0,1396</td><td>formed</td></tr>
+      <tr><td class="num">3</td><td class="num">511,50</td><td class="num">526,50</td><td>de 512 a 526 puntos</td><td class="num">0,2489</td><td class="num">956</td><td class="num">0,2414</td><td class="num">238</td><td class="num">0,24895</td><td>formed</td></tr>
+      <tr><td class="num">4</td><td class="num">493,50</td><td class="num">511,50</td><td>de 494 a 511 puntos</td><td class="num">0,3685</td><td class="num">781</td><td class="num">0,1972</td><td class="num">288</td><td class="num">0,3688</td><td>formed</td></tr>
+      <tr><td class="num">5</td><td class="num">—</td><td class="num">493,50</td><td>hasta 493 puntos</td><td class="num">0,5352</td><td class="num">336</td><td class="num">0,0848</td><td class="num">180</td><td class="num">0,5357</td><td>formed</td></tr>
     </tbody>
   </table>
 </figure>
@@ -7569,6 +7697,93 @@ L 357.81 486.278125
   &#34;traffic_light_cuts&#34;: null
 }</pre></dd>
   </dl>
+
+
+
+
+</section>
+<section id="section-appendix_parameters-master_scale" data-section-id="appendix_parameters.master_scale" data-kind="appendix" data-level="2" class="report-section appendix subsection">
+  <h3 class="subsection-title"><span class="section-number">C.11</span>Escala maestra y puntos de corte</h3>
+  <p class="source">Artefacto de origen: <code>master_scale.card</code></p>
+
+
+  <h4>Parámetros y payload</h4>
+  <dl>
+    <dt>anchor</dt><dd>0,2333</dd>
+    <dt>anchor_source</dt><dd>development_observed</dd>
+    <dt>approval_cutoff</dt><dd>—</dd>
+    <dt>cutoff_out_of_range</dt><dd>no</dd>
+    <dt>cuts</dt><dd><pre>[
+  &#34;493,50&#34;,
+  &#34;511,50&#34;,
+  &#34;526,50&#34;,
+  &#34;555,50&#34;
+]</pre></dd>
+    <dt>delta</dt><dd>-0,0018</dd>
+    <dt>diagnostics</dt><dd><pre>{
+  &#34;desarrollo&#34;: {
+    &#34;amber_grades&#34;: [],
+    &#34;hhi&#34;: &#34;0,2441&#34;,
+    &#34;inversions&#34;: [],
+    &#34;max_share&#34;: &#34;0,3527&#34;,
+    &#34;max_share_grade&#34;: 2,
+    &#34;monotonic&#34;: true,
+    &#34;not_evaluable_grades&#34;: [],
+    &#34;red_grades&#34;: []
+  },
+  &#34;holdout&#34;: {
+    &#34;amber_grades&#34;: [
+      1
+    ],
+    &#34;hhi&#34;: &#34;0,24104&#34;,
+    &#34;inversions&#34;: [],
+    &#34;max_share&#34;: &#34;0,3472&#34;,
+    &#34;max_share_grade&#34;: 2,
+    &#34;monotonic&#34;: true,
+    &#34;not_evaluable_grades&#34;: [],
+    &#34;red_grades&#34;: []
+  },
+  &#34;oot&#34;: {
+    &#34;amber_grades&#34;: [
+      2
+    ],
+    &#34;hhi&#34;: &#34;0,2454&#34;,
+    &#34;inversions&#34;: [],
+    &#34;max_share&#34;: &#34;0,3661&#34;,
+    &#34;max_share_grade&#34;: 2,
+    &#34;monotonic&#34;: true,
+    &#34;not_evaluable_grades&#34;: [],
+    &#34;red_grades&#34;: [
+      1
+    ]
+  }
+}</pre></dd>
+    <dt>effective_config</dt><dd><pre>{
+  &#34;approval_cutoff&#34;: null,
+  &#34;grade_edges&#34;: null
+}</pre></dd>
+    <dt>equalized_grades</dt><dd>[]</dd>
+    <dt>formation_cause</dt><dd>—</dd>
+    <dt>integer_card</dt><dd>sí</dd>
+    <dt>n_grades</dt><dd>5</dd>
+    <dt>neighbours_not_distinct</dt><dd>[]</dd>
+    <dt>pd</dt><dd><pre>[
+  &#34;0,0477&#34;,
+  &#34;0,1396&#34;,
+  &#34;0,2489&#34;,
+  &#34;0,3685&#34;,
+  &#34;0,5352&#34;
+]</pre></dd>
+    <dt>samples</dt><dd><pre>[
+  &#34;desarrollo&#34;,
+  &#34;holdout&#34;,
+  &#34;oot&#34;
+]</pre></dd>
+    <dt>score_direction</dt><dd>higher_is_lower_risk</dd>
+    <dt>solver_status</dt><dd>OPTIMAL</dd>
+    <dt>source</dt><dd>formed</dd>
+  </dl>
+
 
 
 
