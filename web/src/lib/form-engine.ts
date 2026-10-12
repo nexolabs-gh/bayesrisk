@@ -733,6 +733,20 @@ export interface BorradorJson {
   rotulo: string
 }
 
+/**
+ * El borrador de `clave` si sigue vigente sobre `valor` (el valor del config en su ruta). Lo leen el
+ * editor —que lo vuelve a mostrar con su error— y el interruptor del campo, que sigue encendido
+ * mientras haya un borrador que corregir o descartar.
+ */
+export function borradorVigenteEn(
+  borradores: Record<string, BorradorJson> | undefined,
+  clave: string,
+  valor: unknown,
+): BorradorJson | undefined {
+  const guardado = borradores?.[clave]
+  return guardado !== undefined && guardado.base === huellaDelValor(valor) ? guardado : undefined
+}
+
 /** Los borradores que siguen vigentes sobre `config`: los que el gate de la corrida detiene. */
 export function borradoresVigentes(
   borradores: Record<string, BorradorJson>,

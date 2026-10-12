@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest"
 import fixtureSchema from "@/fixtures/schema.json"
 import {
   ACTIVAR_EN_BLANCO,
+  borradorVigenteEn,
   borradoresVigentes,
   huellaDelValor,
   semillaAlActivar,
@@ -100,6 +101,14 @@ describe("un JSON a medio escribir bloquea la corrida", () => {
   it("un valor que cambió desde fuera deja el borrador sin vigencia", () => {
     const otro = { master_scale: { grade_edges: [520], approval_cutoff: null } }
     expect(borradoresVigentes({ "master_scale.grade_edges": borrador }, otro)).toEqual([])
+  })
+
+  it("el interruptor y el editor leen el mismo borrador vigente", () => {
+    const borradores = { "master_scale.grade_edges": borrador }
+    expect(borradorVigenteEn(borradores, "master_scale.grade_edges", null)).toBe(borrador)
+    expect(borradorVigenteEn(borradores, "master_scale.grade_edges", [520])).toBeUndefined()
+    expect(borradorVigenteEn(borradores, "master_scale.approval_cutoff", null)).toBeUndefined()
+    expect(borradorVigenteEn(undefined, "master_scale.grade_edges", null)).toBeUndefined()
   })
 
   it("sin borradores, el gate de siempre", () => {

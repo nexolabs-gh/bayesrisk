@@ -31,6 +31,7 @@ import {
 import { errorAtPath } from "@/lib/validation"
 import {
   ACTIVAR_EN_BLANCO,
+  borradorVigenteEn,
   type Defs,
   type EstadoEditorJson,
   type JsonSchema,
@@ -894,12 +895,18 @@ function NullableField(props: FieldRendererProps & { baseSchema: JsonSchema }) {
   // Encendido en blanco (`ui_activate_blank`): el interruptor está encendido y el config sigue sin
   // valor hasta que la persona lo escriba (el puntaje de aprobación de la escala maestra).
   const [enBlanco, setEnBlanco] = useState(false)
-  const active = (displayed !== null && displayed !== undefined) || enBlanco
   const id = path.join(".")
+  // Un texto a medio escribir en este campo (pasada 3 de Codex sobre la capa B del SDD-32) lo deja
+  // encendido al volver a Configuración: es lo que el aviso de «Ejecutar» pide corregir o borrar.
+  const borradores = useBorradoresJson()
+  const conBorrador = borradorVigenteEn(borradores?.borradoresJson, id, value) !== undefined
+  const active = (displayed !== null && displayed !== undefined) || enBlanco || conBorrador
 
   const handleToggle = (next: boolean) => {
     if (!next) {
+      // Apagar descarta también el texto a medio escribir: es el «bórralo» del aviso.
       setEnBlanco(false)
+      borradores?.setBorradorJson(id, null)
       onChange(path, null)
       return
     }
@@ -1410,8 +1417,7 @@ function JsonField(props: FieldRendererProps) {
   const clave = path.join(".")
   // Un texto ilegible que la persona dejó al salir de Configuración vuelve a verse con su error, si
   // sigue vigente sobre el valor del config (pasada 3 de Codex sobre la capa B del SDD-32).
-  const guardado = borradores?.borradoresJson[clave]
-  const pendiente = guardado?.base === huellaDelValor(value) ? guardado : undefined
+  const pendiente = borradorVigenteEn(borradores?.borradoresJson, clave, value)
   const [estado, setEstado] = useState<EstadoEditorJson>(() => ({
     texto: pendiente?.texto ?? serializarParaEditor(value),
     visto: huellaDelValor(value),

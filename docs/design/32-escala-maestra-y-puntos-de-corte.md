@@ -923,4 +923,6 @@ una decisión de §12; son precisiones de implementación, medidas.
   correr usaba el último valor válido—. Ahora el texto ilegible vive en el estado compartido con la
   huella del valor sobre el que se escribió: mientras siga vigente, el editor lo vuelve a mostrar
   con su error y «Ejecutar» se detiene diciendo qué campo corregir; si el valor cambia desde fuera
-  (un YAML, otro trabajo), deja de estar vigente. Sin cuarta pasada, por el criterio declarado.
+  (un YAML, otro trabajo), deja de estar vigente. Medido en el recorrido en vivo: el interruptor
+  del campo seguía apagado al volver, así que el borrador vigente lo mantiene encendido y apagarlo
+  lo descarta (el «bórralo» del aviso). Sin cuarta pasada, por el criterio declarado.
