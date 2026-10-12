@@ -69,6 +69,15 @@ export interface JsonSchema {
    */
   ui_null_label?: string
   /**
+   * Un campo `X | None` cuyo valor no tiene semilla defendible: encenderlo lo deja EN BLANCO,
+   * sin escribir nada al config, hasta que la persona escriba el valor. Sin la clave, encender
+   * siembra el default, la cota inferior o `0` (`defaultForSchema`). Lo declara el puntaje de
+   * aprobación de la escala maestra: el apetito de riesgo no tiene valor de fábrica (SDD-32 §13),
+   * y un `0` sembrado aprobaba toda la cartera sin que nadie lo escribiera (pasada 1 de Codex
+   * sobre la capa B).
+   */
+  ui_activate_blank?: boolean
+  /**
    * Qué ES el valor de un campo que nombra columnas (D-PRE-3, vocabulario en :type:`ColumnRole`).
    *
    * Va declarado —y no sólo alcanzable por la firma de índice— porque es metadato que **viaja con
@@ -652,6 +661,60 @@ export function variantDefaults(branchSchema: JsonSchema): Record<string, unknow
  * campos, array→[], número→cota inferior o 0, string→primer enum o "", bool→false). El
  * resultado es siempre no-null, para distinguir "activado vacío" de "desactivado" (None).
  */
+/** La semilla de `semillaAlActivar` para un campo que se enciende en blanco. */
+export const ACTIVAR_EN_BLANCO: unique symbol = Symbol("activar en blanco")
+
+/**
+ * Qué escribe encender el interruptor de un campo `X | None` (D-FX-8): la proyección canónica de
+ * sus hojas con default si el catálogo la trae; si no, la regla de `defaultForSchema`. Un campo
+ * con `ui_activate_blank` no escribe nada: se enciende en blanco (`ACTIVAR_EN_BLANCO`).
+ */
+export function semillaAlActivar(
+  campo: JsonSchema,
+  base: JsonSchema,
+  canonica: unknown,
+  defs: Defs = {},
+): unknown {
+  if (campo.ui_activate_blank === true) return ACTIVAR_EN_BLANCO
+  return canonica !== undefined ? canonica : defaultForSchema(base, defs)
+}
+
+/**
+ * El estado del editor JSON de un campo (`JsonField`): el texto que se ve y la huella del valor que
+ * ese texto representa. El texto lo escribe la persona; el valor puede cambiar desde fuera —un YAML
+ * cargado, otro trabajo, un ejemplo— sin que el editor se vuelva a montar, porque el formulario de
+ * cada sección conserva su `key` (pasada 1 de Codex sobre la capa B del SDD-32: con los cortes de la
+ * escala maestra a la vista, la pantalla mostraba unos y la corrida usaba otros).
+ */
+export interface EstadoEditorJson {
+  texto: string
+  visto: string
+}
+
+/** El texto con que el editor JSON muestra un valor del config; vacío si no hay valor. */
+export function serializarParaEditor(valor: unknown): string {
+  return valor === undefined ? "" : JSON.stringify(valor, null, 2)
+}
+
+/** La huella con que el editor reconoce un valor (`undefined` y `null` son el mismo vacío). */
+export function huellaDelValor(valor: unknown): string {
+  return JSON.stringify(valor ?? null)
+}
+
+/**
+ * El estado del editor tras recibir `valor` del config: si es el que el texto ya representa —el
+ * que la persona acaba de escribir—, el mismo estado (su texto no se reformatea); si cambió desde
+ * fuera, el editor lo muestra.
+ */
+export function sincronizarEditorJson(
+  estado: EstadoEditorJson,
+  valor: unknown,
+): EstadoEditorJson {
+  const huella = huellaDelValor(valor)
+  if (huella === estado.visto) return estado
+  return { texto: serializarParaEditor(valor), visto: huella }
+}
+
 export function defaultForSchema(schema: JsonSchema, defs: Defs = {}): unknown {
   const resolved = resolveRef(schema, defs)
   if (resolved.default !== undefined && resolved.default !== null) {

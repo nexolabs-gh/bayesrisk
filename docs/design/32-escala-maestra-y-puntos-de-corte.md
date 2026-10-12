@@ -894,3 +894,12 @@ una decisión de §12; son precisiones de implementación, medidas.
   formulario 18 → 19, esenciales en 16 secciones y 59 caminos, el sidebar del ejemplo F1 12 → 13,
   la política de invariantes (`master_scale` exenta: no lee columnas del archivo), el golden de
   campos de `ReportInputBundle` y el cuaderno publicado (12 libros).
+- **Pasada 1 de Codex sobre el código** (`093ae78`; tres hallazgos medium, ninguno contractual;
+  cada uno con su test nacido rojo y su control negativo): el editor JSON de la pantalla
+  (`grade_edges`) leía su valor sólo al montarse, así que cargar un YAML dejaba a la vista los
+  cortes viejos mientras la corrida usaba los nuevos —ahora adopta un valor que cambió desde fuera,
+  sin reformatear lo que la persona escribe; defecto preexistente de todo campo JSON—; encender
+  `approval_cutoff` sembraba `0`, un corte que aprueba toda la cartera sin que nadie lo decidiera
+  —la marca `ui_activate_blank` lo enciende en blanco—; y el anexo redondeaba los límites de los
+  tramos y los cortes que el cuerpo y los parámetros publican exactos —ahora son cortes por
+  procedencia, como los del semáforo—.

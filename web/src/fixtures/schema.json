@@ -13596,6 +13596,7 @@
                 "default": null,
                 "description": "El puntaje desde el que la institución aprueba: el lado de menor riesgo del corte. Vacío, la tabla de cortes muestra todos los posibles.",
                 "title": "Puntaje de aprobación",
+                "ui_activate_blank": true,
                 "ui_essential": true,
                 "ui_group": "Decisiones de la institución",
                 "ui_help": "El corte de aprobación es apetito de riesgo: ningún valor de fábrica es defendible. Se aprueba el lado de menor riesgo del corte y no tiene que ser un límite de tramo. Vacío, no hay decisión: la tabla de puntos de corte muestra, para cada límite, cuánto se aprueba, la tasa de malos, los malos evitados y los buenos rechazados.",

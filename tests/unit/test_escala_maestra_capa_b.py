@@ -284,3 +284,32 @@ def test_con_las_tres_puertas_la_escala_es_estable() -> None:
     for metodo in (Scorecard.set_grades, Scorecard.set_cutoff, Scorecard.apply):
         assert marca not in (metodo.__doc__ or ""), metodo.__name__
     assert marca not in (modulo.__doc__ or "")
+
+
+# ──────────────── pasada 1 de Codex sobre la capa B: los cortes, exactos ────────────────
+
+
+def test_los_cortes_de_la_escala_se_escriben_exactos_en_el_informe() -> None:
+    """Un corte redondeado describiría otra política (D-INF, cifras): los límites de cada tramo y el
+    corte de aprobación se escriben exactos en las tablas completas y en la ficha del anexo, como
+    en el cuerpo y en los parámetros (pasada 1 de Codex sobre la capa B)."""
+    from bayesrisk.report import renderer
+
+    for ruta in (
+        ("master_scale.cutoff_table", "cutoff_score"),
+        ("master_scale.grades", "score_min"),
+        ("master_scale.grades", "score_max"),
+        ("approval_cutoff",),
+        ("cuts",),
+    ):
+        assert renderer._format_number(512.123456, key_path=ruta) == "512,123456", ruta
+    # Lo que la escala MIDE sigue la regla de las cifras observadas.
+    assert renderer._format_number(0.123456789, key_path=("master_scale.grades", "pd")) == "0,1235"
+
+
+def test_encender_el_puntaje_de_aprobacion_no_inventa_un_corte() -> None:
+    """§13: el corte es apetito de riesgo; encenderlo en la pantalla lo deja en blanco, no en 0."""
+    from bayesrisk.master_scale.config import MasterScaleConfig
+
+    nodo = MasterScaleConfig.model_json_schema()["properties"]["approval_cutoff"]
+    assert nodo.get("ui_activate_blank") is True

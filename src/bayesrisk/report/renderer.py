@@ -1489,7 +1489,26 @@ def _es_booleano(value: Any) -> bool:
 #: performance; `traffic_light_cuts` de validation).
 _SEGMENTOS_DE_CORTE: Final = frozenset({"effective_config", "thresholds", "traffic_light_cuts"})
 #: Nombres de un corte del config, por sí solos (sin distinguir mayúsculas).
-_NOMBRES_DE_CORTE: Final = frozenset({"threshold", "alpha", "entry_p_value", "exit_p_value"})
+_NOMBRES_DE_CORTE: Final = frozenset(
+    # `cuts`, `approval_cutoff` y `grade_edges`: los cortes de la escala maestra (SDD-32), en su
+    # ficha y en su config (pasada 1 de Codex sobre la capa B).
+    {
+        "threshold",
+        "alpha",
+        "entry_p_value",
+        "exit_p_value",
+        "cuts",
+        "approval_cutoff",
+        "grade_edges",
+    }
+)
+#: Las columnas de una tabla que son cortes, por tabla: los límites de cada tramo y el corte de
+#: cada fila de la tabla de cortes de la escala maestra. Por procedencia (la tabla y la columna),
+#: no por nombre: `score_min` en otra tabla podría ser un resultado.
+_COLUMNAS_DE_CORTE: Final[dict[str, frozenset[str]]] = {
+    "master_scale.grades": frozenset({"score_min", "score_max"}),
+    "master_scale.cutoff_table": frozenset({"cutoff_score"}),
+}
 
 
 def _es_corte_del_config(key_path: tuple[str, ...]) -> bool:
@@ -1500,6 +1519,8 @@ def _es_corte_del_config(key_path: tuple[str, ...]) -> bool:
     código, que encontró los `thresholds` de las cards redondeados junto al `effective_config`
     exacto: el mismo corte con dos valores en el Anexo C).
     """
+    if len(key_path) == 2 and key_path[1] in _COLUMNAS_DE_CORTE.get(key_path[0], frozenset()):
+        return True
     for segmento in key_path:
         clave = segmento.strip().lower()
         if (

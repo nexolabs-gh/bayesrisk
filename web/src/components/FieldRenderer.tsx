@@ -30,13 +30,14 @@ import {
 } from "@/lib/effective-defaults"
 import { errorAtPath } from "@/lib/validation"
 import {
+  ACTIVAR_EN_BLANCO,
   type Defs,
+  type EstadoEditorJson,
   type JsonSchema,
   WILDCARD,
   acceptsWildcard,
   columnOptions,
   columnRole,
-  defaultForSchema,
   discriminatedBranchRef,
   discriminatedBranches,
   discriminatorProperty,
@@ -46,6 +47,7 @@ import {
   appendListItem,
   fieldPlaceholder,
   hasClosedOptions,
+  huellaDelValor,
   itemRefName,
   itemSchema,
   listItemLabel,
@@ -62,6 +64,9 @@ import {
   removeListItem,
   resolveRef,
   resolveWidget,
+  semillaAlActivar,
+  serializarParaEditor,
+  sincronizarEditorJson,
   toggleMultiselect,
   unwrapNullable,
   variantDefaults,
@@ -885,11 +890,15 @@ function NullableField(props: FieldRendererProps & { baseSchema: JsonSchema }) {
   // default es un objeto —`report.sections`, `model.stepwise`— aparecía apagado mientras el motor
   // corría con él encendido.
   const { displayed, provenance } = resolved(props)
-  const active = displayed !== null && displayed !== undefined
+  // Encendido en blanco (`ui_activate_blank`): el interruptor está encendido y el config sigue sin
+  // valor hasta que la persona lo escriba (el puntaje de aprobación de la escala maestra).
+  const [enBlanco, setEnBlanco] = useState(false)
+  const active = (displayed !== null && displayed !== undefined) || enBlanco
   const id = path.join(".")
 
   const handleToggle = (next: boolean) => {
     if (!next) {
+      setEnBlanco(false)
       onChange(path, null)
       return
     }
@@ -898,9 +907,16 @@ function NullableField(props: FieldRendererProps & { baseSchema: JsonSchema }) {
     // respaldo sin catálogo: sólo ve `default` del JSON Schema, que no existe para un submodelo
     // con `default_factory` — de ahí que sembrara objetos a medias.
     const canonica = childDefaults(props)
-    const semilla = canonica
-      ? canonicalProjection(canonica)
-      : defaultForSchema(baseSchema, defs)
+    const semilla = semillaAlActivar(
+      schema,
+      baseSchema,
+      canonica ? canonicalProjection(canonica) : undefined,
+      defs,
+    )
+    if (semilla === ACTIVAR_EN_BLANCO) {
+      setEnBlanco(true)
+      return
+    }
     onChange(path, semilla)
   }
 
@@ -1389,18 +1405,29 @@ function ListRowButton(props: {
  */
 function JsonField(props: FieldRendererProps) {
   const { path, value, onChange } = props
-  const [text, setText] = useState(() =>
-    value === undefined ? "" : JSON.stringify(value, null, 2),
-  )
+  const [estado, setEstado] = useState<EstadoEditorJson>(() => ({
+    texto: serializarParaEditor(value),
+    visto: huellaDelValor(value),
+  }))
   const [error, setError] = useState<string | null>(null)
+  // Un valor que cambió desde fuera —un YAML cargado, otro trabajo— se adopta durante el render
+  // (estado derivado, sin efectos): el formulario de la sección conserva su `key` y este editor no
+  // se vuelve a montar (pasada 1 de Codex sobre la capa B del SDD-32).
+  const sincronizado = sincronizarEditorJson(estado, value)
+  if (sincronizado !== estado) {
+    setEstado(sincronizado)
+    setError(null)
+  }
+  const text = sincronizado.texto
 
   const handleChange = (next: string) => {
-    setText(next)
     const result = parseJsonInput(next)
     if (result.ok) {
       setError(null)
+      setEstado({ texto: next, visto: huellaDelValor(result.value) })
       onChange(path, result.value)
     } else {
+      setEstado((previo) => ({ ...previo, texto: next }))
       setError(result.error)
     }
   }
