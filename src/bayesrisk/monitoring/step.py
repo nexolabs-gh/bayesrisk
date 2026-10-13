@@ -12,6 +12,7 @@ tarjeta ni en ninguna corrida anterior (IHN-004, IHN-011).
 
 from __future__ import annotations
 
+import datetime as dt
 import importlib
 from collections.abc import Mapping
 from pathlib import Path
@@ -154,12 +155,6 @@ class MonitoringStep(AuditableMixin):
         referencia = manifest["monitoring_reference"]
         pd_tramo = [float(p) for p in escala["grade_pd"]]
         k = len(pd_tramo)
-        lineage = study.run_context.lineage
-        if lineage is not None:
-            # D-MNT-1 (§5.3, §9): la ruta de la tarjeta queda fuera del `config_hash`; su
-            # contenido lo identifica su huella, en el lineage de la corrida.
-            lineage.bundle_hash = tarjeta.bundle_hash
-
         faltan = [c for c in (cfg.period, cfg.default) if c is not None and c not in frame.columns]
         if faltan:
             raise MonitoringInputError(
@@ -429,6 +424,7 @@ class MonitoringStep(AuditableMixin):
                 "last_with_outcome_period": p_previo,
                 "last_with_outcome_verdict": v_previo.verdict,
                 "last_with_outcome_reason": frase(p_previo, v_previo),
+                "last_with_outcome_not_evaluable": tuple(con_desenlace_previo[-1][3]),
             }
         veredicto_corrida = MonitoringVerdict(
             period=ultimo,
@@ -478,8 +474,16 @@ class MonitoringStep(AuditableMixin):
             verdict=veredicto_corrida,
             card=ficha,
         )
-        self._registrar(ficha, auc_ref)
+        # Primero la evidencia, después su identidad y el trail: un intento que no publica (un
+        # `run_step` repetido choca con los artefactos de la corrida terminada) no puede cambiar
+        # la huella de la tarjeta que esa corrida midió (pasada 2 de Codex; §9, IHN-011).
         self._publicar(study, resultado)
+        lineage = study.run_context.lineage
+        if lineage is not None:
+            # D-MNT-1 (§5.3, §9): la ruta de la tarjeta queda fuera del `config_hash`; su
+            # contenido lo identifica su huella, en el lineage de la corrida.
+            lineage.bundle_hash = tarjeta.bundle_hash
+        self._registrar(ficha, auc_ref)
         return resultado
 
     # ── trail ───────────────────────────────────────────────────────────────────────────
@@ -641,7 +645,10 @@ def _periodos(serie: Any, pd: Any) -> tuple[Any, PeriodKind, list[str]]:
     Una fecha se agrupa por mes (``AAAA-MM``); un número se ordena como número; un texto, como
     texto (la misma lectura que ``stability``). Una fila sin periodo queda fuera y se cuenta.
     """
-    if pd.api.types.is_datetime64_any_dtype(serie):
+    if es_fecha(serie, pd):
+        # Un CSV con fechas ISO llega como objetos ``datetime.date`` (pasada 2 de Codex): son
+        # fechas, no textos diarios.
+        serie = pd.to_datetime(serie)
         etiquetas = serie.dt.strftime("%Y-%m")
         etiquetas = etiquetas.where(serie.notna(), None)
         return etiquetas, "date_month", sorted(str(e) for e in etiquetas.dropna().unique())
@@ -650,10 +657,22 @@ def _periodos(serie: Any, pd: Any) -> tuple[Any, PeriodKind, list[str]]:
         # periodos se fundirían, contados dos veces (pasada 1 de Codex). Se ordena el valor exacto.
         valores = sorted(set(serie.dropna().tolist()))
         rotulo = {v: _rotulo_numerico(v) for v in valores}
-        etiquetas = serie.map(lambda v: None if pd.isna(v) else rotulo[v])
+        # `astype(object)`: un entero nullable con vacíos pasaría por float64 en el `map` de pandas
+        # y se fundiría igual (pasada 2 de Codex).
+        etiquetas = serie.astype(object).map(lambda v: None if pd.isna(v) else rotulo[v])
         return etiquetas, "number", [rotulo[v] for v in valores]
     etiquetas = serie.map(lambda v: None if pd.isna(v) else str(v))
     return etiquetas, "text", sorted(str(e) for e in etiquetas.dropna().unique())
+
+
+def es_fecha(serie: Any, pd: Any) -> bool:
+    """Si la columna de periodo es una fecha: ``datetime64`` u objetos fecha de Python."""
+    if pd.api.types.is_datetime64_any_dtype(serie):
+        return True
+    if not pd.api.types.is_object_dtype(serie):
+        return False
+    valores = serie.dropna()
+    return bool(len(valores.index)) and all(isinstance(v, dt.date) for v in valores)
 
 
 def _rotulo_numerico(valor: Any) -> str:

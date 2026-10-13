@@ -603,3 +603,90 @@ def test_sin_accion_con_evidencia_parcial_no_lo_afirma_todo(entorno: dict[str, A
     assert any("Evidencia parcial" in alerta for alerta in final.review)
     assert "Sin alertas" not in final.text()
     assert any("Evidencia parcial" in alerta for alerta in final.to_dict()["review"])
+
+
+# ── la pasada 2 de Codex sobre el código ────────────────────────────────────────────────
+
+
+def test_un_reintento_que_no_publica_no_cambia_la_huella(entorno: dict[str, Any]) -> None:
+    """§9: un ``run_step`` repetido choca con la evidencia terminada y no cambia su lineage."""
+    import shutil
+
+    from bayesrisk.core.exceptions import ArtifactExistsError
+
+    mon = _monitor(entorno, entorno["comportamiento"], "reintento")
+    mon.run()
+    original = mon.study.run_context.lineage.bundle_hash
+    tarjeta = entorno["tarjeta"]
+    otra = _variante(
+        tarjeta, master_scale={**tarjeta.manifest["master_scale"], "approval_cutoff": 500.0}
+    )
+    assert otra.bundle_hash != original
+    copia = Path(mon.config.monitoring.bundle)
+    shutil.rmtree(copia)
+    otra.save(copia)
+    with pytest.raises(ArtifactExistsError):
+        mon.study.run_step("monitoring")
+    assert mon.study.run_context.lineage.bundle_hash == original
+
+
+def test_las_fechas_como_objetos_se_agrupan_por_mes(
+    entorno: dict[str, Any], tmp_path: Path
+) -> None:
+    """Un CSV con fechas ISO llega como ``datetime.date``: son fechas, también desde el archivo."""
+    import datetime as dt
+
+    datos = entorno["comportamiento"].copy()
+    dias = {"2023Q1": dt.date(2023, 2, 14), "2023Q2": dt.date(2023, 5, 3)}
+    datos["fecha"] = datos["cohorte"].map(dias).fillna(dt.date(2024, 1, 31))
+    datos.loc[datos.index[::2], "fecha"] = datos.loc[datos.index[::2], "fecha"].map(
+        lambda d: d.replace(day=1)
+    )
+    esperado = ["2023-02", "2023-05", "2024-01"]
+    # La puerta completa (un YAML que no declara la columna) le entrega al paso los objetos tal
+    # cual: el paso también los lee como fechas.
+    from bayesrisk.monitoring.step import _periodos
+
+    assert _periodos(datos["fecha"], pd)[1:] == ("date_month", esperado)
+    mon = _monitor(entorno, datos, "fechas-objeto", period="fecha")
+    mon.run()
+    assert mon.study.run_context.status == "done", mon.study.run_context.error
+    assert mon.study.artifacts.get("monitoring", "periods")["period"].tolist() == esperado
+    csv = tmp_path / "cartera.csv"
+    datos.to_csv(csv, index=False)
+    desde_csv = _monitor(entorno, csv, "fechas-csv", period="fecha")
+    desde_csv.run()
+    assert desde_csv.study.run_context.status == "done", desde_csv.study.run_context.error
+    periodos = desde_csv.study.artifacts.get("monitoring", "periods")
+    assert periodos["period"].tolist() == esperado
+    assert desde_csv.study.artifacts.get("monitoring", "card").period_kind == "date_month"
+
+
+def test_los_enteros_grandes_con_vacios_tampoco_se_funden(entorno: dict[str, Any]) -> None:
+    datos = entorno["comportamiento"].copy()
+    datos["periodo"] = pd.array([2**53] * 3_000 + [2**53 + 1] * 2_990 + [pd.NA] * 10, dtype="Int64")
+    mon = _monitor(entorno, datos, "enteros-con-vacios", period="periodo")
+    mon.run()
+    periodos = mon.study.artifacts.get("monitoring", "periods")
+    assert periodos["period"].tolist() == [str(2**53), str(2**53 + 1)]
+    assert periodos["n_rows"].tolist() == [3_000, 2_990]
+    assert mon.study.artifacts.get("monitoring", "card").n_rows_without_period == 10
+
+
+def test_un_periodo_inmaduro_no_oculta_la_evidencia_parcial_del_anterior(
+    entorno: dict[str, Any],
+) -> None:
+    datos = entorno["comportamiento"].copy()
+    datos["bad_flag"] = datos["bad_flag"].astype("float64")
+    conservar = datos.index[datos["cohorte"] == "2024Q1"][0]
+    datos.loc[datos.index != conservar, "bad_flag"] = np.nan
+    mon = _monitor(entorno, datos, "parcial-y-sin-desenlace")
+    mon.run()
+    veredicto = mon.study.artifacts.get("monitoring", "verdict")
+    assert (veredicto.period, veredicto.verdict) == ("2024Q2", "no_outcome_yet")
+    assert veredicto.last_with_outcome_period == "2024Q1"
+    assert veredicto.last_with_outcome_not_evaluable
+    final = mon.summary()
+    assert any("Evidencia parcial en 2024Q1" in alerta for alerta in final.review)
+    assert "Evidencia parcial" in final.validation
+    assert "Sin alertas" not in final.text()

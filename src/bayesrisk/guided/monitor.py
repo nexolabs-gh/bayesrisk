@@ -151,7 +151,7 @@ class Monitor(_PuertaGuiada):
     ) -> None:
         """Infiere, arma el config y lo comprueba; los snapshots se publican al final."""
         from bayesrisk.monitoring.exceptions import MonitoringInputError
-        from bayesrisk.monitoring.step import _desenlace, _periodos
+        from bayesrisk.monitoring.step import _desenlace, _periodos, es_fecha
 
         for nombre, valor in (("period", period), ("default", default)):
             if valor is not None and (not isinstance(valor, str) or not valor.strip()):
@@ -273,7 +273,11 @@ class Monitor(_PuertaGuiada):
         self._tarjeta_pendiente = (destino, tarjeta)
         self._tarjeta_huella = (destino, tarjeta.bundle_hash)
 
-        esquema = columnas_esquema(frame[declaradas])
+        # Un periodo de fechas como objetos (CSV con fechas ISO) se declara fecha con coacción,
+        # para que la validación del esquema no lo rechace como texto (pasada 2 de Codex).
+        esquema = columnas_esquema(
+            frame[declaradas], fechas=[period] if es_fecha(frame[period], pd) else ()
+        )
         cfg: dict[str, Any] = {
             "schema_version": "1.0.0",
             "name": self._name,

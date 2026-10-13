@@ -4097,9 +4097,10 @@ def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
     ]
     alertas: list[str] = []
     if veredicto.get("last_with_outcome_period"):
+        parcial = " (evidencia parcial)" if veredicto.get("last_with_outcome_not_evaluable") else ""
         lines.append(
             f"Último periodo con desenlace, {veredicto['last_with_outcome_period']}: "
-            f"{VEREDICTOS[str(veredicto['last_with_outcome_verdict'])]} — "
+            f"{VEREDICTOS[str(veredicto['last_with_outcome_verdict'])]}{parcial} — "
             f"{veredicto['last_with_outcome_reason']}."
         )
     n_periodos = len(periodos.index)
@@ -4143,22 +4144,18 @@ def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
     else:
         partes.append("sin desenlace todavía")
     lines.append(f"{ultima['period']}: " + " · ".join(partes) + ".")
-    if veredicto.get("not_evaluable"):
-        causas = []
-        for item in veredicto["not_evaluable"]:
-            indicador, _, causa = str(item).partition(":")
-            if indicador.startswith("grade_"):
-                nombre = f"el tramo {indicador.removeprefix('grade_')}"
-            else:
-                nombre = INDICADORES.get(indicador, indicador)
-            causas.append(f"{nombre}, {CAUSAS.get(causa, causa)}")
-        # Una alerta y no una línea: el resumen final la lleva a «Qué revisar» (pasada 1 de Codex:
-        # como línea, `summary()` decía «Sin alertas» con la mitad de la evidencia ausente).
-        alertas.append(
-            f"Evidencia parcial en {veredicto['period']}: no se pudo evaluar "
-            + "; ".join(causas)
-            + "."
-        )
+    # Una alerta y no una línea: el resumen final la lleva a «Qué revisar» (pasada 1 de Codex:
+    # como línea, `summary()` decía «Sin alertas» con la mitad de la evidencia ausente); también la
+    # del último periodo con desenlace cuando lo sigue uno sin desenlace (pasada 2).
+    for periodo, items in (
+        (
+            veredicto.get("last_with_outcome_period"),
+            veredicto.get("last_with_outcome_not_evaluable"),
+        ),
+        (veredicto["period"], veredicto.get("not_evaluable")),
+    ):
+        if periodo and items:
+            alertas.append(_alerta_de_evidencia_parcial(str(periodo), items, INDICADORES, CAUSAS))
     lines.append(
         "Umbrales fijos: PSI 0,10 y 0,25; p-valores 0,05 y 0,01; 30 operaciones con desenlace por "
         "tramo; 2 malos para el AUC."
@@ -4177,6 +4174,24 @@ def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
         formats=_FORMATOS_PERIODOS,
         extra_tables=extra,
     )
+
+
+def _alerta_de_evidencia_parcial(
+    periodo: str,
+    items: Sequence[str],
+    indicadores: Mapping[str, str],
+    causas: Mapping[str, str],
+) -> str:
+    """«Evidencia parcial en 2024Q2: no se pudo evaluar …», con cada indicador y su causa."""
+    partes = []
+    for item in items:
+        indicador, _, causa = str(item).partition(":")
+        if indicador.startswith("grade_"):
+            nombre = f"el tramo {indicador.removeprefix('grade_')}"
+        else:
+            nombre = indicadores.get(indicador, indicador)
+        partes.append(f"{nombre}, {causas.get(causa, causa)}")
+    return f"Evidencia parcial en {periodo}: no se pudo evaluar " + "; ".join(partes) + "."
 
 
 #: El título de la tabla adicional del resumen «Monitoreo».
@@ -4565,7 +4580,7 @@ def _resumen_final_monitoreo(
             f"{VEREDICTOS[str(veredicto['verdict'])]} en {veredicto['period']} — "
             f"{veredicto['action']}"
         )
-        if veredicto.get("partial_evidence"):
+        if veredicto.get("partial_evidence") or veredicto.get("last_with_outcome_not_evaluable"):
             validacion += " Evidencia parcial: ver «Qué revisar»."
     elif study is None:
         validacion = "sin correr todavía"

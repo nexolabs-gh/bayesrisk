@@ -650,3 +650,12 @@ salvo la primera, que decidió Cami.
     ahora se ordenan exactos. Y «sin acción» con evidencia parcial decía que todo estaba en línea y
     el resumen final, «Sin alertas»: ahora la acción dice que parte no se pudo evaluar y la
     evidencia parcial va a «Qué revisar».
+14. **Pasada 2 de Codex sobre el código** (`9ce1955`): cuatro hallazgos, reales y ninguno
+    contractual —dos completaban arreglos de la pasada 1—, corregidos con su test nacido rojo y su
+    control negativo. La huella de la tarjeta entra al lineage sólo después de publicar la
+    evidencia: un `run_step` repetido sobre una corrida terminada cambiaba su `bundle_hash` antes
+    de chocar con sus artefactos. Un periodo de fechas como objetos —un CSV con fechas ISO llega
+    así— se lee como fecha y se agrupa por mes, en la puerta guiada (que lo declara fecha con
+    coacción) y en el paso. Los enteros grandes con vacíos (`Int64`) tampoco se funden. Y la
+    evidencia parcial del último periodo con desenlace no se pierde cuando lo sigue uno sin
+    desenlace.

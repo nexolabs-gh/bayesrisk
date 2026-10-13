@@ -51,6 +51,9 @@ class MonitoringVerdict(BaseModel):
     last_with_outcome_period: str | None = None
     last_with_outcome_verdict: VerdictCode | None = None
     last_with_outcome_reason: str | None = None
+    #: Lo que no se pudo evaluar en ese periodo: su evidencia parcial no se pierde porque lo siga
+    #: uno sin desenlace (pasada 2 de Codex).
+    last_with_outcome_not_evaluable: tuple[str, ...] = ()
 
 
 class MonitoringAlert(BaseModel):
