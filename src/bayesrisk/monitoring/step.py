@@ -142,7 +142,7 @@ class MonitoringStep(AuditableMixin):
             MonitoringResult,
             MonitoringVerdict,
         )
-        from bayesrisk.monitoring.textos import ACCIONES, INDICADORES, razon
+        from bayesrisk.monitoring.textos import INDICADORES, accion, razon
 
         cfg = _config_desde_study(study, respaldo=self.config)
         frame = study.artifacts.get("data", "frame")
@@ -180,7 +180,10 @@ class MonitoringStep(AuditableMixin):
         ref_tramos = [int(c) for c in referencia["grade_counts"]]
         n_dev = int(referencia["n_development"])
         auc_ref = referencia["auc_initial"]
-        auc_inicial = None if auc_ref["auc"] is None or auc_ref["cause"] else float(auc_ref["auc"])
+        # §3.4: la prueba usa la varianza del PERIODO; la de Holdout no entra. Un AUC inicial con
+        # varianza nula (todo Holdout en un tramo, o separado) sigue siendo el AUC inicial; sólo
+        # falta si no se pudo calcular (pocos malos o buenos). Pasada 1 de Codex.
+        auc_inicial = None if auc_ref["auc"] is None else float(auc_ref["auc"])
         reglas = tarjeta._rules
         soporte = {
             str(f): {str(b): int(s) for b, s in zip(g["bin_id"], g["support"], strict=True)}
@@ -431,7 +434,7 @@ class MonitoringStep(AuditableMixin):
             period=ultimo,
             verdict=v_ultimo.verdict,
             rule=v_ultimo.rule,
-            action=ACCIONES[v_ultimo.verdict],
+            action=accion(v_ultimo.verdict, parcial=bool(ne_ultimo)),
             reason=frase(ultimo, v_ultimo),
             partial_evidence=bool(ne_ultimo),
             not_evaluable=tuple(ne_ultimo),
@@ -643,12 +646,21 @@ def _periodos(serie: Any, pd: Any) -> tuple[Any, PeriodKind, list[str]]:
         etiquetas = etiquetas.where(serie.notna(), None)
         return etiquetas, "date_month", sorted(str(e) for e in etiquetas.dropna().unique())
     if pd.api.types.is_numeric_dtype(serie) and not pd.api.types.is_bool_dtype(serie):
-        valores = sorted(float(v) for v in serie.dropna().unique())
-        rotulo = {v: (str(int(v)) if float(v).is_integer() else repr(float(v))) for v in valores}
-        etiquetas = serie.map(lambda v: None if pd.isna(v) else rotulo[float(v)])
+        # Sin pasar por float: dos enteros distintos mayores que 2⁵³ darían el mismo float y sus
+        # periodos se fundirían, contados dos veces (pasada 1 de Codex). Se ordena el valor exacto.
+        valores = sorted(set(serie.dropna().tolist()))
+        rotulo = {v: _rotulo_numerico(v) for v in valores}
+        etiquetas = serie.map(lambda v: None if pd.isna(v) else rotulo[v])
         return etiquetas, "number", [rotulo[v] for v in valores]
     etiquetas = serie.map(lambda v: None if pd.isna(v) else str(v))
     return etiquetas, "text", sorted(str(e) for e in etiquetas.dropna().unique())
+
+
+def _rotulo_numerico(valor: Any) -> str:
+    """El rótulo exacto de un periodo numérico: un entero (o un float entero) sin decimales."""
+    if isinstance(valor, float):
+        return str(int(valor)) if valor.is_integer() else repr(valor)
+    return str(int(valor))
 
 
 def _desenlace(serie: Any, nombre: str, pd: Any) -> Any:

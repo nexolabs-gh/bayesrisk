@@ -4079,7 +4079,7 @@ def _luz_con_direccion(luz: Any, direccion: Any) -> str:
 def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
     """Monitoreo (SDD-33 §13): el veredicto y su acción, el último periodo y la serie."""
     del context
-    from bayesrisk.monitoring.textos import ACCIONES, CAUSAS, INDICADORES, VEREDICTOS
+    from bayesrisk.monitoring.textos import CAUSAS, INDICADORES, VEREDICTOS
 
     rotulo = STAGE_LABELS_MONITOREO["monitoring"]
     card = _card(study, "monitoring", "card")
@@ -4092,9 +4092,10 @@ def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
     veredicto = _mapping(card.get("verdict"))
     lines = [
         f"Veredicto: {VEREDICTOS[str(veredicto['verdict'])]} en {veredicto['period']} — "
-        f"{ACCIONES[str(veredicto['verdict'])]}",
+        f"{veredicto['action']}",
         f"Por qué: {veredicto['reason']}.",
     ]
+    alertas: list[str] = []
     if veredicto.get("last_with_outcome_period"):
         lines.append(
             f"Último periodo con desenlace, {veredicto['last_with_outcome_period']}: "
@@ -4151,7 +4152,9 @@ def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
             else:
                 nombre = INDICADORES.get(indicador, indicador)
             causas.append(f"{nombre}, {CAUSAS.get(causa, causa)}")
-        lines.append(
+        # Una alerta y no una línea: el resumen final la lleva a «Qué revisar» (pasada 1 de Codex:
+        # como línea, `summary()` decía «Sin alertas» con la mitad de la evidencia ausente).
+        alertas.append(
             f"Evidencia parcial en {veredicto['period']}: no se pudo evaluar "
             + "; ".join(causas)
             + "."
@@ -4169,7 +4172,7 @@ def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
         stage="monitoring",
         label=rotulo,
         lines=tuple(lines[:8]),
-        alerts=tuple(_alertas_del_monitoreo(card)),
+        alerts=(*alertas, *_alertas_del_monitoreo(card)),
         table=_tabla_de_periodos(periodos),
         formats=_FORMATOS_PERIODOS,
         extra_tables=extra,
@@ -4553,15 +4556,17 @@ def _resumen_final_monitoreo(
     study: Study | None, stages: Sequence[StageSummary], context: SummaryContext
 ) -> FinalSummary:
     """El resumen final del monitoreo: ejecución, veredicto, cinco cifras, alertas y archivos."""
-    from bayesrisk.monitoring.textos import ACCIONES, VEREDICTOS
+    from bayesrisk.monitoring.textos import VEREDICTOS
 
     card = _card(study, "monitoring", "card") if study is not None else None
     veredicto = _mapping(card.get("verdict")) if card is not None else {}
     if veredicto:
         validacion = (
             f"{VEREDICTOS[str(veredicto['verdict'])]} en {veredicto['period']} — "
-            f"{ACCIONES[str(veredicto['verdict'])]}"
+            f"{veredicto['action']}"
         )
+        if veredicto.get("partial_evidence"):
+            validacion += " Evidencia parcial: ver «Qué revisar»."
     elif study is None:
         validacion = "sin correr todavía"
     else:

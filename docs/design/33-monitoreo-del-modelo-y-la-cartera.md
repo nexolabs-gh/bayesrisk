@@ -642,3 +642,11 @@ salvo la primera, que decidió Cami.
 12. **Las cinco cifras**: 3 · 3 · 3 · ≈ 1–2 s · 2. El SDD estimó 3 conceptos («tarjeta, periodo,
     desenlace»): son los tres argumentos; la regla de los gemelos cuenta lo importado más los
     métodos llamados, `Monitor` y `run`.
+13. **Pasada 1 de Codex sobre el código** (`c8133a0`): tres hallazgos, reales y ninguno
+    contractual, corregidos con su test nacido rojo y su control negativo. Un AUC inicial con
+    varianza nula (Holdout separado o en un solo tramo) se descartaba, aunque §3.4 sólo usa la
+    varianza del periodo: ahora se usa (redesarrollar dejaba de ser alcanzable con esa tarjeta).
+    Dos periodos enteros mayores que 2⁵³ se fundían al pasar por float y se contaban dos veces:
+    ahora se ordenan exactos. Y «sin acción» con evidencia parcial decía que todo estaba en línea y
+    el resumen final, «Sin alertas»: ahora la acción dice que parte no se pudo evaluar y la
+    evidencia parcial va a «Qué revisar».

@@ -506,7 +506,7 @@ def test_un_periodo_con_un_malo_da_evidencia_parcial(entorno: dict[str, Any]) ->
     assert bool(fila["partial_evidence"])
     veredicto = mon.study.artifacts.get("monitoring", "verdict")
     assert veredicto.partial_evidence and "auc_test:few_bads" in veredicto.not_evaluable
-    assert any("Evidencia parcial" in linea for linea in mon.summary("monitoring").lines)
+    assert any("Evidencia parcial" in alerta for alerta in mon.summary("monitoring").alerts)
 
 
 def test_el_csi_de_cada_variable_es_el_psi_de_sus_tramos_contra_desarrollo(
@@ -548,3 +548,58 @@ def test_una_fila_sin_periodo_queda_fuera_y_se_cuenta(entorno: dict[str, Any]) -
     assert ficha.n_rows_without_period == 7
     assert int(periodos["n_rows"].sum()) == len(datos.index) - 7
     assert any("sin periodo" in alerta for alerta in mon.summary("monitoring").alerts)
+
+
+# ── la pasada 1 de Codex sobre el código ────────────────────────────────────────────────
+
+
+def test_un_auc_inicial_con_varianza_nula_sigue_siendo_el_auc_inicial(
+    entorno: dict[str, Any],
+) -> None:
+    """§3.4: la prueba usa la varianza del periodo; un Holdout separado deja AUC₀ = 1 y vale."""
+    tarjeta = entorno["tarjeta"]
+    referencia = json.loads(json.dumps(tarjeta.manifest["monitoring_reference"]))
+    referencia["auc_initial"] = {
+        "source": "holdout",
+        "auc": 1.0,
+        "variance": 0.0,
+        "n_bad": 2,
+        "n_good": 2,
+        "cause": "zero_variance",
+    }
+    separada = _variante(tarjeta, monitoring_reference=referencia)
+    mon = _monitor(entorno, entorno["comportamiento"], "auc-separado", bundle=separada)
+    mon.run()
+    periodos = mon.study.artifacts.get("monitoring", "periods")
+    assert (periodos["auc_initial"] == 1.0).all()
+    assert (periodos["auc_light"] == "red").all()  # ningún periodo ordena perfecto
+
+
+def test_los_periodos_enteros_grandes_no_se_funden(entorno: dict[str, Any]) -> None:
+    """Dos enteros mayores que 2**53 son el mismo float: el periodo se ordena exacto."""
+    datos = entorno["comportamiento"].copy()
+    datos["periodo"] = np.where(np.arange(len(datos.index)) < 3_000, 2**53, 2**53 + 1)
+    mon = _monitor(entorno, datos, "enteros-grandes", period="periodo")
+    mon.run()
+    periodos = mon.study.artifacts.get("monitoring", "periods")
+    assert periodos["period"].tolist() == [str(2**53), str(2**53 + 1)]
+    assert periodos["n_rows"].tolist() == [3_000, 3_000]
+
+
+def test_sin_accion_con_evidencia_parcial_no_lo_afirma_todo(entorno: dict[str, Any]) -> None:
+    """Población verde y una sola operación con desenlace: «sin acción», con su salvedad."""
+    from bayesrisk.monitoring.textos import ACCIONES
+
+    datos = entorno["comportamiento"].copy()
+    datos["bad_flag"] = datos["bad_flag"].astype("float64")
+    datos.loc[datos.index[:-1], "bad_flag"] = np.nan
+    mon = _monitor(entorno, datos, "parcial")
+    mon.run()
+    veredicto = mon.study.artifacts.get("monitoring", "verdict")
+    assert (veredicto.verdict, veredicto.partial_evidence) == ("no_action", True)
+    assert veredicto.action != ACCIONES["no_action"]
+    final = mon.summary()
+    assert "Evidencia parcial" in final.validation
+    assert any("Evidencia parcial" in alerta for alerta in final.review)
+    assert "Sin alertas" not in final.text()
+    assert any("Evidencia parcial" in alerta for alerta in final.to_dict()["review"])

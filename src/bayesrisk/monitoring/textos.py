@@ -13,11 +13,13 @@ from typing import Final
 
 __all__ = [
     "ACCIONES",
+    "ACCION_SIN_ACCION_PARCIAL",
     "CAUSAS",
     "DIRECCIONES",
     "DIRECCIONES_CORTAS",
     "INDICADORES",
     "VEREDICTOS",
+    "accion",
     "razon",
 ]
 
@@ -49,6 +51,20 @@ ACCIONES: Final[dict[str, str]] = {
         "la validación inicial; recalibrar el nivel no lo arregla."
     ),
 }
+
+#: «Sin acción» con evidencia parcial: no afirma lo que no se pudo medir (pasada 1 de Codex).
+ACCION_SIN_ACCION_PARCIAL: Final = (
+    "Seguir usando el modelo en lo que se pudo medir: lo evaluable está en línea, pero parte del "
+    "desempeño no se pudo evaluar (ver «Qué revisar»)."
+)
+
+
+def accion(veredicto: str, *, parcial: bool) -> str:
+    """La acción del veredicto; «sin acción» con evidencia parcial lo dice."""
+    if parcial and veredicto == "no_action":
+        return ACCION_SIN_ACCION_PARCIAL
+    return ACCIONES[veredicto]
+
 
 #: Los indicadores, como los lee un comité.
 INDICADORES: Final[dict[str, str]] = {
