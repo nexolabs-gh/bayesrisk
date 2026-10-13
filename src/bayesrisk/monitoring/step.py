@@ -110,7 +110,8 @@ PERIODS_COLUMNS: Final[tuple[str, ...]] = (
 VARIABLES_COLUMNS: Final[tuple[str, ...]] = ("period", "feature", "csi", "csi_light")
 #: La columna con que la puerta guiada conserva un índice SIN nombre que se repite entre periodos:
 #: el paso lo vuelve a poner como índice (sin nombre) de cada periodo, con su dtype, para que la
-#: tarjeta compruebe la unicidad dentro del periodo como siempre (pasada 4 de Codex).
+#: tarjeta compruebe la unicidad dentro del periodo como siempre (pasada 4 de Codex). El nombre está
+#: reservado: la puerta rechaza una cartera que ya traiga una columna así (pasada 5).
 INDICE_SIN_NOMBRE: Final = "__bayesrisk_indice__"
 
 
@@ -611,10 +612,18 @@ def _aplicar(
     columnas = list(dict.fromkeys([*manifest["model"]["features"], *identidad["unique_keys"]]))
     entrada = sub.loc[:, [c for c in columnas if c in sub.columns]]
     indice = identidad["index_name"]
+    # El índice vuelve desde su columna con su dtype (``.array``: un categórico sigue siéndolo;
+    # ``to_numpy()`` lo dejaba en texto y la tarjeta lo rechazaba, pasada 5 de Codex).
     if indice is not None and indice in sub.columns and sub.index.name != indice:
-        entrada = entrada.assign(**{indice: sub[indice].to_numpy()}).set_index(indice)
+        entrada = entrada.set_axis(pd.Index(sub[indice].array, name=indice), axis=0)
     elif indice is None and INDICE_SIN_NOMBRE in sub.columns:
-        entrada = entrada.set_axis(pd.Index(sub[INDICE_SIN_NOMBRE].to_numpy(), name=None), axis=0)
+        original = pd.Index(sub[INDICE_SIN_NOMBRE].array, name=None)
+        # Sin llaves (``id=None``) el índice ES la identidad: vuelve tal cual y la tarjeta comprueba
+        # su unicidad dentro del periodo. Con la identidad en columnas el índice es auxiliar: vuelve
+        # si es único en el periodo y, si se repite (lotes con sus índices locales), la tarjeta
+        # puntúa con el de posición y comprueba sus llaves (pasada 5 de Codex).
+        if not identidad["unique_keys"] or original.is_unique:
+            entrada = entrada.set_axis(original, axis=0)
     try:
         resultado = tarjeta.apply(entrada)
     except ScorecardBundleError as exc:

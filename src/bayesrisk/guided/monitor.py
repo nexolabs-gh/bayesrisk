@@ -148,12 +148,20 @@ class Monitor(_PuertaGuiada):
         índice pasa a columna (con su nombre: la tarjeta la vuelve a usar como índice al puntuar
         cada periodo) y el snapshot se escribe desde ese frame.
         """
+        from bayesrisk.monitoring.step import INDICE_SIN_NOMBRE
+
         frame, source, source_label = self._cargar(data)
+        if INDICE_SIN_NOMBRE in frame.columns:
+            # El paso lee esa columna como el índice del panel: una del usuario con el mismo nombre
+            # se tomaría por él (pasada 5 de Codex).
+            raise MonitorInputError(
+                f"La cartera trae una columna llamada «{INDICE_SIN_NOMBRE}», un nombre reservado: "
+                "el monitoreo la usa para conservar el índice de una cartera con la misma "
+                "operación en varios periodos. Renómbrala y vuelve a construir el monitoreo."
+            )
         if not frame.index.has_duplicates:
             return frame, source, source_label
         import io
-
-        from bayesrisk.monitoring.step import INDICE_SIN_NOMBRE
 
         nombre = frame.index.name
         # Un índice sin nombre también es identidad (una tarjeta con id=None identifica por él):

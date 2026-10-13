@@ -675,3 +675,12 @@ salvo la primera, que decidió Cami.
     duplicado dentro de un periodo y rechazaba un panel con índice textual—. Corregido: el índice
     sin nombre se conserva en una columna reservada (`__bayesrisk_indice__`) con su dtype y el paso
     lo restaura como índice de cada periodo; con su test nacido rojo y su control negativo.
+17. **Pasada 5 de Codex**, de confirmación sobre el arreglo de la 4 (`ee74b03`): tres medium,
+    reales y ninguno contractual, corregidos con su test nacido rojo y su control negativo. El
+    índice volvía a la tarjeta sin su dtype (`to_numpy()`): un índice categórico, con o sin nombre,
+    llegaba como texto y la tarjeta lo rechazaba; ahora vuelve con su tipo. Con la identidad en
+    columnas (`id="loan_id"`) el índice es auxiliar: un panel de lotes concatenados con sus índices
+    locales —repetidos dentro de un periodo— se rechazaba, y ahora el índice vuelve sólo si es único
+    en el periodo (si no, la tarjeta puntúa con el de posición y comprueba sus llaves, que siguen
+    fallando repetidas). Y `__bayesrisk_indice__` es un nombre reservado: una columna del usuario
+    con ese nombre se tomaba por el índice; la puerta la rechaza con su motivo antes de correr.

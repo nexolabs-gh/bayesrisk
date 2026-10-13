@@ -809,3 +809,84 @@ def test_un_indice_sin_nombre_conserva_la_identidad_de_la_tarjeta(
     mensaje = mal.study.run_context.error.message
     assert "La tarjeta no puede puntuar el periodo 2023Q1" in mensaje
     assert "identificador de fila único" in mensaje
+
+
+# ── la pasada 5 de Codex sobre el código ────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("nombre", [None, "loan_id"], ids=["sin-nombre", "con-nombre"])
+def test_un_indice_categorico_conserva_su_tipo(
+    tmp_path: Path, fake_binning_process: object, nombre: str | None
+) -> None:
+    """El índice de un panel vuelve a la tarjeta con su dtype, tenga o no nombre: uno categórico
+    sigue siendo categórico, el panel se monitorea y un duplicado dentro de un periodo falla."""
+    del fake_binning_process
+    desarrollo = cartera().set_index("loan_id").rename_axis(nombre)
+    desarrollo.index = pd.CategoricalIndex(desarrollo.index, name=nombre)
+    sc = Scorecard(
+        desarrollo,
+        target="bad_flag",
+        id=nombre,
+        cohort="cohorte",
+        oot_cohorts=["2024Q2"],
+        name="dev-categorico",
+        run_dir=tmp_path,
+    )
+    sc._echo = lambda _t: None
+    sc.run()
+    assert sc.study.run_context.status == "done", sc.study.run_context.error
+    tarjeta = FittedScorecardBundle.from_study(sc.study)
+    assert tarjeta.manifest["row_identity"]["index_dtype"] == "category"
+    assert tarjeta.manifest["row_identity"]["index_name"] == nombre
+    datos = cartera(semilla=47).set_index("loan_id").rename_axis(nombre)
+    panel = pd.concat([datos, datos.loc[datos["cohorte"] == "2024Q2"].assign(cohorte="2024Q3")])
+    panel.index = pd.CategoricalIndex(panel.index, name=nombre)
+    mon = Monitor(tarjeta, panel, period="cohorte", default="bad_flag", run_dir=tmp_path / "m")
+    mon._echo = lambda _t: None
+    mon.run()
+    assert mon.study.run_context.status == "done", mon.study.run_context.error
+    assert int(mon.study.artifacts.get("monitoring", "periods")["n_scored"].sum()) == 7_000
+    repetida = pd.concat([panel, panel.iloc[[0]]])
+    mal = Monitor(
+        tarjeta, repetida, period="cohorte", default="bad_flag", name="mal", run_dir=tmp_path / "m"
+    )
+    mal._echo = lambda _t: None
+    mal.run()
+    assert mal.study.run_context.status == "failed"
+    assert "identificador de fila único" in mal.study.run_context.error.message
+
+
+def test_con_id_en_columna_el_indice_auxiliar_no_es_identidad(entorno: dict[str, Any]) -> None:
+    """Una tarjeta que identifica por columna (``id="loan_id"``) no exige un índice auxiliar
+    único dentro del periodo (lotes concatenados con sus índices locales); su llave repetida
+    dentro de un periodo sigue fallando con el mensaje de la tarjeta."""
+    datos = entorno["comportamiento"]
+    lotes = [
+        parte.reset_index(drop=True)
+        for _, grupo in datos.groupby("cohorte", sort=True)
+        for parte in (grupo.iloc[:500], grupo.iloc[500:])
+    ]
+    panel = pd.concat(lotes)
+    assert panel.index.has_duplicates
+    assert not panel.duplicated(["cohorte", "loan_id"]).any()
+    mon = _monitor(entorno, panel, "lotes")
+    mon.run()
+    assert mon.study.run_context.status == "done", mon.study.run_context.error
+    assert int(mon.study.artifacts.get("monitoring", "periods")["n_scored"].sum()) == 6_000
+    repetida = pd.concat([*lotes, lotes[0].iloc[[0]]])
+    mal = _monitor(entorno, repetida, "lotes-mal")
+    mal.run()
+    assert mal.study.run_context.status == "failed"
+    assert "llaves de identidad duplicadas" in mal.study.run_context.error.message
+
+
+def test_una_columna_con_el_nombre_reservado_se_rechaza_antes_de_correr(
+    entorno: dict[str, Any],
+) -> None:
+    """La columna con que la puerta transporta el índice de un panel está reservada: una columna
+    del usuario con ese nombre se rechaza con su motivo, en vez de tomarse por el índice."""
+    from bayesrisk.monitoring.step import INDICE_SIN_NOMBRE
+
+    datos = entorno["comportamiento"].assign(**{INDICE_SIN_NOMBRE: 0})
+    with pytest.raises(MonitorInputError, match="reservad"):
+        _monitor(entorno, datos, "reservada")
