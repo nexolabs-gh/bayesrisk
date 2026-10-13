@@ -83,7 +83,7 @@ contractual nuevo requiere un SDD nuevo o una revisión explícita.
 | **30** | [`readiness integral`](30-readiness-integral.md) (contrato transversal) | Producto | F0–F8 | T8 | 01–28, contratos vigentes | ✅ Aprobado · H9R aprobada · W0 cerrada/PASS · W1 NO PASS/bloqueada por recalibración |
 | **31** | [`simplicidad y flujo guiado`](31-simplicidad-y-flujo-guiado.md) (contrato transversal: tres puertas de uso, entrada mínima, defaults, esenciales, resúmenes por etapa, notebook mínimo) | Producto | F1–F8 | T9 | CT-1…4, 01/05/23/26, D-JOB, D-SUB, D-OBL, D-PAR | ✅ Aprobado por Cami el 2026-09-18 (S16); primera aplicación: [`_ENMIENDA-FLUJO-GUIADO-SCORECARD.md`](_ENMIENDA-FLUJO-GUIADO-SCORECARD.md), aprobada el mismo día; capa A por implementar |
 | **32** | [`escala maestra y puntos de corte`](32-escala-maestra-y-puntos-de-corte.md) (`master_scale`: tramos de puntaje monótonos, PD por tramo, tabla de puntos de corte, la escala en la tarjeta; hito H5) | Scoring | F1 | T9 | 09, 10, 22, 31, D-FLU, D-DEC | ✅ Aprobado por Cami el 2026-10-11 (S41); sin código, capa A en S42 |
-| **33** | [`monitoreo del modelo y la cartera`](33-monitoreo-del-modelo-y-la-cartera.md) (`monitoring`: una corrida que parte de la tarjeta guardada y mide por periodo la población, la calibración por tramo y el AUC sobre los tramos frente al de la validación inicial, con un veredicto y su acción; hito H4) | Scoring | F1 | T9 | 09, 11, 22, 31, 32 | Propuesto (S44, 2026-10-12); en revisión, sin código |
+| **33** | [`monitoreo del modelo y la cartera`](33-monitoreo-del-modelo-y-la-cartera.md) (`monitoring`: una corrida que parte de la tarjeta guardada y mide por periodo la población, la calibración por tramo y el AUC sobre los tramos frente al de la validación inicial, con un veredicto y su acción; hito H4) | Scoring | F1 | T9 | 09, 11, 22, 31, 32 | ✅ Aprobado por Cami el 2026-10-13 (S44); sin código, capa A en S45 |
 
 Evidencia operativa de la oleada cerrada:
 [`_BASELINE-READINESS-W0.md`](_BASELINE-READINESS-W0.md).
@@ -120,7 +120,7 @@ memoria en el candidato con el diseño vigente y que esa vía **se cierra sin ad
 DACL restrictiva más un ACE de `OWNER RIGHTS` —la DACL sola no basta, porque el dueño la reescribe—.
 No autoriza START ni mueve la puerta global.
 
-**28 SDD históricos · SDD-29 reservado · SDD-30 aprobado · SDD-31 aprobado · SDD-32 aprobado · SDD-33 propuesto · 10 tandas
+**28 SDD históricos · SDD-29 reservado · SDD-30 aprobado · SDD-31 aprobado · SDD-32 aprobado · SDD-33 aprobado · 10 tandas
 identificadas (T0–T9; T0 = verificación, sin SDD nuevo; T9 = simplicidad por módulos, una enmienda
 por módulo bajo SDD-31, la primera
 [`_ENMIENDA-FLUJO-GUIADO-SCORECARD.md`](_ENMIENDA-FLUJO-GUIADO-SCORECARD.md)).** La madurez pública y la garantía SemVer se declaran

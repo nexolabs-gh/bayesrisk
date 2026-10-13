@@ -1,7 +1,13 @@
 # SDD-33 — Monitoreo del modelo y de la cartera (`bayesrisk.monitoring`)
 
-> **Estado: PROPUESTO, en revisión** (S44, 2026-10-12). Diseño sin código: nada se programa hasta
-> que Cami apruebe las decisiones de §12. Es el hito **H4** del ROADMAP, el tercer eslabón de la
+> **Estado: APROBADO por Cami el 2026-10-13** (S44, interactivo), con la recomendación (a) de cada
+> una de las diez decisiones de §12 (D-MNT-1…10, §12-1…10): una corrida propia desde la tarjeta;
+> sólo tarjetas de esquema 4; el AUC inicial de Holdout; los cuatro indicadores; la tabla de §3.5
+> —redesarrollar cuando cae la discriminación, aunque recalibrar la pendiente devuelva las PD—;
+> umbrales constantes; la serie recalculada por corrida; capa A en la 2.13.0 y B en la 2.14.0; la
+> serie de estabilidad publicada en la B; y las dos colas de la calibración. Diseño sin código:
+> **la capa A se programa en la sesión siguiente** (S45), con tests nacidos rojos, controles
+> negativos y Codex sobre el código; cada release pide su OK aparte. Es el hito **H4** del ROADMAP, el tercer eslabón de la
 > cadena del banco que Cami puso primero el 2026-10-07 (IFRS 9 firmable → H5 escala maestra →
 > **H4** → H2b): una vez que la tarjeta está en uso, saber cada mes o trimestre si la cartera cambió,
 > si el modelo sigue ordenando y si cada tramo sigue acertando su PD, y qué hacer en cada caso.
@@ -57,7 +63,7 @@
 | **Módulo** | `bayesrisk.monitoring` (dominio y corrida nuevos); toca `scorecard/bundle.py` (la referencia de Desarrollo, esquema 4), `core/config` (la sección), `guided/` (la puerta `bayesrisk.Monitor` y su resumen), `report`, `ui/jobs.py` + `web/` (capa B) y `docs_site/` |
 | **Fase** | F1 (el scorecard, en operación) |
 | **Tanda de producción** | T9 (SDD-31: un módulo a la vez, con su §13) |
-| **Estado** | Propuesto, en revisión (§12) |
+| **Estado** | Aprobado por Cami el 2026-10-13 (§12) |
 | **Depende de** | SDD-09 (la tarjeta), SDD-11 (`stability`: PSI, bandas y su suavizado), SDD-22 (`validation`: Jeffreys y el semáforo), SDD-31, SDD-32 (la escala maestra: tramos, PD por tramo y `tabla_por_tramo`) |
 | **Lo consumen** | La guía del scorecard, un trabajo nuevo de la pantalla, el informe de monitoreo; H2b (comparar modelos), H9 (despliegue) |
 | **Autor / Fecha** | Claude Code / 2026-10-12 |
@@ -548,6 +554,17 @@ y `scipy` (ya dependencias del núcleo). Ninguna nueva.
 | 12-8 | Capas y releases | (a) **A** —motor, `bayesrisk.Monitor`, tarjeta de esquema 4, resumen, guía con un bloque que entrena en `consumo_comportamiento` y monitorea `consumo_drift`— en la **2.13.0**, experimental; **B** —pantalla (la tarjeta de una corrida de la pantalla o un `.zip`), informe con su capítulo, Excel; estable— en la **2.14.0**; (b) A y B juntas | **(a)**: como H5; A ya da la respuesta en el notebook, B mueve front, informe y goldens |
 | 12-9 | La serie de estabilidad que ya se calcula y no se publica | (a) **publicarla** en Resultados y el informe del scorecard en la capa B (aditivo: ningún hash cambia) y corregir así la ayuda que la promete; (b) sólo corregir la ayuda | **(a)**: es la historia por periodo que el ROADMAP pide para `stability` y hoy la pantalla afirma algo falso |
 | 12-10 | La calibración mira también PD demasiado altas (elevada al reproducir la pasada 2) | (a) **las dos colas**: el contraste del BCE (PD demasiado baja) y su espejo (PD demasiado alta), con los mismos cortes; (b) sólo la cola del BCE, como la validación y la escala | **(a)**: la misión es también «menos negados a quien sí podía pagar», y una PD cinco veces más alta que lo observado lo hace; el BCE mira la subestimación porque supervisa capital, no originación; medido, el espejo no agrega ningún rojo en las carteras del paquete |
+
+**Respuestas de Cami (2026-10-12/13, interactivas): la recomendación (a) en las diez.** Vigente:
+D-MNT-1 (§12-1) una corrida de monitoreo propia que parte de la tarjeta guardada —`bayesrisk.Monitor`,
+la sección `monitoring` y un trabajo nuevo en la pantalla—; D-MNT-2 (§12-2) sólo tarjetas de esquema
+4, que congelan su referencia; D-MNT-3 (§12-3) el AUC inicial de Holdout sobre los tramos, y sin
+Holdout el de Desarrollo, declarado; D-MNT-4 (§12-4) los cuatro indicadores y el CSI como
+diagnóstico, sin migraciones; D-MNT-5 (§12-5) la tabla de §3.5, con redesarrollar cuando la prueba
+del BCE y la pendiente de calibración son rojas aunque recalibrar la pendiente devuelva las PD;
+D-MNT-6 (§12-6) umbrales constantes; D-MNT-7 (§12-7) cada corrida recalcula la serie entera; D-MNT-8
+(§12-8) capa A → 2.13.0 experimental y B → 2.14.0 estable; D-MNT-9 (§12-9) la serie de PSI por
+periodo de `stability` se publica en la capa B; D-MNT-10 (§12-10) la calibración mira las dos colas.
 
 ## 13. Simplicidad (SDD-31)
 
