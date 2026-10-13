@@ -301,15 +301,17 @@ def test_execute_directo_revalida_requires_antes_de_correr() -> None:
 
 
 def test_core_study_cablea_validation_al_cierre_del_computo() -> None:
-    """``validation`` cierra el cómputo que valida; después sólo la escala y ``report`` (D8).
+    """``validation`` cierra el cómputo; después la escala, el monitoreo y ``report`` (D8).
 
     La escala maestra (SDD-32 §2) es la capa operativa del modelo ya validado: va después de la
-    validación —que no la consume— y antes del informe.
+    validación —que no la consume— y antes del informe. El monitoreo (SDD-33) es una corrida propia
+    desde la tarjeta guardada, y también va antes del informe.
     """
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order[-1] == "report"  # la foto final del informe (SDD-28 D8)
-    assert order[-2] == "master_scale"
-    assert order[-3] == "validation"  # el último dominio de cómputo que la validación juzga
+    assert order[-2] == "monitoring"
+    assert order[-3] == "master_scale"
+    assert order[-4] == "validation"  # el último dominio de cómputo que la validación juzga
     assert order.index("validation") > order.index("performance")
     assert order.index("validation") > order.index("stability")
     assert order.index("validation") > order.index("provisioning")

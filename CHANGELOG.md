@@ -7,6 +7,42 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **Monitoreo de un modelo en uso (experimental).** `bayesrisk.Monitor(bundle=…, data=…,
+  period=…, default=…)` parte de la tarjeta guardada y de la cartera nueva con su columna de
+  periodo y, si la tiene, de desenlace, y dice por periodo si cambió la población (el PSI del
+  puntaje y de la participación por tramo), si cada tramo y la cartera aciertan su PD (Jeffreys,
+  **en las dos direcciones**: también una PD demasiado alta), y si el modelo sigue ordenando (el
+  AUC sobre los tramos contra el AUC inicial de Holdout, con la prueba del BCE, y la pendiente de
+  calibración); con eso, un **veredicto y su acción** por periodo: sin acción, vigilar, recalibrar
+  o redesarrollar, o «sin desenlace aún». Lo que no se puede evaluar no cuenta como verde y el
+  veredicto lo dice. No vuelve a correr el desarrollo ni necesita sus datos; una misma operación
+  puede estar en varios periodos. Se lee con `mon.summary()`; sus tablas, en `("monitoring",
+  "periods")`, `"grades_by_period"`, `"variables_by_period"` y `"verdict"`. La sección
+  `monitoring` del config tiene tres campos —la tarjeta, la columna de periodo y la de desenlace—
+  y ningún umbral. Guía: «Monitorear un modelo en uso».
+- La tarjeta guardada (`FittedScorecardBundle`, esquema 4) congela junto a la escala maestra la
+  referencia de Desarrollo que el monitoreo compara —sólo agregados: los cortes del puntaje y su
+  participación, la participación por tramo y el AUC inicial con su varianza—. No cambia lo que
+  la tarjeta puntúa.
+
+### Cambiado
+
+- Las tarjetas se guardan con el esquema 4; las de los esquemas 1 a 3 se siguen leyendo y
+  aplicando igual. Una tarjeta nueva de la misma corrida tiene otra huella (`bundle_hash`), porque
+  lleva la referencia.
+
+### Sabido
+
+- Sólo se monitorean tarjetas guardadas desde esta versión: una guardada con la 2.11 o la 2.12 no
+  conserva el AUC de Holdout ni la referencia de Desarrollo, y el monitoreo la rechaza con el
+  camino para obtener una que sí (volver a correr el desarrollo con esta versión y guardar la
+  tarjeta). La pantalla, el capítulo del informe y el libro `Monitoreo.xlsx` llegan en la versión
+  siguiente.
+
 ## [2.12.0] — 2026-10-12
 
 ### Añadido

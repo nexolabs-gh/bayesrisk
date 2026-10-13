@@ -296,7 +296,12 @@ HOJAS_CON_DEFAULT_EFECTIVO = 520
 #: aparece con sus dos hojas —``sections.master_scale.grade_edges`` y ``.approval_cutoff``, ambas
 #: con default ``null``—, enumeradas contra ``77a873b``: ninguna otra hoja nueva ni retirada. La
 #: sección no entra al formulario hasta la capa B.
-DESCRIPTORES_TOTALES = 1096
+#:
+#: 1096 → 1099 el 2026-10-13 con la capa A del SDD-33 (S45): la sección nueva ``monitoring``
+#: aparece con sus tres hojas —``sections.monitoring.bundle`` y ``.period``, obligatorias, y
+#: ``.default`` con default ``null``—, enumeradas contra ``375e02e``: ninguna otra hoja nueva ni
+#: retirada. La sección no entra al formulario hasta la capa B.
+DESCRIPTORES_TOTALES = 1099
 
 
 #: Las 19 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de

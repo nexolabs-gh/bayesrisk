@@ -59,7 +59,10 @@ def _hash_exclude() -> dict[str, Any]:
       misma identidad venga de ``bayesrisk.Ecl``, de un YAML o de la pantalla, en cualquier
       carpeta. Su huella viaja en ``("forward", "cycle_model")`` y en el trail. El resto de
       ``forward`` —pesos, nombres, variables, columna de la tasa— sigue en la identidad, y también
-      cualquier otra ruta del config.
+      cualquier otra ruta del config;
+    - ``monitoring.bundle``, la tarjeta que se monitorea, desde la 2.13.0 (SDD-33 §5.3, D-MNT-1):
+      mover la tarjeta de carpeta no cambia la corrida; su contenido lo identifica su
+      ``bundle_hash``, en el lineage y en la ficha de la etapa.
     """
     exclude: dict[str, Any] = dict.fromkeys(INFRA_SECTIONS, True)
     exclude["data"] = {"load": {"source": True}}
@@ -67,6 +70,7 @@ def _hash_exclude() -> dict[str, Any]:
         "input": {"macro_source": {"path": True}},
         "scenarios": {"scenarios": {"__all__": {"macro_path_path": True}}},
     }
+    exclude["monitoring"] = {"bundle": True}
     return exclude
 
 

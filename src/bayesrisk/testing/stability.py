@@ -66,6 +66,9 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
     "governance",
     "markov",
     "ml",
+    # El monitoreo (SDD-33 D-MNT-8): sale en la 2.13.0 por la puerta guiada y el config completo
+    # como adelanto declarado; entra a la garantía cuando cierren sus tres puertas (capa B).
+    "monitoring",
     "provisioning",
     "stress",
     "survival",
@@ -76,10 +79,15 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
 """Superficies que aún crecen: pueden cambiar de forma aditiva o romper dentro de 2.x."""
 
 EXPERIMENTAL_SYMBOLS: Final[dict[str, str]] = {
-    # Vacío desde la capa B de FLUJO-GUIADO-IFRS9 (S31, 2026-10-05). `bayesrisk.guided.ecl.Ecl`
-    # salió aquí como adelanto declarado (D-ECL-9, 2.4.0) y se retiró al cerrar sus tres puertas:
-    # la garantía cubre su firma, sus métodos y la forma de sus resúmenes, y sus cifras siguen la
-    # marca experimental de `survival` y `provisioning` (la lectura de D-EST-5).
+    # `bayesrisk.guided.ecl.Ecl` salió aquí como adelanto declarado (D-ECL-9, 2.4.0) y se retiró al
+    # cerrar sus tres puertas (capa B de FLUJO-GUIADO-IFRS9, S31): la garantía cubre su firma, sus
+    # métodos y la forma de sus resúmenes, y sus cifras siguen la marca experimental de `survival`
+    # y `provisioning` (la lectura de D-EST-5).
+    "bayesrisk.guided.monitor.Monitor": (
+        "SDD-33 D-MNT-8: la puerta guiada del monitoreo sale en la 2.13.0 como adelanto declarado "
+        "(capa A); se retira de aquí cuando cierren sus tres puertas —pantalla, informe y Excel— "
+        "en la capa B (2.14.0)."
+    ),
 }
 """Símbolos experimentales dentro de un dominio estable, cada uno con su razón y su salida."""
 

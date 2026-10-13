@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from bayesrisk.master_scale.config import MasterScaleConfig
     from bayesrisk.ml.config import MLConfig
     from bayesrisk.model.config import ModelConfig
+    from bayesrisk.monitoring.config import MonitoringConfig
     from bayesrisk.performance.config import PerformanceConfig
     from bayesrisk.provisioning.cmf.config import CmfProvisioningConfig
     from bayesrisk.provisioning.config import ProvisioningConfig
@@ -123,6 +124,7 @@ _PERFORMANCE_CONFIG_CLS: type[BaseModel] | None = None
 _STABILITY_CONFIG_CLS: type[BaseModel] | None = None
 _VALIDATION_CONFIG_CLS: type[BaseModel] | None = None
 _MASTER_SCALE_CONFIG_CLS: type[BaseModel] | None = None
+_MONITORING_CONFIG_CLS: type[BaseModel] | None = None
 _REPORT_CONFIG_CLS: type[BaseModel] | None = None
 _AUDIT_CONFIG_CLS: type[BaseModel] | None = None
 _GOVERNANCE_CONFIG_CLS: type[BaseModel] | None = None
@@ -306,7 +308,7 @@ class DecisionEntry(BayesRiskBaseConfig):
 #: YAML de toda corrida. Una sección de esta lista se serializa **sólo cuando está declarada**:
 #: ausente (o ``None``), el ``config_hash`` y el YAML son byte a byte los de la 2.10.0. Toda sección
 #: que se agregue a la raíz entra aquí (un gate lo exige en los dos sentidos).
-SECCIONES_NACIDAS_DESPUES_DE_2_10_0: frozenset[str] = frozenset({"master_scale"})
+SECCIONES_NACIDAS_DESPUES_DE_2_10_0: frozenset[str] = frozenset({"master_scale", "monitoring"})
 
 
 class BayesRiskConfig(BayesRiskBaseConfig):
@@ -626,6 +628,20 @@ class BayesRiskConfig(BayesRiskBaseConfig):
                 "Agrupa el puntaje en tramos de riesgo con su PD y publica, para cada punto de "
                 "corte, cuánto se aprueba, con qué tasa de malos, cuántos malos se evitan y "
                 "cuántos buenos se rechazan."
+            ),
+        )
+    if TYPE_CHECKING:
+        # Vista de mypy: tipo estricto. En runtime el campo es `Any` (rama `else`) y la
+        # validación/coerción a `MonitoringConfig` la hace `_valida_monitoring` vía hook diferido.
+        # Nacida después de la 2.10.0: sólo se serializa si está declarada (D-ESC-7, SDD-33 §5.3).
+        monitoring: MonitoringConfig | None = None
+    else:
+        monitoring: Any = Field(
+            default=None,
+            title="Monitoreo",
+            description=(
+                "Mide, periodo a periodo, si la cartera de una tarjeta en uso cambió, si el modelo "
+                "sigue ordenando y si cada tramo acierta su PD, con un veredicto y su acción."
             ),
         )
     if TYPE_CHECKING:
@@ -1251,6 +1267,32 @@ class BayesRiskConfig(BayesRiskBaseConfig):
                 "master_scale debe ser JSON-canónico y determinista (sin sets, objetos no "
                 "serializables ni floats no finitos), o importa `bayesrisk.master_scale` para "
                 "validarlo como MasterScaleConfig."
+            ) from exc
+        return valor
+
+    @field_validator("monitoring", mode="before")
+    @classmethod
+    def _valida_monitoring(cls, valor: Any) -> Any:
+        """Valida/coacciona la sección ``monitoring`` según haya o no capa cargada.
+
+        Con ``bayesrisk.monitoring`` importado (``_MONITORING_CONFIG_CLS`` poblado), un ``dict`` se
+        valida y coacciona a :class:`MonitoringConfig`; una instancia ya validada pasa tal cual.
+        Sin la capa cargada, es un *blob* opaco: se exige JSON-canónico y determinista; la identidad
+        la normaliza ``config_hash`` (D-HASH-1).
+        """
+        if valor is None:
+            return valor
+        if _MONITORING_CONFIG_CLS is not None:
+            if isinstance(valor, _MONITORING_CONFIG_CLS):
+                return valor
+            return _MONITORING_CONFIG_CLS.model_validate(valor)
+        try:
+            json.dumps(valor, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "monitoring debe ser JSON-canónico y determinista (sin sets, objetos no "
+                "serializables ni floats no finitos), o importa `bayesrisk.monitoring` para "
+                "validarlo como MonitoringConfig."
             ) from exc
         return valor
 

@@ -3581,6 +3581,18 @@
           "value": "standard"
         }
       },
+      "monitoring": {
+        "bundle": {
+          "has_default": false
+        },
+        "default": {
+          "has_default": true,
+          "value": null
+        },
+        "period": {
+          "has_default": false
+        }
+      },
       "name": {
         "has_default": true,
         "value": "nikodym-study"
@@ -13985,6 +13997,51 @@
         "description": "Ajusta la regresión logística de PD sobre las variables WoE seleccionadas.",
         "title": "Modelo"
       },
+      "monitoring": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "description": "Monitorea una tarjeta en uso: población, orden y PD de sus tramos, periodo a periodo.",
+            "properties": {
+              "bundle": {
+                "description": "La carpeta de la tarjeta guardada que se monitorea, con su escala maestra y la referencia de Desarrollo que congela al guardarse.",
+                "title": "Tarjeta",
+                "type": "string"
+              },
+              "default": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "La marca de incumplimiento de cada operación: 1 malo, 0 bueno y vacío si todavía no madura. Sin ella sólo se mide la población.",
+                "title": "Columna de desenlace"
+              },
+              "period": {
+                "description": "La columna que dice a qué periodo pertenece cada operación: texto, número o fecha (una fecha se agrupa por mes).",
+                "title": "Columna de periodo",
+                "type": "string"
+              }
+            },
+            "required": [
+              "bundle",
+              "period"
+            ],
+            "title": "MonitoringConfig",
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Mide, periodo a periodo, si la cartera de una tarjeta en uso cambió, si el modelo sigue ordenando y si cada tramo acierta su PD, con un veredicto y su acción.",
+        "title": "Monitoreo"
+      },
       "name": {
         "default": "nikodym-study",
         "description": "Etiqueta humana del experimento; infraestructural, no entra al config_hash.",
@@ -16292,6 +16349,7 @@
     "stability",
     "validation",
     "master_scale",
+    "monitoring",
     "report",
     "audit",
     "governance",

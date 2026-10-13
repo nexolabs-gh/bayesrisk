@@ -87,6 +87,8 @@ def test_from_config_registro_reexport_contrato_orden_e_import_liviano() -> None
         "validation",
         # La escala maestra (SDD-32 §2): la capa operativa del modelo ya validado.
         "master_scale",
+        # El monitoreo (SDD-33): una corrida propia desde la tarjeta guardada.
+        "monitoring",
         # ``report`` corre AL FINAL: es la foto de todo lo que corrió, incluidas las provisiones
         # (SDD-28 D8). Antes vivía tras ``stability`` y su builder no veía sus cards.
         "report",

@@ -96,7 +96,9 @@ def test_la_tarjeta_congela_la_escala_y_apply_devuelve_tramo_pd_y_decision(
     study, solicitudes = _corrida(tmp_path / "b", escala={"approval_cutoff": corte})
     bundle = FittedScorecardBundle.from_study(study)
     manifest = bundle.manifest
-    assert manifest["schema_version"] == 3
+    # El 4 desde la 2.13.0: la misma escala más la referencia del monitoreo (SDD-33 D-MNT-2).
+    assert manifest["schema_version"] == 4
+    assert "monitoring_reference" in manifest
     ficha = study.artifacts.get("master_scale", "card")
     assert manifest["master_scale"] == {
         "cuts": list(ficha.cuts),
@@ -220,6 +222,8 @@ def test_un_bundle_guardado_sin_clip_recorta_como_antes(tmp_path: Path) -> None:
     manifest["schema_version"] = 2
     del manifest["model"]["clip"]
     del manifest["master_scale"]
+    # Lo que agregó el esquema 4 (SDD-33, 2.13.0) tampoco existía entonces.
+    del manifest["monitoring_reference"]
     manifest["bundle_hash"] = bundle_module._bundle_hash(manifest)
     viejo = FittedScorecardBundle(manifest=manifest, rules=nuevo._rules)
     aplicada = viejo.apply(solicitudes).application_frame

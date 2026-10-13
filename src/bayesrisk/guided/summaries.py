@@ -17,7 +17,7 @@ from __future__ import annotations
 import html
 import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal
 
@@ -94,6 +94,7 @@ __all__ = [
     "SIN_DECISIONES",
     "STAGE_LABELS",
     "STAGE_LABELS_CARTERA",
+    "STAGE_LABELS_MONITOREO",
     "STAGE_ORDER",
     "FinalSummary",
     "StageSummary",
@@ -144,15 +145,26 @@ STAGE_LABELS_CARTERA: Final[dict[str, str]] = {
     "provisioning_ifrs9": "Provisión IFRS 9",
     "report": "Informe y ficha",
 }
+#: Rótulos de la familia de monitoreo (SDD-33, D-MNT-1): una corrida propia desde la tarjeta
+#: guardada, sin dominios del scorecard ni de la provisión, habla con estas etapas.
+STAGE_LABELS_MONITOREO: Final[dict[str, str]] = {
+    "data": "Cartera monitoreada",
+    "monitoring": "Monitoreo",
+    "report": "Informe y ficha",
+}
 _FAMILIAS: Final[dict[str, dict[str, str]]] = {
     "scorecard": STAGE_LABELS,
     "cartera": STAGE_LABELS_CARTERA,
+    "monitoreo": STAGE_LABELS_MONITOREO,
 }
 #: El título del resumen final de cada familia (deja de estar fijo en «Resumen del scorecard»).
 _TITULOS: Final[dict[str, str]] = {
     "scorecard": "Resumen del scorecard",
     "cartera": "Resumen de la provisión IFRS 9",
+    "monitoreo": "Resumen del monitoreo",
 }
+#: El bloque que reemplaza a «Validación técnica» en el resumen final del monitoreo (§3.5).
+ROTULO_VEREDICTO: Final = "Veredicto"
 #: Lo que dice el estado técnico de una provisión, que no tiene veredicto técnico: en su lugar, el
 #: resumen final lista lo que la cifra supone («Supuestos»). Viaja en ``FinalSummary.validation``
 #: para los consumidores que todavía leen ese campo (la pantalla, hasta la capa B).
@@ -181,14 +193,19 @@ def family_of(config: Any) -> str:
     """La familia de resúmenes que decide el pipeline de la corrida (D-ECL-7).
 
     ``"cartera"`` si provisiona IFRS 9 y no corre ningún dominio del scorecard
-    (``RESULT_DOMAINS``); si no, ``"scorecard"``. No la decide un argumento: la misma corrida
+    (``RESULT_DOMAINS``); ``"monitoreo"`` si monitorea una tarjeta (SDD-33) sin dominios del
+    scorecard ni provisión; si no, ``"scorecard"``. No la decide un argumento: la misma corrida
     habla igual por la puerta guiada, por su YAML y por la pantalla.
     """
-    if config is None or getattr(config, "provisioning_ifrs9", None) is None:
+    if config is None:
         return "scorecard"
     if any(getattr(config, dominio, None) is not None for dominio in RESULT_DOMAINS):
         return "scorecard"
-    return "cartera"
+    if getattr(config, "provisioning_ifrs9", None) is not None:
+        return "cartera"
+    if getattr(config, "monitoring", None) is not None:
+        return "monitoreo"
+    return "scorecard"
 
 
 def time_unit_words(unit: Any, count: int) -> str | None:
@@ -448,6 +465,13 @@ class FinalSummary:
     def _de_cartera(self) -> bool:
         return self.family == "cartera"
 
+    @property
+    def _rotulo_validacion(self) -> str:
+        """«Veredicto» en el monitoreo (§3.5); «Validación técnica» en el scorecard."""
+        if self.family == "monitoreo":
+            return ROTULO_VEREDICTO
+        return RESUMEN_FINAL_ROTULOS["validation"]
+
     def headline(self) -> tuple[str, ...]:
         """Las dos líneas con que la puerta cierra una corrida en la consola.
 
@@ -456,7 +480,10 @@ class FinalSummary:
         """
         r = RESUMEN_FINAL_ROTULOS
         if not self._de_cartera:
-            return (f"{r['execution']}: {self.execution}", f"{r['validation']}: {self.validation}")
+            return (
+                f"{r['execution']}: {self.execution}",
+                f"{self._rotulo_validacion}: {self.validation}",
+            )
         cifras = dict(self.figures)
         segunda = tuple(
             f"{rotulo}: {cifras[rotulo]}" for rotulo in (_ROTULO_ECL_TOTAL,) if rotulo in cifras
@@ -471,7 +498,7 @@ class FinalSummary:
             partes.append(f"{_ROTULO_SUPUESTOS}:")
             partes.extend(f"  • {supuesto}" for supuesto in self.assumptions)
         else:
-            partes.append(f"{r['validation']}: {self.validation}")
+            partes.append(f"{self._rotulo_validacion}: {self.validation}")
         if self.figures:
             partes.append(f"{r['figures']}:")
             partes.extend(f"  {rotulo}: {valor}" for rotulo, valor in self.figures)
@@ -503,7 +530,9 @@ class FinalSummary:
             partes.extend(f"<li>{html.escape(supuesto)}</li>" for supuesto in self.assumptions)
             partes.append("</ul>")
         else:
-            partes.append(f"<p><b>{r['validation']}:</b> {html.escape(self.validation)}</p>")
+            partes.append(
+                f"<p><b>{self._rotulo_validacion}:</b> {html.escape(self.validation)}</p>"
+            )
         if self.figures:
             partes.append("<table><tbody>")
             partes.extend(
@@ -548,6 +577,9 @@ class FinalSummary:
             salida["title"] = self.title
             salida["family"] = self.family
             salida["assumptions"] = list(self.assumptions)
+        elif self.family == "monitoreo":
+            salida["title"] = self.title
+            salida["family"] = self.family
         return salida
 
 
@@ -711,7 +743,9 @@ def build_stage_summaries(study: Study, context: SummaryContext) -> tuple[StageS
 def build_stage_summary(stage: str, study: Study, context: SummaryContext) -> StageSummary:
     """Arma el resumen de ``stage`` con lo que el ``Study`` ya publicó, en la voz de su familia."""
     familia = family_of(getattr(study, "config", None))
-    builder = (_BUILDERS_CARTERA if familia == "cartera" else _BUILDERS).get(stage)
+    builder = {"cartera": _BUILDERS_CARTERA, "monitoreo": _BUILDERS_MONITOREO}.get(
+        familia, _BUILDERS
+    ).get(stage)
     label = stage_labels(familia).get(stage, stage)
     if builder is None:
         return StageSummary(stage=stage, label=label, lines=("Etapa sin resumen propio.",))
@@ -4023,6 +4057,236 @@ def _tabla_de_cortes_legible(
     return pd.DataFrame(filas)
 
 
+# ────────────────────────────── monitoreo (SDD-33) ──────────────────────────────
+
+
+def _luz(valor: Any) -> str:
+    """El semáforo en palabras, con «No evaluable» (que el mapa de la validación no trae)."""
+    if str(valor) == "not_evaluable" or valor is None:
+        return "No evaluable"
+    return TRAFFIC_LIGHT_LABELS.get(str(valor), str(valor))
+
+
+def _luz_con_direccion(luz: Any, direccion: Any) -> str:
+    """«Rojo (subestima)»: la calibración con la cola que encendió el semáforo (D-MNT-10)."""
+    from bayesrisk.monitoring.textos import DIRECCIONES_CORTAS
+
+    texto = _luz(luz)
+    corta = DIRECCIONES_CORTAS.get(str(direccion)) if direccion is not None else None
+    return f"{texto} ({corta})" if corta else texto
+
+
+def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
+    """Monitoreo (SDD-33 §13): el veredicto y su acción, el último periodo y la serie."""
+    del context
+    from bayesrisk.monitoring.textos import ACCIONES, CAUSAS, INDICADORES, VEREDICTOS
+
+    rotulo = STAGE_LABELS_MONITOREO["monitoring"]
+    card = _card(study, "monitoring", "card")
+    periodos = _artifact(study, "monitoring", "periods")
+    tramos = _artifact(study, "monitoring", "grades_by_period")
+    if card is None or not isinstance(periodos, pd.DataFrame) or periodos.empty:
+        return StageSummary(
+            stage="monitoring", label=rotulo, lines=("El monitoreo no publicó su resumen.",)
+        )
+    veredicto = _mapping(card.get("verdict"))
+    lines = [
+        f"Veredicto: {VEREDICTOS[str(veredicto['verdict'])]} en {veredicto['period']} — "
+        f"{ACCIONES[str(veredicto['verdict'])]}",
+        f"Por qué: {veredicto['reason']}.",
+    ]
+    if veredicto.get("last_with_outcome_period"):
+        lines.append(
+            f"Último periodo con desenlace, {veredicto['last_with_outcome_period']}: "
+            f"{VEREDICTOS[str(veredicto['last_with_outcome_verdict'])]} — "
+            f"{veredicto['last_with_outcome_reason']}."
+        )
+    n_periodos = len(periodos.index)
+    no_puntuadas = _int(card.get("n_not_scored")) or 0
+    lines.append(
+        f"{_miles(n_periodos)} {_plural(n_periodos, 'periodo', 'periodos')} "
+        f"({periodos['period'].iloc[0]} a {periodos['period'].iloc[-1]}) y "
+        f"{_miles(int(periodos['n_rows'].sum()))} operaciones"
+        + (
+            f"; {_miles(no_puntuadas)} no se "
+            f"{_plural(no_puntuadas, 'pudo', 'pudieron')} puntuar y quedan fuera"
+            if no_puntuadas
+            else ""
+        )
+        + "."
+    )
+    fuente = "Holdout" if card.get("auc_initial_source") == "holdout" else "Desarrollo"
+    inicial = (
+        f"AUC inicial sobre los tramos de {_cifra(card.get('auc_initial'), decimales=3)} ({fuente})"
+        if card.get("auc_initial") is not None
+        else "AUC inicial no evaluable en la tarjeta"
+    )
+    lines.append(
+        f"Tarjeta de {_miles(int(card['n_grades']))} tramos contra su referencia de Desarrollo "
+        f"({_miles(int(card['n_development']))} operaciones); {inicial}."
+    )
+    ultima = periodos.iloc[-1]
+    partes = [f"PSI del puntaje {_cifra(ultima['psi_score'])} ({_luz(ultima['psi_score_light'])})"]
+    if int(ultima["n_with_outcome"]):
+        partes.append(
+            f"malos {_pct(ultima['bad_rate'])} frente a una PD de {_pct(ultima['expected_pd'])} "
+            f"({_luz_con_direccion(ultima['portfolio_light'], ultima['portfolio_direction'])})"
+        )
+        partes.append(
+            f"AUC {_cifra(ultima['auc'], decimales=3)} "
+            f"({_luz(ultima['auc_light'])} en la prueba del BCE)"
+        )
+        partes.append(
+            f"pendiente {_cifra(ultima['slope'], decimales=2)} ({_luz(ultima['slope_light'])})"
+        )
+    else:
+        partes.append("sin desenlace todavía")
+    lines.append(f"{ultima['period']}: " + " · ".join(partes) + ".")
+    if veredicto.get("not_evaluable"):
+        causas = []
+        for item in veredicto["not_evaluable"]:
+            indicador, _, causa = str(item).partition(":")
+            if indicador.startswith("grade_"):
+                nombre = f"el tramo {indicador.removeprefix('grade_')}"
+            else:
+                nombre = INDICADORES.get(indicador, indicador)
+            causas.append(f"{nombre}, {CAUSAS.get(causa, causa)}")
+        lines.append(
+            f"Evidencia parcial en {veredicto['period']}: no se pudo evaluar "
+            + "; ".join(causas)
+            + "."
+        )
+    lines.append(
+        "Umbrales fijos: PSI 0,10 y 0,25; p-valores 0,05 y 0,01; 30 operaciones con desenlace por "
+        "tramo; 2 malos para el AUC."
+    )
+    extra: tuple[tuple[str, pd.DataFrame, Mapping[str, _Kind]], ...] = ()
+    if isinstance(tramos, pd.DataFrame) and not tramos.empty:
+        extra = (
+            (TITULO_TRAMOS_POR_PERIODO, _tabla_de_tramos_por_periodo(tramos), _FORMATOS_TRAMOS),
+        )
+    return StageSummary(
+        stage="monitoring",
+        label=rotulo,
+        lines=tuple(lines[:8]),
+        alerts=tuple(_alertas_del_monitoreo(card)),
+        table=_tabla_de_periodos(periodos),
+        formats=_FORMATOS_PERIODOS,
+        extra_tables=extra,
+    )
+
+
+#: El título de la tabla adicional del resumen «Monitoreo».
+TITULO_TRAMOS_POR_PERIODO: Final = "Cada tramo por periodo: tasa de malos frente a su PD"
+
+_FORMATOS_PERIODOS: Final[dict[str, _Kind]] = {
+    "Operaciones": "int",
+    "Con desenlace": "int",
+    "PSI del puntaje": "num",
+    "Tasa de malos": "pct",
+    "PD esperada": "pct",
+    "AUC": "num3",
+}
+_FORMATOS_TRAMOS: Final[dict[str, _Kind]] = {
+    "Tramo": "int",
+    "Participación": "pct",
+    "Participación en Desarrollo": "pct",
+    "Con desenlace": "int",
+    "Tasa de malos": "pct",
+    "PD del tramo": "pct",
+}
+
+
+def _tabla_de_periodos(periodos: pd.DataFrame) -> pd.DataFrame:
+    """La tabla de decisión del monitoreo: un periodo por fila, con su veredicto (§13)."""
+    from bayesrisk.monitoring.textos import VEREDICTOS
+
+    filas = []
+    for fila in periodos.to_dict(orient="records"):
+        con = (_int(fila["n_with_outcome"]) or 0) > 0
+        filas.append(
+            {
+                "Periodo": fila["period"],
+                "Operaciones": _int(fila["n_rows"]) or 0,
+                "Con desenlace": _int(fila["n_with_outcome"]) or 0,
+                "PSI del puntaje": _float(fila["psi_score"]),
+                "Población": _luz(fila["population_light"]),
+                "Tasa de malos": _float(fila["bad_rate"]) if con else None,
+                "PD esperada": _float(fila["expected_pd"]) if con else None,
+                "Calibración": (
+                    _luz_con_direccion(fila["portfolio_light"], fila["portfolio_direction"])
+                    if con
+                    else "—"
+                ),
+                "AUC": _float(fila["auc"]) if con else None,
+                "Prueba del BCE": _luz(fila["auc_light"]) if con else "—",
+                "Pendiente": (
+                    f"{_cifra(fila['slope'], decimales=2)} · {_luz(fila['slope_light'])}"
+                    if con and _float(fila["slope"]) is not None
+                    else (_luz(fila["slope_light"]) if con else "—")
+                ),
+                "Tramos en rojo": fila["red_grades"] or "—",
+                "Veredicto": VEREDICTOS.get(str(fila["verdict"]), str(fila["verdict"])),
+            }
+        )
+    return pd.DataFrame(filas)
+
+
+def _tabla_de_tramos_por_periodo(tramos: pd.DataFrame) -> pd.DataFrame:
+    """Cada tramo en cada periodo, con su participación y las dos colas de su contraste."""
+    return pd.DataFrame(
+        {
+            "Periodo": tramos["period"],
+            "Tramo": tramos["grade"].astype(int),
+            "Participación": tramos["share"],
+            "Participación en Desarrollo": tramos["share_development"],
+            "Con desenlace": tramos["n_with_outcome"].astype(int),
+            "Tasa de malos": tramos["bad_rate"],
+            "PD del tramo": tramos["pd"],
+            "Semáforo": [
+                _luz_con_direccion(luz, direccion)
+                for luz, direccion in zip(
+                    tramos["traffic_light_consolidated"], tramos["direction"], strict=True
+                )
+            ],
+        }
+    )
+
+
+def _alertas_del_monitoreo(card: Mapping[str, Any]) -> list[str]:
+    """«Qué revisar»: los rojos de cada periodo en una línea, y las filas que no entran."""
+    from bayesrisk.monitoring.textos import DIRECCIONES, INDICADORES
+
+    por_periodo: dict[str, list[str]] = {}
+    for alerta in _sequence(card.get("alerts")):
+        alerta = _mapping(alerta)
+        indicador = str(alerta.get("indicator"))
+        if indicador == "grade":
+            texto = f"el tramo {alerta.get('grade')}"
+        else:
+            texto = INDICADORES.get(indicador, indicador)
+        direccion = alerta.get("direction")
+        if direccion in DIRECCIONES:
+            texto += f" ({DIRECCIONES[str(direccion)]})"
+        por_periodo.setdefault(str(alerta.get("period")), []).append(texto)
+    salida = [f"{periodo}: en rojo {_enumerar(textos)}." for periodo, textos in por_periodo.items()]
+    sin_periodo = _int(card.get("n_rows_without_period")) or 0
+    if sin_periodo:
+        salida.append(
+            f"{_miles(sin_periodo)} {_plural(sin_periodo, 'fila', 'filas')} sin periodo "
+            "quedaron fuera del monitoreo."
+        )
+    motivos = _mapping(card.get("not_scored_reasons"))
+    if motivos:
+        total = sum(int(n) for n in motivos.values())
+        salida.append(
+            f"{_miles(total)} {_plural(total, 'operación', 'operaciones')} no se "
+            f"{_plural(total, 'pudo', 'pudieron')} puntuar con la tarjeta y quedaron fuera de "
+            "los indicadores."
+        )
+    return salida
+
+
 _BUILDERS: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
     "data": _resumen_data,
     "eda": _resumen_eda,
@@ -4046,6 +4310,19 @@ _BUILDERS_CARTERA: Final[dict[str, Callable[[Study, SummaryContext], StageSummar
 }
 
 
+def _resumen_cartera_monitoreada(study: Study, context: SummaryContext) -> StageSummary:
+    """La cartera de una corrida de monitoreo: el resumen de datos con su rótulo (SDD-33)."""
+    resumen = _resumen_data(study, context)
+    return replace(resumen, label=STAGE_LABELS_MONITOREO["data"])
+
+
+_BUILDERS_MONITOREO: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
+    "data": _resumen_cartera_monitoreada,
+    "monitoring": _resumen_monitoring,
+    "report": _resumen_report,
+}
+
+
 # ────────────────────────────── resumen final ──────────────────────────────
 
 
@@ -4062,6 +4339,8 @@ def build_final_summary(
     familia = family_of(getattr(study, "config", None)) if study is not None else context.family
     if familia == "cartera":
         return _resumen_final_cartera(study, stages, context)
+    if familia == "monitoreo":
+        return _resumen_final_monitoreo(study, stages, context)
     execution = _estado_de_ejecucion(study, stages, context)
     validation = _estado_de_validacion(study, context)
     figures = _cinco_cifras(study) if study is not None else ()
@@ -4268,6 +4547,89 @@ def _resumen_final_cartera(
         assumptions=_supuestos(study) if study is not None else (),
         family="cartera",
     )
+
+
+def _resumen_final_monitoreo(
+    study: Study | None, stages: Sequence[StageSummary], context: SummaryContext
+) -> FinalSummary:
+    """El resumen final del monitoreo: ejecución, veredicto, cinco cifras, alertas y archivos."""
+    from bayesrisk.monitoring.textos import ACCIONES, VEREDICTOS
+
+    card = _card(study, "monitoring", "card") if study is not None else None
+    veredicto = _mapping(card.get("verdict")) if card is not None else {}
+    if veredicto:
+        validacion = (
+            f"{VEREDICTOS[str(veredicto['verdict'])]} en {veredicto['period']} — "
+            f"{ACCIONES[str(veredicto['verdict'])]}"
+        )
+    elif study is None:
+        validacion = "sin correr todavía"
+    else:
+        validacion = "no hay veredicto: el monitoreo no corrió"
+    return FinalSummary(
+        execution=_estado_de_ejecucion(study, stages, context, STAGE_LABELS_MONITOREO),
+        validation=validacion,
+        figures=_cinco_cifras_monitoreo(study) if study is not None else (),
+        review=(
+            *(f"{s.label}: {a}" for s in stages for a in s.alerts),
+            *(f"{_ROTULO_DECISIONES}: {a}" for a in _decisiones_sin_efecto(study)),
+        ),
+        decisions=tuple(context.decision_lines),
+        files=_archivos(study, context),
+        stages=tuple(stages),
+        title=_TITULOS["monitoreo"],
+        family="monitoreo",
+    )
+
+
+def _p_igual(valor: Any) -> str:
+    """«p = 0,091» o «p < 0,001»: el p-valor con su signo, sin «p = < 0,001»."""
+    escrito = _pvalor(valor)
+    return f"p {escrito}" if escrito.startswith("<") else f"p = {escrito}"
+
+
+def _cinco_cifras_monitoreo(study: Study) -> tuple[tuple[str, str], ...]:
+    """Del último periodo con desenlace (o del último): PSI, calibración, AUC y pendiente."""
+    periodos = _artifact(study, "monitoring", "periods")
+    if not isinstance(periodos, pd.DataFrame) or periodos.empty:
+        return ()
+    cifras = [
+        (
+            "Periodos monitoreados",
+            f"{_miles(len(periodos.index))} ({periodos['period'].iloc[0]} a "
+            f"{periodos['period'].iloc[-1]})",
+        )
+    ]
+    con = periodos.loc[periodos["n_with_outcome"] > 0]
+    fila = (con if not con.empty else periodos).iloc[-1]
+    p = fila["period"]
+    cifras.append(
+        (f"PSI del puntaje ({p})", f"{_cifra(fila['psi_score'])} → {_luz(fila['psi_score_light'])}")
+    )
+    if int(fila["n_with_outcome"]):
+        cifras.append(
+            (
+                f"Tasa de malos frente a la PD ({p})",
+                f"{_pct(fila['bad_rate'])} frente a {_pct(fila['expected_pd'])} → "
+                f"{_luz_con_direccion(fila['portfolio_light'], fila['portfolio_direction'])}",
+            )
+        )
+        cifras.append(
+            (
+                f"AUC sobre los tramos ({p})",
+                f"{_cifra(fila['auc'], decimales=3)} frente a "
+                f"{_cifra(fila['auc_initial'], decimales=3)} inicial "
+                f"({_p_igual(fila['auc_p_value'])}) → {_luz(fila['auc_light'])}",
+            )
+        )
+        cifras.append(
+            (
+                f"Pendiente de calibración ({p})",
+                f"{_cifra(fila['slope'], decimales=2)} ({_p_igual(fila['slope_p_value'])}) → "
+                f"{_luz(fila['slope_light'])}",
+            )
+        )
+    return tuple(cifras)
 
 
 def _cinco_cifras_cartera(study: Study) -> tuple[tuple[str, str], ...]:

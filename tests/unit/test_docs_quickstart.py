@@ -295,3 +295,26 @@ def test_la_escala_maestra_de_la_guia_corre_tras_el_notebook_minimo(
     esperada = ["approve" if s >= 512 else "reject" for s in nuevas["score"].astype(float)]
     assert nuevas["decision"].tolist() == esperada
     assert nuevas["grade"].notna().all() and nuevas["grade_pd"].notna().all()
+
+
+#: La guía del monitoreo (SDD-33 §13, capa A): el bloque que guarda la tarjeta y el notebook
+#: mínimo de tres líneas, ejecutados en un solo espacio de nombres como los lee un usuario.
+_MONITOREO = ("monitoreo-tarjeta", "monitoreo")
+
+
+def test_la_guia_del_monitoreo_se_ejecuta_de_corrido(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_binning_process: object
+) -> None:
+    del fake_binning_process  # OR-Tools revienta el proceso de pytest (S20)
+    origen = _DOCS / "guias" / "monitoreo.md"
+    texto = origen.read_text(encoding="utf-8")
+    codigo = "\n".join(_bloque(texto, nombre, origen.name) for nombre in _MONITOREO)
+    assert "Monitor(" in codigo and "mon.run()" in codigo and ".save(" in codigo
+    espacio = _ejecutar(codigo, origen, tmp_path, monkeypatch)
+    mon = espacio["mon"]
+    assert mon.study.run_context.status == "done", mon.study.run_context.error
+    assert mon.config.monitoring.period == "cohorte"
+    veredicto = mon.study.artifacts.get("monitoring", "verdict")
+    assert veredicto.period == "2024Q2"
+    assert (tmp_path / "tarjeta" / "manifest.json").is_file()
+    assert (tmp_path / "bayesrisk-runs" / "monitoreo" / "run" / "audit_trail.jsonl").is_file()

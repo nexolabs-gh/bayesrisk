@@ -12,7 +12,7 @@ publicado (`2.12.0`).
     la puerta guiada (`guided`, `bayesrisk.Scorecard`) y la escala maestra (`master_scale`), desde
     que cerraron sus tres puertas.
     Las superficies que aún crecen (modelado ML, provisiones, survival, forward-looking, stress,
-    validación, gobernanza y tracking) están marcadas como **experimentales** en su
+    validación, monitoreo, gobernanza y tracking) están marcadas como **experimentales** en su
     *docstring*, fuera de la garantía SemVer 2.x.
 
     Esa lista no se escribe a mano en tres sitios: la fija `bayesrisk.testing.stability` y la
@@ -45,6 +45,14 @@ escenarios de la institución y las dos PD del modelo (`history=`, `scenarios=`,
 `forward` y `provisioning`, los motores que las calculan.
 
 ::: bayesrisk.guided.ecl.Ecl
+
+`bayesrisk.Monitor` monitorea una tarjeta en uso con la misma mecánica: la tarjeta guardada, la
+cartera nueva con su columna de periodo y, si la hay, la de desenlace; por periodo dice si cambió
+la población, si el modelo sigue ordenando y si cada tramo acierta su PD, con un veredicto y su
+acción (ver [Monitoreo](#monitoreo)). Es **experimental** desde la 2.13.0, fuera de la garantía
+SemVer 2.x, hasta que la pantalla, el informe y el Excel cierren sus tres puertas.
+
+::: bayesrisk.guided.monitor.Monitor
 
 ::: bayesrisk.guided.summaries.StageSummary
 
@@ -517,6 +525,30 @@ reglas de formación son constantes del motor.
       heading_level: 3
 
 ::: bayesrisk.master_scale.step.MasterScaleStep
+    options:
+      heading_level: 3
+
+## Monitoreo
+
+Una corrida propia que parte de la tarjeta guardada y de la cartera nueva por periodo, sin volver a
+correr el desarrollo ni conservar sus datos: el PSI del puntaje y de la participación por tramo, la
+tasa de malos de cada tramo y de la cartera frente a su PD (en las dos direcciones), la
+discriminación —el AUC sobre los tramos contra el AUC inicial de la tarjeta y la pendiente de
+calibración— y un veredicto por periodo: sin acción, vigilar, recalibrar o redesarrollar.
+**Experimental** desde la 2.13.0 por la puerta guiada (`bayesrisk.Monitor`) y el config completo;
+sólo monitorea tarjetas guardadas desde esa versión, que congelan la referencia de Desarrollo
+(esquema 4). Sus tres hojas son las entradas de la institución; los umbrales y la tabla de decisión
+son constantes del motor.
+
+::: bayesrisk.monitoring.config.MonitoringConfig
+    options:
+      heading_level: 3
+
+::: bayesrisk.monitoring.step.MonitoringStep
+    options:
+      heading_level: 3
+
+::: bayesrisk.monitoring.results.MonitoringVerdict
     options:
       heading_level: 3
 

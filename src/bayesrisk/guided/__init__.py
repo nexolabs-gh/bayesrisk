@@ -19,13 +19,19 @@ siguen la marca experimental de ``survival``, ``forward`` y ``provisioning``. Lo
 institución y las dos PD del modelo (``history=``, ``scenarios=``, ``pd=``, ``origination_pd=``)
 salieron experimentales en la 2.8.0 y la 2.9.0 y son estables desde que cerraron sus tres puertas
 (IFRS9-FIRMABLE capa C, 2.10.0).
+
+:class:`~bayesrisk.guided.monitor.Monitor`, la puerta guiada del monitoreo de un modelo en uso
+(SDD-33), sale en la 2.13.0 como excepción experimental por símbolo (D-MNT-8): estable cuando
+cierren sus tres puertas en la capa B.
 """
 
 from bayesrisk.guided.ecl import Ecl, EclInputError, EclRunError
+from bayesrisk.guided.monitor import Monitor, MonitorInputError, MonitorRunError
 from bayesrisk.guided.scorecard import Scorecard, ScorecardInputError, ScorecardRunError
 from bayesrisk.guided.summaries import (
     STAGE_LABELS,
     STAGE_LABELS_CARTERA,
+    STAGE_LABELS_MONITOREO,
     FinalSummary,
     StageSummary,
 )
@@ -33,10 +39,14 @@ from bayesrisk.guided.summaries import (
 __all__ = [
     "STAGE_LABELS",
     "STAGE_LABELS_CARTERA",
+    "STAGE_LABELS_MONITOREO",
     "Ecl",
     "EclInputError",
     "EclRunError",
     "FinalSummary",
+    "Monitor",
+    "MonitorInputError",
+    "MonitorRunError",
     "Scorecard",
     "ScorecardInputError",
     "ScorecardRunError",

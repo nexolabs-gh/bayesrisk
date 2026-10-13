@@ -55,15 +55,28 @@ __all__ = [
 #: su tramo de referencia, congelados en ``unseen_reference``; el 1 la rechaza. El 3 (SDD-32,
 #: 2.11.0) congela ``model.clip`` y lo respeta —con límites de puntaje y ``clip=False`` la corrida
 #: no recorta y la tarjeta tampoco (§12-9)— y puede llevar la escala maestra (``master_scale``: sus
-#: cortes, la PD de cada tramo y el corte de aprobación; D-ESC-6). El lector acepta los tres y
-#: despacha por lo declarado: un bundle ya entregado no cambia su resultado (uno sin ``clip``
-#: recorta como siempre).
-_BUNDLE_SCHEMA: Final = 3
-_BUNDLE_SCHEMAS_LEIDOS: Final = frozenset({1, 2, 3})
+#: cortes, la PD de cada tramo y el corte de aprobación; D-ESC-6). El 4 (SDD-33, 2.13.0) congela,
+#: junto a la escala, la referencia de Desarrollo que el monitoreo compara
+#: (``monitoring_reference``, D-MNT-2): sólo agregados —los cortes del PSI del puntaje y su
+#: participación, la participación por tramo y el AUC inicial con su fuente y su varianza—; no
+#: cambia lo que la tarjeta puntúa. El lector acepta los cuatro y despacha por lo declarado: un
+#: bundle ya entregado no cambia su resultado (uno sin ``clip`` recorta como siempre).
+_BUNDLE_SCHEMA: Final = 4
+_BUNDLE_SCHEMAS_LEIDOS: Final = frozenset({1, 2, 3, 4})
 #: La política de categorías no vistas de cada esquema.
-_UNSEEN_POLICY: Final[dict[int, str]] = {1: "not_scorable", 2: "reference_bin", 3: "reference_bin"}
+_UNSEEN_POLICY: Final[dict[int, str]] = {
+    1: "not_scorable",
+    2: "reference_bin",
+    3: "reference_bin",
+    4: "reference_bin",
+}
 #: Las claves del bloque de la escala maestra (esquema 3, opcional).
 _MASTER_SCALE_KEYS: Final = frozenset({"cuts", "grade_pd", "approval_cutoff", "source"})
+#: Las claves de la referencia de Desarrollo para el monitoreo (esquema 4, sólo con la escala).
+_MONITORING_REFERENCE_KEYS: Final = frozenset(
+    {"score_edges", "score_counts", "grade_counts", "n_development", "auc_initial"}
+)
+_AUC_INITIAL_KEYS: Final = frozenset({"source", "auc", "variance", "n_bad", "n_good", "cause"})
 _UNSEEN_REFERENCE_KEYS: Final = frozenset({"bin_index", "woe", "raw_points", "points"})
 _BUNDLE_FILES: Final = frozenset({"manifest.json", "bins.parquet"})
 _MAX_MANIFEST_BYTES: Final = 2 * 1024 * 1024
@@ -280,6 +293,10 @@ class FittedScorecardBundle:
         escala = _escala_de_la_corrida(study)
         if escala is not None:
             manifest["master_scale"] = escala
+            # SDD-33 D-MNT-2: la referencia que el monitoreo compara se congela con la escala.
+            referencia = _referencia_de_monitoreo(study, escala)
+            if referencia is not None:
+                manifest["monitoring_reference"] = referencia
         manifest["bundle_hash"] = _bundle_hash(manifest)
         return cls(manifest=manifest, rules=rules)
 
@@ -1899,6 +1916,9 @@ def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
     # El bloque de la escala maestra es opcional y sólo existe desde el esquema 3 (D-ESC-6).
     if schema >= 3 and "master_scale" in value:
         required = required | {"master_scale"}
+    # La referencia del monitoreo es opcional, desde el esquema 4 y sólo con la escala (D-MNT-2).
+    if schema >= 4 and "master_scale" in value and "monitoring_reference" in value:
+        required = required | {"monitoring_reference"}
     if set(value) != required:
         raise ScorecardBundleError(
             f"Claves de manifest inválidas: faltan={sorted(required - set(value))}, "
@@ -1973,6 +1993,10 @@ def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
         raise ScorecardBundleError("min_score no puede exceder max_score.")
     if "master_scale" in value:
         _validate_master_scale(value["master_scale"])
+    if "monitoring_reference" in value:
+        _validate_monitoring_reference(
+            value["monitoring_reference"], grades=len(value["master_scale"]["grade_pd"])
+        )
     try:
         from bayesrisk.calibration.results import CalibrationParameters
 
@@ -2059,6 +2083,123 @@ def _escala_de_la_corrida(study: Study) -> dict[str, Any] | None:
         "approval_cutoff": None if corte is None else float(corte),
         "source": str(campo("source")),
     }
+
+
+def _referencia_de_monitoreo(study: Study, escala: Mapping[str, Any]) -> dict[str, Any] | None:
+    """La referencia de Desarrollo que el monitoreo compara (SDD-33 §3.7, D-MNT-2 y D-MNT-3).
+
+    Sólo agregados, ninguna fila: los cortes efectivos del PSI del puntaje con las reglas de
+    ``stability`` y cuántas operaciones de Desarrollo caen en cada bin, cuántas en cada tramo, y el
+    AUC inicial sobre los tramos —el de Holdout, la validación inicial fuera de la muestra de
+    ajuste; sin Holdout, el de Desarrollo, declarado— con su varianza del anexo 3.1 del BCE y sus
+    conteos. ``None`` si la corrida no publicó la asignación de la escala.
+    """
+    if not (
+        study.artifacts.has("master_scale", "assignment")
+        and study.artifacts.has("scorecard", "score")
+    ):
+        return None
+    from bayesrisk.monitoring.engine import (
+        auc_sobre_tramos,
+        conteos_por_corte,
+        cortes_del_puntaje,
+    )
+
+    asignacion = study.artifacts.get("master_scale", "assignment")
+    puntaje = study.artifacts.get("scorecard", "score")
+    if not isinstance(asignacion, pd.DataFrame) or not isinstance(puntaje, pd.DataFrame):
+        return None
+    k = len(escala["grade_pd"])
+    particion = asignacion["partition"].astype("string").astype(str).to_numpy()
+    valores = pd.to_numeric(asignacion["score"], errors="coerce").to_numpy(
+        dtype="float64", na_value=np.nan
+    )
+    grado = asignacion["grade"].to_numpy(dtype="float64", na_value=np.nan)
+    objetivo = pd.to_numeric(puntaje["target"].reindex(asignacion.index), errors="coerce").to_numpy(
+        dtype="float64", na_value=np.nan
+    )
+    con_tramo = np.isfinite(valores) & np.isfinite(grado)
+    desarrollo = con_tramo & (particion == "desarrollo")
+    if not desarrollo.any():
+        return None
+    cortes = cortes_del_puntaje(valores[desarrollo])
+    tramos_dev = grado[desarrollo].astype("int64")
+    holdout = con_tramo & (particion == "holdout") & np.isfinite(objetivo)
+    fuente = "holdout" if holdout.any() else "desarrollo"
+    muestra = holdout if holdout.any() else (desarrollo & np.isfinite(objetivo))
+    tramos, malos = grado[muestra].astype("int64"), objetivo[muestra]
+    auc = auc_sobre_tramos(
+        [int(np.sum((tramos == g) & (malos == 1.0))) for g in range(1, k + 1)],
+        [int(np.sum((tramos == g) & (malos == 0.0))) for g in range(1, k + 1)],
+    )
+    return {
+        "score_edges": [float(c) for c in cortes],
+        "score_counts": [int(c) for c in conteos_por_corte(valores[desarrollo], cortes)],
+        "grade_counts": [int(np.sum(tramos_dev == g)) for g in range(1, k + 1)],
+        "n_development": int(np.sum(desarrollo)),
+        "auc_initial": {
+            "source": fuente,
+            "auc": auc.auc,
+            "variance": (
+                auc.variance if auc.variance is not None and math.isfinite(auc.variance) else None
+            ),
+            "n_bad": auc.n_bad,
+            "n_good": auc.n_good,
+            "cause": auc.cause,
+        },
+    }
+
+
+def _validate_monitoring_reference(value: Any, *, grades: int) -> None:
+    """La referencia del monitoreo: conteos coherentes con los cortes, los tramos y Desarrollo."""
+
+    def entero(x: Any) -> bool:
+        return isinstance(x, int) and not isinstance(x, bool) and x >= 0
+
+    if not isinstance(value, dict) or set(value) != _MONITORING_REFERENCE_KEYS:
+        raise ScorecardBundleError("Schema de manifest.monitoring_reference inválido.")
+    n = value["n_development"]
+    edges, counts, grade_counts = value["score_edges"], value["score_counts"], value["grade_counts"]
+    if not entero(n) or n == 0:
+        raise ScorecardBundleError("monitoring_reference.n_development debe ser un entero > 0.")
+    if (
+        not isinstance(edges, list)
+        or not all(_is_finite_number(c) for c in edges)
+        or any(float(b) <= float(a) for a, b in pairwise(edges))
+    ):
+        raise ScorecardBundleError("monitoring_reference.score_edges debe ser una lista creciente.")
+    for nombre, lista, largo in (
+        ("score_counts", counts, len(edges) + 1),
+        ("grade_counts", grade_counts, grades),
+    ):
+        if (
+            not isinstance(lista, list)
+            or len(lista) != largo
+            or not all(entero(c) for c in lista)
+            or sum(lista) != n
+        ):
+            raise ScorecardBundleError(
+                f"monitoring_reference.{nombre} debe traer {largo} conteos que sumen n_development."
+            )
+    auc = value["auc_initial"]
+    if not isinstance(auc, dict) or set(auc) != _AUC_INITIAL_KEYS:
+        raise ScorecardBundleError("Schema de monitoring_reference.auc_initial inválido.")
+    if (
+        auc["source"] not in {"holdout", "desarrollo"}
+        or not entero(auc["n_bad"])
+        or not entero(auc["n_good"])
+        or (auc["cause"] is not None and not isinstance(auc["cause"], str))
+        or (auc["auc"] is not None and not (_is_finite_number(auc["auc"]) and 0 <= auc["auc"] <= 1))
+        or (
+            auc["variance"] is not None
+            and not (_is_finite_number(auc["variance"]) and auc["variance"] >= 0)
+        )
+        or (
+            auc["cause"] is None
+            and (auc["auc"] is None or auc["variance"] is None or not auc["variance"] > 0)
+        )
+    ):
+        raise ScorecardBundleError("monitoring_reference.auc_initial inválido.")
 
 
 def _aplicar_escala(

@@ -53,6 +53,11 @@
 > con su dirección y la regla con que el veredicto las consolida (§6.2). Sin cuarta pasada, por el
 > criterio declarado. Informe: `evidencia/s44/codex_sdd33_p3_raw.txt`.
 >
+> **Capa A implementada en S45 (2026-10-13)**, sin publicar: el dominio `monitoring`, la tarjeta de
+> esquema 4, `bayesrisk.Monitor` (experimental), los resúmenes y la guía; el oráculo de §0.3
+> reproducido con OptBinning real. Cami precisó la fila 3 de §3.5 (el ámbar de un tramo suelto no
+> pide vigilar); lo demás que el código precisó, en §14.
+>
 > **No toca:** el pipeline del scorecard, `stability`, `validation`, `performance`, la escala
 > maestra, IFRS 9, CMF ni el arnés H9R. Sin la sección nueva, ninguna corrida, artefacto, YAML ni
 > `config_hash` cambia (D-ESC-7). **No autoriza** bump, tag, PyPI ni recaptura.
@@ -584,3 +589,56 @@ periodo de `stability` se publica en la capa B; D-MNT-10 (§12-10) la calibraci�
   ~100 líneas de código propio, `medir_h4.py`); **objetivo**, 3 · 3 · 3 ·
   ≈ 1 s · 3 (tarjeta, periodo, desenlace). Las del scorecard (15 · 37 · 414 · ≈ 1 s · 5) no cambian
   en la capa A; la B suma la sección al formulario del trabajo nuevo, no al del scorecard.
+
+## 14. Lo que el código precisó (capa A, S45, 2026-10-13)
+
+Base medida: `375e02e` (2.12.0 con este documento aprobado). Ninguna precisión cambia un contrato
+salvo la primera, que decidió Cami.
+
+1. **El ámbar que pide vigilar** (Cami, 2026-10-13, interactivo; «Respuestas de Cami» › S45). La
+   fila 3 de §3.5 dice «cualquier ámbar» y el oráculo de §0.3 da «sin acción» en la cartera estable
+   en 2024Q1, con el tramo 1 en ámbar (p entre 0,01 y 0,05): las dos fuentes chocaban. Decidido:
+   piden vigilar el ámbar de los indicadores de la cartera —el PSI del puntaje o de los tramos, la
+   calibración de cartera y cada prueba de discriminación—, no el de un tramo suelto: un tramo rojo
+   aislado ya sólo pide vigilar (§0.4-4) y, con K tramos a 0,05, uno sale ámbar por azar en uno de
+   cada cuatro o cinco periodos. Con esa lectura el motor reproduce los veredictos de §0.3.
+2. **Un p-valor ausente no enciende el espejo.** La tabla por tramo guarda el p-valor de un tramo
+   no evaluable como celda vacía (NaN) y el espejo `1 − p` lo convertía en un rojo inventado.
+   Defecto propio, visto al medir el motor contra §0.3 antes de cablear el dominio; con su test y
+   su control negativo.
+3. **El contraste de cartera reutiliza `binomial_by_grade`**: la cartera es «el grado más uno» del
+   BCE y la función ya promedia la PD del tramo sobre las mismas filas con desenlace (`M_t`), así
+   que no hay un Jeffreys propio. Con menos de 30 filas con desenlace (el mínimo del tramo), la
+   cartera queda «no evaluable».
+4. **La pendiente se ajusta con Newton sobre los conteos por tramo** (la misma verosimilitud que
+   por operación): coincide con `statsmodels` a 1e-8 en los coeficientes y a 2e-6 en el error
+   estándar (statsmodels lo evalúa en su última iteración IRLS). La separación perfecta se detecta
+   antes de ajustar, con la regla exacta para una covariable. §10 decía que scipy es del núcleo: no
+   lo es; el monitoreo, como la escala y la tarjeta, exige `bayesrisk[scoring]`.
+5. **La referencia de Desarrollo** vive en `monitoring_reference` del manifiesto, con **conteos**
+   —no proporciones—: los cortes interiores, los conteos por bin y por tramo, `n` y el AUC inicial
+   con su varianza, sus conteos y su causa si no es evaluable; se valida al leer (cortes
+   crecientes, conteos que suman `n`). Toda tarjeta nueva es de esquema 4; el bloque existe sólo
+   con la escala. Una tarjeta nueva de la misma corrida cambia de huella; las ya guardadas, no.
+6. **`bundle_hash` en el lineage** es un campo opcional de `LineageBundle` que se omite vacío: el
+   lineage de toda corrida que no monitorea queda byte a byte igual (gate).
+7. **Los resúmenes hablan en la familia «monitoreo»** («Cartera monitoreada», «Monitoreo») y el
+   resumen final dice «Veredicto» donde el del scorecard dice «Validación técnica».
+8. **El periodo**: un texto se ordena alfabéticamente (la lectura de `stability`), un número en
+   orden numérico y una fecha se agrupa por mes (`AAAA-MM`); una fila sin periodo queda fuera y se
+   cuenta en «Qué revisar».
+9. **La tarjeta se copia al proyecto** (`input/tarjeta-<huella>`), como los datos, y la corrida
+   verifica su huella antes de correr.
+10. **`Monitoreo.xlsx` va en la capa B**, como fija D-MNT-8 en el registro (el prompt de S45 lo
+    listaba en la A).
+11. **El oráculo de §0.3 con OptBinning real** (`test_monitoring_oraculo.py`, en un subproceso):
+    PSI, tasas, AUC sobre los tramos y pendiente idénticos a S44 a sus decimales, en las cinco
+    filas; los veredictos, todos. Los p-valores de la prueba del BCE quedan a ≤ 0,002 de S44, que
+    redondeó cifras intermedias con un guion que no quedó en la evidencia; dos no se reproducen
+    —la cartera estable en 2023Q2 y 2023Q4: 0,9461 y 0,8948 en S44, 0,9278 y 0,9008 en el motor,
+    que es igual al anexo 3.1 par a par—, con el mismo semáforo y sin figurar en §0.3. La
+    discriminación rota se reproduce exacta por el motor (0,4732 y −0,115) y, por la puerta, con
+    las variables de la OOT barajadas: «redesarrollar».
+12. **Las cinco cifras**: 3 · 3 · 3 · ≈ 1–2 s · 2. El SDD estimó 3 conceptos («tarjeta, periodo,
+    desenlace»): son los tres argumentos; la regla de los gemelos cuenta lo importado más los
+    métodos llamados, `Monitor` y `run`.

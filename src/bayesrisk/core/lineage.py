@@ -18,7 +18,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SerializerFunctionWrapHandler, model_serializer
 
 __all__ = ["LineageBundle", "RunContext", "RunError"]
 
@@ -51,6 +51,20 @@ class LineageBundle(BaseModel):
     created_at: datetime
     schema_version: str
     injected_artifacts: tuple[str, ...] = ()
+    #: La huella de la tarjeta que una corrida de monitoreo midió (SDD-33 §5.3, D-MNT-1): su ruta
+    #: queda fuera del ``config_hash`` y su contenido lo identifica esto. Sólo existe en esas
+    #: corridas: vacío, no se serializa, y el lineage de toda otra corrida queda byte a byte igual.
+    bundle_hash: str | None = None
+
+    # Sin anotación de retorno A PROPÓSITO (como el serializador de D-ESC-7 en el config): con
+    # `-> Any` Pydantic vacía el schema de serialización.
+    @model_serializer(mode="wrap")
+    def _omitir_bundle_hash_vacio(self, handler: SerializerFunctionWrapHandler):  # type: ignore[no-untyped-def]
+        """``bundle_hash`` sólo se serializa cuando la corrida lo pobló (una de monitoreo)."""
+        volcado = handler(self)
+        if isinstance(volcado, dict) and volcado.get("bundle_hash", ...) is None:
+            del volcado["bundle_hash"]
+        return volcado
 
 
 class RunError(BaseModel):
