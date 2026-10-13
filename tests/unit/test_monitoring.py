@@ -885,8 +885,80 @@ def test_una_columna_con_el_nombre_reservado_se_rechaza_antes_de_correr(
 ) -> None:
     """La columna con que la puerta transporta el índice de un panel está reservada: una columna
     del usuario con ese nombre se rechaza con su motivo, en vez de tomarse por el índice."""
-    from bayesrisk.monitoring.step import INDICE_SIN_NOMBRE
+    from bayesrisk.monitoring.step import INDICE_DEL_PANEL
 
-    datos = entorno["comportamiento"].assign(**{INDICE_SIN_NOMBRE: 0})
+    datos = entorno["comportamiento"].assign(**{INDICE_DEL_PANEL: 0})
     with pytest.raises(MonitorInputError, match="reservad"):
         _monitor(entorno, datos, "reservada")
+
+
+# ── la pasada 6 de Codex sobre el código ────────────────────────────────────────────────
+
+
+def _indice_de_tipo(etiquetas: list[str], tipo: str, nombre: str | None) -> pd.Index:
+    if tipo == "category":
+        return pd.CategoricalIndex(etiquetas, name=nombre)
+    return pd.Index(etiquetas, dtype=object, name=nombre)
+
+
+@pytest.mark.parametrize("nombre", [None, "lote"], ids=["sin-nombre", "con-nombre"])
+@pytest.mark.parametrize("tipo", ["str", "category"])
+def test_con_id_en_columna_un_indice_auxiliar_de_otro_tipo_tambien_se_monitorea(
+    tmp_path: Path, fake_binning_process: object, tipo: str, nombre: str | None
+) -> None:
+    """Con la identidad en columnas, el índice auxiliar que se repite dentro de un periodo cede su
+    lugar a uno de posición **del tipo que la tarjeta congeló** (texto o categórico, no sólo
+    entero); las llaves repetidas siguen fallando con el mensaje de la tarjeta."""
+    del fake_binning_process
+    desarrollo = cartera()
+    desarrollo.index = _indice_de_tipo([f"r-{i}" for i in range(len(desarrollo))], tipo, nombre)
+    sc = Scorecard(
+        desarrollo,
+        target="bad_flag",
+        id="loan_id",
+        cohort="cohorte",
+        oot_cohorts=["2024Q2"],
+        name=f"dev-{tipo}",
+        run_dir=tmp_path,
+    )
+    sc._echo = lambda _t: None
+    sc.run()
+    assert sc.study.run_context.status == "done", sc.study.run_context.error
+    tarjeta = FittedScorecardBundle.from_study(sc.study)
+    identidad = tarjeta.manifest["row_identity"]
+    assert identidad["index_dtype"] == tipo and identidad["unique_keys"] == ["loan_id"]
+    lotes = []
+    for _, grupo in cartera(semilla=47).groupby("cohorte", sort=True):
+        for parte in (grupo.iloc[:500], grupo.iloc[500:]):
+            parte = parte.copy()
+            parte.index = _indice_de_tipo([f"l-{i}" for i in range(len(parte))], tipo, nombre)
+            lotes.append(parte)
+    panel = pd.concat(lotes)
+    assert panel.index.has_duplicates
+    mon = Monitor(tarjeta, panel, period="cohorte", default="bad_flag", run_dir=tmp_path / "m")
+    mon._echo = lambda _t: None
+    mon.run()
+    assert mon.study.run_context.status == "done", mon.study.run_context.error
+    assert int(mon.study.artifacts.get("monitoring", "periods")["n_scored"].sum()) == 6_000
+    mal = Monitor(
+        tarjeta,
+        pd.concat([*lotes, lotes[0].iloc[[0]]]),
+        period="cohorte",
+        default="bad_flag",
+        name="mal",
+        run_dir=tmp_path / "m",
+    )
+    mal._echo = lambda _t: None
+    mal.run()
+    assert mal.study.run_context.status == "failed"
+    assert "llaves de identidad duplicadas" in mal.study.run_context.error.message
+
+
+def test_un_indice_que_se_llama_como_una_columna_se_rechaza(entorno: dict[str, Any]) -> None:
+    """Un índice que se repite y se llama como una columna no se puede pasar a columna sin pisarla:
+    la puerta lo dice antes de correr, en vez de caerse con el error de pandas."""
+    datos = entorno["comportamiento"]
+    panel = pd.concat([datos, datos.loc[datos["cohorte"] == "2024Q2"].assign(cohorte="2024Q3")])
+    panel.index = pd.Index(panel["loan_id"].to_numpy(), name="uso")
+    with pytest.raises(MonitorInputError, match="se llama como una columna"):
+        _monitor(entorno, panel, "indice-columna")

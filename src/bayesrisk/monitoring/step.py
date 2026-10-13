@@ -45,7 +45,7 @@ else:
     Semaforo: TypeAlias = Any
 
 __all__ = [
-    "INDICE_SIN_NOMBRE",
+    "INDICE_DEL_PANEL",
     "MONITORING_ARTIFACTS",
     "MonitoringStep",
     "cargar_tarjeta_monitoreable",
@@ -108,11 +108,12 @@ PERIODS_COLUMNS: Final[tuple[str, ...]] = (
     "verdict_rule",
 )
 VARIABLES_COLUMNS: Final[tuple[str, ...]] = ("period", "feature", "csi", "csi_light")
-#: La columna con que la puerta guiada conserva un índice SIN nombre que se repite entre periodos:
-#: el paso lo vuelve a poner como índice (sin nombre) de cada periodo, con su dtype, para que la
-#: tarjeta compruebe la unicidad dentro del periodo como siempre (pasada 4 de Codex). El nombre está
-#: reservado: la puerta rechaza una cartera que ya traiga una columna así (pasada 5).
-INDICE_SIN_NOMBRE: Final = "__bayesrisk_indice__"
+#: La columna con que la puerta guiada conserva el índice de un panel que se repite entre periodos,
+#: con su dtype (pasadas 4 a 6 de Codex). Su presencia dice que el índice que queda es de posición:
+#: el paso vuelve a poner el original como índice de cada periodo cuando la tarjeta identifica por
+#: él, y uno de posición del tipo que la tarjeta congeló cuando identifica por columnas. El nombre
+#: está reservado: la puerta rechaza una cartera que ya traiga una columna así (pasada 5).
+INDICE_DEL_PANEL: Final = "__bayesrisk_indice__"
 
 
 @register("standard", domain="monitoring")
@@ -616,14 +617,20 @@ def _aplicar(
     # ``to_numpy()`` lo dejaba en texto y la tarjeta lo rechazaba, pasada 5 de Codex).
     if indice is not None and indice in sub.columns and sub.index.name != indice:
         entrada = entrada.set_axis(pd.Index(sub[indice].array, name=indice), axis=0)
-    elif indice is None and INDICE_SIN_NOMBRE in sub.columns:
-        original = pd.Index(sub[INDICE_SIN_NOMBRE].array, name=None)
-        # Sin llaves (``id=None``) el índice ES la identidad: vuelve tal cual y la tarjeta comprueba
-        # su unicidad dentro del periodo. Con la identidad en columnas el índice es auxiliar: vuelve
-        # si es único en el periodo y, si se repite (lotes con sus índices locales), la tarjeta
-        # puntúa con el de posición y comprueba sus llaves (pasada 5 de Codex).
-        if not identidad["unique_keys"] or original.is_unique:
-            entrada = entrada.set_axis(original, axis=0)
+    elif indice is None and INDICE_DEL_PANEL in sub.columns:
+        if not identidad["unique_keys"]:
+            # Sin llaves (``id=None``) el índice ES la identidad: vuelve tal cual y la tarjeta
+            # comprueba su unicidad dentro del periodo (pasada 4 de Codex).
+            entrada = entrada.set_axis(pd.Index(sub[INDICE_DEL_PANEL].array, name=None), axis=0)
+        else:
+            # Con la identidad en columnas el índice del panel es auxiliar —puede repetirse dentro
+            # de un periodo, como en lotes con sus índices locales—: la tarjeta recibe uno de
+            # posición del tipo que congeló y comprueba sus llaves (pasadas 5 y 6 de Codex). El
+            # resultado vuelve alineado por posición: ese índice no llega a ningún artefacto.
+            entrada = entrada.set_axis(
+                _indice_de_posicion(len(entrada), str(identidad["index_dtype"]), etiqueta, pd),
+                axis=0,
+            )
     try:
         resultado = tarjeta.apply(entrada)
     except ScorecardBundleError as exc:
@@ -633,6 +640,27 @@ def _aplicar(
     aplicado = resultado.application_frame.copy()
     aplicado.index = sub.index
     return aplicado, resultado.trace_frame
+
+
+def _indice_de_posicion(n: int, tipo: str, etiqueta: str, pd: Any) -> Any:
+    """Un índice único de ``n`` posiciones con el tipo lógico ``tipo`` que congeló la tarjeta."""
+    posiciones = pd.RangeIndex(n)
+    if tipo == "int":
+        return posiciones
+    if tipo == "float":
+        return pd.Index(posiciones.astype("float64"))
+    if tipo == "str":
+        return pd.Index(posiciones.astype(str), dtype=object)
+    if tipo == "category":
+        return pd.CategoricalIndex(posiciones.astype(str))
+    if tipo == "datetime":
+        return pd.DatetimeIndex(pd.to_datetime(posiciones, unit="s"))
+    # Un índice booleano no tiene más de dos valores distintos: no hay uno único que darle.
+    raise MonitoringInputError(
+        f"La tarjeta no puede puntuar el periodo {etiqueta}: identifica cada operación por "
+        f"columnas, pero exige un índice de tipo {tipo!r} y el de la cartera se repite; guarda "
+        "la cartera con un índice único."
+    )
 
 
 def _csi(

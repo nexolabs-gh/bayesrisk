@@ -145,17 +145,19 @@ class Monitor(_PuertaGuiada):
         En un panel la misma operación está en varios periodos: si su identidad viene en el índice,
         el índice se repite y el paso de datos —que exige un índice único en toda la cartera— la
         rechazaría antes del monitoreo, que comprueba la unicidad **dentro** de cada periodo. El
-        índice pasa a columna (con su nombre: la tarjeta la vuelve a usar como índice al puntuar
-        cada periodo) y el snapshot se escribe desde ese frame.
+        índice pasa a la columna reservada :data:`~bayesrisk.monitoring.step.INDICE_DEL_PANEL`, con
+        su dtype, y —si tiene nombre— también a una columna con ese nombre (la tarjeta que
+        identifica por él la vuelve a usar como índice); el paso decide en cada periodo qué índice
+        recibe la tarjeta. El snapshot se escribe desde ese frame.
         """
-        from bayesrisk.monitoring.step import INDICE_SIN_NOMBRE
+        from bayesrisk.monitoring.step import INDICE_DEL_PANEL
 
         frame, source, source_label = self._cargar(data)
-        if INDICE_SIN_NOMBRE in frame.columns:
+        if INDICE_DEL_PANEL in frame.columns:
             # El paso lee esa columna como el índice del panel: una del usuario con el mismo nombre
             # se tomaría por él (pasada 5 de Codex).
             raise MonitorInputError(
-                f"La cartera trae una columna llamada «{INDICE_SIN_NOMBRE}», un nombre reservado: "
+                f"La cartera trae una columna llamada «{INDICE_DEL_PANEL}», un nombre reservado: "
                 "el monitoreo la usa para conservar el índice de una cartera con la misma "
                 "operación en varios periodos. Renómbrala y vuelve a construir el monitoreo."
             )
@@ -164,14 +166,19 @@ class Monitor(_PuertaGuiada):
         import io
 
         nombre = frame.index.name
-        # Un índice sin nombre también es identidad (una tarjeta con id=None identifica por él):
-        # se conserva en una columna reservada, con su dtype, y no se descarta (pasada 4 de Codex:
-        # descartarlo dejaba pasar un duplicado dentro de un mismo periodo).
-        plano = (
-            frame.reset_index()
-            if nombre is not None
-            else frame.rename_axis(INDICE_SIN_NOMBRE).reset_index()
-        )
+        if nombre is not None and nombre in frame.columns:
+            raise MonitorInputError(
+                f"El índice de la cartera se repite entre periodos y se llama como una columna "
+                f"({nombre!r}): no se puede pasar a columna sin pisarla. Renombra el índice o la "
+                "columna y vuelve a construir el monitoreo."
+            )
+        # El índice también es identidad cuando no tiene nombre (una tarjeta con id=None identifica
+        # por él): se conserva siempre, con su dtype (pasada 4 de Codex), en la columna reservada
+        # —la señal de que la puerta lo aplanó, para que el paso sepa que el índice que queda es de
+        # posición (pasada 6)— y, con nombre, también en su columna.
+        plano = frame.rename_axis(INDICE_DEL_PANEL).reset_index()
+        if nombre is not None:
+            plano.insert(1, nombre, plano[INDICE_DEL_PANEL])
         self._descartar_snapshot()
         buffer = io.BytesIO()
         plano.to_parquet(buffer)

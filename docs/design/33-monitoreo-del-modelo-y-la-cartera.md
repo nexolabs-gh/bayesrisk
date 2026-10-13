@@ -684,3 +684,13 @@ salvo la primera, que decidió Cami.
     en el periodo (si no, la tarjeta puntúa con el de posición y comprueba sus llaves, que siguen
     fallando repetidas). Y `__bayesrisk_indice__` es un nombre reservado: una columna del usuario
     con ese nombre se tomaba por el índice; la puerta la rechaza con su motivo antes de correr.
+18. **Pasada 6 de Codex**, la última de confirmación (`a7233e7`): un medium, real y no
+    contractual, corregido con su test nacido rojo y su control negativo; sustituye la regla del
+    índice auxiliar del punto 17. Con la identidad en columnas, el índice de posición que recibía
+    la tarjeta era siempre entero y una tarjeta formada con un índice de texto o categórico lo
+    rechazaba por tipo. Ahora, cuando la puerta aplanó un índice que se repite (con o sin nombre:
+    la columna reservada es la señal), una tarjeta con llaves recibe un índice de posición **del
+    tipo que congeló** y comprueba sus llaves como siempre; el índice no llega a ningún artefacto,
+    porque el resultado se realinea por posición. Una tarjeta sin llaves (`id=None`) sigue
+    recibiendo el índice original. Y un índice que se repite y se llama como una columna se
+    rechaza antes de correr, en vez de caerse con el error de pandas.
