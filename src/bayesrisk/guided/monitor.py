@@ -153,8 +153,17 @@ class Monitor(_PuertaGuiada):
             return frame, source, source_label
         import io
 
+        from bayesrisk.monitoring.step import INDICE_SIN_NOMBRE
+
         nombre = frame.index.name
-        plano = frame.reset_index(drop=nombre is None)
+        # Un índice sin nombre también es identidad (una tarjeta con id=None identifica por él):
+        # se conserva en una columna reservada, con su dtype, y no se descarta (pasada 4 de Codex:
+        # descartarlo dejaba pasar un duplicado dentro de un mismo periodo).
+        plano = (
+            frame.reset_index()
+            if nombre is not None
+            else frame.rename_axis(INDICE_SIN_NOMBRE).reset_index()
+        )
         self._descartar_snapshot()
         buffer = io.BytesIO()
         plano.to_parquet(buffer)
@@ -163,7 +172,7 @@ class Monitor(_PuertaGuiada):
         detalle = (
             f"el índice {nombre} se repite entre periodos y pasa a columna"
             if nombre is not None
-            else "el índice del archivo se repite y se descarta"
+            else "el índice del archivo se repite entre periodos y pasa a columna"
         )
         return (
             pd.read_parquet(io.BytesIO(contenido)),

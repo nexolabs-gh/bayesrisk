@@ -669,3 +669,9 @@ salvo la primera, que decidió Cami.
     cada periodo. Y la huella de la tarjeta se reconcilia con lo que el intento dejó guardado: si
     el registro de auditoría falla a mitad de la publicación, la tabla que quedó lleva igual su
     `bundle_hash` (y un reintento que no guardó nada sigue sin poder cambiarlo).
+16. **Pasada 4 de Codex**, de confirmación, pedida por Cami antes del tag (`5e70fed`): un medium,
+    real, introducido por el arreglo del panel de la pasada 3 —un índice sin nombre que se repite
+    se descartaba, y una tarjeta con `id=None` (que identifica por ese índice) dejaba pasar un
+    duplicado dentro de un periodo y rechazaba un panel con índice textual—. Corregido: el índice
+    sin nombre se conserva en una columna reservada (`__bayesrisk_indice__`) con su dtype y el paso
+    lo restaura como índice de cada periodo; con su test nacido rojo y su control negativo.

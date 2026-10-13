@@ -768,3 +768,44 @@ def test_una_publicacion_a_medias_conserva_la_huella_de_su_tarjeta(
     assert study.artifacts.has("monitoring", "grades_by_period")
     assert not study.artifacts.has("monitoring", "verdict")
     assert study.run_context.lineage.bundle_hash == entorno["tarjeta"].bundle_hash
+
+
+# ── la pasada 4 de Codex sobre el código ────────────────────────────────────────────────
+
+
+def test_un_indice_sin_nombre_conserva_la_identidad_de_la_tarjeta(
+    tmp_path: Path, fake_binning_process: object
+) -> None:
+    """Una tarjeta con ``id=None`` identifica por el índice del archivo, aunque no tenga nombre:
+    el panel textual entre periodos se monitorea y un duplicado dentro de un periodo falla."""
+    del fake_binning_process
+    sc = Scorecard(
+        cartera().set_index("loan_id").rename_axis(None),
+        target="bad_flag",
+        cohort="cohorte",
+        oot_cohorts=["2024Q2"],
+        name="dev-sin-nombre",
+        run_dir=tmp_path,
+    )
+    sc._echo = lambda _t: None
+    sc.run()
+    tarjeta = FittedScorecardBundle.from_study(sc.study)
+    identidad = tarjeta.manifest["row_identity"]
+    assert identidad["index_name"] is None and identidad["unique_keys"] == []
+    datos = cartera(semilla=47).set_index("loan_id").rename_axis(None)
+    panel = pd.concat([datos, datos.loc[datos["cohorte"] == "2024Q2"].assign(cohorte="2024Q3")])
+    mon = Monitor(tarjeta, panel, period="cohorte", default="bad_flag", run_dir=tmp_path / "m")
+    mon._echo = lambda _t: None
+    mon.run()
+    assert mon.study.run_context.status == "done", mon.study.run_context.error
+    assert int(mon.study.artifacts.get("monitoring", "periods")["n_scored"].sum()) == 7_000
+    repetida = pd.concat([datos, datos.iloc[[0]]])
+    mal = Monitor(
+        tarjeta, repetida, period="cohorte", default="bad_flag", name="mal", run_dir=tmp_path / "m"
+    )
+    mal._echo = lambda _t: None
+    mal.run()
+    assert mal.study.run_context.status == "failed"
+    mensaje = mal.study.run_context.error.message
+    assert "La tarjeta no puede puntuar el periodo 2023Q1" in mensaje
+    assert "identificador de fila único" in mensaje

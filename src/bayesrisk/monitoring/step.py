@@ -45,6 +45,7 @@ else:
     Semaforo: TypeAlias = Any
 
 __all__ = [
+    "INDICE_SIN_NOMBRE",
     "MONITORING_ARTIFACTS",
     "MonitoringStep",
     "cargar_tarjeta_monitoreable",
@@ -107,6 +108,10 @@ PERIODS_COLUMNS: Final[tuple[str, ...]] = (
     "verdict_rule",
 )
 VARIABLES_COLUMNS: Final[tuple[str, ...]] = ("period", "feature", "csi", "csi_light")
+#: La columna con que la puerta guiada conserva un índice SIN nombre que se repite entre periodos:
+#: el paso lo vuelve a poner como índice (sin nombre) de cada periodo, con su dtype, para que la
+#: tarjeta compruebe la unicidad dentro del periodo como siempre (pasada 4 de Codex).
+INDICE_SIN_NOMBRE: Final = "__bayesrisk_indice__"
 
 
 @register("standard", domain="monitoring")
@@ -608,6 +613,8 @@ def _aplicar(
     indice = identidad["index_name"]
     if indice is not None and indice in sub.columns and sub.index.name != indice:
         entrada = entrada.assign(**{indice: sub[indice].to_numpy()}).set_index(indice)
+    elif indice is None and INDICE_SIN_NOMBRE in sub.columns:
+        entrada = entrada.set_axis(pd.Index(sub[INDICE_SIN_NOMBRE].to_numpy(), name=None), axis=0)
     try:
         resultado = tarjeta.apply(entrada)
     except ScorecardBundleError as exc:
