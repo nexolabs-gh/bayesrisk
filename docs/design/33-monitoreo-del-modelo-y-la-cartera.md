@@ -659,3 +659,13 @@ salvo la primera, que decidió Cami.
     coacción) y en el paso. Los enteros grandes con vacíos (`Int64`) tampoco se funden. Y la
     evidencia parcial del último periodo con desenlace no se pierde cuando lo sigue uno sin
     desenlace.
+15. **Pasada 3 de Codex sobre el código**, la última del tope declarado (`c535b85`): tres medium,
+    reales y ninguno contractual, corregidos con su test nacido rojo y su control negativo; sin
+    cuarta pasada por el criterio declarado. Un CSV con periodos enteros de 2⁵³ o más y vacíos los
+    lee como decimales —dos periodos consecutivos ya llegan iguales—: el monitoreo se detiene y pide
+    guardarlos como texto, en vez de fundirlos. Un panel con la identidad en el índice (el índice se
+    repite entre periodos) chocaba con la unicidad global del paso de datos: la puerta guiada pasa
+    ese índice a columna antes del snapshot y la tarjeta lo vuelve a usar como índice al puntuar
+    cada periodo. Y la huella de la tarjeta se reconcilia con lo que el intento dejó guardado: si
+    el registro de auditoría falla a mitad de la publicación, la tabla que quedó lleva igual su
+    `bundle_hash` (y un reintento que no guardó nada sigue sin poder cambiarlo).

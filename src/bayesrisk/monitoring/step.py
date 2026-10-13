@@ -474,15 +474,7 @@ class MonitoringStep(AuditableMixin):
             verdict=veredicto_corrida,
             card=ficha,
         )
-        # Primero la evidencia, después su identidad y el trail: un intento que no publica (un
-        # `run_step` repetido choca con los artefactos de la corrida terminada) no puede cambiar
-        # la huella de la tarjeta que esa corrida midió (pasada 2 de Codex; §9, IHN-011).
-        self._publicar(study, resultado)
-        lineage = study.run_context.lineage
-        if lineage is not None:
-            # D-MNT-1 (§5.3, §9): la ruta de la tarjeta queda fuera del `config_hash`; su
-            # contenido lo identifica su huella, en el lineage de la corrida.
-            lineage.bundle_hash = tarjeta.bundle_hash
+        self._publicar(study, resultado, bundle_hash=tarjeta.bundle_hash)
         self._registrar(ficha, auc_ref)
         return resultado
 
@@ -527,18 +519,37 @@ class MonitoringStep(AuditableMixin):
             accion=veredicto.verdict,
         )
 
-    def _publicar(self, study: Study, resultado: MonitoringResult) -> None:
-        """Publica los seis artefactos de §6.2."""
-        study.artifacts.set("monitoring", "periods", resultado.periods.copy(deep=True))
-        study.artifacts.set(
-            "monitoring", "grades_by_period", resultado.grades_by_period.copy(deep=True)
+    def _publicar(self, study: Study, resultado: MonitoringResult, *, bundle_hash: str) -> None:
+        """Publica los seis artefactos de §6.2 y ancla al lineage la huella de su tarjeta.
+
+        D-MNT-1 (§5.3, §9): la ruta de la tarjeta queda fuera del ``config_hash`` y su contenido lo
+        identifica su huella, en el lineage. La huella se escribe si y sólo si ESTE intento dejó
+        guardado algún artefacto —también si la publicación quedó a medias, porque el almacén
+        guarda antes de auditar y un registro que falla deja la tabla—, y nunca si no guardó nada:
+        un ``run_step`` repetido sobre una corrida terminada choca con su evidencia y no puede
+        cambiarle la huella (pasadas 2 y 3 de Codex; IHN-011). Se reconcilia por identidad del
+        objeto guardado: ``ArtifactStore.get`` devuelve el mismo objeto.
+        """
+        objetos: tuple[tuple[str, Any], ...] = (
+            ("periods", resultado.periods.copy(deep=True)),
+            ("grades_by_period", resultado.grades_by_period.copy(deep=True)),
+            ("variables_by_period", resultado.variables_by_period.copy(deep=True)),
+            ("verdict", resultado.verdict.model_copy(deep=True)),
+            ("result", resultado),
+            ("card", resultado.card.model_copy(deep=True)),
         )
-        study.artifacts.set(
-            "monitoring", "variables_by_period", resultado.variables_by_period.copy(deep=True)
-        )
-        study.artifacts.set("monitoring", "verdict", resultado.verdict.model_copy(deep=True))
-        study.artifacts.set("monitoring", "result", resultado)
-        study.artifacts.set("monitoring", "card", resultado.card.model_copy(deep=True))
+        try:
+            for clave, objeto in objetos:
+                study.artifacts.set("monitoring", clave, objeto)
+        finally:
+            propios = any(
+                study.artifacts.has("monitoring", clave)
+                and study.artifacts.get("monitoring", clave) is objeto
+                for clave, objeto in objetos
+            )
+            lineage = study.run_context.lineage
+            if propios and lineage is not None:
+                lineage.bundle_hash = bundle_hash
 
 
 # ── la tarjeta ──────────────────────────────────────────────────────────────────────────
@@ -652,6 +663,14 @@ def _periodos(serie: Any, pd: Any) -> tuple[Any, PeriodKind, list[str]]:
         etiquetas = serie.dt.strftime("%Y-%m")
         etiquetas = etiquetas.where(serie.notna(), None)
         return etiquetas, "date_month", sorted(str(e) for e in etiquetas.dropna().unique())
+    if pd.api.types.is_float_dtype(serie) and bool((serie.abs() >= 2**53).any()):
+        # Un float no distingue dos enteros mayores que 2⁵³: un CSV con vacíos los lee así y dos
+        # periodos distintos ya llegan iguales (pasada 3 de Codex). Se detiene, no se adivina.
+        raise MonitoringInputError(
+            f"La columna de periodo {serie.name!r} trae números de 2⁵³ o más leídos como "
+            "decimales, que no distinguen dos periodos consecutivos (un archivo con vacíos los "
+            "lee así). Guárdala como texto o como entero sin vacíos."
+        )
     if pd.api.types.is_numeric_dtype(serie) and not pd.api.types.is_bool_dtype(serie):
         # Sin pasar por float: dos enteros distintos mayores que 2⁵³ darían el mismo float y sus
         # periodos se fundirían, contados dos veces (pasada 1 de Codex). Se ordena el valor exacto.

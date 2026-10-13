@@ -106,7 +106,7 @@ class Monitor(_PuertaGuiada):
         self._tarjeta_huella: tuple[Path, str] | None = None
         try:
             tarjeta = self._leer_tarjeta(bundle)
-            frame, source, source_label = self._cargar(data)
+            frame, source, source_label = self._cargar_panel(data)
             self._construir(tarjeta, frame, source, source_label, period=period, default=default)
         except BaseException:
             self._descartar_snapshot()
@@ -138,6 +138,38 @@ class Monitor(_PuertaGuiada):
             return cargar_tarjeta_monitoreable(Path(bundle).resolve())
         except MonitoringInputError as exc:
             raise MonitorInputError(str(exc)) from exc
+
+    def _cargar_panel(self, data: str | Path | pd.DataFrame) -> tuple[pd.DataFrame, str, str]:
+        """La cartera, con un índice que se repite pasado a columna (§7-3, pasada 3 de Codex).
+
+        En un panel la misma operación está en varios periodos: si su identidad viene en el índice,
+        el índice se repite y el paso de datos —que exige un índice único en toda la cartera— la
+        rechazaría antes del monitoreo, que comprueba la unicidad **dentro** de cada periodo. El
+        índice pasa a columna (con su nombre: la tarjeta la vuelve a usar como índice al puntuar
+        cada periodo) y el snapshot se escribe desde ese frame.
+        """
+        frame, source, source_label = self._cargar(data)
+        if not frame.index.has_duplicates:
+            return frame, source, source_label
+        import io
+
+        nombre = frame.index.name
+        plano = frame.reset_index(drop=nombre is None)
+        self._descartar_snapshot()
+        buffer = io.BytesIO()
+        plano.to_parquet(buffer)
+        contenido = buffer.getvalue()
+        snapshot, _temporal, _huella = self._reservar_snapshot(contenido, ".parquet")
+        detalle = (
+            f"el índice {nombre} se repite entre periodos y pasa a columna"
+            if nombre is not None
+            else "el índice del archivo se repite y se descarta"
+        )
+        return (
+            pd.read_parquet(io.BytesIO(contenido)),
+            str(snapshot),
+            f"{source_label}; {detalle} (guardado como {snapshot})",
+        )
 
     def _construir(
         self,
@@ -178,7 +210,10 @@ class Monitor(_PuertaGuiada):
                 f"La tarjeta puntúa con {_plural(len(faltan), 'la columna', 'las columnas')} "
                 f"{', '.join(faltan)}, que la cartera no trae."
             )
-        etiquetas, tipo, orden = _periodos(frame[period], pd)
+        try:
+            etiquetas, tipo, orden = _periodos(frame[period], pd)
+        except MonitoringInputError as exc:
+            raise MonitorInputError(str(exc)) from exc
         if not orden:
             raise MonitorInputError(f"La columna {period!r} no trae ningún periodo.")
         if default is not None:

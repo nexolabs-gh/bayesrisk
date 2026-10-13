@@ -690,3 +690,81 @@ def test_un_periodo_inmaduro_no_oculta_la_evidencia_parcial_del_anterior(
     assert any("Evidencia parcial en 2024Q1" in alerta for alerta in final.review)
     assert "Evidencia parcial" in final.validation
     assert "Sin alertas" not in final.text()
+
+
+# ── la pasada 3 de Codex sobre el código ────────────────────────────────────────────────
+
+
+def test_un_csv_con_periodos_enteros_grandes_y_vacios_se_detiene(
+    entorno: dict[str, Any], tmp_path: Path
+) -> None:
+    """Un CSV con vacíos lee los enteros como decimales: 2**53 y 2**53 + 1 llegan iguales."""
+    datos = entorno["comportamiento"].copy()
+    datos["periodo"] = pd.array([2**53] * 3_000 + [2**53 + 1] * 2_990 + [pd.NA] * 10, dtype="Int64")
+    csv = tmp_path / "cartera.csv"
+    datos.to_csv(csv, index=False)
+    with pytest.raises(MonitorInputError, match="decimales"):
+        _monitor(entorno, csv, "csv-enteros", period="periodo")
+
+
+def test_un_panel_con_la_identidad_en_el_indice(
+    tmp_path: Path, fake_binning_process: object
+) -> None:
+    """§7-3: con la identidad en el índice, la misma operación en dos periodos se monitorea."""
+    del fake_binning_process
+    sc = Scorecard(
+        cartera().set_index("loan_id"),
+        target="bad_flag",
+        id="loan_id",
+        cohort="cohorte",
+        oot_cohorts=["2024Q2"],
+        name="dev-indice",
+        run_dir=tmp_path,
+    )
+    sc._echo = lambda _t: None
+    sc.run()
+    tarjeta = FittedScorecardBundle.from_study(sc.study)
+    assert tarjeta.manifest["row_identity"]["index_name"] == "loan_id"
+    datos = cartera(semilla=47).set_index("loan_id")
+    panel = pd.concat([datos, datos.loc[datos["cohorte"] == "2024Q2"].assign(cohorte="2024Q3")])
+    assert panel.index.has_duplicates
+    mon = Monitor(tarjeta, panel, period="cohorte", default="bad_flag", run_dir=tmp_path / "m")
+    mon._echo = lambda _t: None
+    mon.run()
+    assert mon.study.run_context.status == "done", mon.study.run_context.error
+    periodos = mon.study.artifacts.get("monitoring", "periods")
+    assert periodos["period"].iloc[-1] == "2024Q3" and int(periodos["n_scored"].sum()) == 7_000
+    repetida = pd.concat([datos, datos.iloc[[0]]])
+    mal = Monitor(
+        tarjeta, repetida, period="cohorte", default="bad_flag", name="mal", run_dir=tmp_path / "m"
+    )
+    mal._echo = lambda _t: None
+    mal.run()
+    assert mal.study.run_context.status == "failed"
+    assert "La tarjeta no puede puntuar el periodo 2023Q1" in mal.study.run_context.error.message
+
+
+def test_una_publicacion_a_medias_conserva_la_huella_de_su_tarjeta(
+    entorno: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§5.3 y §9: el almacén guarda antes de auditar; si el registro falla, la tabla que quedó
+    lleva igual la huella de la tarjeta que la produjo."""
+    from bayesrisk.core.artifacts import ArtifactStore
+    from bayesrisk.core.study import Study
+
+    mon = _monitor(entorno, entorno["comportamiento"], "a-medias")
+    original = ArtifactStore.set
+
+    def falla_al_auditar(self: Any, domain: str, key: str, value: Any, **kw: Any) -> None:
+        original(self, domain, key, value, **kw)
+        if (domain, key) == ("monitoring", "grades_by_period"):
+            raise OSError("el registro de auditoría no se pudo escribir")
+
+    study = Study(mon.config.model_copy(update={"audit": None}))
+    monkeypatch.setattr(ArtifactStore, "set", falla_al_auditar)
+    with pytest.raises(OSError, match="registro de auditoría"):
+        study.run()
+    monkeypatch.undo()
+    assert study.artifacts.has("monitoring", "grades_by_period")
+    assert not study.artifacts.has("monitoring", "verdict")
+    assert study.run_context.lineage.bundle_hash == entorno["tarjeta"].bundle_hash
