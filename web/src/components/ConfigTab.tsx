@@ -970,6 +970,7 @@ export function ConfigTab({
     getScenarioTables,
     focusField,
     generacionConfig,
+    getGeneracionConfig,
   } = useAppState()
   const [yamlError, setYamlError] = useState<string | null>(null)
   const [yamlBusy, setYamlBusy] = useState(false)
@@ -1443,10 +1444,14 @@ export function ConfigTab({
             ) : null}
             {section === "monitoring" ? (
               <MonitoringCardPicker
+                // Un config reemplazado (ejemplo, YAML, trabajo) monta un selector nuevo: el
+                // anterior se desmonta y anula su subida en vuelo (pasada 3 de Codex).
+                key={generacionConfig}
                 bundlePath={textoEn(config, "monitoring.bundle")}
                 onElegir={(ruta) => setField(["monitoring", "bundle"], ruta)}
                 getBundle={() => bundleDeLaSeccion(getConfig())}
                 activa={sectionActive}
+                getGeneracion={getGeneracionConfig}
               />
             ) : null}
             {sectionEntry.nullable ? (

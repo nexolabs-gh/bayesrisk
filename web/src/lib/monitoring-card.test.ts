@@ -6,6 +6,8 @@
  */
 import { describe, expect, it } from "vitest"
 
+import configTabSource from "@/components/ConfigTab.tsx?raw"
+import pickerSource from "@/components/MonitoringCardPicker.tsx?raw"
 import type { MonitorableCard } from "@/lib/api"
 import { bundleDeLaSeccion, subirYElegir, type PuertoDeLaTarjeta } from "@/lib/monitoring-card"
 
@@ -28,7 +30,7 @@ function diferida() {
 }
 
 function puerto(inicial: string | null) {
-  const estado = { bundle: inicial }
+  const estado = { bundle: inicial, generacion: 1 }
   const subida = diferida()
   const p: PuertoDeLaTarjeta = {
     getBundle: () => estado.bundle,
@@ -36,6 +38,7 @@ function puerto(inicial: string | null) {
       estado.bundle = ruta
     },
     subir: () => subida.promesa,
+    getGeneracion: () => estado.generacion,
   }
   return { p, estado, subida }
 }
@@ -68,6 +71,17 @@ describe("subirYElegir", () => {
     subida.resolver(tarjeta("A"))
     expect(await vuelo).toBeNull()
     expect(estado.bundle).toBe("X")
+  })
+
+  it("un YAML cargado mientras sube, con la misma ruta, no recibe la tarjeta (pasada 3)", async () => {
+    // El config se reemplazó (otra generación) y trae la misma `B`: comparar sólo la ruta dejaba
+    // escribir `A` en el config nuevo, contra lo que su YAML declara.
+    const { p, estado, subida } = puerto("B")
+    const vuelo = subirYElegir(p, archivo, () => true)
+    estado.generacion = 2
+    subida.resolver(tarjeta("A"))
+    expect(await vuelo).toBeNull()
+    expect(estado.bundle).toBe("B")
   })
 
   it("la sección apagada mientras sube no se reactiva con la respuesta (pasada 2)", async () => {
@@ -104,5 +118,21 @@ describe("bundleDeLaSeccion (lo que lee la guarda en el config de la pantalla)",
     expect(bundleDeLaSeccion({ monitoring: { period: "mes" } })).toBeNull()
     expect(bundleDeLaSeccion({ monitoring: { bundle: "  " } })).toBeNull()
     expect(bundleDeLaSeccion({ monitoring: { bundle: "C:/t" } })).toBe("C:/t")
+  })
+})
+
+describe("el selector de tarjetas (guardas estáticas: sin DOM, vitest no monta el componente)", () => {
+  it("«subiendo» se libera con el turno de la petición, no con el de la elección (pasada 3)", () => {
+    // Con el turno de la elección, elegir otra tarjeta mientras subía dejaba «Subir» deshabilitado
+    // para siempre: la petición terminaba y nadie apagaba el estado.
+    const fin = pickerSource.match(/finally \{\s*if \((\w+) === (\w+)\.current\) setSubiendo\(false\)/)
+    expect(fin?.[2]).toBe("peticion")
+    expect(pickerSource).toMatch(/const miPeticion = \+\+peticion\.current/)
+  })
+
+  it("Configuración monta un selector por generación del config (pasada 3)", () => {
+    const montaje = configTabSource.slice(configTabSource.indexOf("<MonitoringCardPicker"))
+    expect(montaje.slice(0, 400)).toContain("key={generacionConfig}")
+    expect(montaje.slice(0, 900)).toContain("getGeneracion={getGeneracionConfig}")
   })
 })

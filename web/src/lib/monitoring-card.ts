@@ -21,6 +21,12 @@ export interface PuertoDeLaTarjeta {
   setBundle: (ruta: string) => void
   /** Sube el `.zip` (`POST /api/cards/upload`). */
   subir: (archivo: File) => Promise<MonitorableCard>
+  /**
+   * La generación del config AHORA (sube con cada siembra: un ejemplo, un YAML, un trabajo, empezar
+   * de cero). Un config reemplazado no recibe la tarjeta de antes aunque traiga la misma ruta (pasada
+   * 3 de Codex sobre la capa B).
+   */
+  getGeneracion: () => number
 }
 
 /**
@@ -40,9 +46,18 @@ export async function subirYElegir(
   vigente: () => boolean,
 ): Promise<MonitorableCard | null> {
   const inicial = puerto.getBundle()
+  const generacion = puerto.getGeneracion()
   const tarjeta = await puerto.subir(archivo)
   const actual = puerto.getBundle()
-  if (!vigente() || inicial === undefined || actual === undefined || actual !== inicial) return null
+  if (
+    !vigente() ||
+    puerto.getGeneracion() !== generacion ||
+    inicial === undefined ||
+    actual === undefined ||
+    actual !== inicial
+  ) {
+    return null
+  }
   puerto.setBundle(tarjeta.path)
   return tarjeta
 }

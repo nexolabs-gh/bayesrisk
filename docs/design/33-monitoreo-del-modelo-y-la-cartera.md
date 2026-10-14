@@ -744,3 +744,10 @@ Base medida: `db1d638` (la 2.13.0 publicada). Ninguna precisión cambia un contr
    reactivar la sección apagada: la guarda exige la sección encendida al empezar y al terminar
    (`bundleDeLaSeccion` distingue apagada de vacía) y el selector se deshabilita con la sección
    apagada.
+9. **Pasada 3 de Codex sobre la capa B**, la última del tope declarado (`e04c7b8`): dos medium del
+   selector de tarjetas, reales y no contractuales, corregidos con su test nacido rojo y su control
+   negativo; sin cuarta pasada por el criterio declarado. Cargar un YAML con la misma ruta durante
+   una subida dejaba que la respuesta vieja la escribiera en el config nuevo: la guarda compara
+   también la generación del config (`getGeneracionConfig` del store) y Configuración monta un
+   selector por generación. Y elegir otra tarjeta durante una subida dejaba «Subir» deshabilitado:
+   la petición tiene su propio turno y apaga «subiendo» al terminar.

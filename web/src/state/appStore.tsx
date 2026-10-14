@@ -148,6 +148,13 @@ export interface AppState {
    * SDD-32).
    */
   generacionConfig: number
+  /**
+   * La generación AHORA, para quien vuelve de una espera (como `getConfig`): `setSeed` la sube en el
+   * mismo gesto, antes del render siguiente. La subida de una tarjeta del monitoreo la compara al
+   * volver: un YAML cargado entre tanto no puede recibir la tarjeta de antes (pasada 3 de Codex
+   * sobre la capa B del SDD-33).
+   */
+  getGeneracionConfig: () => number
 }
 
 const AppStateContext = createContext<AppState | null>(null)
@@ -171,6 +178,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     )
   }, [])
   const olvidarDescartesJson = useCallback(() => setDescartesJson([]), [])
+  const getGeneracionConfig = useCallback(() => generacionRef.current, [])
   const [seed, setSeedState] = useState<SeedState | null>(null)
   // Toda siembra reemplaza el config entero: los avisos de textos descartados hablaban del anterior.
   const setSeed = useCallback<Dispatch<SetStateAction<SeedState | null>>>((siguiente) => {
@@ -380,6 +388,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       avisarDescarteJson,
       olvidarDescartesJson,
       generacionConfig,
+      getGeneracionConfig,
     }),
     [
       schema,
@@ -403,6 +412,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       // Estables (`useCallback` sin dependencias): no recalculan nada, pero el lint los exige.
       avisarDescarteJson,
       olvidarDescartesJson,
+      getGeneracionConfig,
       setSeed,
       getConfig,
       getScenarioTables,

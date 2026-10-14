@@ -19,6 +19,8 @@ interface MonitoringCardPickerProps {
   getBundle: () => string | null | undefined
   /** ¿La sección está encendida? Apagada, no se elige ni se sube nada (no se reactiva sola). */
   activa: boolean
+  /** La generación del config AHORA (del store): un config reemplazado anula la subida. */
+  getGeneracion: () => number
 }
 
 /**
@@ -40,6 +42,7 @@ export function MonitoringCardPicker({
   onElegir,
   getBundle,
   activa,
+  getGeneracion,
 }: MonitoringCardPickerProps) {
   const [tarjetas, setTarjetas] = useState<MonitorableCard[] | null>(null)
   const [cargando, setCargando] = useState(false)
@@ -49,6 +52,10 @@ export function MonitoringCardPicker({
   // tarjeta sí anula la respuesta de la anterior.
   const gesto = useRef(0)
   const lectura = useRef(0)
+  // La petición de subida tiene su propio turno: «subiendo» se apaga cuando TERMINA la última
+  // petición, aunque su respuesta haya quedado anulada por otra elección (pasada 3 de Codex: con el
+  // turno de la elección, el botón quedaba deshabilitado para siempre).
+  const peticion = useRef(0)
   const archivo = useRef<HTMLInputElement | null>(null)
 
   const actualizar = useCallback(async () => {
@@ -92,11 +99,12 @@ export function MonitoringCardPicker({
     evento.target.value = ""
     if (!elegido) return
     const mio = ++gesto.current
+    const miPeticion = ++peticion.current
     setSubiendo(true)
     setAviso(null)
     try {
       const tarjeta = await subirYElegir(
-        { getBundle, setBundle: onElegir, subir: uploadCard },
+        { getBundle, setBundle: onElegir, subir: uploadCard, getGeneracion },
         elegido,
         () => mio === gesto.current,
       )
@@ -114,7 +122,7 @@ export function MonitoringCardPicker({
         )
       }
     } finally {
-      if (mio === gesto.current) setSubiendo(false)
+      if (miPeticion === peticion.current) setSubiendo(false)
     }
   }
 
