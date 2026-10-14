@@ -178,10 +178,14 @@ def test_la_prueba_pareada_contra_la_base(medido: dict[str, Any]) -> None:
     assert all(p["paired"] for p in pruebas.values())
     assert pruebas[("base", "iv_005")]["result"] == "a_better"
     assert pruebas[("base", "iv_005")]["p_value"] < 0.001
+    # Los p-valores medidos en S49 (Windows): el solver de OptBinning mueve la tarjeta en el último
+    # decimal según la plataforma y el p-valor lo amplifica (macOS 3.11: 0,6572 frente a 0,6563).
+    # Lo que el oráculo vigila es la conclusión —un empate claro—, con una tolerancia de 0,01.
     for alternativa, p_valor in (("tramos_4", 0.656), ("sin_mejor", 0.717)):
         prueba = pruebas[("base", alternativa)]
         assert prueba["result"] == "tie"
-        assert prueba["p_value"] == pytest.approx(p_valor, abs=_TOL)
+        assert prueba["p_value"] >= 0.05
+        assert prueba["p_value"] == pytest.approx(p_valor, abs=0.01)
     # El mismo modelo: varianza de la diferencia nula y AUC iguales, empate sin estadístico.
     assert pruebas[("base", "sin_stepwise")]["result"] == "tie"
     assert pruebas[("base", "sin_stepwise")]["statistic"] is None
