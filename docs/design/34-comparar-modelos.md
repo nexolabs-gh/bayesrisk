@@ -1,6 +1,16 @@
 # SDD-34 — Comparar modelos (`bayesrisk.comparison`)
 
-> **Estado: PROPUESTA** (S47, 2026-10-14), sin código. Es el hito **H2b** del ROADMAP, que Cami pidió
+> **Estado: APROBADO por Cami el 2026-10-14** (S48, interactivo), con la recomendación de cada una
+> de las nueve decisiones de §12 (D-CMP-1…9, §12-1…9): una corrida de comparación propia; el resumen
+> comparable que deja cada corrida terminada; el índice de concentración del BCE; «No evaluable» sin
+> escala maestra; comparar y avisar cuando no son las mismas operaciones; la institución elige con
+> su motivo; DeLong pareada, frontera como núcleo y un PSI común de fábrica; IFRS 9 en la misma
+> enmienda, con los montos restados sólo en la misma unidad; capa A en la 2.15.0 y B en la 2.16.0.
+> Diseño sin código: **la capa A se programa en una sesión siguiente**, con tests nacidos rojos,
+> controles negativos y Codex sobre el código; cada release pide su OK aparte. Por decisión de Cami
+> del mismo día, tras H2b va H10 (benchmarks públicos).
+>
+> Propuesto en S47 (2026-10-14). Es el hito **H2b** del ROADMAP, que Cami pidió
 > el 2026-10-05 y puso después de la cadena del banco (IFRS 9 firmable → H5 → H4, cerrada con la
 > 2.14.0): comparar **N corridas** —el modelo en uso y sus alternativas, por ejemplo diez— sin
 > trabajo manual, por variable y por muestra, con dos gráficos de compromiso (AUC frente a PSI, Gini
@@ -67,7 +77,7 @@
 | **Módulo** | `bayesrisk.comparison` (dominio y corrida nuevos); toca `api.run` y `ui/runs.py` (el resumen comparable que deja cada corrida), `core/config` (la sección), `core/lineage` (las huellas comparadas), `guided/` (la puerta `bayesrisk.Comparison` y su resumen), `report`, `ui/jobs.py` + `web/` (capa B) y `docs_site/` |
 | **Fase** | F1 (el scorecard, en decisión de comité) y H2 (provisiones) |
 | **Tanda de producción** | T9 (SDD-31: un módulo a la vez, con su §13) |
-| **Estado** | Propuesta (§12 pendiente) |
+| **Estado** | Aprobado por Cami el 2026-10-14 (§12) |
 | **Depende de** | SDD-07 (`selection`: el IV), SDD-08 (`model`: los coeficientes), SDD-11 (`performance` y `stability`), SDD-22 (`validation`), SDD-31, SDD-32 (la escala maestra: la participación por tramo), SDD-33 (el AUC con la varianza del anexo 3.1 del BCE, `monitoring/engine.py`) |
 | **Lo consumen** | La guía del scorecard y la de IFRS 9, un trabajo nuevo de la pantalla, el informe de comparación; H6 (el retador ML, que compara **dentro** de una corrida) |
 | **Autor / Fecha** | Claude Code / 2026-10-14 |
@@ -728,6 +738,24 @@ Internas: `performance`, `stability`, `selection`, `model`, `validation`, `maste
 | 12-7 | El ruido en la discriminación y la medida de la estabilidad (ampliada por las pasadas 1, 2 y 3) | (a) **prueba de DeLong pareada** sólo entre corridas con la misma muestra evaluada (sin prueba si no: la no pareada puede salir más significativa que la correcta, p = 0,023 frente a 0,102), en la frontera dos AUC empatan si p ≥ 0,05 y la frontera es el **núcleo** (sale sólo el superado por un modelo de la frontera: con empates no transitivos, «lo supera alguno» sacaba a un compromiso real); la estabilidad se compara por banda con un **PSI común de receta de fábrica para todas** (10 tramos, suavizado 1e-6, cortes 0,10 y 0,25), que el resumen mide con las funciones de `stability`, avisando si una corrida usó otra receta (pasadas 1 y 3); (b) como (a), pero exigiendo que todas usen la misma receta del PSI y dejando fuera del primer gráfico a la que no; (c) frontera sobre las cifras puntuales y el PSI de cada corrida, sin prueba | **(a)**: medido (§0.4-2, §0.4-3), sobre cifras puntuales una versión que pasa la validación queda «superada» por una diferencia de p = 0,71, y la no pareada no ve una caída real de 0,025 (p = 0,39 contra < 0,001); y con la receta propia el mismo puntaje da PSI 10,50 o 0 según los tramos (pasada 3), mientras que el común reproduce exacto el publicado con la receta de fábrica. (b) saca de la comparación lo que (a) puede medir. Exige guardar el puntaje de la muestra de evaluación y el PSI común en el resumen (§12-2) |
 | 12-8 | IFRS 9 (ampliada por la pasada 3) | (a) **en la misma enmienda y las mismas capas**: ECL, exposición, conteo y cobertura por etapa, diferencias contra la referencia, sin gráficos; los montos se restan sólo con la misma unidad —por construcción (misma cartera y columnas de monto) o por declaración (la misma moneda)—, y si no se muestran por separado y se compara la cobertura (§3.7, D-MON); (b) después, aparte | **(a)**: es una tabla sobre el mismo mecanismo (§0.3: la diferencia de 4,6 % del horizonte está toda en Stage 2), y «cambios chicos, juntos» (RUNBOOK §12.3); la regla de la unidad respeta D-MON sin perder el caso típico (las tres provisiones de §0.3 no declaran moneda y se restan) |
 | 12-9 | Capas y releases | (a) **A** —el resumen comparable en cada corrida, el motor, `bayesrisk.Comparison`, la sección y el resumen; experimental— en la **2.15.0**; **B** —pantalla, informe con su capítulo y los dos gráficos, Excel; estable— en la **2.16.0**; (b) A y B juntas | **(a)**: como H5 y H4; A deja que toda corrida hecha con la 2.15.0 ya sea comparable cuando llegue la pantalla |
+
+**Respuestas de Cami (2026-10-14, S48, interactivas): la recomendación en las nueve.** Vigente:
+D-CMP-1 (§12-1) una corrida de comparación propia —`bayesrisk.Comparison`, la sección `comparison`
+con su única hoja `runs` y un trabajo nuevo en la pantalla, sin `data`—; D-CMP-2 (§12-2) cada
+corrida terminada de scorecard o IFRS 9 deja su resumen comparable (`comparable.json`, §6.1) en su
+`run_dir` y en `runs/<id>/` —agregados, la huella computacional del modelo campo por campo con su
+gate y el puntaje de la muestra de evaluación en orden canónico, sin identificadores ni pickle; lo
+que la corrida no tiene, en nulo; nunca la hace fallar—, y la comparación no abre carpetas con
+`Study.load`; D-CMP-3 (§12-3) el índice de concentración del BCE, `1 + ln(HHI)/ln(K)`, por número
+de operaciones y sin umbral; D-CMP-4 (§12-4) sin escala maestra, índice «No evaluable» con su
+razón y fuera del segundo gráfico; D-CMP-5 (§12-5) comparar y avisar con los tres niveles de §3.3,
+sin bloquear nunca; D-CMP-6 (§12-6) la comparación no elige: la institución registra su elección
+con motivo (`choose`, extensión de D-DEC atada a la huella del resumen elegido); D-CMP-7 (§12-7)
+la prueba de DeLong pareada sólo con la misma muestra evaluada, empate con p ≥ 0,05, la frontera
+como núcleo de la relación y la estabilidad por banda de un PSI común con la receta de fábrica para
+todas; D-CMP-8 (§12-8) IFRS 9 en la misma enmienda y las mismas capas, con los montos restados
+sólo en la misma unidad (§3.7); D-CMP-9 (§12-9) capa A → 2.15.0 experimental y capa B → 2.16.0
+estable.
 
 ## 13. Simplicidad (SDD-31)
 
