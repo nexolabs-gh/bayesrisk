@@ -7,6 +7,16 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Corregido
+
+- **`Study.load` en un proceso nuevo.** El primer `Study.load(ruta, trust=True)` de un
+  intérprete devolvía el config con sus secciones (`data`, `binning`, `model`, `scorecard`…) como
+  diccionarios sin tipar —el segundo load del mismo proceso ya las tipaba—, y
+  `FittedScorecardBundle.from_study` fallaba sobre él (`'dict' object has no attribute …`). Ahora
+  las secciones vuelven tipadas desde el primer load. Ningún `config_hash` ni resultado cambia.
+
 ## [2.14.0] — 2026-10-14
 
 ### Añadido

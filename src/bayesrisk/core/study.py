@@ -1163,8 +1163,17 @@ class Study:
         Nota: el chequeo de ``config_hash`` detecta **divergencia accidental** entre ``config.yaml``
         y el lineage, no manipulación maliciosa (el hash de referencia vive en el mismo directorio
         editable). La integridad fuerte recae en ``trust=True`` + control del origen del directorio.
+
+        Las secciones del config vuelven **tipadas** aunque el proceso no haya importado sus
+        dominios: el registro de clases se puebla antes de validar el YAML (D-HASH-1/D-HASH-5).
+        Hasta la 2.14.0 el primer load de un proceso las dejaba como ``dict`` —el registro se
+        poblaba después, dentro de ``config_hash``— y ``FittedScorecardBundle.from_study``
+        fallaba sobre él (S49).
         """
         import joblib
+
+        # Import perezoso, como en `config_hash`: el núcleo no arrastra dominios al importarse.
+        from bayesrisk.core.config.schema import cargar_configs_expandibles
 
         origen = Path(path)
         artefactos = origen / "artifacts"
@@ -1175,6 +1184,7 @@ class Study:
                 "código arbitrario. Pase trust=True sólo si el origen es de confianza."
             )
 
+        cargar_configs_expandibles()
         config = load_config(origen / "config.yaml")
         estudio = cls(config)
 
