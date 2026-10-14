@@ -16,6 +16,7 @@ import { FieldRenderer } from "@/components/FieldRenderer"
 import { PreflightNotice } from "@/components/PreflightNotice"
 import { applyPreset } from "@/components/RunTab"
 import { MonitoringCardPicker } from "@/components/MonitoringCardPicker"
+import { bundleDeLaSeccion } from "@/lib/monitoring-card"
 import { ScenarioTablesCard } from "@/components/ScenarioTablesCard"
 import type { TablasLeidas } from "@/lib/scenario-tables"
 import {
@@ -1444,7 +1445,8 @@ export function ConfigTab({
               <MonitoringCardPicker
                 bundlePath={textoEn(config, "monitoring.bundle")}
                 onElegir={(ruta) => setField(["monitoring", "bundle"], ruta)}
-                getBundle={() => textoEn(getConfig(), "monitoring.bundle")}
+                getBundle={() => bundleDeLaSeccion(getConfig())}
+                activa={sectionActive}
               />
             ) : null}
             {sectionEntry.nullable ? (

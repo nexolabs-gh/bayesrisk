@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { MonitorableCard } from "@/lib/api"
-import { subirYElegir, type PuertoDeLaTarjeta } from "@/lib/monitoring-card"
+import { bundleDeLaSeccion, subirYElegir, type PuertoDeLaTarjeta } from "@/lib/monitoring-card"
 
 const tarjeta = (path: string): MonitorableCard => ({
   origin: "upload",
@@ -68,5 +68,41 @@ describe("subirYElegir", () => {
     subida.resolver(tarjeta("A"))
     expect(await vuelo).toBeNull()
     expect(estado.bundle).toBe("X")
+  })
+
+  it("la sección apagada mientras sube no se reactiva con la respuesta (pasada 2)", async () => {
+    const { p, estado, subida } = puerto(null)
+    const apagable = {
+      ...p,
+      getBundle: () => (apagada ? undefined : estado.bundle),
+    }
+    let apagada = false
+    const vuelo = subirYElegir(apagable, archivo, () => true)
+    apagada = true // la persona apagó la sección: `monitoring` es null
+    subida.resolver(tarjeta("A"))
+    expect(await vuelo).toBeNull()
+    expect(estado.bundle).toBeNull()
+  })
+
+  it("con la sección apagada desde el principio, la subida no la enciende", async () => {
+    const { p, estado, subida } = puerto(null)
+    const apagada = { ...p, getBundle: () => undefined }
+    const vuelo = subirYElegir(apagada, archivo, () => true)
+    subida.resolver(tarjeta("A"))
+    expect(await vuelo).toBeNull()
+    expect(estado.bundle).toBeNull()
+  })
+})
+
+describe("bundleDeLaSeccion (lo que lee la guarda en el config de la pantalla)", () => {
+  it("apagada es `undefined`, encendida sin tarjeta es `null`, y si no la ruta", () => {
+    // Pasada 2 de Codex sobre la capa B: con `null` en los dos casos, apagar la sección mientras
+    // subía no cambiaba lo que la guarda leía, y la respuesta la reactivaba.
+    expect(bundleDeLaSeccion({ monitoring: null })).toBeUndefined()
+    expect(bundleDeLaSeccion({})).toBeUndefined()
+    expect(bundleDeLaSeccion(null)).toBeUndefined()
+    expect(bundleDeLaSeccion({ monitoring: { period: "mes" } })).toBeNull()
+    expect(bundleDeLaSeccion({ monitoring: { bundle: "  " } })).toBeNull()
+    expect(bundleDeLaSeccion({ monitoring: { bundle: "C:/t" } })).toBe("C:/t")
   })
 })

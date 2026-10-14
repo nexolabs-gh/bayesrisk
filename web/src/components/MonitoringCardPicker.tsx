@@ -12,8 +12,13 @@ interface MonitoringCardPickerProps {
   bundlePath: string | null
   /** Escribe la ruta de la tarjeta elegida en `monitoring.bundle`. */
   onElegir: (ruta: string) => void
-  /** El `monitoring.bundle` vigente del store: una subida sólo escribe si no cambió entre tanto. */
-  getBundle: () => string | null
+  /**
+   * El `monitoring.bundle` vigente del store (`undefined` con la sección apagada): una subida sólo
+   * escribe si no cambió entre tanto y la sección sigue encendida.
+   */
+  getBundle: () => string | null | undefined
+  /** ¿La sección está encendida? Apagada, no se elige ni se sube nada (no se reactiva sola). */
+  activa: boolean
 }
 
 /**
@@ -34,6 +39,7 @@ export function MonitoringCardPicker({
   bundlePath,
   onElegir,
   getBundle,
+  activa,
 }: MonitoringCardPickerProps) {
   const [tarjetas, setTarjetas] = useState<MonitorableCard[] | null>(null)
   const [cargando, setCargando] = useState(false)
@@ -148,7 +154,12 @@ export function MonitoringCardPicker({
                       En uso
                     </span>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => elegir(tarjeta.path)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!activa}
+                      onClick={() => elegir(tarjeta.path)}
+                    >
                       Usar esta tarjeta
                     </Button>
                   )}
@@ -174,7 +185,7 @@ export function MonitoringCardPicker({
           <Button
             size="sm"
             variant="outline"
-            disabled={subiendo}
+            disabled={subiendo || !activa}
             onClick={() => archivo.current?.click()}
           >
             {subiendo ? (
@@ -189,6 +200,11 @@ export function MonitoringCardPicker({
             Actualizar la lista
           </Button>
         </div>
+        {!activa ? (
+          <p className="text-xs text-muted-foreground">
+            La sección está apagada: enciéndela para elegir o subir la tarjeta.
+          </p>
+        ) : null}
         {aviso ? (
           <p role="alert" className="inline-flex items-start gap-1.5 text-xs text-amber-200/90">
             <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />

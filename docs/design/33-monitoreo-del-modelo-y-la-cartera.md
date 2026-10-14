@@ -735,3 +735,12 @@ Base medida: `db1d638` (la 2.13.0 publicada). Ninguna precisión cambia un contr
    medias se reutilizaba y se listaba: se verifica antes de reutilizarse y la lista exige los dos
    archivos. Y el resumen ejecutivo, las conclusiones y las limitaciones del informe del monitoreo
    hablan del monitoreo, en vez de decir que la corrida no evaluó nada o que construyó un scorecard.
+8. **Pasada 2 de Codex sobre la capa B** (`7897941`): dos medium, reales y no contractuales,
+   corregidos con su test nacido rojo y su control negativo. El snapshot que guarda `Monitor` para
+   un panel —ya aplanado, con la columna reservada, el que su YAML referencia— se rechazaba en la
+   pantalla: la pantalla se comporta ahora como la puerta completa y sólo aplana cuando el índice se
+   repite (la columna reservada se rechaza sólo entonces, porque aplanar la pisaría; la puerta guiada
+   la sigue rechazando siempre, porque su entrada es la cartera cruda). Y una subida pendiente podía
+   reactivar la sección apagada: la guarda exige la sección encendida al empezar y al terminar
+   (`bundleDeLaSeccion` distingue apagada de vacía) y el selector se deshabilita con la sección
+   apagada.

@@ -461,15 +461,22 @@ def preparar_panel(source: Path, directorio: Path) -> Path:
     con :func:`aplanar_panel` junto a él (con su huella en el nombre) y devuelve esa ruta: la misma
     tabla que guarda ``Monitor``, así que las dos puertas dan el mismo ``data_hash`` (D-SIM-1).
 
+    Con el índice único la cartera se usa tal cual, como en la puerta completa: así corre también el
+    snapshot que guardó ``Monitor`` para un panel —ya aplanado, con la columna reservada—, que
+    ``mon.to_yaml()`` referencia (pasada 2 de Codex sobre la capa B). La columna reservada sólo se
+    rechaza cuando hay que aplanar, porque aplanar la pisaría.
+
     Raises
     ------
     MonitorInputError
-        Lo que :func:`aplanar_panel` rechaza.
+        Lo que :func:`aplanar_panel` rechaza al aplanar.
     """
     import hashlib
     import io
 
     frame = pd.read_parquet(source)
+    if not frame.index.has_duplicates:
+        return source
     plano = aplanar_panel(frame)
     if plano is None:
         return source

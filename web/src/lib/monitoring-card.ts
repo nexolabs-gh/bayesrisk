@@ -12,8 +12,11 @@ import type { MonitorableCard } from "@/lib/api"
 
 /** Lo que la secuencia necesita del store y de la API. */
 export interface PuertoDeLaTarjeta {
-  /** El `monitoring.bundle` vigente del config (del store, no de un render viejo). */
-  getBundle: () => string | null
+  /**
+   * El `monitoring.bundle` vigente del config (del store, no de un render viejo): `undefined` si la
+   * sección está apagada, `null` si está encendida sin tarjeta.
+   */
+  getBundle: () => string | null | undefined
   /** Escribe la ruta elegida en `monitoring.bundle`. */
   setBundle: (ruta: string) => void
   /** Sube el `.zip` (`POST /api/cards/upload`). */
@@ -26,6 +29,10 @@ export interface PuertoDeLaTarjeta {
  * `monitoring.bundle` del store tiene que ser el mismo que había al empezar (una elección por otra
  * vía —la lista, el campo de texto, otro montaje— también lo anula). Devuelve la tarjeta subida, o
  * `null` si la respuesta llegó tarde y no se escribió nada. Los errores de la subida se propagan.
+ *
+ * Y la sección tiene que estar encendida al empezar y al terminar: una respuesta que llega con la
+ * sección apagada no la reactiva (pasada 2 de Codex sobre la capa B: la escritura recreaba
+ * `monitoring` sólo con la tarjeta, contra la decisión de apagarla y sin su periodo).
  */
 export async function subirYElegir(
   puerto: PuertoDeLaTarjeta,
@@ -34,7 +41,19 @@ export async function subirYElegir(
 ): Promise<MonitorableCard | null> {
   const inicial = puerto.getBundle()
   const tarjeta = await puerto.subir(archivo)
-  if (!vigente() || puerto.getBundle() !== inicial) return null
+  const actual = puerto.getBundle()
+  if (!vigente() || inicial === undefined || actual === undefined || actual !== inicial) return null
   puerto.setBundle(tarjeta.path)
   return tarjeta
+}
+
+/**
+ * `monitoring.bundle` en el config, para la guarda de `subirYElegir`: `undefined` si la sección está
+ * apagada (`monitoring` en `null` o ausente), `null` si está encendida sin tarjeta, o la ruta.
+ */
+export function bundleDeLaSeccion(config: Record<string, unknown> | null): string | null | undefined {
+  const seccion = config?.monitoring
+  if (seccion === null || typeof seccion !== "object") return undefined
+  const ruta = (seccion as Record<string, unknown>).bundle
+  return typeof ruta === "string" && ruta.trim() !== "" ? ruta : null
 }

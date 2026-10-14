@@ -479,3 +479,20 @@ def test_la_pantalla_monitorea_un_panel_con_la_identidad_en_el_indice(
     assert resultados["lineage"]["data_hash"] == mon.study.run_context.lineage.data_hash
     etapas = {e["stage"]: e for e in resultados["summaries"]["stages"]}
     assert etapas["monitoring"] == mon.summary("monitoring").to_dict()
+    # Y el snapshot que guardó `Monitor` —ya aplanado, con la columna reservada, el que su YAML
+    # referencia— corre igual por la pantalla (pasada 2 de Codex sobre la capa B).
+    snapshot = Path(mon.config.data.load.source)
+    subida2 = cliente.post(
+        "/api/upload",
+        files={"file": ("snapshot.parquet", snapshot.read_bytes(), "application/octet-stream")},
+    )
+    assert subida2.status_code == 200, subida2.text
+    corrida2 = cliente.post(
+        "/api/run",
+        json={"config": cargado.json()["config"], "dataset_id": subida2.json()["dataset_id"]},
+    )
+    assert corrida2.status_code == 200, corrida2.text
+    assert corrida2.json()["status"] == "done", corrida2.json()
+    resultados2 = cliente.get(f"/api/results/{corrida2.json()['run_id']}").json()
+    assert resultados2["lineage"]["config_hash"] == mon.config_hash
+    assert resultados2["lineage"]["data_hash"] == mon.study.run_context.lineage.data_hash
