@@ -385,3 +385,24 @@ def test_la_misma_provision_se_declara() -> None:
         [_provision("a", "c1", [1.0, 2.0, 3.0]), _provision("b", "c1", [1.0, 2.0, 3.0])]
     )
     assert resultado.card.same_as == {"b": "a"}
+
+
+def test_una_etapa_vacia_en_la_referencia_aporta_su_provision_entera() -> None:
+    """Pasada 2 de Codex: una etapa sin operaciones en la referencia tiene ECL 0 por construcción
+    —no hay provisión que comparar en ella—, así que la diferencia de esa etapa es la provisión que
+    la otra corrida le asigna (otro criterio de etapa mueve la provisión entre etapas); su
+    porcentaje y la diferencia de cobertura quedan nulos, porque no hay base."""
+    ref = _provision("ref", "c1", [100.0, 0.0, 300.0])
+    ref["by_stage"][1].update(n=0, exposure=0.0, coverage=None)
+    otra = _provision("otra", "c1", [60.0, 40.0, 300.0])
+    resultado = comparar([ref, otra])
+    fila = resultado.provision[
+        (resultado.provision["model"] == "otra") & (resultado.provision["stage"] == "2")
+    ].iloc[0]
+    assert fila["ecl_difference"] == pytest.approx(40.0)
+    assert fila["ecl_difference_pct"] is None or np.isnan(fila["ecl_difference_pct"])
+    assert fila["coverage_difference_pp"] is None or np.isnan(fila["coverage_difference_pp"])
+    assert (
+        "otra provisiona lo mismo que ref en total, repartido distinto: Stage 1 40 menos y "
+        "Stage 2 40 más." in resultado.reading
+    )

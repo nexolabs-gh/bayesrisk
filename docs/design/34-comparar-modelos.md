@@ -868,3 +868,11 @@ el repo privado (`evidencia/s49/`: `humo_comparacion.py`, `humo_puerta.py`, `hum
 17. **Las cinco cifras, después** (la línea base de §13): 3 líneas de usuario para comparar
     (`import`, `Comparison(...)`, `run()`), 1 campo visible de la sección, 1 perilla, 0,37 s para tres
     resúmenes desde `bayesrisk.run` y 3 conceptos. Las del scorecard no cambian.
+18. **Lo que la revisión del código precisó.** Pasada 1 de Codex: si el sink falla al registrar el
+    aviso de un resumen que no se pudo armar, la corrida igual llega a su `run_end` (ítem 1). Pasada
+    2: con nombres repetidos `choose("consumo (2)")` elige por la huella de esa posición —ya era así;
+    queda un test—; una etapa sin operaciones en la referencia tiene ECL 0 por construcción, así que
+    la diferencia de esa etapa es la provisión entera que la otra le asigna, con el porcentaje y la
+    diferencia de cobertura nulos; y cuando el total es el mismo pero la provisión se movió entre
+    etapas, la lectura ya no dice «provisiona lo mismo»: dice el reparto («lo mismo en total,
+    repartido distinto: Stage 1 40 menos y Stage 2 40 más»).

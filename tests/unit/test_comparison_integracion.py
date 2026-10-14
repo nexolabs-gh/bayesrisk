@@ -421,3 +421,27 @@ def test_un_objeto_vivo_se_compara_igual_que_su_carpeta(
     assert [Path(r).name for r in vivo.config.comparison.runs] == [
         Path(r).name for r in carpeta.config.comparison.runs
     ]
+
+
+def test_con_nombres_repetidos_se_elige_por_el_nombre_visible(tmp_path: Path) -> None:
+    """Pasada 2 de Codex: dos corridas que se llaman igual se distinguen por su posición
+    («consumo (1)», «consumo (2)») y ``choose`` elige la que se nombra, por su huella."""
+    from test_comparison_step import _resumen
+
+    rutas = []
+    for i, ruido in enumerate((0.5, 0.9), start=1):
+        resumen = _resumen("consumo", riesgo=[float(v) for v in np.linspace(0, 1, 600) * ruido])
+        rutas.append(
+            comparable.escribir(resumen, (tmp_path / f"r{i}").mkdir() or tmp_path / f"r{i}")
+        )
+    comp = Comparison(rutas, name="repetidos", run_dir=tmp_path / "comparaciones")
+    comp._echo = lambda _texto: None
+    assert comp.names == ("consumo (1)", "consumo (2)")
+    comp.choose("consumo (2)", reason="la segunda")
+    card = comp.study.artifacts.get("comparison", "card")
+    assert card.chosen == "consumo (2)"
+    registro = comp.config.decisions[-1]
+    segunda, _ = comparable.leer(rutas[1])
+    assert registro.value == {"comparison.choice": comparable.huella(segunda)}
+    with pytest.raises(ComparisonInputError, match="no es una de las corridas"):
+        comp.choose("consumo", reason="ambiguo")

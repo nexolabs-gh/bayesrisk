@@ -369,11 +369,23 @@ def lectura_ifrs9(
             )
             continue
         diferencia = prov["ecl"] - ref["ecl"]
+        por_etapa = [(e, d) for e, d in prov["stage_differences"] if round(d) != 0]
         if round(diferencia) == 0:
-            lineas.append(f"{nombre} provisiona lo mismo que {ref['name']}")
+            if not por_etapa:
+                lineas.append(f"{nombre} provisiona lo mismo que {ref['name']}")
+                continue
+            # El mismo total con la provisión movida entre etapas no es «lo mismo» (pasada 2 de
+            # Codex): se dice dónde está cada diferencia.
+            movidas = [
+                f"Stage {etapa} {_monto(monto, prov['currency'])} {'más' if monto > 0 else 'menos'}"
+                for etapa, monto in por_etapa
+            ]
+            lineas.append(
+                f"{nombre} provisiona lo mismo que {ref['name']} en total, repartido distinto: "
+                f"{_enumerar(movidas)}"
+            )
             continue
         relativa = diferencia / ref["ecl"] if ref["ecl"] else None
-        por_etapa = [(e, d) for e, d in prov["stage_differences"] if round(d) != 0]
         if len(por_etapa) == 1:
             donde = f"todo en Stage {por_etapa[0][0]}"
         else:
