@@ -131,7 +131,10 @@ def _celda(valor: Any) -> Any:
 def test_monitoreo_xlsx_es_un_libro_unico_con_las_tablas_del_resumen(
     entorno: dict[str, Any],
 ) -> None:
-    from openpyxl import load_workbook
+    # El libro exige el extra `excel`: los jobs del CI sin extras lo saltan, como los demás tests
+    # del Excel opcional (la matriz corrió sin él y este test cayó en `import openpyxl`).
+    openpyxl = pytest.importorskip("openpyxl", reason="Monitoreo.xlsx exige el extra excel")
+    load_workbook = openpyxl.load_workbook
 
     from bayesrisk.guided.summaries import TITULO_TRAMOS_POR_PERIODO, TITULO_VARIABLES_POR_PERIODO
 
