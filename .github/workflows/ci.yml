@@ -8,6 +8,10 @@ name: CI
       - "v*"
   pull_request:
   workflow_dispatch:
+  # La matriz completa de Python corre cada noche sobre `main` (además de en cada tag): ver el job
+  # `test`. 07:00 UTC = madrugada en Chile.
+  schedule:
+    - cron: "0 7 * * *"
 
 permissions:
   contents: read
@@ -81,10 +85,15 @@ jobs:
       HYPOTHESIS_PROFILE: ci
     strategy:
       fail-fast: false
-      # SDD-25 §7: matriz base v0.1.0 en Linux/macOS/Windows para Python 3.11-3.13.
+      # SDD-25 §7: matriz base en Linux/macOS/Windows para Python 3.11-3.13. Decisión de Cami del
+      # 2026-10-14 (S49): la matriz COMPLETA corre en cada tag —lo que se publica pasa por las nueve
+      # combinaciones antes de la Release—, cada noche y a mano (workflow_dispatch); en un push o
+      # un PR corre una sola versión por sistema (3.12), porque nueve jobs de 35–64 min por push
+      # se encolaban entre sí. Un fallo propio de 3.11 o 3.13 aparece a más tardar en la corrida
+      # nocturna o en el tag.
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ${{ fromJSON((github.ref_type == 'tag' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '["3.11", "3.12", "3.13"]' || '["3.12"]') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

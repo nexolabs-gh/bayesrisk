@@ -710,7 +710,16 @@ if ($LASTEXITCODE -ne 0) { throw 'detalle de jobs Deploy falló' }
 ```
 
 No resumir “CI verde” desde la conclusión agregada: listar todos los jobs y confirmar que ninguno
-quedó rojo, cancelado o saltado indebidamente. Si falla el paso de licencias que consulta red,
+quedó rojo, cancelado o saltado indebidamente.
+
+**La matriz depende del evento (Cami, 2026-10-14).** En un push o un PR, `Tests (os, python)` corre
+una sola versión por sistema (3.12): el run tiene **13 jobs**. En un tag, cada noche (07:00 UTC) y
+por `workflow_dispatch` corre la matriz completa, 3 × 3: **19 jobs**. Lo que se publica pasa siempre
+por las nueve combinaciones (la Release espera el CI del tag). Un fallo propio de 3.11 o 3.13
+aparece a más tardar en la corrida nocturna. Hábito que acompaña: **un push por capa** —con el
+barrido local de censos antes, ver la memoria «capa-a-comparacion-trampas»— y nunca esperar al CI
+sin hacer nada: el cierre y la tarea siguiente avanzan mientras corre; sólo el tag espera el
+verde. Si falla el paso de licencias que consulta red,
 inspeccionar el log antes de diagnosticar un defecto del código.
 
 El workflow `Deploy` se dispara automáticamente sólo tras CI verde en `main` —el `if` del job
