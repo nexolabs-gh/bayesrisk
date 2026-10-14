@@ -171,6 +171,12 @@ ponderados con un ajuste por ciclo por tramo de calendario (capa A, 2.8.0), la P
 banco y el SICR con PD de origen (capa B, 2.9.0; resuelve D-CRE-4 de H7) y pantalla, informe y Excel
 (capa C, 2.10.0)—; la capa A quedó implementada en S37 y publicada en la 2.8.0 (S38), y la B implementada en S38 (la 2.9.0 y su recaptura piden su OK). **(1) quedó publicada entera en la 2.10.0 (S41).** **(2) tiene su SDD aprobado el 2026-10-11 (S41):** [`design/32-escala-maestra-y-puntos-de-corte.md`](design/32-escala-maestra-y-puntos-de-corte.md); la capa A se programa en S42.
 
+**Decidido por Cami el 2026-10-14 (cierre de S47):** con la cadena del banco cerrada en la 2.14.0
+—(2) en la 2.12.0 y (3) en la 2.14.0—, **tras H2b va H10** (benchmarks públicos: notebooks
+reproducibles sobre German credit y Lending Club contra scorecardpy y OptBinning, para que un
+tercero confíe en la librería sin conocernos) y **después el orden vigente: H3 → H9 → H6 → H7 →
+H8**. Descartadas: mantener H3 tras H2b; decidir al cerrar H2b.
+
 Un módulo a la vez, en ese orden; Cami puede reordenar. Nada arranca sin su enmienda
 medida, la revisión de Codex y el OK. Cada hito termina con el notebook mínimo en CI y sus cinco
 cifras ancladas; hasta H1, F1 no se declara «cumplido» en su forma de uso, sólo en su motor.

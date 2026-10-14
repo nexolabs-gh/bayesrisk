@@ -42,6 +42,19 @@
 > —«Validar un modelo existente», con puntajes externos— deja su resumen con los campos que no
 > tiene en nulo, sin fallar (§6.1, §12-2). Informe: `evidencia/s47/codex_sdd34_p2_raw.txt`.
 >
+> **Pasada 3, la última del tope** (un high y un medium, los dos reales y elevados en §12-7 y
+> §12-8; S48): fijar los cortes de banda no basta, porque el PSI mismo cambia con la **receta** de
+> cada corrida —`psi_bins` va de 2 a 50 y el suavizado es configurable—: con las funciones del
+> motor, Desarrollo 0…999 frente a una OOT partida en 250 y 750 da PSI 10,50 «Redesarrollar» con 10
+> tramos y 0 «Estable» con 2, y sobre la corrida base real el mismo puntaje da de 0,0019 (2 tramos) a
+> 0,0511 (50), así que la frontera usa un **PSI común** con la receta de fábrica, que el resumen mide
+> con las mismas funciones de `stability` (reproduce exacto el publicado, 0,006792, y no depende de
+> la escala del puntaje) (§3.5, §6.1); y con `report.currency` sin declarar en las dos corridas
+> (D-MON: no declarada no es «la misma») los montos de dos provisiones sólo se restan cuando la
+> unidad es la misma por construcción —la misma cartera con las mismas columnas de monto— o por
+> declaración (§3.7, §8). Informe: `evidencia/s47/codex_sdd34_p3_raw.txt`; medición:
+> `evidencia/s48/salidas/medir_h2b_psi_receta.txt`.
+>
 > **No toca:** el pipeline del scorecard, `performance`, `stability`, `selection`, la escala maestra,
 > IFRS 9, el monitoreo, CMF ni el arnés H9R. Ninguna corrida, artefacto, YAML ni `config_hash`
 > existente cambia (D-ESC-7). **Sí toca**, y por eso se eleva (§12-2): el layout del directorio de
@@ -371,11 +384,19 @@ estrictamente mejor en una. «Igual de bueno» no es «la misma cifra con cuatro
   perfecto, AUC 1, y otro puntúa todo igual, 0,5) la prueba es «no evaluable» y se comparan las
   cifras, declarado.
 - **Estabilidad** (PSI del puntaje): **por banda** —Estable, Revisar, Redesarrollar—, la lectura
-  que la librería ya da al PSI; dos PSI de la misma banda empatan. La banda se calcula aquí con **los
-  cortes de fábrica** (0,10 y 0,25) para todas las corridas, no con los de cada una: `psi_thresholds`
-  es configurable, y con las bandas propias el mismo PSI 0,15 sería «Revisar» con 0,10 y «Estable»
-  con 0,20, y la frontera premiaría relajar la política (pasada 1). Si una corrida evaluó con otros
-  cortes, la tabla muestra su banda propia y la lectura lo avisa (§12-7).
+  que la librería ya da al PSI; dos PSI de la misma banda empatan. La frontera usa un **PSI común**,
+  medido con **la receta de fábrica** para todas las corridas —10 tramos por cuantiles de
+  Desarrollo, suavizado 1e-6 y cortes 0,10 y 0,25, los defaults de `stability`—, no con la de cada
+  una: la receta es configurable, y con la propia la frontera premiaría cambiar la medición. Con los
+  cortes, el mismo PSI 0,15 sería «Revisar» con 0,10 y «Estable» con 0,20 (pasada 1); con los
+  tramos, el mismo puntaje da 10,50 o 0 según se cuente en 10 o en 2 (pasada 3, con las funciones
+  del motor), y en la corrida base real, de 0,0019 a 0,0511 entre 2 y 50 tramos. El resumen de cada
+  corrida mide ese PSI común con las mismas funciones de `stability` sobre los mismos puntajes de
+  Desarrollo y de la muestra de evaluación (§6.1); con la receta de fábrica coincide con el
+  publicado (medido: 0,006792 en los dos) y, por ir sobre cuantiles, no depende de la escala del
+  puntaje. Si una corrida evaluó con otra receta, la tabla muestra también su PSI y su banda propios
+  y la lectura lo avisa; sin `stability` o sin muestra de evaluación, el PSI común queda «No
+  evaluable» y el modelo sale del primer gráfico (§12-7).
 - **Concentración** (índice del BCE): por valor; no hay prueba entre modelos ni umbral (§3.4).
 
 La **frontera** es el núcleo de esa relación: un modelo queda fuera sólo si lo supera otro que
@@ -425,6 +446,17 @@ etapa donde está la mayor. Los escenarios de cada corrida (nombres y pesos) se 
 ni frontera: el pedido es para scorecards, y en provisiones «más» no es «mejor». La lectura dice la
 comparabilidad, quién provisiona más y cuánto, dónde está la diferencia («horizonte_3 provisiona
 221.355 menos que f4 (−4,6 %), todo en Stage 2») y la elección.
+
+**La unidad de los montos** (pasada 3). `report.currency` sin declarar significa «no declarada»
+(D-MON), no «la misma»: dos provisiones con la moneda en nulo pueden estar en dólares y en pesos.
+Los montos de dos corridas se restan —diferencia en monto y en porcentaje, «más» y «menos»— sólo
+cuando la unidad es la misma **por construcción** (la misma huella de cartera y las mismas columnas
+de monto —exposición, saldo y límite—, sin monedas declaradas distintas: los montos salen de los
+mismos números) o **por declaración** (las dos declaran la misma moneda). En otro caso —monedas
+declaradas distintas, o carteras distintas sin las dos monedas declaradas iguales— cada provisión
+se muestra con su unidad (o sin ella, si no se declaró), la cobertura por etapa, que no tiene
+unidad, se compara en puntos, y la lectura dice por qué no se restan los montos. Las tres
+provisiones de §0.3 no declaran moneda y comparten cartera y columnas: se restan.
 
 ## 4. API: guiada, completa y pantalla
 
@@ -494,7 +526,8 @@ Es la única hoja. La sección nace después de la 2.10.0: se serializa sólo cu
 ### 5.2 Lo que NO se configura
 
 - **Qué muestra se compara:** la regla de §3.2, la misma del resumen final.
-- **Las bandas del PSI y del CSI:** las de cada corrida, que ya las publicó.
+- **La receta del PSI de la frontera:** la de fábrica para todas (§3.5); la tabla muestra también
+  el PSI y la banda de cada corrida, y las bandas del CSI son las que cada una publicó.
 - **Un peso entre cifras, un puntaje compuesto o un ganador:** §3.5; la institución elige.
 - **El corte de la prueba de DeLong:** 0,05, el de la librería (D-VAL-15), nombrado en el informe.
 - **Un umbral de diferencia importante o de concentración:** ninguna fuente lo da (§3.4).
@@ -524,12 +557,13 @@ texto formateado; ningún identificador de operación:
   "schema_version": 1, "bayesrisk": "2.15.0", "family": "scorecard",
   "name": "consumo_v02", "created_at": "…", "config_hash": "…",
   "data_hash": "…", "portfolio_hash": "…", "model_hash": "…", "currency": "CLP",
-  "psi_thresholds": [0.10, 0.25],
+  "psi_recipe": {"bins": 10, "smoothing": 1e-06, "thresholds": [0.10, 0.25]},
   "samples": [{"sample": "oot", "n": 1008, "n_bad": 239, "auc": 0.658, "gini": 0.316, "ks": 0.249, "status": "ok"}],
   "evaluation_sample": "oot",
   "evaluation_scores": {"order": "index", "rows_hash": "…", "default_hash": "…",
                         "score": [612, 587, …], "default": [0, 1, …]},
   "score_psi": [{"comparison": "dev_vs_oot", "psi": 0.0078, "band": "stable"}],
+  "score_psi_common": {"comparison": "dev_vs_oot", "psi": 0.0078, "band": "stable", "reason": null},
   "grades": {"k": 6, "share_by_sample": {"desarrollo": [0.18, …], "oot": […]}},
   "variables": [{"feature": "deuda_ingreso", "beta": -0.81, "sign_ok": true, "iv_development": 0.164,
                  "iv_by_sample": {"oot": 0.15}, "csi": [{"comparison": "dev_vs_oot", "csi": 0.004, "band": "stable"}]}],
@@ -539,14 +573,20 @@ texto formateado; ningún identificador de operación:
 
 - `portfolio_hash` es la huella de la cartera antes de etiquetar y particionar, con el mismo
   algoritmo que `data_hash` (§0.4-5); `model_hash`, la huella computacional de la tarjeta, la
-  proyección campo por campo de §3.3, no su `bundle_hash`; `psi_thresholds`, los cortes con que la corrida evaluó su PSI (§3.5).
+  proyección campo por campo de §3.3, no su `bundle_hash`; `psi_recipe`, la receta con que la
+  corrida evaluó su PSI (tramos, suavizado y cortes); `score_psi_common`, el PSI del puntaje
+  Desarrollo → muestra de evaluación con la receta de fábrica, medido al escribir el resumen con las
+  mismas funciones de `stability` y los mismos puntajes que ella leyó —igual al publicado cuando la
+  receta es la de fábrica—, o nulo con su razón si la corrida no publicó `stability` (§3.5).
 - `evaluation_scores` son el puntaje con que `performance` calculó el AUC y el desenlace de cada
   operación **efectivamente evaluada** de la muestra de evaluación, **en orden canónico por el índice
   y sin identificadores**; `rows_hash` es la huella de ese índice ordenado y `default_hash`, la del
   desenlace. Sirven sólo para la prueba pareada, y sólo cuando las dos huellas coinciden (§3.3,
   §12-2, §12-7). Una OOT de 100.000 operaciones son ~1 MB.
-- Para IFRS 9, en lugar de `samples` … `variables`: `as_of`, `scenarios` (nombre y peso) y
-  `by_stage` (etapa, operaciones, exposición, ECL, cobertura).
+- Para IFRS 9, en lugar de `samples` … `variables`: `as_of`, `scenarios` (nombre y peso),
+  `amount_columns` (los nombres de las columnas de exposición, saldo y límite, para la regla de la
+  unidad de §3.7) y `by_stage` (etapa, operaciones, exposición, ECL, cobertura). `currency` es la
+  de `report.currency`, nula si no se declaró o si la corrida no tiene `report`.
 - **Quién lo escribe:** toda corrida terminada (`done`) de la familia scorecard que publicó
   `performance`, y toda de IFRS 9 que publicó su provisión. Cada campo que la corrida no tiene va en
   nulo con su razón —una corrida de «Validar un modelo existente» (puntajes y PD externos) no tiene
@@ -563,7 +603,7 @@ texto formateado; ningún identificador de operación:
 | Clave | Contenido |
 |---|---|
 | `("comparison", "runs")` | Una fila por corrida: nombre, familia, versión, `config_hash`, huella del resumen, nivel de comparabilidad y su motivo, «el mismo modelo que …» |
-| `("comparison", "models")` | Una fila por modelo: muestra de evaluación, AUC, Gini, KS, PSI y banda, índice y `K`, número de variables, validación, si está en cada frontera y quién lo supera |
+| `("comparison", "models")` | Una fila por modelo: muestra de evaluación, AUC, Gini, KS, PSI común y su banda (y el propio, si otra receta), índice y `K`, número de variables, validación, si está en cada frontera y quién lo supera |
 | `("comparison", "tests")` | Una fila por par: diferencia de AUC, si hubo prueba (pareada) o por qué no, estadístico y p-valor |
 | `("comparison", "samples")` | Largo: modelo × muestra con `n`, malos, AUC, Gini, KS |
 | `("comparison", "variables")` | Una fila por variable de la unión: por modelo, si entra, signo, si cumple el esperado, IV de Desarrollo y de evaluación, CSI y banda |
@@ -622,6 +662,11 @@ hayan tardado horas.
 - **Una corrida con puntajes externos** («Validar un modelo existente»): sin tarjeta ni variables;
   se compara por muestra y, si comparte la muestra evaluada, con prueba.
 - **Monedas o fechas de corte distintas** (IFRS 9): «otra cartera»; los montos no se restan.
+- **Moneda sin declarar** (IFRS 9; las dos en nulo, o una sin `report`): no prueba la misma unidad
+  (D-MON); los montos se restan sólo con la misma cartera y las mismas columnas de monto, y si no,
+  se muestran por separado y se compara la cobertura (§3.7).
+- **Otra receta del PSI** (otros tramos, suavizado o cortes): la frontera usa el PSI común de
+  fábrica; la tabla muestra también el propio y la lectura lo avisa (§3.5).
 - **Pantalla:** el trabajo sin `data` es el primero; la capa B mide qué pasos del front lo asumen
   (cargar datos, columnas, perfil) antes de programar.
 
@@ -656,7 +701,10 @@ Internas: `performance`, `stability`, `selection`, `model`, `validation`, `maste
   conserva la prueba pareada; dos muestras distintas no reciben prueba; dos corridas que sólo
   difieren en la procedencia del ancla tienen la misma huella computacional; el gate de clasificación
   de los campos del manifiesto en los dos sentidos; una corrida de puntajes externos deja su resumen
-  y termina `done`.
+  y termina `done`. Y los de la pasada 3: el contraejemplo de 10 y 2 tramos (PSI propio 10,50 y 0,
+  el mismo PSI común y la misma frontera); el PSI común igual al publicado con la receta de fábrica
+  e igual con el puntaje reescalado; dos provisiones con la moneda en nulo, o una sin `report`,
+  sobre carteras distintas no restan montos y sobre la misma cartera con las mismas columnas sí.
 - **Las tres puertas** con el mismo config, el mismo `config_hash` y los mismos artefactos.
 - **El resumen comparable** igual desde el objeto vivo, desde `bayesrisk.run` y desde `runs.save`; sin
   identificadores de operación.
@@ -664,7 +712,8 @@ Internas: `performance`, `stability`, `selection`, `model`, `validation`, `maste
   (D-ESC-7); el lineage de una corrida que no compara, byte a byte.
 - Controles negativos: un resumen alterado (huella), una corrida de otra cartera sin su alerta, una
   frontera sobre cifras puntuales, una prueba entre muestras evaluadas distintas, una frontera que no es el núcleo, el HHI crudo en
-  vez del índice.
+  vez del índice, el PSI propio en vez del común en la frontera, montos restados con las dos monedas
+  en nulo sobre carteras distintas.
 
 ## 12. Lo que Cami decide
 
@@ -676,8 +725,8 @@ Internas: `performance`, `stability`, `selection`, `model`, `validation`, `maste
 | 12-4 | Una corrida sin escala maestra | (a) **índice «No evaluable»** para esa corrida, con la razón, y fuera del segundo gráfico; (b) formar tramos sólo para comparar | **(a)**: (b) sería un segundo motor de tramos; la puerta guiada ya corre la escala por defecto |
 | 12-5 | Corridas que no se midieron sobre las mismas operaciones | (a) **comparar y avisar**, con los tres niveles de §3.3 y la prueba que corresponde a cada uno; (b) rechazar todo lo que no sean las mismas operaciones | **(a)**: comparar el modelo nuevo con el que está en uso sobre datos distintos es el caso real del redesarrollo; el comité tiene que verlo con su advertencia |
 | 12-6 | Quién elige (contractual desde la pasada 1: extiende D-DEC) | (a) **la comparación no elige**: muestra la frontera y la institución registra su elección con motivo (`choose`, una decisión en el trail y en el informe), atada a la huella del resumen elegido y sin efecto si esa corrida ya no está (§4.1); (b) un puntaje ponderado que ordena los modelos; (c) frontera sin registro de la elección | **(a)**: el peso entre discriminación y estabilidad es política de la institución (b sería una perilla sin evidencia); SR 11-7 pide documentar por qué se eligió un modelo, y (c) deja esa razón fuera del informe |
-| 12-7 | El ruido en la discriminación (ampliada por las pasadas 1 y 2) | (a) **prueba de DeLong pareada** sólo entre corridas con la misma muestra evaluada (sin prueba si no: la no pareada puede salir más significativa que la correcta, p = 0,023 frente a 0,102), en la frontera dos AUC empatan si p ≥ 0,05 y la frontera es el **núcleo** (sale sólo el superado por un modelo de la frontera: con empates no transitivos, «lo supera alguno» sacaba a un compromiso real); el PSI se compara por banda **con los cortes de fábrica para todas**, avisando si una corrida usó otros (ampliada por la pasada 1); (b) frontera sobre las cifras puntuales, sin prueba; (c) sólo el error estándar de cada AUC (no pareado) | **(a)**: medido (§0.4-2, §0.4-3), sobre cifras puntuales una versión que pasa la validación queda «superada» por una diferencia de p = 0,71, y la no pareada no ve una caída real de 0,025 (p = 0,39 contra < 0,001); exige guardar el puntaje de la muestra de evaluación en el resumen (§12-2) |
-| 12-8 | IFRS 9 | (a) **en la misma enmienda y las mismas capas**: ECL, exposición, conteo y cobertura por etapa, diferencias contra la referencia, sin gráficos; (b) después, aparte | **(a)**: es una tabla sobre el mismo mecanismo (§0.3: la diferencia de 4,6 % del horizonte está toda en Stage 2), y «cambios chicos, juntos» (RUNBOOK §12.3) |
+| 12-7 | El ruido en la discriminación y la medida de la estabilidad (ampliada por las pasadas 1, 2 y 3) | (a) **prueba de DeLong pareada** sólo entre corridas con la misma muestra evaluada (sin prueba si no: la no pareada puede salir más significativa que la correcta, p = 0,023 frente a 0,102), en la frontera dos AUC empatan si p ≥ 0,05 y la frontera es el **núcleo** (sale sólo el superado por un modelo de la frontera: con empates no transitivos, «lo supera alguno» sacaba a un compromiso real); la estabilidad se compara por banda con un **PSI común de receta de fábrica para todas** (10 tramos, suavizado 1e-6, cortes 0,10 y 0,25), que el resumen mide con las funciones de `stability`, avisando si una corrida usó otra receta (pasadas 1 y 3); (b) como (a), pero exigiendo que todas usen la misma receta del PSI y dejando fuera del primer gráfico a la que no; (c) frontera sobre las cifras puntuales y el PSI de cada corrida, sin prueba | **(a)**: medido (§0.4-2, §0.4-3), sobre cifras puntuales una versión que pasa la validación queda «superada» por una diferencia de p = 0,71, y la no pareada no ve una caída real de 0,025 (p = 0,39 contra < 0,001); y con la receta propia el mismo puntaje da PSI 10,50 o 0 según los tramos (pasada 3), mientras que el común reproduce exacto el publicado con la receta de fábrica. (b) saca de la comparación lo que (a) puede medir. Exige guardar el puntaje de la muestra de evaluación y el PSI común en el resumen (§12-2) |
+| 12-8 | IFRS 9 (ampliada por la pasada 3) | (a) **en la misma enmienda y las mismas capas**: ECL, exposición, conteo y cobertura por etapa, diferencias contra la referencia, sin gráficos; los montos se restan sólo con la misma unidad —por construcción (misma cartera y columnas de monto) o por declaración (la misma moneda)—, y si no se muestran por separado y se compara la cobertura (§3.7, D-MON); (b) después, aparte | **(a)**: es una tabla sobre el mismo mecanismo (§0.3: la diferencia de 4,6 % del horizonte está toda en Stage 2), y «cambios chicos, juntos» (RUNBOOK §12.3); la regla de la unidad respeta D-MON sin perder el caso típico (las tres provisiones de §0.3 no declaran moneda y se restan) |
 | 12-9 | Capas y releases | (a) **A** —el resumen comparable en cada corrida, el motor, `bayesrisk.Comparison`, la sección y el resumen; experimental— en la **2.15.0**; **B** —pantalla, informe con su capítulo y los dos gráficos, Excel; estable— en la **2.16.0**; (b) A y B juntas | **(a)**: como H5 y H4; A deja que toda corrida hecha con la 2.15.0 ya sea comparable cuando llegue la pantalla |
 
 ## 13. Simplicidad (SDD-31)
