@@ -13,6 +13,20 @@
 > `evidencia/s47/` (`medir_h2b.py`, `medir_h2b_delong.py`, `salidas/medir_h2b*.txt`). El índice de
 > concentración se cotejó contra dos fuentes oficiales del BCE (§3.4, `evidencia/s47/cotejo_bce_hi.txt`).
 >
+> **Corregido tras la pasada 1 de Codex** (dos high y tres medium, los cinco reales; tres
+> contractuales, elevados): `data_hash` ordena una copia por índice y no garantiza el orden de la
+> muestra, así que la prueba pareada empareja por un **orden canónico** (el índice) y exige la misma
+> huella de la muestra efectiva y del desenlace (§3.3, §6.1); comparar el PSI con las bandas de cada
+> corrida premia relajar sus cortes —contraejemplo: el mismo PSI 0,15 «Revisar» con 0,10 y «Estable»
+> con 0,20—, así que la frontera usa **los cortes de fábrica** para todas y avisa cuando una corrida
+> usó otros (§3.5, §12-7, contractual); `bundle_hash` incluye el `config_hash` (en su `fit_lineage`)
+> y **no** detecta los repetidos —medido: tres huellas distintas para el mismo modelo—, así que el
+> mismo modelo se reconoce por una **huella computacional** de la tarjeta sin su lineage, que sí los
+> agrupa (§3.3, §12-2, contractual); varianza cero no implica AUC iguales (AUC 1 frente a 0,5), y
+> ese caso queda «prueba no evaluable» (§3.5); y `choose()` se ata a la huella del resumen elegido,
+> con la regla de «sin efecto» de D-DEC cuando esa corrida ya no está (§4.1, §12-6, contractual).
+> Informe: `evidencia/s47/codex_sdd34_p1_raw.txt`; medición: `salidas/medir_h2b_model_hash.txt`.
+>
 > **No toca:** el pipeline del scorecard, `performance`, `stability`, `selection`, la escala maestra,
 > IFRS 9, el monitoreo, CMF ni el arnés H9R. Ninguna corrida, artefacto, YAML ni `config_hash`
 > existente cambia (D-ESC-7). **Sí toca**, y por eso se eleva (§12-2): el layout del directorio de
@@ -171,7 +185,9 @@ agregados, milisegundos; la prueba pareada de seis modelos (15 pares), menos de 
 1. **Un «retador» puede ser el mismo modelo.** `sin_stepwise` y `corr_050` tienen otro `config_hash`
    y dan exactamente los coeficientes y los puntajes de la base: con estos datos, el paso a paso no
    saca nada y ninguna correlación pasa de 0,5. Una tabla de N columnas los muestra como tres
-   modelos. La comparación tiene que decirlo, con la huella de la tarjeta (§3.3).
+   modelos. La comparación tiene que decirlo; `bundle_hash` no sirve, porque incluye el
+   `config_hash` de la corrida (medido: 9ddd…, 4f97…, df5a… para el mismo modelo), y la huella de la
+   tarjeta **sin su lineage** sí los agrupa (fc1b… en los tres, 8945… en `tramos_4`) (§3.3).
 2. **Las diferencias de AUC son, casi todas, ruido; la prueba tiene que ser pareada.** El error
    estándar del AUC en esta OOT es ±0,020. Contra la base, `tramos_4` (+0,001, p = 0,83) y
    `sin_mejor` (−0,007, p = 0,71) empatan; `iv_005` discrimina menos (−0,025): la prueba de DeLong
@@ -259,14 +275,29 @@ que el resumen guarda —la de la cartera antes de etiquetar y particionar, y la
 
 | Nivel | Regla | Qué dice la comparación |
 |---|---|---|
-| **Mismas operaciones** | misma huella de la corrida | nada: la comparación es directa y la prueba es pareada |
+| **Mismas operaciones** | misma huella de la corrida (`data_hash`) | nada: la comparación es directa; la prueba es pareada si además la muestra de evaluación efectiva y su desenlace tienen la misma huella (abajo) |
 | **Misma cartera, otras muestras** | misma huella de cartera, otra de corrida (otra partición u otro objetivo) | alerta: «B usa la misma cartera con otras muestras: sus cifras no son de las mismas operaciones»; prueba no pareada |
 | **Otra cartera** | otra huella de cartera | alerta: «B se midió sobre otros datos: la comparación es orientativa»; sin prueba |
 
 Nunca bloquea: comparar un modelo redesarrollado con datos nuevos contra el que está en uso es
-legítimo, y el comité tiene que saberlo, no dejar de verlo (§12-5). Además, dos corridas con la
-misma **huella de la tarjeta** (`bundle_hash`: los mismos tramos, coeficientes y escala) son **el
-mismo modelo**, lo diga o no su `config_hash`, y la lectura lo dice primero (§0.4-1). En IFRS 9: la
+legítimo, y el comité tiene que saberlo, no dejar de verlo (§12-5).
+
+**El emparejamiento.** `data_hash` hashea una copia ordenada por índice (`data/hashing.py`), así que
+la misma huella garantiza las mismas filas, no el mismo orden en la muestra: reordenar la cartera
+conserva la huella y, si los puntajes se emparejaran por posición, una permutación dentro de cada
+clase cambiaría la prueba sin cambiar ningún AUC (contraejemplo de la pasada 1: el estadístico pasa
+de 7,01 a 0,77). Por eso el resumen guarda la muestra de evaluación en **orden canónico** —por el
+índice, el mismo orden con que se calcula `data_hash`— y dos huellas de ella: la del índice de las
+filas efectivas (las que `performance` evaluó, sin las que una tarjeta deja fuera) y la del
+desenlace. La prueba es pareada sólo si las dos coinciden; si no (un modelo dejó filas fuera que
+otro no), no pareada, declarado. El índice no se guarda: sólo su huella.
+
+**El mismo modelo.** `bundle_hash` no sirve: incluye el `config_hash` y el entorno de la corrida en
+su `fit_lineage`, y el mismo modelo con otro config da otra huella (§0.4-1). Dos corridas con la
+misma **huella computacional** de la tarjeta —el manifiesto sin `bundle_hash`, `files`,
+`fit_lineage` ni `monitoring_reference`: el esquema de entrada, las reglas de cada variable, los
+coeficientes, la escala y el tratamiento— son **el mismo modelo**, lo diga o no su `config_hash`, y
+la lectura lo dice primero (§12-2). En IFRS 9: la
 misma regla de huellas, más la fecha de corte y la moneda del informe; dos provisiones con el mismo
 ECL por etapa «dan la misma provisión».
 
@@ -308,9 +339,16 @@ estrictamente mejor en una. «Igual de bueno» no es «la misma cifra con cuatro
 - **Discriminación** (AUC o Gini, en la muestra de evaluación): dos modelos **empatan** si la prueba
   de DeLong pareada no rechaza la igualdad (p ≥ 0,05, el corte que la librería ya usa, D-VAL-15);
   uno es mejor si la rechaza a su favor. Sin las mismas operaciones, la prueba no pareada, declarada
-  conservadora; con otra cartera, no hay prueba y se comparan las cifras, declarado.
+  conservadora; con otra cartera, no hay prueba y se comparan las cifras, declarado. Si la varianza
+  de la diferencia es cero, empatan sólo si los dos AUC son iguales; con AUC distintos (uno separa
+  perfecto, AUC 1, y otro puntúa todo igual, 0,5) la prueba es «no evaluable» y se comparan las
+  cifras, declarado.
 - **Estabilidad** (PSI del puntaje): **por banda** —Estable, Revisar, Redesarrollar—, la lectura
-  que la librería ya da al PSI; dos PSI de la misma banda empatan.
+  que la librería ya da al PSI; dos PSI de la misma banda empatan. La banda se calcula aquí con **los
+  cortes de fábrica** (0,10 y 0,25) para todas las corridas, no con los de cada una: `psi_thresholds`
+  es configurable, y con las bandas propias el mismo PSI 0,15 sería «Revisar» con 0,10 y «Estable»
+  con 0,20, y la frontera premiaría relajar la política (pasada 1). Si una corrida evaluó con otros
+  cortes, la tabla muestra su banda propia y la lectura lo avisa (§12-7).
 - **Concentración** (índice del BCE): por valor; no hay prueba entre modelos ni umbral (§3.4).
 
 Los que ningún otro supera forman la **frontera**. Es lo único que la comparación concluye: elegir
@@ -375,7 +413,13 @@ sin columnas, sin umbrales: nada más que preguntar.
 
 `choose(nombre, motivo)` registra la elección de la institución en la sección INFRA `decisions`
 (D-DEC: fuera del `config_hash`) y como decisión del trail con `autor` y `motivo` (D-GOB-17); el
-resumen y el informe la dicen. Vuelve a correr la comparación, como `set_cutoff`.
+resumen y el informe la dicen. Vuelve a correr la comparación, como `set_cutoff`. El nombre sólo
+sirve para encontrarla: la decisión se ata a la **huella del resumen elegido**, no al nombre ni a la
+posición, así que reordenar las corridas no la mueve y, si esa huella ya no está entre las
+comparadas (se reemplazó la corrida o cambió su resumen), la decisión queda **sin efecto**, con la
+regla y el aviso de D-DEC para un registro cuyo sujeto cambió; dos corridas con el mismo nombre se
+eligen por su posición en la llamada y quedan registradas por su huella. Es una extensión de D-DEC
+(un registro cuyo sujeto es una corrida comparada y no una hoja del config), elevada en §12-6.
 
 ### 4.2 Puerta completa
 
@@ -444,9 +488,11 @@ texto formateado; ningún identificador de operación:
   "schema_version": 1, "bayesrisk": "2.15.0", "family": "scorecard",
   "name": "consumo_v02", "created_at": "…", "config_hash": "…",
   "data_hash": "…", "portfolio_hash": "…", "model_hash": "…", "currency": "CLP",
+  "psi_thresholds": [0.10, 0.25],
   "samples": [{"sample": "oot", "n": 1008, "n_bad": 239, "auc": 0.658, "gini": 0.316, "ks": 0.249, "status": "ok"}],
   "evaluation_sample": "oot",
-  "evaluation_scores": {"score": [612, 587, …], "default": [0, 1, …]},
+  "evaluation_scores": {"order": "index", "rows_hash": "…", "default_hash": "…",
+                        "score": [612, 587, …], "default": [0, 1, …]},
   "score_psi": [{"comparison": "dev_vs_oot", "psi": 0.0078, "band": "stable"}],
   "grades": {"k": 6, "share_by_sample": {"desarrollo": [0.18, …], "oot": […]}},
   "variables": [{"feature": "deuda_ingreso", "beta": -0.81, "sign_ok": true, "iv_development": 0.164,
@@ -456,11 +502,13 @@ texto formateado; ningún identificador de operación:
 ```
 
 - `portfolio_hash` es la huella de la cartera antes de etiquetar y particionar, con el mismo
-  algoritmo que `data_hash` (§0.4-5); `model_hash`, la huella de la tarjeta (`bundle_hash`).
+  algoritmo que `data_hash` (§0.4-5); `model_hash`, la huella computacional de la tarjeta (§3.3), no
+  su `bundle_hash`; `psi_thresholds`, los cortes con que la corrida evaluó su PSI (§3.5).
 - `evaluation_scores` son el puntaje con que `performance` calculó el AUC y el desenlace de cada
-  operación de la muestra de evaluación, **en el orden de la corrida y sin identificadores**: sirven
-  sólo para la prueba pareada entre corridas con la misma huella, que por esa huella tienen las
-  mismas operaciones en el mismo orden (§12-2, §12-7). Una OOT de 100.000 operaciones son ~1 MB.
+  operación **efectivamente evaluada** de la muestra de evaluación, **en orden canónico por el índice
+  y sin identificadores**; `rows_hash` es la huella de ese índice ordenado y `default_hash`, la del
+  desenlace. Sirven sólo para la prueba pareada, y sólo cuando las dos huellas coinciden (§3.3,
+  §12-2, §12-7). Una OOT de 100.000 operaciones son ~1 MB.
 - Para IFRS 9, en lugar de `samples` … `variables`: `as_of`, `scenarios` (nombre y peso) y
   `by_stage` (etapa, operaciones, exposición, ECL, cobertura).
 - Una corrida que no terminó, o que paró antes de `performance` (`until`), no lo escribe. Las
@@ -498,9 +546,11 @@ Pruebas, Muestras, Variables (o Provisión por etapa) e Índice.
    esquema conocido. Los nombres repetidos se distinguen con su posición («consumo (2)»).
 3. Comparabilidad de cada una contra la referencia y el mismo modelo (§3.3).
 4. Por modelo: la muestra de evaluación (§3.2), sus cifras y el índice de §3.4.
-5. Por par: la prueba de DeLong —pareada con la misma huella de corrida (el AUC y la varianza de
-   `auc_sobre_tramos` con cada valor del puntaje como tramo, más la covarianza de los componentes de
-   los dos modelos), no pareada con la misma cartera, ninguna con otra—.
+5. Por par: la prueba de DeLong —pareada con la misma huella de corrida **y** las mismas huellas de
+   filas efectivas y desenlace (el AUC y la varianza de `auc_sobre_tramos` con cada valor del
+   puntaje como tramo, más la covarianza de los componentes de los dos modelos, emparejados por el
+   orden canónico), no pareada si no, ninguna con otra cartera—; varianza cero con AUC distintos,
+   «no evaluable».
 6. Las dos fronteras con los empates de §3.5.
 7. La unión de variables, en el orden de la referencia y luego por primera aparición.
 8. La lectura (§3.6). Publicar los artefactos; el trail registra las corridas y sus huellas.
@@ -520,7 +570,11 @@ hayan tardado horas.
   población); la lectura lo dice en vez de premiar al «más estable».
 - **Sin escala maestra o con un solo tramo:** índice «No evaluable», fuera del segundo gráfico.
 - **Una muestra no evaluable** (pocos malos): sus cifras vacías con la razón de la corrida; sin prueba.
-- **Varianza nula en la prueba** (dos modelos idénticos): empate, sin estadístico.
+- **Varianza nula en la prueba:** con los dos AUC iguales (dos modelos idénticos), empate sin
+  estadístico; con AUC distintos (separación perfecta frente a un puntaje constante), «no evaluable»
+  y se comparan las cifras (§3.5).
+- **Un modelo deja filas fuera que otro no** (una regla de tratamiento rechaza operaciones): misma
+  huella de corrida, otras filas efectivas; prueba no pareada, declarada.
 - **Monedas o fechas de corte distintas** (IFRS 9): «otra cartera»; los montos no se restan.
 - **Pantalla:** el trabajo sin `data` es el primero; la capa B mide qué pasos del front lo asumen
   (cargar datos, columnas, perfil) antes de programar.
@@ -548,7 +602,11 @@ Internas: `performance`, `stability`, `selection`, `model`, `validation`, `maste
 - **El índice del BCE contra su plantilla:** un caso chico calculado con la fórmula de la hoja 4.0 y
   con `1 + ln(HHI)/ln(K)`.
 - **La prueba pareada contra una implementación directa** de DeLong (par a par) en un caso chico, y
-  la no pareada como su caso de covarianza cero.
+  la no pareada como su caso de covarianza cero; los contraejemplos de la pasada 1: la cartera
+  reordenada (y permutada dentro de cada clase) da la misma prueba; AUC 1 frente a 0,5 con varianza
+  cero, «no evaluable»; el mismo PSI con cortes 0,10 y 0,20 no cambia la frontera; los tres modelos
+  repetidos de §0.3 se agrupan y `tramos_4` no; una elección hecha antes de reordenar o reemplazar
+  corridas sigue en la misma huella o queda sin efecto.
 - **Las tres puertas** con el mismo config, el mismo `config_hash` y los mismos artefactos.
 - **El resumen comparable** igual desde el objeto vivo, desde `bayesrisk.run` y desde `runs.save`; sin
   identificadores de operación.
@@ -563,12 +621,12 @@ Internas: `performance`, `stability`, `selection`, `model`, `validation`, `maste
 | # | Decisión | Opciones | Recomendación |
 |---|---|---|---|
 | 12-1 | Dónde vive la comparación | (a) **una corrida propia** (`bayesrisk.Comparison`, sección `comparison`, trabajo nuevo de la pantalla); (b) ampliar `Scorecard.compare` a N objetos, sin corrida | **(a)**: es la única que llega al informe, la pantalla y el Excel con las tres puertas y la misma identidad, como el monitoreo (D-MNT-1); (b) no tiene informe ni pantalla y sigue exigiendo objetos vivos |
-| 12-2 | De dónde lee cada corrida (contractual: toca D-GOB-6/7) | (a) **un resumen comparable** (`comparable.json`) que toda corrida terminada de scorecard o IFRS 9 deja desde la versión que lo trae —en el `run_dir` de `bayesrisk.run` y en `runs/<id>/` de la pantalla—, con agregados y el puntaje de la muestra de evaluación sin identificadores; y los objetos vivos; (b) además, carpetas viejas por `Study.load(trust=True)` en la puerta de código | **(a)**: una sola fuente para las tres puertas, sin pickle (la pantalla no puede deserializar, por gate) y portable (se sube a la pantalla); (b) ejecuta código al leer una carpeta que un YAML nombra y deja a la pantalla con otra fuente; las corridas viejas se comparan re-corriéndolas (mismo config, mismos resultados) o pasando el `Study` que su dueño cargó |
+| 12-2 | De dónde lee cada corrida (contractual: toca D-GOB-6/7) | (a) **un resumen comparable** (`comparable.json`) que toda corrida terminada de scorecard o IFRS 9 deja desde la versión que lo trae —en el `run_dir` de `bayesrisk.run` y en `runs/<id>/` de la pantalla—, con agregados, la huella computacional del modelo y el puntaje de la muestra de evaluación en orden canónico, sin identificadores; y los objetos vivos; (b) además, carpetas viejas por `Study.load(trust=True)` en la puerta de código | **(a)**: una sola fuente para las tres puertas, sin pickle (la pantalla no puede deserializar, por gate) y portable (se sube a la pantalla); (b) ejecuta código al leer una carpeta que un YAML nombra y deja a la pantalla con otra fuente; las corridas viejas se comparan re-corriéndolas (mismo config, mismos resultados) o pasando el `Study` que su dueño cargó |
 | 12-3 | Qué índice de concentración | (a) **el del BCE** (§2.5.5.3), `1 + ln(HHI)/ln(K)`, por número de operaciones, sobre los tramos de la escala maestra; (b) el HHI crudo que la escala ya publica; (c) la participación del tramo mayor | **(a)**: medido, el HHI crudo ordena al revés modelos con distinto número de tramos (§0.4-4), y el índice del BCE tiene fuente oficial doble; la escala sigue publicando su HHI |
 | 12-4 | Una corrida sin escala maestra | (a) **índice «No evaluable»** para esa corrida, con la razón, y fuera del segundo gráfico; (b) formar tramos sólo para comparar | **(a)**: (b) sería un segundo motor de tramos; la puerta guiada ya corre la escala por defecto |
 | 12-5 | Corridas que no se midieron sobre las mismas operaciones | (a) **comparar y avisar**, con los tres niveles de §3.3 y la prueba que corresponde a cada uno; (b) rechazar todo lo que no sean las mismas operaciones | **(a)**: comparar el modelo nuevo con el que está en uso sobre datos distintos es el caso real del redesarrollo; el comité tiene que verlo con su advertencia |
-| 12-6 | Quién elige | (a) **la comparación no elige**: muestra la frontera y la institución registra su elección con motivo (`choose`, una decisión en el trail y en el informe); (b) un puntaje ponderado que ordena los modelos; (c) frontera sin registro de la elección | **(a)**: el peso entre discriminación y estabilidad es política de la institución (b sería una perilla sin evidencia); SR 11-7 pide documentar por qué se eligió un modelo, y (c) deja esa razón fuera del informe |
-| 12-7 | El ruido en la discriminación | (a) **prueba de DeLong pareada** entre corridas con las mismas operaciones (no pareada con la misma cartera), y en la frontera dos AUC empatan si p ≥ 0,05; el PSI se compara por banda; (b) frontera sobre las cifras puntuales, sin prueba; (c) sólo el error estándar de cada AUC (no pareado) | **(a)**: medido (§0.4-2, §0.4-3), sobre cifras puntuales una versión que pasa la validación queda «superada» por una diferencia de p = 0,71, y la no pareada no ve una caída real de 0,025 (p = 0,39 contra < 0,001); exige guardar el puntaje de la muestra de evaluación en el resumen (§12-2) |
+| 12-6 | Quién elige (contractual desde la pasada 1: extiende D-DEC) | (a) **la comparación no elige**: muestra la frontera y la institución registra su elección con motivo (`choose`, una decisión en el trail y en el informe), atada a la huella del resumen elegido y sin efecto si esa corrida ya no está (§4.1); (b) un puntaje ponderado que ordena los modelos; (c) frontera sin registro de la elección | **(a)**: el peso entre discriminación y estabilidad es política de la institución (b sería una perilla sin evidencia); SR 11-7 pide documentar por qué se eligió un modelo, y (c) deja esa razón fuera del informe |
+| 12-7 | El ruido en la discriminación | (a) **prueba de DeLong pareada** entre corridas con las mismas operaciones (no pareada con la misma cartera), y en la frontera dos AUC empatan si p ≥ 0,05; el PSI se compara por banda **con los cortes de fábrica para todas**, avisando si una corrida usó otros (ampliada por la pasada 1); (b) frontera sobre las cifras puntuales, sin prueba; (c) sólo el error estándar de cada AUC (no pareado) | **(a)**: medido (§0.4-2, §0.4-3), sobre cifras puntuales una versión que pasa la validación queda «superada» por una diferencia de p = 0,71, y la no pareada no ve una caída real de 0,025 (p = 0,39 contra < 0,001); exige guardar el puntaje de la muestra de evaluación en el resumen (§12-2) |
 | 12-8 | IFRS 9 | (a) **en la misma enmienda y las mismas capas**: ECL, exposición, conteo y cobertura por etapa, diferencias contra la referencia, sin gráficos; (b) después, aparte | **(a)**: es una tabla sobre el mismo mecanismo (§0.3: la diferencia de 4,6 % del horizonte está toda en Stage 2), y «cambios chicos, juntos» (RUNBOOK §12.3) |
 | 12-9 | Capas y releases | (a) **A** —el resumen comparable en cada corrida, el motor, `bayesrisk.Comparison`, la sección y el resumen; experimental— en la **2.15.0**; **B** —pantalla, informe con su capítulo y los dos gráficos, Excel; estable— en la **2.16.0**; (b) A y B juntas | **(a)**: como H5 y H4; A deja que toda corrida hecha con la 2.15.0 ya sea comparable cuando llegue la pantalla |
 
