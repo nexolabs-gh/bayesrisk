@@ -250,6 +250,36 @@ def test_armar_el_resumen_nunca_tumba_una_corrida(
     assert eventos[-1]["kind"] == "run_end"
 
 
+def test_un_sink_que_no_registra_el_aviso_no_le_quita_el_run_end(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pasada 1 de Codex: el aviso del resumen tampoco puede tumbar la corrida si el sink falla al
+    registrarlo; la corrida sigue terminada, emite su ``run_end`` y la causa queda en el Study."""
+    from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+    from bayesrisk.core.study import Study
+
+    class _SinkQueFallaConElAviso(InMemoryAuditSink):
+        def emit(self, event: AuditEvent) -> None:
+            if event.payload.get("regla") == comparable.REGLA_SIN_RESUMEN:
+                raise OSError("disco lleno")
+            super().emit(event)
+
+    def _revienta(_study: Any) -> None:
+        raise RuntimeError("defecto inyectado")
+
+    monkeypatch.setattr(comparable, "armar_al_cerrar", _revienta)
+    puntaje, calibrada = _puntajes_externos()
+    study = Study(BayesRiskConfig.model_validate({"performance": {}}))
+    sink = _SinkQueFallaConElAviso()
+    study.set_audit_sink(sink)
+    study.artifacts.set("scorecard", "score", puntaje)
+    study.artifacts.set("calibration", "calibrated_pd_frame", calibrada)
+    study.run()
+    assert study.run_context.status == "done"
+    assert sink.events[-1].kind == "run_end"
+    assert "defecto inyectado" in (study._causa_sin_resumen_comparable or "")
+
+
 # ── la comparación por sus puertas ───────────────────────────────────────────────────────────
 
 

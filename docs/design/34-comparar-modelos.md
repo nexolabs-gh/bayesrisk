@@ -790,7 +790,9 @@ el repo privado (`evidencia/s49/`: `humo_comparacion.py`, `humo_puerta.py`, `hum
    tarjeta sólo se congela de una corrida terminada— y antes de `run_end`, con el registro de
    auditoría todavía abierto: un fallo inesperado se declara (`resumen_comparable_no_disponible`,
    con su causa) y la corrida sigue terminada (D-VIS). Después de `run_end` no se puede: el sink de
-   MLflow cierra ahí y SDD-01 §11 fija el orden. La corrida lo guarda en el `Study`; `bayesrisk.run`
+   MLflow cierra ahí y SDD-01 §11 fija el orden. Si el sink tampoco puede registrar el aviso, la
+   corrida igual llega a su `run_end` y la causa queda en el `Study` (pasada 1 de Codex). La
+   corrida lo guarda en el `Study`; `bayesrisk.run`
    lo escribe en su `run_dir` y `runs.save` en `runs/<id>/`, sin volver a armarlo. Costo medido en
    `consumo_comportamiento`: 0,29 s para congelar la tarjeta y 0,19 s para el PSI común, sobre
    corridas de 7–10 s. Un objeto vivo (`Scorecard`, `Ecl`, `Study`) usa el que armó su corrida o lo

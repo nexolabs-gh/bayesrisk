@@ -230,17 +230,22 @@ def test_otra_cartera_se_compara_con_su_alerta_y_sin_prueba() -> None:
 
 
 def test_una_diferencia_real_y_un_empate() -> None:
-    fuerte = _riesgo(0.2, 7)
+    """Dos modelos distintos cuya diferencia de AUC es ruido empatan por la prueba (p ≥ 0,05), no
+    por ser idénticos; uno mucho más ruidoso discrimina menos de verdad (control negativo de S49:
+    con dos riesgos del mismo orden el empate salía por la varianza nula y no probaba el corte)."""
     resultado = comparar(
         [
-            _resumen("ref", riesgo=fuerte),
-            _resumen("igual", riesgo=[v + 1e-9 * i for i, v in enumerate(fuerte)]),
+            _resumen("ref", riesgo=_riesgo(0.5, 7)),
+            _resumen("igual", riesgo=_riesgo(0.55, 21)),
             _resumen("debil", riesgo=_riesgo(3.0, 8)),
         ]
     )
-    por_par = {(f["model_a"], f["model_b"]): f["result"] for _, f in resultado.tests.iterrows()}
-    assert por_par[("ref", "igual")] == "tie"
-    assert por_par[("ref", "debil")] == "a_better"
+    pruebas = {(f["model_a"], f["model_b"]): f for _, f in resultado.tests.iterrows()}
+    empate = pruebas[("ref", "igual")]
+    assert empate["result"] == "tie"
+    assert empate["difference"] != 0.0 and empate["p_value"] >= 0.05
+    assert pruebas[("ref", "debil")]["result"] == "a_better"
+    assert pruebas[("ref", "debil")]["p_value"] < 0.05
     assert any("debil discrimina menos" in linea for linea in resultado.reading)
 
 

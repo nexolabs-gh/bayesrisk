@@ -313,6 +313,8 @@ class Study:
         # El resumen comparable de la última corrida terminada (SDD-34 §6.1, D-CMP-2), armado al
         # cerrar; ``bayesrisk.run`` y la pantalla lo escriben. ``None`` si no es elegible.
         self._resumen_comparable: dict[str, Any] | None = None
+        #: Por qué la última corrida terminada no dejó resumen, si algo inesperado lo impidió.
+        self._causa_sin_resumen_comparable: str | None = None
         self._injected_artifacts: set[ArtifactKey] = set()
         # Las claves inyectadas PARA la próxima corrida y las de la corrida en curso: la procedencia
         # acumulada (`_injected_artifacts`) se sigue declarando en cada lineage, pero un `data_hash`
@@ -423,6 +425,7 @@ class Study:
         self.run_context.started_at = datetime.now(UTC)
         self.run_context.status = "running"
         self._resumen_comparable = None
+        self._causa_sin_resumen_comparable = None
         # Todo el estado por corrida se reinicia ANTES de la primera emisión, que puede fallar: un
         # Study reutilizado no conserva el lineage, el error ni el cierre de su corrida anterior
         # (pasada 2 de Codex en S24; decisión de Cami del 2026-09-28).
@@ -560,16 +563,21 @@ class Study:
             self._resumen_comparable = comparable.armar_al_cerrar(self)
         except Exception as exc:  # D-VIS: el resumen nunca tumba una corrida terminada
             self._resumen_comparable = None
-            self._emit(
-                "decision",
-                None,
-                {
-                    "regla": "resumen_comparable_no_disponible",
-                    "umbral": None,
-                    "valor": {"causa": f"{type(exc).__name__}: {exc}"},
-                    "accion": "omitir",
-                },
-            )
+            causa = f"{type(exc).__name__}: {exc}"
+            self._causa_sin_resumen_comparable = causa
+            # Un sink que no puede registrar el aviso tampoco tumba la corrida ni le quita su
+            # `run_end` (pasada 1 de Codex sobre la capa A): la causa queda en el `Study`.
+            with contextlib.suppress(Exception):
+                self._emit(
+                    "decision",
+                    None,
+                    {
+                        "regla": "resumen_comparable_no_disponible",
+                        "umbral": None,
+                        "valor": {"causa": causa},
+                        "accion": "omitir",
+                    },
+                )
 
     def check_pipeline(self, steps: list[str] | None = None) -> list[str]:
         """Resuelve y valida el pipeline **sin ejecutar nada**; devuelve los pasos en orden.
