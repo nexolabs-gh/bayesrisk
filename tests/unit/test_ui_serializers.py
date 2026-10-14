@@ -1300,9 +1300,12 @@ def test_results_publica_la_procedencia_completa_del_bundle(f1_study: Study) -> 
     assert lineage is not None, "una corrida terminada tiene procedencia congelada"
     bundle = f1_study.run_context.lineage
     assert bundle is not None
-    # `bundle_hash` (SDD-33 §5.3) existe sólo en una corrida de monitoreo y se omite vacío: el
-    # lineage de cualquier otra corrida queda byte a byte como antes. Fuera de eso, todos.
+    # `bundle_hash` (SDD-33 §5.3) existe sólo en una corrida de monitoreo y `comparison_hashes`
+    # (SDD-34 §9) sólo en una de comparación; los dos se omiten vacíos: el lineage de cualquier otra
+    # corrida queda byte a byte como antes. Fuera de eso, todos.
     omitidos = {"bundle_hash"} if bundle.bundle_hash is None else set()
+    if not bundle.comparison_hashes:
+        omitidos.add("comparison_hashes")
     assert set(lineage) == set(LineageBundle.model_fields) - omitidos, (
         "el panel publica un subconjunto del bundle: falta un campo en `_serialize_lineage`"
     )

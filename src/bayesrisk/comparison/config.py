@@ -63,6 +63,6 @@ class ComparisonConfig(BayesRiskBaseConfig):
                 raise ConfigError(
                     f"comparison.runs[{posicion}] está en blanco: cada corrida es una carpeta o "
                     "un resumen comparable.",
-                    loc=(*_LOC_SECCION, "runs", posicion),
+                    loc=(*_LOC_SECCION, "runs"),
                 )
         return self

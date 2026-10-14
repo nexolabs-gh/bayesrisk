@@ -89,6 +89,8 @@ def test_from_config_registro_reexport_contrato_orden_e_import_liviano() -> None
         "master_scale",
         # El monitoreo (SDD-33): una corrida propia desde la tarjeta guardada.
         "monitoring",
+        # La comparación (SDD-34): una corrida propia sin datos, desde los resúmenes comparables.
+        "comparison",
         # ``report`` corre AL FINAL: es la foto de todo lo que corrió, incluidas las provisiones
         # (SDD-28 D8). Antes vivía tras ``stability`` y su builder no veía sus cards.
         "report",
