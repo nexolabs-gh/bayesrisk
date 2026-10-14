@@ -406,3 +406,31 @@ def test_una_etapa_vacia_en_la_referencia_aporta_su_provision_entera() -> None:
         "otra provisiona lo mismo que ref en total, repartido distinto: Stage 1 40 menos y "
         "Stage 2 40 más." in resultado.reading
     )
+
+
+def test_una_oot_no_evaluable_no_cae_al_holdout_ni_recibe_prueba() -> None:
+    """Pasada 3 de Codex, contra §3.2 y §8: la muestra de evaluación es la OOT si la corrida la
+    tiene; si no es evaluable, sus cifras quedan vacías y no hay prueba ni frontera —no se compara
+    en silencio otra muestra que la del resumen final—."""
+    sin_auc = _resumen("sin_auc")
+    oot = next(s for s in sin_auc["samples"] if s["sample"] == "oot")
+    oot.update(auc=None, gini=None, ks=None, status="not_evaluable")
+    sin_auc["samples"].insert(
+        1,
+        {
+            "sample": "holdout",
+            "n": 500,
+            "n_bad": 120,
+            "auc": 0.7,
+            "gini": 0.4,
+            "ks": 0.3,
+            "status": "ok",
+        },
+    )
+    resultado = comparar([_resumen("ref"), sin_auc])
+    fila = _modelo(resultado, "sin_auc")
+    assert fila["evaluation_sample"] == "oot" and fila["auc"] is None
+    assert fila["frontier_stability"] is None and fila["frontier_concentration"] is None
+    prueba = resultado.tests.iloc[0]
+    assert prueba["result"] == "not_evaluable" and bool(prueba["paired"]) is False
+    assert any("no es evaluable en OOT" in linea for linea in resultado.reading)

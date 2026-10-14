@@ -876,3 +876,8 @@ el repo privado (`evidencia/s49/`: `humo_comparacion.py`, `humo_puerta.py`, `hum
     diferencia de cobertura nulos; y cuando el total es el mismo pero la provisión se movió entre
     etapas, la lectura ya no dice «provisiona lo mismo»: dice el reparto («lo mismo en total,
     repartido distinto: Stage 1 40 menos y Stage 2 40 más»).
+    Pasada 3, la última del tope: una OOT con filas pero no evaluable no cae al Holdout —§3.2 fija
+    la OOT si la corrida la tiene, la regla del resumen final, y §8 deja sus cifras vacías y sin
+    prueba—; el código ya lo hacía (sin AUC no hay componentes de DeLong ni frontera, y la lectura
+    lo dice), y queda su test. Cambiarlo a «la primera muestra evaluable» sería otra regla de §3.2:
+    no se programa sin decisión.
