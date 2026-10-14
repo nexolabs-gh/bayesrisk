@@ -44,9 +44,11 @@ from bayesrisk.report.document import (
     IFRS9_DOMAINS,
     IFRS9_EXTRA_SECTIONS,
     METHODOLOGY_STEPS,
+    MONITORING_SECTIONS,
     PIPELINE_DOMAINS,
     PROVISION_DOMAINS,
     RESULT_DOMAINS,
+    STABILITY_PSI_BY_PERIOD_TABLE,
     SURVIVAL_PD_BY_PERIOD_TABLE,
     VALIDATION_FAMILIES,
     ChapterSpec,
@@ -109,6 +111,9 @@ _CARD_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     # La escala maestra (SDD-32, capa B). Opcional como las demás: sin la etapa no hay card y la
     # subsección de «Resultados» no se emite.
     ("master_scale", "card"),
+    # El monitoreo (SDD-33, capa B): su card activa el capítulo condicional «Monitoreo del modelo
+    # en uso» (``ChapterSpec.requires_domain='monitoring'``). Opcional como las demás.
+    ("monitoring", "card"),
 )
 _CARD_KEY_BY_DOMAIN: Final[dict[str, str]] = dict(_CARD_ARTIFACTS)
 _RESULT_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (("validation", "result"),)
@@ -169,6 +174,11 @@ _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     ("master_scale", "grades"),
     ("master_scale", "grade_table"),
     ("master_scale", "cutoff_table"),
+    # El monitoreo (SDD-33, capa B): los tres artefactos agregados completos, para el anexo. El
+    # cuerpo muestra sus tablas legibles, que arma :func:`_monitoreo` con la función del resumen.
+    ("monitoring", "periods"),
+    ("monitoring", "grades_by_period"),
+    ("monitoring", "variables_by_period"),
 )
 #: Las claves de la puntuación fuera del ajuste (enmienda PUNTUAR-POBLACION-TTD, D-TTD-2) se
 #: publican siempre, vacías cuando la corrida no tiene esas filas. Una tabla sin filas no es
@@ -196,6 +206,7 @@ _PARAM_DOMAINS: Final[tuple[str, ...]] = (
     "provisioning_ifrs9",
     "validation",
     "master_scale",
+    "monitoring",
 )
 
 
@@ -226,6 +237,9 @@ class ReportBuilder:
         tables.update(tablas_ifrs9)
         master_scale_body, tablas_escala = _escala_maestra(study)
         tables.update(tablas_escala)
+        monitoring_body, tablas_monitoreo = _monitoreo(study)
+        tables.update(tablas_monitoreo)
+        tables.update(_serie_de_estabilidad(study))
         tables.update(_extract_card_dataframes(cards))
         figures = self._collect_figures(study)
         pipeline_params = _collect_pipeline_params(study)
@@ -256,6 +270,8 @@ class ReportBuilder:
             ifrs9_extras=ifrs9_extras,
             # SDD-32 capa B: el cuerpo de «Escala maestra y puntos de corte», desde su resumen.
             master_scale_body=master_scale_body,
+            # SDD-33 capa B: el cuerpo del capítulo del monitoreo, desde su resumen.
+            monitoring_body=monitoring_body,
         )
         return bundle.model_copy(update={"sections": self.build_sections(bundle)})
 
@@ -357,6 +373,8 @@ class ReportBuilder:
             return self._domain_subsections(spec.id, PROVISION_DOMAINS, bundle, number, kind="data")
         if spec.id == "ifrs9":
             return self._ifrs9_subsections(bundle, number)
+        if spec.id == "monitoring":
+            return self._monitoring_subsections(bundle, number)
         if spec.id == APPENDIX_PARAMETERS_ID:
             return self._domain_subsections(
                 spec.id,
@@ -447,6 +465,38 @@ class ReportBuilder:
             section.model_copy(update={"number": f"{number}.{i}"})
             for i, section in enumerate(orden, 1)
         )
+
+    def _monitoring_subsections(
+        self,
+        bundle: ReportInputBundle,
+        number: str,
+    ) -> tuple[ReportSection, ...]:
+        """El veredicto con su serie, cada tramo y cada variable por periodo (SDD-33, capa B).
+
+        Cada subsección muestra la tabla que el resumen «Monitoreo» ya escribió
+        (``KEY_TABLES["monitoring.<hijo>"]``); la primera lleva además sus líneas y alertas. Una
+        subsección cuya tabla no se publicó (sin variables con CSI, por ejemplo) no se emite.
+        """
+        sections: list[ReportSection] = []
+        for hijo, (titulo, tablas) in MONITORING_SECTIONS.items():
+            if not any(clave in bundle.tables for clave in tablas):
+                continue
+            sections.append(
+                ReportSection(
+                    id=domain_section_id("monitoring", hijo),
+                    title=titulo,
+                    status="included",
+                    source_domain=f"monitoring.{hijo}",
+                    source_key=None,
+                    payload={},
+                    metric_sections={},
+                    kind="data",
+                    level=2,
+                    number=f"{number}.{len(sections) + 1}",
+                    body=bundle.monitoring_body if hijo == "verdict" else (),
+                )
+            )
+        return tuple(sections)
 
     def _methodology_subsections(
         self,
@@ -685,11 +735,14 @@ def _hay_pagina_ejecutiva(bundle: ReportInputBundle) -> bool:
         return False
     if any(domain in bundle.cards for domain in RESULT_DOMAINS):
         return True
-    return bundle.summary.get("family") == _FAMILIA_CARTERA
+    return bundle.summary.get("family") in {_FAMILIA_CARTERA, _FAMILIA_MONITOREO}
 
 
 #: La familia de resúmenes de una provisión (``bayesrisk.guided.summaries.family_of``).
 _FAMILIA_CARTERA: Final = "cartera"
+#: Y la de una corrida de monitoreo (SDD-33): su página dice «Veredicto» donde el scorecard dice
+#: «Validación técnica».
+_FAMILIA_MONITOREO: Final = "monitoreo"
 
 
 def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]:
@@ -703,6 +756,20 @@ def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]
             "provisión, sus cifras clave, qué revisar, las decisiones humanas con su motivo y "
             "dónde queda cada archivo. Una provisión no tiene veredicto técnico del motor: el "
             "juicio sobre ella lo firma el validador en el resumen ejecutivo.",
+            "Las rutas son las que el informe escribió al generarse: si la corrida se copia o se "
+            "archiva después —desde la interfaz, o al apartar una corrida anterior—, los archivos "
+            "se buscan en su carpeta de destino, y el registro de auditoría deja constancia de "
+            "cada uno que se escribió.",
+        )
+    if chapter_id == EXECUTIVE_SUMMARY_ID and (bundle.summary or {}).get("family") == (
+        _FAMILIA_MONITOREO
+    ):
+        return (
+            "Lo que cuenta el monitoreo al terminar, con la misma fuente que la puerta guiada y la "
+            "pestaña Resultados: el estado de la ejecución, el veredicto del último periodo con su "
+            "acción, las cifras clave, qué revisar y dónde queda cada archivo. El veredicto es la "
+            "lectura del motor con umbrales fijos; la decisión sobre el modelo la firma la "
+            "institución.",
             "Las rutas son las que el informe escribió al generarse: si la corrida se copia o se "
             "archiva después —desde la interfaz, o al apartar una corrida anterior—, los archivos "
             "se buscan en su carpeta de destino, y el registro de auditoría deja constancia de "
@@ -733,6 +800,8 @@ def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]
         return prose.provisions_intro(bundle)
     if chapter_id == "ifrs9":
         return prose.ifrs9_intro(bundle)
+    if chapter_id == "monitoring":
+        return prose.monitoring_intro(bundle)
     if chapter_id == "conclusions":
         return prose.conclusions_body(bundle)
     if chapter_id == "limitations":
@@ -771,6 +840,7 @@ def _run_summary(study: Study, config: ReportConfig) -> dict[str, Any]:
     from bayesrisk.guided.summaries import (
         RESUMEN_FINAL_ROTULOS,
         ROTULO_SUPUESTOS,
+        ROTULO_VEREDICTO,
         SIN_ALERTAS,
         SIN_DECISIONES,
         SummaryContext,
@@ -796,6 +866,11 @@ def _run_summary(study: Study, config: ReportConfig) -> dict[str, Any]:
         # claves: su informe queda byte a byte.
         payload["family"] = _FAMILIA_CARTERA
         payload["labels"]["assumptions"] = ROTULO_SUPUESTOS
+    elif family_of(study.config) == _FAMILIA_MONITOREO:
+        # Un monitoreo (SDD-33, capa B): la página dice su «Veredicto» donde el scorecard dice
+        # «Validación técnica»; el resto del molde es el mismo.
+        payload["family"] = _FAMILIA_MONITOREO
+        payload["labels"]["validation"] = ROTULO_VEREDICTO
     try:
         contexto = SummaryContext(
             project_dir=None,
@@ -1174,6 +1249,55 @@ def _escala_maestra(study: Study) -> tuple[tuple[str, ...], dict[str, DataFrameL
         for clave, columnas, filas in contenido["tables"]
     }
     return cuerpo, tablas
+
+
+def _monitoreo(study: Study) -> tuple[tuple[str, ...], dict[str, DataFrameLike]]:
+    """El cuerpo y las tres tablas del capítulo «Monitoreo del modelo en uso» (SDD-33, capa B).
+
+    Los arma :func:`bayesrisk.guided.summaries.monitoring_report_extras` (import perezoso): las
+    mismas líneas, alertas y tablas que el resumen de la etapa, ya escritas. El informe no
+    recalcula nada. Las alertas se dicen como «Qué revisar». Sin monitoreo, nada.
+    """
+    if not study.artifacts.has("monitoring", "card"):
+        return (), {}
+    from bayesrisk.guided.summaries import monitoring_report_extras
+
+    contenido = monitoring_report_extras(study)
+    if not contenido:
+        return (), {}
+    pd = importlib.import_module("pandas")
+    cuerpo = (
+        *(linea if linea.endswith(".") else f"{linea}." for linea in contenido["lines"]),
+        *(
+            f"Qué revisar: {alerta}" if alerta.endswith(".") else f"Qué revisar: {alerta}."
+            for alerta in contenido["alerts"]
+        ),
+    )
+    tablas: dict[str, DataFrameLike] = {
+        clave: cast(DataFrameLike, pd.DataFrame(filas, columns=columnas))
+        for clave, columnas, filas in contenido["tables"]
+    }
+    return cuerpo, tablas
+
+
+def _serie_de_estabilidad(study: Study) -> dict[str, DataFrameLike]:
+    """La serie de PSI por período de la estabilidad (SDD-33 D-MNT-9), desde su resumen.
+
+    La calculaba la etapa y no se publicaba: la arma
+    :func:`bayesrisk.guided.summaries.stability_psi_by_period_table`, la misma tabla que el
+    resumen «Estabilidad», ya escrita. Sin eje temporal, nada: el informe es el de siempre.
+    """
+    if not study.artifacts.has("stability", "result"):
+        return {}
+    from bayesrisk.guided.summaries import stability_psi_by_period_table
+
+    tabla = stability_psi_by_period_table(study)
+    if tabla is None:
+        return {}
+    pd = importlib.import_module("pandas")
+    columnas, filas = tabla
+    serie = cast(DataFrameLike, pd.DataFrame(filas, columns=columnas))
+    return {STABILITY_PSI_BY_PERIOD_TABLE: serie}
 
 
 def _curva_de_pd_por_cartera(study: Study) -> dict[str, DataFrameLike]:

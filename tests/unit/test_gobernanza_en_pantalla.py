@@ -160,13 +160,14 @@ def test_governance_es_la_ultima_seccion_del_formulario_y_se_llama_gobernanza() 
     D-SC-6, que mete «Validación formal» entre estabilidad y survival; 16 → **17** con D-SC-1,
     que mete «Análisis exploratorio» entre el esquema y el binning; 17 → **18** con la capa C de
     IFRS9-FIRMABLE, que mete «Escenarios económicos» entre survival y las provisiones; 18 → **19**
-    con la capa B del SDD-32, que mete «Escala maestra» entre la validación formal y survival). El
+    con la capa B del SDD-32, que mete «Escala maestra» entre la validación formal y survival;
+    19 → **20** con la capa B del SDD-33, que mete «Monitoreo» tras la escala maestra). El
     conteo se conserva como
     ancla de no vacuidad y se mueve a conciencia; quien lo cambie sin mirar dónde queda la
     gobernanza rompe la promesa de D-GOB-11, que es que sea lo último que se ve.
     """
     secciones = _config_sections_del_front()
-    assert len(secciones) == 19, [k for k, _ in secciones]
+    assert len(secciones) == 20, [k for k, _ in secciones]
     assert secciones[-2][0] == "report", "el informe sigue siendo el último paso del pipeline"
     assert secciones[-1] == ("governance", "Gobernanza")
 
@@ -184,7 +185,8 @@ def test_los_diez_trabajos_ofrecen_governance_y_la_declaran_latente() -> None:
     a los dos casos de referencia sin el gate que exige `governance` latente.
     """
     trabajos = list_jobs(incluir_referencia=True)
-    assert len(trabajos) == 10
+    # 10 → 11 con la capa B del SDD-33: «Monitorear un modelo en uso» también la ofrece latente.
+    assert len(trabajos) == 11
     for job in trabajos:
         assert job["sections"][-1] == "governance", (job["id"], job["sections"])
         assert job["latent_sections"] == _LATENTES_ESPERADAS.get(job["id"], ["governance"]), (

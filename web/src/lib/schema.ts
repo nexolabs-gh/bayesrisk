@@ -158,6 +158,15 @@ export const CONFIG_SECTIONS: ConfigSectionDef[] = [
       "Los tramos de riesgo del puntaje con su PD y el puntaje de aprobación de la institución.",
   },
   {
+    // La sección del trabajo «Monitorear un modelo en uso» (SDD-33, capa B): una corrida propia que
+    // parte de la tarjeta guardada del scorecard. Va tras la escala maestra porque monitorea lo que
+    // esa etapa congela en la tarjeta; sus tres campos son las entradas de la institución.
+    key: "monitoring",
+    label: "Monitoreo",
+    description:
+      "La tarjeta que se monitorea, la columna de periodo y la de desenlace de la cartera nueva.",
+  },
+  {
     key: "survival",
     label: "Survival — PD lifetime",
     description:

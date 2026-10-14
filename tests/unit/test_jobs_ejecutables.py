@@ -66,6 +66,10 @@ _DECISIONES_CONTESTADAS: dict[str, Any] = {
     # latente, así que tampoco se contestan sobre el esqueleto.
     "forward.input.macro_source.variable_cols": ["desempleo"],
     "forward.satellite.factor_cols": ["desempleo"],
+    # SDD-33 capa B: la tarjeta (una ruta, que el config acepta sin abrirla: la lee la corrida) y la
+    # columna de periodo del monitoreo.
+    "monitoring.bundle": "tarjeta",
+    "monitoring.period": "periodo",
 }
 
 
@@ -258,7 +262,8 @@ def test_cada_decision_que_un_trabajo_pregunta_tiene_su_respuesta_en_el_gate(
 def test_el_barrido_no_es_vacuo(trabajos: list[dict[str, Any]]) -> None:
     """Un gate que recorre cero da verde y no prueba nada: pasó ya dos veces en este repo."""
     disponibles = [j for j in trabajos if j["status"] == "available"]
-    assert len(trabajos) == 10, f"el catálogo tiene {len(trabajos)} trabajos, no 10"
+    # 10 → 11 con la capa B del SDD-33: «Monitorear un modelo en uso».
+    assert len(trabajos) == 11, f"el catálogo tiene {len(trabajos)} trabajos, no 11"
     assert len(disponibles) >= 7, f"sólo {len(disponibles)} disponibles: el gate mediría casi nada"
     for ancla in ("scorecard_pd", "pd_lifetime", "comparar_provisiones", "provisiones_ifrs9"):
         assert ancla in {j["id"] for j in disponibles}, f"«{ancla}» debería estar disponible"

@@ -153,6 +153,12 @@ import type { LastRun } from "@/state/appStore"
  */
 const TABLAS_DEL_CICLO = new Set(["ECL por escenario", "Desplazamiento por tramo"])
 
+/**
+ * La serie de PSI por período del resumen «Estabilidad» (SDD-33 D-MNT-9): la calculaba la etapa y
+ * no se publicaba. El título es el de `guided/summaries.py` (`TITULO_PSI_POR_PERIODO`).
+ */
+const TITULO_SERIE_DE_ESTABILIDAD = "PSI del puntaje por período contra Desarrollo"
+
 interface ResultsTabProps {
   /** Navega a otra sección del shell (misma convención que RunTab: la navegación vive en App). */
   onNavigate: (section: string) => void
@@ -392,6 +398,15 @@ export function ResultsPanel({
   // La escala maestra (SDD-32, capa B): los tramos y la tabla de puntos de corte se pintan desde
   // el MISMO resumen de la etapa —lo que dicen también el notebook, el Excel y el informe—.
   const escala = results.summaries?.stages.find((etapa) => etapa.stage === "master_scale") ?? null
+  // El monitoreo (SDD-33, capa B): el veredicto, la serie por periodo, cada tramo y cada variable,
+  // desde el MISMO resumen de la etapa que el notebook, el Excel y el informe.
+  const monitoreo =
+    results.summaries?.stages.find((etapa) => etapa.stage === "monitoring") ?? null
+  // La serie de PSI por período de la estabilidad (D-MNT-9), desde su resumen.
+  const serieDeEstabilidad =
+    results.summaries?.stages
+      .find((etapa) => etapa.stage === "stability")
+      ?.extra_tables?.find((tabla) => tabla.title === TITULO_SERIE_DE_ESTABILIDAD) ?? null
   const tablasDelCiclo =
     ifrs9?.pit_mode === "cycle"
       ? (results.summaries?.stages
@@ -1070,6 +1085,10 @@ export function ResultsPanel({
               </span>
             </div>
           ) : null}
+          {/* 5. La serie período a período (SDD-33 D-MNT-9), la del resumen de la etapa. */}
+          {serieDeEstabilidad ? (
+            <SummaryTableView table={serieDeEstabilidad} title={serieDeEstabilidad.title} />
+          ) : null}
         </ResultsSection>
       ) : null}
 
@@ -1612,6 +1631,35 @@ export function ResultsPanel({
         </ResultsSection>
       ) : null}
 
+      {/* a.5 Monitoreo del modelo en uso (SDD-33, capa B): el veredicto con su acción, la serie
+          por periodo y las tablas de cada tramo y cada variable, del resumen de la etapa, sin
+          formato propio. Guard por presencia: sólo una corrida de monitoreo la trae. */}
+      {monitoreo ? (
+        <ResultsSection
+          title="Monitoreo del modelo en uso"
+          description="Por periodo, contra la referencia de Desarrollo que congeló la tarjeta: si cambió la población, si el modelo sigue ordenando y si cada tramo acierta su PD, con un veredicto y su acción. Los umbrales son fijos; lo que no se pudo evaluar no cuenta como verde."
+        >
+          <ul className="space-y-1 text-sm text-foreground/90">
+            {monitoreo.lines.map((linea) => (
+              <li key={linea}>{linea}</li>
+            ))}
+          </ul>
+          {monitoreo.alerts.length > 0 ? (
+            <ul className="mt-2 space-y-1 text-sm text-amber-200/90">
+              {monitoreo.alerts.map((alerta) => (
+                <li key={alerta}>⚠ {alerta}</li>
+              ))}
+            </ul>
+          ) : null}
+          {monitoreo.table ? (
+            <SummaryTableView table={monitoreo.table} title="La serie por periodo" />
+          ) : null}
+          {(monitoreo.extra_tables ?? []).map((tabla) => (
+            <SummaryTableView key={tabla.title} table={tabla} title={tabla.title} />
+          ))}
+        </ResultsSection>
+      ) : null}
+
       {/* b. Ajuste del modelo: fit_statistics + variables finales. */}
       {fit || finalFeatures.length > 0 ? (
         <ResultsSection
@@ -2009,7 +2057,10 @@ function RunSummarySection({ summaries }: { summaries: RunSummaries }) {
                 (FLUJO-GUIADO-IFRS9 D-ECL-7), leído del config y los artefactos de ESTA corrida. */}
             {final.family === "cartera" ? null : (
               <div className="flex flex-wrap gap-x-2">
-                <dt className="font-medium text-foreground">Validación técnica:</dt>
+                {/* Un monitoreo dice su «Veredicto» (SDD-33 §3.5), no una validación técnica. */}
+                <dt className="font-medium text-foreground">
+                  {final.family === "monitoreo" ? "Veredicto:" : "Validación técnica:"}
+                </dt>
                 <dd className="text-foreground/90">{final.validation}</dd>
               </div>
             )}

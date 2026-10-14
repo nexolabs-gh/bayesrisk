@@ -9,10 +9,10 @@ publicado (`2.13.0`).
     dominios `data`, `eda`, `binning`, `selection`, `model`, `scorecard`, `calibration`,
     `performance` y `stability`— es **API estable**: no rompe hasta una versión 3.0. También lo son el
     informe (`report`), el trail de auditoría (`audit`), porque ya son superficie de integración,
-    la puerta guiada (`guided`, `bayesrisk.Scorecard`) y la escala maestra (`master_scale`), desde
-    que cerraron sus tres puertas.
+    la puerta guiada (`guided`, `bayesrisk.Scorecard`), la escala maestra (`master_scale`) y el
+    monitoreo (`monitoring`, `bayesrisk.Monitor`), desde que cerraron sus tres puertas.
     Las superficies que aún crecen (modelado ML, provisiones, survival, forward-looking, stress,
-    validación, monitoreo, gobernanza y tracking) están marcadas como **experimentales** en su
+    validación, gobernanza y tracking) están marcadas como **experimentales** en su
     *docstring*, fuera de la garantía SemVer 2.x.
 
     Esa lista no se escribe a mano en tres sitios: la fija `bayesrisk.testing.stability` y la
@@ -49,8 +49,9 @@ escenarios de la institución y las dos PD del modelo (`history=`, `scenarios=`,
 `bayesrisk.Monitor` monitorea una tarjeta en uso con la misma mecánica: la tarjeta guardada, la
 cartera nueva con su columna de periodo y, si la hay, la de desenlace; por periodo dice si cambió
 la población, si el modelo sigue ordenando y si cada tramo acierta su PD, con un veredicto y su
-acción (ver [Monitoreo](#monitoreo)). Es **experimental** desde la 2.13.0, fuera de la garantía
-SemVer 2.x, hasta que la pantalla, el informe y el Excel cierren sus tres puertas.
+acción (ver [Monitoreo](#monitoreo)). **Estable** desde la 2.14.0, con sus tres puertas: la guiada,
+el config completo y la pantalla (el trabajo «Monitorear un modelo en uso»), y con su informe y su
+libro `Monitoreo.xlsx` (`mon.export_excel()`).
 
 ::: bayesrisk.guided.monitor.Monitor
 
@@ -535,9 +536,10 @@ correr el desarrollo ni conservar sus datos: el PSI del puntaje y de la particip
 tasa de malos de cada tramo y de la cartera frente a su PD (en las dos direcciones), la
 discriminación —el AUC sobre los tramos contra el AUC inicial de la tarjeta y la pendiente de
 calibración— y un veredicto por periodo: sin acción, vigilar, recalibrar o redesarrollar.
-**Experimental** desde la 2.13.0 por la puerta guiada (`bayesrisk.Monitor`) y el config completo;
-sólo monitorea tarjetas guardadas desde esa versión, que congelan la referencia de Desarrollo
-(esquema 4). Sus tres hojas son las entradas de la institución; los umbrales y la tabla de decisión
+**Estable** desde la 2.14.0: salió en la 2.13.0 por la puerta guiada (`bayesrisk.Monitor`) y el
+config completo, y cerró sus tres puertas con la pantalla, el capítulo del informe y
+`Monitoreo.xlsx`. Sólo monitorea tarjetas guardadas desde la 2.13.0, que congelan la referencia de
+Desarrollo (esquema 4). Sus tres hojas son las entradas de la institución; los umbrales y la tabla de decisión
 son constantes del motor.
 
 ::: bayesrisk.monitoring.config.MonitoringConfig

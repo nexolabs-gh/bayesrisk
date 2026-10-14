@@ -2097,6 +2097,9 @@ def _resumen_stability(study: Study, context: SummaryContext) -> StageSummary:
             table = table.reset_index(drop=True)
     if not lines:
         lines.append("La estabilidad no publicó su resumen.")
+    # SDD-33 D-MNT-9: la serie de PSI por período que la etapa ya calculaba y no publicaba —la
+    # historia que la ayuda del eje temporal promete—, desde el resultado de la etapa.
+    serie = _serie_de_psi_por_periodo(study)
     return StageSummary(
         stage="stability",
         label=STAGE_LABELS["stability"],
@@ -2104,6 +2107,50 @@ def _resumen_stability(study: Study, context: SummaryContext) -> StageSummary:
         alerts=tuple(alerts),
         table=table,
         formats={"Valor": "num"},
+        extra_tables=(
+            ((TITULO_PSI_POR_PERIODO, serie, _FORMATOS_PSI_POR_PERIODO),)
+            if serie is not None
+            else ()
+        ),
+    )
+
+
+#: El título de la serie de PSI por período del resumen «Estabilidad» (SDD-33 D-MNT-9).
+TITULO_PSI_POR_PERIODO: Final = "PSI del puntaje por período contra Desarrollo"
+_FORMATOS_PSI_POR_PERIODO: Final[dict[str, _Kind]] = {
+    "Operaciones": "int",
+    "Puntaje medio": "num",
+    "Mediana del puntaje": "num",
+    "PD media": "pct",
+    "PSI": "num",
+}
+
+
+def stability_psi_by_period_table(study: Study) -> tuple[list[str], list[list[str]]] | None:
+    """La serie de PSI por período, ya escrita, para el informe (SDD-33 D-MNT-9); sin eje, None."""
+    tabla = _tabla_transportable(_serie_de_psi_por_periodo(study), _FORMATOS_PSI_POR_PERIODO)
+    return None if tabla is None else (tabla["columns"], tabla["rows"])
+
+
+def _serie_de_psi_por_periodo(study: Study) -> pd.DataFrame | None:
+    """Un período por fila: operaciones, puntaje medio y mediano, PD media, PSI y su banda."""
+    resultado = _artifact(study, "stability", "result")
+    registros = getattr(resultado, "temporal_records", None)
+    if not registros:
+        return None
+    return pd.DataFrame(
+        [
+            {
+                "Período": r.period,
+                "Operaciones": r.n_total,
+                "Puntaje medio": r.mean_score,
+                "Mediana del puntaje": r.p50_score,
+                "PD media": r.mean_pd,
+                "PSI": r.psi,
+                "Banda": BAND_LABELS.get(str(r.band), str(r.band)),
+            }
+            for r in registros
+        ]
     )
 
 
@@ -4160,10 +4207,21 @@ def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
         "Umbrales fijos: PSI 0,10 y 0,25; p-valores 0,05 y 0,01; 30 operaciones con desenlace por "
         "tramo; 2 malos para el AUC."
     )
-    extra: tuple[tuple[str, pd.DataFrame, Mapping[str, _Kind]], ...] = ()
+    extra: list[tuple[str, pd.DataFrame, Mapping[str, _Kind]]] = []
     if isinstance(tramos, pd.DataFrame) and not tramos.empty:
-        extra = (
-            (TITULO_TRAMOS_POR_PERIODO, _tabla_de_tramos_por_periodo(tramos), _FORMATOS_TRAMOS),
+        extra.append(
+            (TITULO_TRAMOS_POR_PERIODO, _tabla_de_tramos_por_periodo(tramos), _FORMATOS_TRAMOS)
+        )
+    # El CSI de cada variable, el diagnóstico de §3.2 (D-MNT-4): la tabla que el Excel y el informe
+    # publican desde este mismo resumen (capa B, D-SIM-5).
+    variables = _artifact(study, "monitoring", "variables_by_period")
+    if isinstance(variables, pd.DataFrame) and not variables.empty:
+        extra.append(
+            (
+                TITULO_VARIABLES_POR_PERIODO,
+                _tabla_de_variables_por_periodo(variables),
+                _FORMATOS_VARIABLES,
+            )
         )
     return StageSummary(
         stage="monitoring",
@@ -4172,7 +4230,7 @@ def _resumen_monitoring(study: Study, context: SummaryContext) -> StageSummary:
         alerts=(*alertas, *_alertas_del_monitoreo(card)),
         table=_tabla_de_periodos(periodos),
         formats=_FORMATOS_PERIODOS,
-        extra_tables=extra,
+        extra_tables=tuple(extra),
     )
 
 
@@ -4196,6 +4254,8 @@ def _alerta_de_evidencia_parcial(
 
 #: El título de la tabla adicional del resumen «Monitoreo».
 TITULO_TRAMOS_POR_PERIODO: Final = "Cada tramo por periodo: tasa de malos frente a su PD"
+#: El de la tabla del CSI de cada variable por periodo (capa B).
+TITULO_VARIABLES_POR_PERIODO: Final = "Cada variable por periodo: CSI contra Desarrollo"
 
 _FORMATOS_PERIODOS: Final[dict[str, _Kind]] = {
     "Operaciones": "int",
@@ -4248,6 +4308,57 @@ def _tabla_de_periodos(periodos: pd.DataFrame) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(filas)
+
+
+_FORMATOS_VARIABLES: Final[dict[str, _Kind]] = {"CSI": "num"}
+
+
+def _tabla_de_variables_por_periodo(variables: pd.DataFrame) -> pd.DataFrame:
+    """El CSI de cada variable en cada periodo, con su semáforo (las bandas del PSI)."""
+    return pd.DataFrame(
+        {
+            "Periodo": variables["period"],
+            "Variable": variables["feature"],
+            "CSI": variables["csi"],
+            "Semáforo": [_luz(luz) for luz in variables["csi_light"]],
+        }
+    )
+
+
+def monitoring_report_extras(study: Study) -> dict[str, Any]:
+    """Lo que el informe cuenta del monitoreo (SDD-33, capa B).
+
+    **Una sola fuente** (D-SIM-5): las líneas, las alertas y las tablas del resumen de la etapa
+    «Monitoreo» —la serie por periodo, cada tramo por periodo y cada variable por periodo—, ya
+    escritas como las lee una persona, con las claves del informe de
+    :data:`bayesrisk.report.document.MONITORING_BODY_TABLES`. Trae ``lines``, ``alerts`` y
+    ``tables`` (``(clave, columnas, filas)``). Sin la etapa, ``{}``.
+    """
+    from bayesrisk.report.document import (
+        MONITORING_GRADES_TABLE,
+        MONITORING_SERIES_TABLE,
+        MONITORING_VARIABLES_TABLE,
+    )
+
+    if _card(study, "monitoring", "card") is None:
+        return {}
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="", partition_label="")
+    resumen = _resumen_monitoring(study, contexto)
+    tablas: list[tuple[str, dict[str, Any] | None]] = [
+        (MONITORING_SERIES_TABLE, _tabla_transportable(resumen.table, resumen.formats)),
+    ]
+    claves = {
+        TITULO_TRAMOS_POR_PERIODO: MONITORING_GRADES_TABLE,
+        TITULO_VARIABLES_POR_PERIODO: MONITORING_VARIABLES_TABLE,
+    }
+    for titulo, tabla, formatos in resumen.extra_tables:
+        if titulo in claves:
+            tablas.append((claves[titulo], _tabla_transportable(tabla, formatos)))
+    return {
+        "lines": list(resumen.lines),
+        "alerts": list(resumen.alerts),
+        "tables": [(k, t["columns"], t["rows"]) for k, t in tablas if t is not None],
+    }
 
 
 def _tabla_de_tramos_por_periodo(tramos: pd.DataFrame) -> pd.DataFrame:

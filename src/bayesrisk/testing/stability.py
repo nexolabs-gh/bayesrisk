@@ -57,6 +57,10 @@ STABLE_DOMAINS: Final[tuple[str, ...]] = (
     # puerta guiada y el config completo, y entra a la garantía en la 2.12.0, al cerrar sus tres
     # puertas (pantalla, informe y Excel). Es la última etapa del scorecard F1.
     "master_scale",
+    # El monitoreo (SDD-33 D-MNT-8): salió en la 2.13.0 como adelanto declarado por la puerta
+    # guiada y el config completo, y entra a la garantía en la 2.14.0, al cerrar sus tres puertas
+    # (pantalla, informe y Excel).
+    "monitoring",
 )
 """Dominios bajo garantía SemVer 2.x: su API pública no rompe hasta un 3.0."""
 
@@ -66,9 +70,6 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
     "governance",
     "markov",
     "ml",
-    # El monitoreo (SDD-33 D-MNT-8): sale en la 2.13.0 por la puerta guiada y el config completo
-    # como adelanto declarado; entra a la garantía cuando cierren sus tres puertas (capa B).
-    "monitoring",
     "provisioning",
     "stress",
     "survival",
@@ -82,12 +83,8 @@ EXPERIMENTAL_SYMBOLS: Final[dict[str, str]] = {
     # `bayesrisk.guided.ecl.Ecl` salió aquí como adelanto declarado (D-ECL-9, 2.4.0) y se retiró al
     # cerrar sus tres puertas (capa B de FLUJO-GUIADO-IFRS9, S31): la garantía cubre su firma, sus
     # métodos y la forma de sus resúmenes, y sus cifras siguen la marca experimental de `survival`
-    # y `provisioning` (la lectura de D-EST-5).
-    "bayesrisk.guided.monitor.Monitor": (
-        "SDD-33 D-MNT-8: la puerta guiada del monitoreo sale en la 2.13.0 como adelanto declarado "
-        "(capa A); se retira de aquí cuando cierren sus tres puertas —pantalla, informe y Excel— "
-        "en la capa B (2.14.0)."
-    ),
+    # y `provisioning` (la lectura de D-EST-5). `bayesrisk.guided.monitor.Monitor` hizo lo mismo:
+    # adelanto en la 2.13.0 (capa A del SDD-33) y estable en la 2.14.0, con sus tres puertas.
 }
 """Símbolos experimentales dentro de un dominio estable, cada uno con su razón y su salida."""
 

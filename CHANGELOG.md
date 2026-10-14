@@ -7,6 +7,29 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **El monitoreo en la pantalla, el informe y el Excel.** El trabajo **«Monitorear un modelo en
+  uso»** de `bayesrisk-ui` pide la tarjeta —la de una corrida del scorecard hecha en la misma
+  pantalla, que se guarda sola con cada corrida que se puede monitorear, o una tarjeta guardada que
+  se sube como `.zip`—, la columna de periodo y la de desenlace; Resultados muestra el veredicto,
+  la serie por periodo y cada tramo y cada variable por periodo. El informe de una corrida de
+  monitoreo tiene su capítulo, «Monitoreo del modelo en uso», su página ejecutiva con el
+  «Veredicto» y su título; y `mon.export_excel()` deja `excel/Monitoreo.xlsx`, un libro único
+  con el resumen, los periodos, los tramos y las variables. Las tres puertas dan, con el mismo
+  config, el mismo `config_hash` y las mismas tablas.
+- **La serie de PSI por período de la estabilidad**, que la etapa calculaba y no publicaba: el
+  PSI del puntaje de cada período o cohorte contra Desarrollo, con sus operaciones, su puntaje
+  medio y mediano, su PD media y su banda, en Resultados, en el informe del scorecard y en el
+  libro «Estabilidad». La ayuda del eje temporal dice ahora lo que se ve.
+
+### Cambiado
+
+- **El monitoreo es estable** (`bayesrisk.Monitor` y la sección `monitoring`): cerró sus tres
+  puertas y entra a la garantía SemVer 2.x. Ningún `config_hash` de preset cambia.
+
 ## [2.13.0] — 2026-10-13
 
 ### Añadido

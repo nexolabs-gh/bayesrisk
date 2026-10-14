@@ -208,6 +208,14 @@ EXENTAS: dict[str, str] = {
         "no lee columnas del archivo: corre sobre el puntaje y la PD que publican scorecard y "
         "calibration (el DAG lo exige), y sus cortes los valida su `model_validator`"
     ),
+    # SDD-33 capa B: sus dos columnas (periodo y desenlace) las comprueba el preflight por su
+    # `column_role`; las que puntúa la tarjeta sólo las conoce la tarjeta, que la corrida lee y que
+    # detiene la corrida con su mensaje antes de puntuar; y lo que se exige a sí misma —las tres
+    # entradas escritas y distintas— lo levanta su `model_validator`.
+    "monitoring": (
+        "sus dos columnas las comprueba el preflight por su rol; las de la tarjeta las conoce la "
+        "tarjeta, que la corrida lee antes de puntuar, y el resto lo levanta su `model_validator`"
+    ),
     # --- camino F1: miradas una por una en el censo del 2026-07-29 ---
     "selection": "sus 4 campos son `derived`: la candidatura la produce binning al correr",
     "model": "sus overrides se contrastan contra lo que sobrevivió a selection, que aún no existe",

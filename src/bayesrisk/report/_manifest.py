@@ -19,6 +19,10 @@ IFRS9_DOCUMENT_TITLE: Final = "Informe de Provisiones IFRS 9 / ECL"
 """Título del documento cuando la corrida es IFRS 9 sin scorecard (SDD-16): titular esa corrida
 «Validación de Scorecard» describiría un documento que no es."""
 
+MONITORING_DOCUMENT_TITLE: Final = "Informe de Monitoreo del Modelo"
+"""Título del documento de una corrida de monitoreo (SDD-33, capa B): mide un modelo en uso, no lo
+valida ni lo construye, y titularla «Validación de Scorecard» describiría otro documento."""
+
 PROVISIONING_DOCUMENT_TITLE: Final = "Informe de Provisiones y Validación de Scorecard"
 """Título cuando la corrida calculó scorecard **y** provisiones. El caso IFRS 9 puro ya tenía su
 título, pero una corrida de provisiones que además corre el scorecard que las alimenta —el preset

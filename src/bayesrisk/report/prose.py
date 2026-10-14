@@ -609,7 +609,56 @@ def methodology_body(bundle: ReportInputBundle, domain: str) -> tuple[str, ...]:
         return _methodology_calibration(bundle)
     if domain == "provisioning_ifrs9":
         return _methodology_provisioning_ifrs9(bundle)
+    if domain == "monitoring":
+        return _methodology_monitoring(bundle)
     return ()
+
+
+def _methodology_monitoring(bundle: ReportInputBundle) -> tuple[str, ...]:
+    """Cómo se monitorea (SDD-33, capa B): la referencia, los cuatro indicadores y la tabla.
+
+    Los umbrales salen de la card de la corrida (``constants``), no de este texto: son constantes
+    del motor (D-MNT-6) y el informe las nombra como política.
+    """
+    card = _card(bundle, "monitoring")
+    if card is None:
+        return ()
+    c = _mapping(card.get("constants"))
+    psi_verde, psi_rojo = _num(c.get("psi_green"), decimals=2), _num(c.get("psi_red"), decimals=2)
+    alfa_verde, alfa_rojo = (
+        _num(c.get("alpha_green"), decimals=2),
+        _num(c.get("alpha_red"), decimals=2),
+    )
+    minimo = _miles(int(_float(c.get("min_rows_per_grade")) or 0))
+    malos = _miles(int(_float(c.get("min_bads_auc")) or 0))
+    fuente = (
+        "el de Holdout, la validación inicial fuera de la muestra de ajuste"
+        if card.get("auc_initial_source") == "holdout"
+        else "el de Desarrollo, porque la tarjeta no tenía Holdout"
+    )
+    return (
+        "La tarjeta se aplica a la cartera periodo a periodo, con sólo sus variables y sus "
+        "llaves, y cada periodo se compara con la referencia de Desarrollo que la tarjeta congeló "
+        "al guardarse —los cortes del puntaje, la participación de cada tramo de la escala maestra "
+        f"y el AUC inicial sobre esos tramos, {fuente}—. Son sólo agregados: el monitoreo no "
+        "vuelve a correr el desarrollo ni usa sus datos.",
+        "Población: el PSI del puntaje y el de la participación por tramo, verde bajo "
+        f"{psi_verde}, ámbar bajo {psi_rojo} y rojo desde ahí. Calibración: la tasa de malos de "
+        "cada tramo y de "
+        "la cartera contra su PD con la prueba de Jeffreys, sobre las operaciones con desenlace y "
+        "en las dos direcciones —una PD demasiado baja subestima el riesgo; una demasiado alta "
+        f"niega crédito a quien podía pagar—; un tramo con menos de {minimo} operaciones con "
+        "desenlace no se evalúa. Discriminación: el AUC sobre los tramos contra el AUC inicial, "
+        f"con la prueba del BCE (al menos {malos} malos), y la pendiente de calibración. Los "
+        f"p-valores son ámbar bajo {alfa_verde} y rojo bajo {alfa_rojo}.",
+        "El veredicto de cada periodo sale de una tabla que se lee en orden: redesarrollar si las "
+        "dos pruebas de discriminación están en rojo; recalibrar si la cartera está en rojo, si "
+        "hay dos o más tramos en rojo o el mismo tramo dos periodos seguidos; vigilar si la "
+        "población está en rojo, si un indicador de la cartera está en ámbar, si un tramo está en "
+        "rojo aislado o si sólo una prueba de discriminación está en rojo; y sin acción si todo "
+        "lo evaluable está en verde. Lo que no se puede evaluar no cuenta como verde, y un periodo "
+        "sin desenlace nunca es «sin acción». Los umbrales son fijos: no se configuran.",
+    )
 
 
 def _methodology_provisioning_ifrs9(bundle: ReportInputBundle) -> tuple[str, ...]:
@@ -2550,6 +2599,38 @@ _IFRS9_TERM_SOURCE_LABELS: Final[dict[str, str]] = {
     "markov": "la curva lifetime PD derivada de las matrices de transición de la capa markov",
     "forward": "la term-structure condicionada a escenarios macro de la capa forward-looking",
 }
+
+
+def monitoring_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
+    """Titular del capítulo del monitoreo (SDD-33, capa B): qué tarjeta, sobre qué periodos.
+
+    El veredicto, la serie y las tablas los dicen las subsecciones, desde el resumen de la etapa;
+    aquí sólo lo que la card trae para situarlos.
+    """
+    card = _card(bundle, "monitoring")
+    if card is None:
+        return ()
+    periodos = _sequence(card.get("periods"))
+    huella = (_text(card.get("bundle_hash")) or "")[:16]
+    columna = _text(card.get("period_column")) or ""
+    desenlace = _text(card.get("default_column"))
+    alcance = (
+        f"con el desenlace de la columna «{desenlace}»"
+        if desenlace
+        else "sin columna de desenlace: sólo se midió la población"
+    )
+    primero = f"de {periodos[0]} a {periodos[-1]}" if periodos else ""
+    return (
+        "Este capítulo mide un modelo en uso. La tarjeta guardada se aplicó a la cartera de cada "
+        "periodo y cada periodo se comparó con la referencia de Desarrollo que la tarjeta congeló: "
+        "si cambió la población, si cada tramo y la cartera aciertan su PD y si el modelo sigue "
+        "ordenando, con un veredicto y su acción por periodo.",
+        f"Tarjeta con huella {huella}; {_miles(len(periodos))} "
+        f"{'periodo' if len(periodos) == 1 else 'periodos'} {primero} según la columna "
+        f"«{columna}», {alcance}.",
+        "El veredicto es la lectura del motor con umbrales fijos; la decisión sobre el modelo "
+        "—seguir usándolo, recalibrarlo o redesarrollarlo— la firma la institución.",
+    )
 
 
 def ifrs9_intro(bundle: ReportInputBundle) -> tuple[str, ...]:

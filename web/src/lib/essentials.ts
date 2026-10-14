@@ -93,6 +93,7 @@ export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
   validation: ["validation.families"],
   // SDD-32 §13: las dos decisiones de la institución; la sección no tiene «Avanzado».
   master_scale: ["master_scale.approval_cutoff", "master_scale.grade_edges"],
+  monitoring: ["monitoring.bundle", "monitoring.default", "monitoring.period"],
   report: [
     "report.document.author",
     "report.document.entity",

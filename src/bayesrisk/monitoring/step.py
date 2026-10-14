@@ -7,7 +7,7 @@ Desarrollo que la tarjeta congeló (esquema 4, D-MNT-2), los cuatro indicadores 
 veredicto de §3.5. No corre ninguna etapa del scorecard, no reajusta nada y no escribe en la
 tarjeta ni en ninguna corrida anterior (IHN-004, IHN-011).
 
-**Experimental (fuera de la garantía SemVer 2.x).**
+**Estable (SemVer 2.x).**
 """
 
 from __future__ import annotations

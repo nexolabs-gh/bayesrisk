@@ -71,7 +71,7 @@ describe("golden espejo: las marcas del schema son exactamente las del golden (D
     expect(new Set(declaradas)).toEqual(new Set(Object.keys(ESSENTIALS_BY_SECTION)))
     // Quince desde la capa C de IFRS9-FIRMABLE (`forward`, con sus tres esenciales) y dieciséis
     // desde la capa B del SDD-32 (`master_scale`, con sus dos).
-    expect(declaradas).toHaveLength(16)
+    expect(declaradas).toHaveLength(17)
   })
 
   it.each(Object.keys(ESSENTIALS_BY_SECTION))(
@@ -127,8 +127,11 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
     // doce por IFRS9-FIRMABLE §8-5: las dos PD del modelo).
     const EXCEPCION_AL_TOPE: Record<string, number> = { provisioning_ifrs9: 12 }
     const DE_IFRS9 = new Set(["survival", "provisioning_ifrs9", "forward"])
+    // El monitoreo es su propio trabajo (SDD-33 capa B): sus tres esenciales no suman al scorecard.
+    const DEL_MONITOREO = new Set(["monitoring"])
     let total = 0
     let deIfrs9 = 0
+    let delMonitoreo = 0
     for (const clave of Object.keys(ESSENTIALS_BY_SECTION)) {
       const marcas = essentialPaths(seccion(clave), DEFS, clave)
       const porRama =
@@ -137,12 +140,15 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
           : marcas.size
       expect(porRama).toBeLessThanOrEqual(EXCEPCION_AL_TOPE[clave] ?? 6)
       if (DE_IFRS9.has(clave)) deIfrs9 += porRama
+      else if (DEL_MONITOREO.has(clave)) delMonitoreo += porRama
       else total += porRama
     }
     // 37 desde la capa B del SDD-32: `master_scale` 2.
     expect(total).toBe(37)
     // 5 + 12 + 3: la tabla de historia, la columna de la tasa y los escenarios (IFRS9-FIRMABLE C).
     expect(deIfrs9).toBe(20)
+    // La tarjeta, el periodo y el desenlace (SDD-33 §13).
+    expect(delMonitoreo).toBe(3)
   })
 
   it("las tres columnas del contrato van juntas bajo su subtítulo, también la cuota de EAD", () => {

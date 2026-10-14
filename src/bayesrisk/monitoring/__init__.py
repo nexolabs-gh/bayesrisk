@@ -7,10 +7,10 @@ en el hook diferido de :mod:`bayesrisk.core.config.schema` y el paso con
 ``@register("standard", domain="monitoring")``, sin arrastrar pandas/scipy: el motor se carga al
 ejecutar.
 
-**Experimental (fuera de la garantía SemVer 2.x).**
-Sale en la 2.13.0 por la puerta guiada (``bayesrisk.Monitor``) y el config completo (capa A del
-SDD-33); se declara estable cuando la pantalla, el informe y el Excel cierren sus tres puertas
-(capa B, D-MNT-8).
+**Estable (SemVer 2.x).**
+Salió en la 2.13.0 por la puerta guiada (``bayesrisk.Monitor``) y el config completo (capa A del
+SDD-33) y es estable desde la 2.14.0, al cerrar sus tres puertas: la pantalla, el informe y el
+Excel (capa B, D-MNT-8).
 """
 
 from __future__ import annotations

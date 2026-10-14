@@ -312,6 +312,30 @@ _JOBS: tuple[dict[str, Any], ...] = (
         "unavailable_reason": None,
     },
     {
+        # SDD-33 capa B (D-MNT-1, D-MNT-8): una corrida propia que parte de la tarjeta guardada —la
+        # de una corrida del scorecard hecha en esta pantalla o una subida como .zip— y de la
+        # cartera nueva por periodo. No ajusta nada: como la provisión, es una corrida de CARTERA
+        # (D-ECL-2), y el trabajo siembra target y partición en «no aplica» para no preguntarlos.
+        "id": "monitoreo_modelo",
+        "label": "Monitorear un modelo en uso",
+        "description": (
+            "Con la tarjeta guardada y la cartera de cada periodo: si cambió la población, si el "
+            "modelo sigue ordenando y si cada tramo acierta su PD, con un veredicto y su acción."
+        ),
+        "sections": ("data", "monitoring", "report", "governance"),
+        "missing_sections": (),
+        "external_input": None,
+        "external_artifacts": (),
+        "overrides": (
+            ("data.target", None),
+            ("data.partition", None),
+        ),
+        "jurisdiction_code": None,
+        "jurisdiction_label": None,
+        "status": _AVAILABLE,
+        "unavailable_reason": None,
+    },
+    {
         "id": "provision_interna",
         "label": "Provisión interna / LGD",
         "description": (
@@ -927,6 +951,30 @@ _DECISIONES_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
             "answer_forms": (),
         },
     ),
+    # SDD-33 capa B: las dos entradas obligatorias del monitoreo. La tarjeta se elige en la pantalla
+    # (una corrida del scorecard o un .zip) y escribe su ruta; el periodo es una columna. El
+    # desenlace es opcional (sin él sólo se mide la población), así que no se pregunta.
+    "monitoring": (
+        {
+            "path": "monitoring.bundle",
+            "question": "¿Qué tarjeta vas a monitorear?",
+            "help": (
+                "La de una corrida del scorecard hecha en esta pantalla, o una tarjeta guardada "
+                "que subes como .zip. Tiene que estar guardada desde la 2.13.0, con su escala "
+                "maestra."
+            ),
+            "answer_forms": (),
+        },
+        {
+            "path": "monitoring.period",
+            "question": "¿Qué columna dice a qué periodo pertenece cada operación?",
+            "help": (
+                "El mes, el trimestre o la añada de cada fila: texto, número o fecha (una fecha se "
+                "agrupa por mes). Cada periodo se compara con el Desarrollo de la tarjeta."
+            ),
+            "answer_forms": (),
+        },
+    ),
     # IFRS9-FIRMABLE capa C: las dos hojas obligatorias de `forward` son las variables macro, que
     # la pantalla lee de las dos tablas al subirlas (`POST /api/scenario-tables`: las columnas
     # comunes a las dos). La sección llega LATENTE, así que la pregunta duerme hasta encenderla; y
@@ -1439,9 +1487,12 @@ _ABANICO_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
         {
             "path": "stability.temporal_axis",
             "question": "¿Cómo quieres seguir el comportamiento del modelo en el tiempo?",
+            # SDD-33 D-MNT-9: la serie que esta ayuda prometía ya se publica —en Resultados, en el
+            # informe y en el libro de «Estabilidad»—; la ayuda dice ahora qué se ve y dónde.
             "help": (
-                "Decide si el informe muestra la evolución período a período, por camada de "
-                "clientes, o si no muestra evolución temporal."
+                "Decide si Resultados y el informe muestran el PSI del puntaje período a período "
+                "contra Desarrollo —por período de observación o por camada de originación— o si "
+                "no muestran evolución temporal."
             ),
             "multiple": False,
             "options": (

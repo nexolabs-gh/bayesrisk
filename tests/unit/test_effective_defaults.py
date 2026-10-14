@@ -138,7 +138,10 @@ from bayesrisk.ui.routes import schema_payload
 #: 633 → 636 el 2026-10-12 con la capa B del SDD-32: `master_scale` entra al formulario y el
 #: barrido suma, enumerados contra la 2.11.0, **0 desapariciones y 3 apariciones**:
 #: ``master_scale.grade_edges``, su fila ``grade_edges[]`` y ``master_scale.approval_cutoff``.
-HOJAS_DEL_FORMULARIO = 636
+#: 636 → 639 el 2026-10-13 con la capa B del SDD-33: `monitoring` entra al formulario y el barrido
+#: suma, enumerados contra la 2.13.0, **0 desapariciones y 3 apariciones**: ``monitoring.bundle``,
+#: ``monitoring.period`` y ``monitoring.default``.
+HOJAS_DEL_FORMULARIO = 639
 
 #: Hojas que el barrido de PARIDAD contra el catálogo de defaults efectivos resuelve.
 #:
@@ -181,8 +184,10 @@ HOJAS_DEL_FORMULARIO = 636
 #: porque el catálogo los publica como descriptores sin default (``has_default: false``): son
 #: decisiones obligatorias, que la pantalla llena al leer las dos tablas. 517 → 520 el
 #: 2026-10-12 con la capa B del SDD-32: los mismos tres nodos de ``master_scale`` del golden de
-#: arriba (sin uniones discriminadas, las dos cifras suben lo mismo).
-HOJAS_CON_DEFAULT_EFECTIVO = 520
+#: arriba (sin uniones discriminadas, las dos cifras suben lo mismo). 520 → 523 el 2026-10-13 con
+#: la capa B del SDD-33: los tres nodos de ``monitoring`` (``bundle`` y ``period`` sin default,
+#: como decisiones obligatorias; ``default`` con el suyo, ``null``).
+HOJAS_CON_DEFAULT_EFECTIVO = 523
 
 #: Descriptores de hoja que el barrido de paridad compara, en las DOS coordenadas (`$defs` y
 #: `sections`). Segundo golden, por la misma razón que el de 394: un barrido que recorra menos
@@ -321,6 +326,8 @@ SECCIONES_ESPERADAS = (
     "validation",
     # SDD-32 capa B: la escala maestra, la última etapa del scorecard, antes del informe.
     "master_scale",
+    # SDD-33 capa B: el monitoreo, la sección del trabajo «Monitorear un modelo en uso».
+    "monitoring",
     "survival",
     "forward",
     "provisioning_cmf",
@@ -901,7 +908,7 @@ def _hojas_del_formulario() -> list[tuple[str, list[str]]]:
     return hojas
 
 
-#: Un ancla concreta por cada una de las 19 secciones. Escritas a mano: derivarlas del propio
+#: Un ancla concreta por cada una de las 20 secciones. Escritas a mano: derivarlas del propio
 #: recorrido convertiría el gate en una tautología, que es el defecto que ya se pagó una vez.
 ANCLAS_POR_SECCION: dict[str, str] = {
     "data": "data.schema.columns[].name",
@@ -915,6 +922,7 @@ ANCLAS_POR_SECCION: dict[str, str] = {
     "stability": "stability.psi_bins",
     "validation": "validation.calibration.hl_n_groups",
     "master_scale": "master_scale.approval_cutoff",
+    "monitoring": "monitoring.period",
     "survival": "survival.method",
     "forward": "forward.satellite.reference_rate_col",
     "provisioning_cmf": "provisioning_cmf.matrices.active_version",

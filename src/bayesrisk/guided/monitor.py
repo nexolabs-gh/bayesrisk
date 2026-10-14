@@ -1,8 +1,8 @@
 """``bayesrisk.Monitor``: la puerta guiada del monitoreo de un modelo en uso (SDD-33 D-MNT-1…10).
 
-**Experimental (fuera de la garantía SemVer 2.x).** Sale en la 2.13.0 como adelanto declarado
-(capa A del SDD-33, D-MNT-8): su firma y sus resúmenes pueden cambiar hasta que cierren sus tres
-puertas —pantalla, informe y Excel— en la capa B.
+Salió en la 2.13.0 como adelanto declarado (capa A del SDD-33, D-MNT-8) y es estable desde la
+2.14.0, al cerrar sus tres puertas —pantalla, informe y Excel— en la capa B: su firma y sus
+resúmenes sólo crecen de forma aditiva en 2.x.
 
 Se construye con lo que sólo la institución tiene: la **tarjeta** guardada (una carpeta de
 :class:`~bayesrisk.scorecard.bundle.FittedScorecardBundle` de esquema 4, o el objeto), la
@@ -10,7 +10,8 @@ Se construye con lo que sólo la institución tiene: la **tarjeta** guardada (un
 **declara** el resto —cómo se lee el periodo, que es una corrida de cartera sin target ni
 partición, la referencia de Desarrollo que la tarjeta congeló— y corre con :func:`bayesrisk.run`.
 **No es un segundo orquestador**: arma un config con las secciones ``data`` y ``monitoring`` y lo
-corre; ``mon.config`` es la verdad y ``mon.config_hash``, la identidad (D-SIM-1). No tiene
+corre (con su informe, que tiene capítulo propio); ``mon.config`` es la verdad y
+``mon.config_hash``, la identidad (D-SIM-1). No tiene
 decisiones humanas: no hay nada que decidir sobre un modelo que sólo se mide (§4.1).
 """
 
@@ -59,8 +60,6 @@ class MonitorRunError(BayesRiskError):
 
 class Monitor(_PuertaGuiada):
     """El monitoreo de una tarjeta en uso, periodo a periodo, con la entrada mínima (D-MNT-1).
-
-    **Experimental (fuera de la garantía SemVer 2.x).** Hasta la capa B del SDD-33.
 
     Parameters
     ----------
@@ -363,6 +362,16 @@ class Monitor(_PuertaGuiada):
                 "partition": None,
             },
             "monitoring": {"bundle": str(destino), "period": period, "default": default},
+            # SDD-33 capa B: el informe con su capítulo (fuera del `config_hash`, como toda la
+            # sección): ninguna sección del scorecard se exige, y el capítulo se activa por la card
+            # del monitoreo, como el de IFRS 9 en su preset.
+            "report": {
+                "output_dir": str(self._reports_dir),
+                "basename": "monitoring_report",
+                "formats": ["pdf", "md", "docx"],
+                "pdf": {"enabled": True, "fail_if_unavailable": False},
+                "sections": {"required_sections": []},
+            },
             "audit": {"enabled": True},
         }
         self._config = self._validar_config(cfg)
@@ -404,3 +413,62 @@ class Monitor(_PuertaGuiada):
                 f"La tarjeta {ruta} ya no existe o cambió desde que se construyó el Monitor: "
                 "construye uno nuevo."
             )
+
+    # ── exportar (SDD-33 §6.4, capa B) ──────────────────────────────────────────────────
+
+    def export_excel(self) -> tuple[Path, ...]:
+        """``Monitoreo.xlsx`` en ``<run_dir>/<name>/excel/``: un libro único (SDD-33 §6.4).
+
+        Sus hojas son el resumen (el veredicto, su acción y qué revisar), los periodos (los cuatro
+        indicadores y el veredicto de cada uno), cada tramo por periodo y el CSI de cada variable
+        por periodo —las tablas del mismo resumen «Monitoreo» que el notebook, la pantalla y el
+        informe—, más un índice. La corrida de monitoreo no tiene etapas previas que numerar.
+        Opcional: nunca es la vía para ver un resultado. Exige el extra ``excel`` (``openpyxl``);
+        sin él se detiene con el comando de instalación.
+        """
+        return self._exportar_excel()
+
+
+# ── la tarjeta en la pantalla (SDD-33 §4.3, capa B) ─────────────────────────────────────
+
+
+def tarjeta_de_la_corrida(study: Any) -> FittedScorecardBundle | None:
+    """La tarjeta monitoreable de una corrida del scorecard, o ``None`` (SDD-33 §4.3).
+
+    La pantalla la guarda con cada corrida del scorecard que se puede monitorear —terminada, con la
+    tarjeta completa y su escala maestra, y por eso con la referencia de Desarrollo (D-MNT-2)—, para
+    que el trabajo «Monitorear un modelo en uso» la ofrezca. Una corrida sin esa tarjeta (parcial,
+    sin escala o de otra familia) no tiene qué monitorear: no es un error.
+    """
+    if (
+        study.run_context.status != "done"
+        or not study.artifacts.has("scorecard", "card")
+        or not study.artifacts.has("master_scale", "card")
+    ):
+        return None
+    from bayesrisk.scorecard.bundle import FittedScorecardBundle
+    from bayesrisk.scorecard.exceptions import ScorecardBundleError
+
+    try:
+        tarjeta = FittedScorecardBundle.from_study(study)
+    except ScorecardBundleError:
+        return None
+    return tarjeta if "monitoring_reference" in tarjeta.manifest else None
+
+
+def leer_tarjeta_monitoreable(ruta: str | Path) -> FittedScorecardBundle:
+    """La tarjeta guardada en ``ruta`` si se puede monitorear (D-MNT-2).
+
+    Raises
+    ------
+    MonitorInputError
+        Con el mismo motivo que daría :class:`Monitor`: no se lee, es de un esquema anterior al 4 o
+        no trae escala maestra.
+    """
+    from bayesrisk.monitoring.exceptions import MonitoringInputError
+    from bayesrisk.monitoring.step import cargar_tarjeta_monitoreable
+
+    try:
+        return cargar_tarjeta_monitoreable(Path(ruta))
+    except MonitoringInputError as exc:
+        raise MonitorInputError(str(exc)) from exc

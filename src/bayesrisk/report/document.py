@@ -60,9 +60,14 @@ __all__ = [
     "MASTER_SCALE_CUTOFFS_TABLE",
     "MASTER_SCALE_SCALE_TABLE",
     "METHODOLOGY_STEPS",
+    "MONITORING_GRADES_TABLE",
+    "MONITORING_SECTIONS",
+    "MONITORING_SERIES_TABLE",
+    "MONITORING_VARIABLES_TABLE",
     "PER_OBSERVATION_TABLES",
     "PIPELINE_DOMAINS",
     "RESULT_DOMAINS",
+    "STABILITY_PSI_BY_PERIOD_TABLE",
     "SURVIVAL_PD_BY_PERIOD_TABLE",
     "VALIDATION_FAMILIES",
     "ChapterSpec",
@@ -99,6 +104,8 @@ DOMAIN_TITLES: Final[dict[str, str]] = {
     "stability": "Estabilidad",
     "validation": "Validación formal",
     "master_scale": "Escala maestra y puntos de corte",
+    # SDD-33 capa B: el capítulo de una corrida de monitoreo y sus parámetros en el anexo C.
+    "monitoring": "Monitoreo del modelo en uso",
     "survival": "Supervivencia y curva PD lifetime",
     "markov": "Matrices de transición",
     "forward": "Escenarios forward-looking",
@@ -213,6 +220,8 @@ APPENDIX_PARAMETER_DOMAINS: Final[tuple[str, ...]] = (
     "validation",
     # Los cortes y el puntaje de aprobación que declaró la institución (SDD-32, capa B).
     "master_scale",
+    # La tarjeta, la columna de periodo y la de desenlace del monitoreo (SDD-33, capa B).
+    "monitoring",
 )
 
 APPENDIX_LINEAGE_ID: Final = "appendix_lineage"
@@ -231,6 +240,9 @@ METHODOLOGY_STEPS: Final[tuple[tuple[str, str], ...]] = (
     ("scorecard", "Escalado del scorecard"),
     ("calibration", "Calibración de la PD"),
     ("provisioning_ifrs9", "Ficha metodológica IFRS 9 / ECL"),
+    # SDD-33 capa B: la referencia, los cuatro indicadores, sus umbrales fijos y la tabla de
+    # decisión de una corrida de monitoreo.
+    ("monitoring", "Cómo se monitorea el modelo"),
 )
 
 #: La PD acumulada por período y cartera de la curva de supervivencia. No es un artefacto del motor:
@@ -246,6 +258,27 @@ SURVIVAL_PD_BY_PERIOD_TABLE: Final = "survival.pd_by_period"
 #: van al anexo de tablas.
 MASTER_SCALE_SCALE_TABLE: Final = "master_scale.scale"
 MASTER_SCALE_CUTOFFS_TABLE: Final = "master_scale.cutoffs"
+
+#: La serie de PSI por período de la estabilidad (SDD-33 D-MNT-9): la calculaba la etapa y no se
+#: publicaba. La arma el builder desde el resumen «Estabilidad» (una sola fuente, D-SIM-5).
+STABILITY_PSI_BY_PERIOD_TABLE: Final = "stability.psi_by_period"
+
+#: Las tres tablas del cuerpo del capítulo «Monitoreo del modelo en uso» (SDD-33, capa B): la serie
+#: por periodo con su veredicto, cada tramo por periodo y el CSI de cada variable. No son artefactos
+#: del motor: las arma el builder con la MISMA función que el resumen de la etapa
+#: (:func:`bayesrisk.guided.summaries.monitoring_report_extras`); los artefactos completos
+#: (``monitoring.periods``, ``grades_by_period``, ``variables_by_period``) van al anexo de tablas.
+MONITORING_SERIES_TABLE: Final = "monitoring.series"
+MONITORING_GRADES_TABLE: Final = "monitoring.by_grade"
+MONITORING_VARIABLES_TABLE: Final = "monitoring.by_variable"
+
+#: Las subsecciones del capítulo del monitoreo: id → (título, tablas del cuerpo). El cuerpo de la
+#: primera son las líneas y las alertas del resumen; las otras dos, su tabla.
+MONITORING_SECTIONS: Final[dict[str, tuple[str, tuple[str, ...]]]] = {
+    "verdict": ("Veredicto y serie por periodo", (MONITORING_SERIES_TABLE,)),
+    "grades": ("Cada tramo por periodo", (MONITORING_GRADES_TABLE,)),
+    "variables": ("Cada variable por periodo", (MONITORING_VARIABLES_TABLE,)),
+}
 
 # Tablas que el CUERPO del informe muestra por dominio: las que un validador necesita leer para
 # formarse un juicio. El Anexo de tablas publica el RESTO de las tablas agregadas de la corrida —lo
@@ -266,7 +299,11 @@ KEY_TABLES: Final[dict[str, tuple[str, ...]]] = {
     "scorecard": ("scorecard.scorecard",),
     "calibration": ("calibration.parameters",),
     "performance": ("performance.discriminant_metrics", "performance.performance_table"),
-    "stability": ("stability.stability_metrics", "stability.psi_table"),
+    "stability": (
+        "stability.stability_metrics",
+        "stability.psi_table",
+        STABILITY_PSI_BY_PERIOD_TABLE,
+    ),
     "provisioning": ("provisioning.comparison",),
     "provisioning_cmf": ("provisioning_cmf.summary",),
     "provisioning_internal": ("provisioning_internal.groups",),
@@ -283,6 +320,8 @@ KEY_TABLES: Final[dict[str, tuple[str, ...]]] = {
         "provisioning_ifrs9.shift_by_period",
     ),
     "master_scale": (MASTER_SCALE_SCALE_TABLE, MASTER_SCALE_CUTOFFS_TABLE),
+    # El capítulo del monitoreo (SDD-33, capa B): cada subsección muestra su tabla.
+    **{f"monitoring.{hijo}": tablas for hijo, (_titulo, tablas) in MONITORING_SECTIONS.items()},
 }
 
 #: La tabla de la tasa por período o cohorte, que además del máximo configurable de filas por
@@ -384,6 +423,14 @@ _TABLE_TITLES: Final[dict[str, str]] = {
     "master_scale.grades": "Tramos de la escala maestra",
     "master_scale.grade_table": "Tramos de la escala por muestra",
     "master_scale.cutoff_table": "Puntos de corte por muestra",
+    STABILITY_PSI_BY_PERIOD_TABLE: "PSI del puntaje por período contra Desarrollo",
+    # SDD-33 capa B: las tres tablas del cuerpo (desde el resumen) y los artefactos completos.
+    MONITORING_SERIES_TABLE: "Monitoreo — la serie por periodo y su veredicto",
+    MONITORING_GRADES_TABLE: "Monitoreo — cada tramo por periodo",
+    MONITORING_VARIABLES_TABLE: "Monitoreo — el CSI de cada variable por periodo",
+    "monitoring.periods": "Indicadores del monitoreo por periodo",
+    "monitoring.grades_by_period": "Tramos de la escala por periodo",
+    "monitoring.variables_by_period": "CSI de cada variable por periodo",
 }
 _BINNING_TABLE_PREFIX: Final = "binning.tables."
 #: Prefijo de los perfiles por variable del análisis exploratorio (`UnivariateResult.profiles`,
@@ -451,7 +498,7 @@ CHAPTER_SPECS: Final[tuple[ChapterSpec, ...]] = (
         title="Resumen de la corrida",
         kind="summary",
         numbered=False,
-        requires_any_domain=(*RESULT_DOMAINS, "provisioning_ifrs9"),
+        requires_any_domain=(*RESULT_DOMAINS, "provisioning_ifrs9", "monitoring"),
     ),
     ChapterSpec(id="toc", title="Índice", kind="toc", numbered=False),
     ChapterSpec(
@@ -535,6 +582,15 @@ CHAPTER_SPECS: Final[tuple[ChapterSpec, ...]] = (
         kind="prose",
         requires_domain="provisioning_ifrs9",
     ),
+    # Capítulo CONDICIONAL del monitoreo (SDD-33, capa B): sólo se emite si la corrida monitoreó una
+    # tarjeta. Es el resultado de la corrida —el veredicto y su serie—, va antes de Conclusiones y
+    # la numeración se reajusta sola cuando no aparece.
+    ChapterSpec(
+        id="monitoring",
+        title=DOMAIN_TITLES["monitoring"],
+        kind="prose",
+        requires_domain="monitoring",
+    ),
     ChapterSpec(
         id="conclusions",
         title="Conclusiones y recomendación",
@@ -588,6 +644,7 @@ _CHILD_ORDER: Final[dict[str, tuple[str, ...]]] = {
     "validation": tuple(family for family, _ in VALIDATION_FAMILIES),
     "provisions": PROVISION_DOMAINS,
     "ifrs9": _IFRS9_CHILDREN,
+    "monitoring": tuple(MONITORING_SECTIONS),
     APPENDIX_PARAMETERS_ID: APPENDIX_PARAMETER_DOMAINS,
 }
 

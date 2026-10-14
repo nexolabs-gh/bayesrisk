@@ -13,6 +13,7 @@ import {
   GitCompare,
   Landmark,
   Layers,
+  ListChecks,
   ListFilter,
   Play,
   Scale,
@@ -82,6 +83,8 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   validation: ClipboardCheck,
   // Los tramos de riesgo del puntaje, de menor a mayor riesgo (SDD-32, capa B).
   master_scale: ChartBarIncreasing,
+  // El modelo en uso, periodo a periodo, con su veredicto (SDD-33, capa B).
+  monitoring: ListChecks,
   survival: TrendingDown,
   // Los escenarios de la institución: trayectorias que desplazan la curva (IFRS9-FIRMABLE capa C).
   forward: ChartSpline,

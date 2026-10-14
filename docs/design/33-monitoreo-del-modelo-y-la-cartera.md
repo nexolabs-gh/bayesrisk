@@ -694,3 +694,32 @@ salvo la primera, que decidió Cami.
     porque el resultado se realinea por posición. Una tarjeta sin llaves (`id=None`) sigue
     recibiendo el índice original. Y un índice que se repite y se llama como una columna se
     rechaza antes de correr, en vez de caerse con el error de pandas.
+
+## 15. Lo que el código precisó (capa B, S46, 2026-10-13)
+
+Base medida: `db1d638` (la 2.13.0 publicada). Ninguna precisión cambia un contrato.
+
+1. **La tarjeta en la pantalla.** No existía ni la subida de un `.zip` ni un trabajo que consumiera
+   la salida de otra corrida. La pantalla guarda la tarjeta con cada corrida del scorecard que se
+   puede monitorear (`runs/<run_id>/tarjeta/`, con una ficha al lado para listarla) y la recibe
+   como `.zip` (`cards/tarjeta-<huella>/`), validada con la misma lectura que `bayesrisk.Monitor`;
+   el `.zip` se comprueba antes de extraer (sólo `manifest.json` y `bins.parquet`, en una carpeta,
+   sin rutas fuera de ella y bajo el tope de subida). Las dos rutas nuevas
+   (`/api/cards/list` y `/api/cards/upload`) exigen credenciales: listan rutas del `workdir` y
+   corridas; el listado es un `POST` porque un `GET` del navegador no lleva `Origin`.
+2. **El trabajo «Monitorear un modelo en uso»** lleva `data`, `monitoring`, `report` y
+   `governance` latente, como los demás (el gate de D-GOB-11 lo exige; §4.3 no la nombraba), y
+   siembra target y partición en «no aplica» (D-ECL-2). Pregunta la tarjeta y el periodo; el
+   desenlace es opcional.
+3. **`export_excel()` sin argumento**, como las otras puertas (§4.1 lo escribía con una ruta): el
+   libro queda en `<run_dir>/<name>/excel/Monitoreo.xlsx`.
+4. **El CSI de cada variable por periodo** entra al resumen «Monitoreo» como tabla adicional: es
+   la hoja «Variables» del libro y la tercera subsección del capítulo, desde la misma fuente.
+5. **La serie de estabilidad (D-MNT-9)** se publica desde el resumen «Estabilidad» —una tabla
+   adicional que el informe arma con la misma función—, sin un artefacto nuevo: ningún hash ni
+   artefacto de una corrida F1 cambia. La demo publicada no la muestra hasta una recaptura.
+6. **El capítulo del informe** («Monitoreo del modelo en uso») es condicional a la card del
+   monitoreo, con tres subsecciones —el veredicto con la serie, cada tramo y cada variable por
+   periodo— y su paso en la metodología con los umbrales que la card publica; el documento se
+   titula «Informe de Monitoreo del Modelo». Las tablas completas del motor van al anexo de
+   tablas, como en las demás familias.

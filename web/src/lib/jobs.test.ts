@@ -1114,9 +1114,10 @@ describe("la jurisdicción sale del listado principal, sin perder ningún trabaj
     expect(estandar.length).toBeGreaterThan(5)
   })
 
-  it("el cable trae los DIEZ y marca la oferta; el fixture empaquetado no ofrece los dos de CMF", () => {
+  it("el cable trae los ONCE y marca la oferta; el fixture empaquetado no ofrece los dos de CMF", () => {
     // D-JUR-9.2: recortar el cable rompería el YAML propio, así que se marca en vez de filtrar.
-    expect(JOBS).toHaveLength(10)
+    // 10 → 11 con la capa B del SDD-33: «Monitorear un modelo en uso».
+    expect(JOBS).toHaveLength(11)
     const noOfrecidos = JOBS.filter((j) => !j.offered).map((j) => j.id)
     expect(noOfrecidos).toEqual(["provisiones_cmf", "comparar_provisiones"])
     // Y la marca se deriva de la jurisdicción: la demo estática no tiene lanzador ni opt-in.
@@ -1129,8 +1130,9 @@ describe("la jurisdicción sale del listado principal, sin perder ningún trabaj
     expect(porJurisdiccion).toHaveLength(0)
     expect(estandar.map((j) => j.id)).not.toContain("provisiones_cmf")
     expect(estandar.map((j) => j.id)).not.toContain("comparar_provisiones")
-    // Anti-vacuidad: los ocho neutros siguen ahí, en el orden del catálogo.
-    expect(estandar).toHaveLength(8)
+    // Anti-vacuidad: los nueve neutros siguen ahí, en el orden del catálogo (ocho hasta la capa B
+    // del SDD-33, que suma «Monitorear un modelo en uso»).
+    expect(estandar).toHaveLength(9)
     expect(estandar[0].id).toBe("scorecard_pd")
   })
 
@@ -1139,7 +1141,7 @@ describe("la jurisdicción sale del listado principal, sin perder ningún trabaj
     const conOptIn = JOBS.map((j) => ({ ...j, offered: true }))
     const { estandar, porJurisdiccion } = catalogoDeLanding(conOptIn)
     expect(porJurisdiccion.map((j) => j.id)).toEqual(["provisiones_cmf", "comparar_provisiones"])
-    expect(estandar).toHaveLength(8)
+    expect(estandar).toHaveLength(9)
   })
 
   it("🔴 CONTROL NEGATIVO: `offered` ausente ofrece todo, nunca deja la landing vacía", () => {

@@ -49,11 +49,16 @@ def _posts_de_json() -> list[str]:
     """Los POST del contrato que llevan JSON, **derivados** de las listas de seguridad.
 
     Escribirlos a mano dejaría el test ciego ante un POST nuevo, que es justo el caso que este
-    middleware tiene que cubrir sin que nadie se acuerde de venir aquí. La única exclusión es
-    ``/api/upload``, que es multipart y tiene sus propios tests más abajo.
+    middleware tiene que cubrir sin que nadie se acuerde de venir aquí. Las únicas exclusiones son
+    los multipart —``/api/upload`` y, desde la capa B del SDD-33, ``/api/cards/upload``—, que el
+    mismo tope global cubre y tienen sus propios tests.
     """
     todos = frozenset(MUTATING_PATHS) | frozenset(CREDENTIALED_PATHS) | frozenset(PUBLIC_PATHS)
-    return sorted(ruta for metodo, ruta in todos if metodo == "POST" and ruta != "/api/upload")
+    return sorted(ruta for metodo, ruta in todos if metodo == "POST" and ruta not in _MULTIPART)
+
+
+#: Los POST que llevan un archivo (multipart) y no JSON.
+_MULTIPART = frozenset({"/api/upload", "/api/cards/upload"})
 
 
 # ─────────────────────────── control de que la medición sigue en pie ───────────────────────────
@@ -66,10 +71,13 @@ def test_el_contrato_tiene_cinco_post_de_json() -> None:
     ``/api/scenario-tables`` (IFRS9-FIRMABLE capa C) es el sexto: su cuerpo son dos ``dataset_id``
     y dos nombres de columna —las tablas llegan antes por ``/api/upload``, con su tope—, así que el
     tope global de JSON le sirve tal cual y los tests de abajo lo recorren.
+    ``/api/cards/list`` (SDD-33 capa B) es el séptimo: su cuerpo es un objeto vacío y lista las
+    tarjetas del ``workdir``.
     No es un golden decorativo: es lo que impide que la lista derivada quede vacía y los tests
     parametrizados de abajo pasen recorriendo cero endpoints.
     """
     assert _posts_de_json() == [
+        "/api/cards/list",
         "/api/config/from-yaml",
         "/api/config/to-yaml",
         "/api/preflight",

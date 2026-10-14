@@ -113,6 +113,9 @@ ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
         "forward.satellite.reference_rate_col",
         "forward.scenarios.scenarios",
     ),
+    # SDD-33 §13 (capa B): las tres entradas de la institución —la tarjeta, el periodo y el
+    # desenlace—; la sección no tiene «Avanzado».
+    "monitoring": ("monitoring.bundle", "monitoring.default", "monitoring.period"),
 }
 
 #: Lo que la pantalla muestra a la vez por sección (la rama más cargada de la partición: fecha o
@@ -134,6 +137,7 @@ ESENCIALES_VISIBLES_A_LA_VEZ: Final[dict[str, int]] = {
     "survival": 5,
     "provisioning_ifrs9": 12,
     "forward": 3,
+    "monitoring": 3,
 }
 
 
@@ -212,13 +216,15 @@ def _secciones() -> dict[str, dict[str, Any]]:
 
 
 def test_el_golden_cubre_las_dieciseis_secciones() -> None:
-    """Las trece del scorecard y las tres de cálculo de IFRS 9: survival, forward y la provisión."""
-    assert len(ESENCIALES_POR_SECCION) == 16
+    """Las trece del scorecard, las tres de cálculo de IFRS 9 —survival, forward y la provisión— y,
+    desde la capa B del SDD-33, el monitoreo: diecisiete (el nombre conserva su historia)."""
+    assert len(ESENCIALES_POR_SECCION) == 17
     assert set(_secciones()) == set(ESENCIALES_POR_SECCION)
     # 39 caminos del scorecard (37 hasta la capa B del SDD-32, que suma los dos de la escala;
     # 41 marcas: un camino de la partición vive en varias ramas) y 20 de IFRS 9 (12 hasta
-    # CASO-REAL-IFRS9 §8-3; 15 hasta IFRS9-FIRMABLE §8-5; 17 hasta su capa C).
-    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 59
+    # CASO-REAL-IFRS9 §8-3; 15 hasta IFRS9-FIRMABLE §8-5; 17 hasta su capa C) y 3 del monitoreo
+    # (SDD-33 capa B).
+    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 62
 
 
 def test_cada_marca_del_schema_esta_en_el_golden_y_cada_entrada_del_golden_esta_marcada() -> None:

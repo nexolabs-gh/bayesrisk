@@ -1781,6 +1781,83 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     expect(sin).not.toContain(titulo)
   })
 
+  it("con un monitoreo, Resultados pinta el veredicto, la serie y las tablas (SDD-33 capa B)", () => {
+    // La sección sale del MISMO resumen de la etapa «Monitoreo» —lo que dicen el notebook, el
+    // Excel y el informe—, sin formato propio; sin la etapa en el resumen, la sección no existe.
+    const monitoreo = {
+      stage: "monitoring",
+      label: "Monitoreo",
+      lines: [
+        "Veredicto: Recalibrar en 2024Q2 — Recalibrar la PD de los tramos: el modelo sigue ordenando, pero su nivel ya no acierta.",
+        "Por qué: la tasa de malos de la cartera no acierta su PD (la PD subestima el riesgo).",
+      ],
+      alerts: ["2024Q2: en rojo la calibración de la cartera (la PD subestima el riesgo)."],
+      table: {
+        columns: ["Periodo", "Operaciones", "PSI del puntaje", "Veredicto"],
+        rows: [
+          ["2024Q1", "1.000", "0,512", "Vigilar"],
+          ["2024Q2", "1.000", "0,733", "Recalibrar"],
+        ],
+      },
+      extra_tables: [
+        {
+          title: "Cada tramo por periodo: tasa de malos frente a su PD",
+          columns: ["Periodo", "Tramo", "Tasa de malos", "PD del tramo", "Semáforo"],
+          rows: [["2024Q2", "3", "41,7 %", "33,9 %", "Rojo (subestima)"]],
+        },
+      ],
+    }
+    const titulo = "Monitoreo del modelo en uso"
+    const con = render({
+      ...minima(null),
+      summaries: { ...resumenes, stages: [...resumenes.stages, monitoreo] },
+    })
+    expect(con).toContain(titulo)
+    expect(con).toContain("La serie por periodo")
+    // Cada cifra, plegada en su etapa del resumen Y en la sección visible: dos veces.
+    expect(ocurrencias(con, "0,733")).toBe(2)
+    expect(ocurrencias(con, "Rojo (subestima)")).toBe(2)
+    expect(ocurrencias(con, monitoreo.lines[0])).toBe(2)
+    const sin = render({ ...minima(null), summaries: resumenes })
+    expect(sin).not.toContain(titulo)
+  })
+
+  it("el resumen final de un monitoreo dice «Veredicto», no «Validación técnica»", () => {
+    const final = { ...resumenes.final!, family: "monitoreo", validation: "Recalibrar en 2024Q2" }
+    const mon = render({ ...minima(null), summaries: { ...resumenes, final } })
+    expect(mon).toContain("Veredicto:")
+    expect(mon).not.toContain("Validación técnica:")
+    const sc = render({ ...minima(null), summaries: resumenes })
+    expect(sc).toContain("Validación técnica:")
+    expect(sc).not.toContain("Veredicto:")
+  })
+
+  it("la estabilidad pinta la serie de PSI por período de su resumen (SDD-33 D-MNT-9)", () => {
+    // La serie la calculaba la etapa y no se publicaba: ahora sale del resumen «Estabilidad», sin
+    // formato propio. Sin la tabla en el resumen (la demo, capturada antes), la serie no aparece.
+    const f1 = demoF1 as unknown as ResultsResponse
+    const titulo = "PSI del puntaje por período contra Desarrollo"
+    const estabilidad = {
+      stage: "stability",
+      label: "Estabilidad",
+      lines: ["Estabilidad temporal del score por cohorte: 6 períodos"],
+      alerts: [],
+      table: null,
+      extra_tables: [
+        {
+          title: titulo,
+          columns: ["Período", "Operaciones", "PSI", "Banda"],
+          rows: [["2024Q2", "1.008", "0,0123", "Estable"]],
+        },
+      ],
+    }
+    const con = render({ ...f1, summaries: { ...resumenes, stages: [estabilidad] } })
+    expect(ocurrencias(con, titulo)).toBe(2)
+    expect(ocurrencias(con, "0,0123")).toBe(2)
+    const sin = render(f1)
+    expect(sin).not.toContain(titulo)
+  })
+
   it("la nota del runoff dice la tabla de pagos cuando alguna operación la sigue", () => {
     // CASO-REAL-IFRS9 D-CRE-3: con la cuota del contrato, «EAD constante» deja de ser cierto para
     // las operaciones que siguen su tabla de pagos.

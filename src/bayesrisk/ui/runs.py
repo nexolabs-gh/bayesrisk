@@ -227,6 +227,12 @@ def save(
             trail_path=(run_dir / trail_final.name) if trail_final is not None else None,
         )
         _save_eda_default_rate(study, payload, staging)
+        # SDD-33 capa B: la tarjeta de una corrida del scorecard que se puede monitorear queda
+        # junto a la corrida, para que el trabajo «Monitorear un modelo en uso» la ofrezca. Import
+        # perezoso: arrastra el dominio de la tarjeta, y esta capa no lo carga al importarse.
+        from bayesrisk.ui.cards import guardar_de_la_corrida
+
+        guardar_de_la_corrida(study, staging)
         (staging / _RESULTS_FILENAME).write_text(
             json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
         )

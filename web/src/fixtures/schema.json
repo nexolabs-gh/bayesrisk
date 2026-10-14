@@ -14006,7 +14006,12 @@
               "bundle": {
                 "description": "La carpeta de la tarjeta guardada que se monitorea, con su escala maestra y la referencia de Desarrollo que congela al guardarse.",
                 "title": "Tarjeta",
-                "type": "string"
+                "type": "string",
+                "ui_essential": true,
+                "ui_group": "Entradas",
+                "ui_help": "La tarjeta se elige arriba: la de una corrida del scorecard hecha en esta pantalla o una subida como .zip (la carpeta que guarda la tarjeta, comprimida). Sólo se monitorean tarjetas guardadas desde la 2.13.0, con su escala maestra.",
+                "ui_order": 1,
+                "ui_widget": "text_input"
               },
               "default": {
                 "anyOf": [
@@ -14017,14 +14022,26 @@
                     "type": "null"
                   }
                 ],
+                "column_role": "input",
                 "default": null,
                 "description": "La marca de incumplimiento de cada operación: 1 malo, 0 bueno y vacío si todavía no madura. Sin ella sólo se mide la población.",
-                "title": "Columna de desenlace"
+                "title": "Columna de desenlace",
+                "ui_activate_blank": true,
+                "ui_essential": true,
+                "ui_group": "Entradas",
+                "ui_null_label": "sin desenlace: sólo la población",
+                "ui_order": 3,
+                "ui_widget": "text_input"
               },
               "period": {
+                "column_role": "input",
                 "description": "La columna que dice a qué periodo pertenece cada operación: texto, número o fecha (una fecha se agrupa por mes).",
                 "title": "Columna de periodo",
-                "type": "string"
+                "type": "string",
+                "ui_essential": true,
+                "ui_group": "Entradas",
+                "ui_order": 2,
+                "ui_widget": "text_input"
               }
             },
             "required": [
@@ -14032,7 +14049,8 @@
               "period"
             ],
             "title": "MonitoringConfig",
-            "type": "object"
+            "type": "object",
+            "ui_essentials_declared": true
           },
           {
             "type": "null"

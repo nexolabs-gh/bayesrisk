@@ -764,6 +764,8 @@ _DOMINIOS_PROHIBIDOS = frozenset(
         "bayesrisk.ml",
         "bayesrisk.eda",
         "bayesrisk.data",
+        # SDD-33 capa B: la tarjeta en la pantalla pasa por `bayesrisk.guided.monitor`.
+        "bayesrisk.monitoring",
     }
 )
 

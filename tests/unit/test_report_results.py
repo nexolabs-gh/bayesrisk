@@ -141,6 +141,9 @@ def test_report_input_bundle_golden_copias_frozen_y_extra() -> None:
         # SDD-32 capa B: el cuerpo de «Escala maestra y puntos de corte», escrito por el resumen de
         # la etapa, aditivo con default vacío; sin la etapa, el informe es el de siempre.
         "master_scale_body",
+        # SDD-33 capa B: el cuerpo de «Veredicto y serie por periodo» del monitoreo, escrito por el
+        # resumen de la etapa, aditivo con default vacío; sin monitoreo, el informe no cambia.
+        "monitoring_body",
         # D-PAN-4: las columnas que el EDA perfiló como numéricas, aditivas con default vacío: sólo
         # sus tramos se reescriben con comparadores en es-CL.
         "eda_numeric_profiles",
@@ -152,6 +155,7 @@ def test_report_input_bundle_golden_copias_frozen_y_extra() -> None:
     assert bundle.summary is None, "sin corrida el bundle no afirma ningún resumen"
     assert bundle.ifrs9_extras == {}, "sin corrida el bundle no afirma escenarios ni PD"
     assert bundle.master_scale_body == (), "sin corrida el bundle no afirma ninguna escala"
+    assert bundle.monitoring_body == (), "sin corrida el bundle no afirma ningún monitoreo"
     assert bundle.governance is None, "sin gobernanza declarada el bundle no afirma ninguna"
     assert bundle.pipeline_params == {}
     assert bundle.currency == "", "sin moneda declarada el bundle no afirma ninguna"

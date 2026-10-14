@@ -309,6 +309,10 @@ def test_el_footprint_inspeccionable_es_el_que_la_medicion_conto() -> None:
         # eje está activo: lo declara `DefaultRateConfig.columnas_inactivas()` (D-RAM-1, §0-15).
         # La lista de columnas se reclama sólo si viene con nombres: en blanco es «todas».
         "eda",
+        # SDD-33 capa B (2026-10-13): `monitoring` entra al formulario con el trabajo «Monitorear un
+        # modelo en uso», y DOS de sus campos nombran columnas del archivo del usuario —el periodo
+        # y el desenlace—. La tarjeta (`bundle`) es una ruta, no una columna: no lleva rol.
+        "monitoring",
     }
 
 

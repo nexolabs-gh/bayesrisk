@@ -522,6 +522,59 @@ export function scenarioTables(body: {
   })
 }
 
+/** Una tarjeta que la pantalla puede monitorear (SDD-33 capa B): `POST /api/cards/list`. */
+export interface MonitorableCard {
+  /** «run»: la de una corrida del scorecard de esta pantalla; «upload»: una subida como .zip. */
+  origin: "run" | "upload"
+  run_id: string | null
+  /** El nombre de la corrida, o el de la carpeta de la tarjeta subida. */
+  name: string
+  created_at: string | null
+  bundle_hash: string
+  n_grades: number
+  /** La ruta que se escribe en `monitoring.bundle`. */
+  path: string
+}
+
+/**
+ * POST /api/cards/list — las tarjetas que la pantalla puede monitorear: las de las corridas del
+ * scorecard hechas aquí y las subidas. Es un POST con credenciales porque lista rutas del workdir.
+ */
+export function listCards(): Promise<{ cards: MonitorableCard[] }> {
+  if (DEMO_MODE) return Promise.resolve({ cards: [] })
+  return request<{ cards: MonitorableCard[] }>("cards/list", { method: "POST", body: "{}" })
+}
+
+/**
+ * POST /api/cards/upload — sube una tarjeta guardada como .zip (multipart, molde de
+ * `uploadDataset`). Una tarjeta que `bayesrisk.Monitor` rechaza → `ApiError` 422 con el motivo.
+ */
+export async function uploadCard(file: File): Promise<MonitorableCard> {
+  if (DEMO_MODE) {
+    throw new ApiError(
+      "Subir una tarjeta no está disponible en la demo: instala bayesrisk para monitorear la tuya.",
+      0,
+    )
+  }
+  const form = new FormData()
+  form.append("file", file)
+  const res = await fetch(`${API_BASE}/api/cards/upload`, {
+    method: "POST",
+    headers: tokenHeaders(),
+    body: form,
+  })
+  if (!res.ok) {
+    let body: unknown
+    try {
+      body = await res.json()
+    } catch {
+      body = await res.text().catch(() => undefined)
+    }
+    throw new ApiError(`HTTP ${res.status} en /api/cards/upload`, res.status, body)
+  }
+  return (await res.json()) as MonitorableCard
+}
+
 /** POST /api/run — ejecuta la corrida (síncrona) vía bayesrisk.run. */
 export function runPipeline(
   config: ConfigDict,

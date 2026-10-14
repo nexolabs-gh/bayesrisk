@@ -208,6 +208,13 @@ class ReportInputBundle(_ReportBaseModel):
     fuente con el notebook, la pantalla y el Excel (D-SIM-5). Aditivo (default vacío): sin la
     etapa, el documento es byte a byte el de siempre.
     """
+    monitoring_body: tuple[str, ...] = Field(default=())
+    """El cuerpo de «Veredicto y serie por periodo» del monitoreo (SDD-33, capa B).
+
+    Las líneas y las alertas («Qué revisar») del resumen de la etapa «Monitoreo»: una sola fuente
+    con el notebook, la pantalla y el Excel (D-SIM-5). Aditivo (default vacío): sin monitoreo, el
+    documento es byte a byte el de siempre.
+    """
     eda_numeric_profiles: tuple[str, ...] = Field(default=())
     """Las columnas que el EDA perfiló como numéricas (D-PAN-4, CIFRAS-EN-PANTALLA).
 

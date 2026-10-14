@@ -74,8 +74,18 @@ MUTATING_PATHS: frozenset[tuple[str, str]] = frozenset(
 #:
 #: ``/api/scenario-tables`` (IFRS9-FIRMABLE capa C) entra por la misma razón: lee dos archivos
 #: subidos y deja una tabla por escenario en el ``workdir``, sin correr el pipeline.
+#:
+#: ``/api/cards/list`` y ``/api/cards/upload`` (SDD-33 capa B) también: listan las tarjetas que la
+#: pantalla puede monitorear —rutas del ``workdir`` y corridas, que no se exponen a cualquier
+#: proceso local— y dejan una tarjeta subida en el ``workdir``, sin correr el pipeline. El listado
+#: es un ``POST`` porque un ``GET`` del navegador no lleva ``Origin`` y la guarda lo exige.
 CREDENTIALED_PATHS: frozenset[tuple[str, str]] = frozenset(
-    {("POST", "/api/preflight"), ("POST", "/api/scenario-tables")}
+    {
+        ("POST", "/api/preflight"),
+        ("POST", "/api/scenario-tables"),
+        ("POST", "/api/cards/list"),
+        ("POST", "/api/cards/upload"),
+    }
 )
 
 #: Endpoints que **a propósito** no exigen credenciales, cada uno con su razón (D-PUE-9).

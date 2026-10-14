@@ -351,6 +351,7 @@ Los trabajos del catálogo, en el orden en que aparecen:
 | **Scorecard de comportamiento (PD)** | El pipeline F1 completo: análisis exploratorio, binning, selección, modelo, scorecard, calibración, desempeño, estabilidad, validación formal e informe. |
 | **PD lifetime (curvas de supervivencia)** | Curvas de supervivencia sobre datos censurados y su estructura temporal de PD. |
 | **Provisiones IFRS 9 / ECL** | Pérdida esperada de tres etapas: PD lifetime, LGD, EAD, staging por SICR y descuento a la tasa efectiva. |
+| **Monitorear un modelo en uso** | Con la tarjeta guardada y la cartera de cada periodo: si cambió la población, si el modelo sigue ordenando y si cada tramo acierta su PD, con un veredicto y su acción. |
 | **Provisión interna / LGD** | Provisión por el método interno sobre grupos homogéneos, a partir de la PD calibrada que traes como tabla. |
 | **PD + LGD en una corrida** | El scorecard completo —análisis exploratorio y validación formal incluidos— y la provisión interna en una sola corrida y un solo informe. |
 | **Validar un modelo existente** | Tu scorecard y tu PD, medidos y documentados: discriminación, calibración y estabilidad, sin volver a modelar. |

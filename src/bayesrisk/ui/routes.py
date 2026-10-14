@@ -35,6 +35,7 @@ from bayesrisk.core.exceptions import BayesRiskError, ConfigError, MissingDepend
 from bayesrisk.ui import datasets, jobs, presets, runs
 from bayesrisk.ui.exceptions import (
     UiArtifactError,
+    UiCardError,
     UiDatasetError,
     UiRunNotFoundError,
     UiScenarioTablesError,
@@ -1328,6 +1329,40 @@ def build_router() -> APIRouter:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         except UiDatasetError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @router.post("/cards/list")
+    async def cards_list_endpoint(request: Request) -> dict[str, Any]:
+        """Las tarjetas que la pantalla puede monitorear → ``{cards: [...]}`` (SDD-33 capa B).
+
+        Las de las corridas del scorecard hechas en esta pantalla y las subidas, cada una con la
+        ruta que se escribe en ``monitoring.bundle``.
+        """
+        from bayesrisk.ui.cards import listar
+
+        return {"cards": listar(Path(request.app.state.settings.workdir))}
+
+    @router.post("/cards/upload")
+    async def cards_upload_endpoint(file: UploadFile, request: Request) -> dict[str, Any]:
+        """Sube una tarjeta como ``.zip`` → la tarjeta lista para monitorear (SDD-33 capa B).
+
+        Un ``.zip`` que no es una tarjeta, o una tarjeta que no se puede monitorear, → 422 con el
+        motivo, el mismo que daría ``bayesrisk.Monitor``. El tope es el de las subidas, y se
+        comprueba antes de traer el cuerpo a memoria (como ``/api/upload``).
+        """
+        from bayesrisk.ui.cards import subir_zip
+
+        settings = request.app.state.settings
+        max_bytes = settings.upload_max_mb * 1024 * 1024
+        tamano = getattr(file, "size", None)
+        if isinstance(tamano, int) and tamano > max_bytes:
+            raise HTTPException(status_code=422, detail=datasets.mensaje_de_tope(tamano, max_bytes))
+        content = await file.read()
+        try:
+            return subir_zip(
+                content, file.filename, workdir=Path(settings.workdir), max_bytes=max_bytes
+            )
+        except UiCardError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @router.get("/jobs")
     async def jobs_endpoint(request: Request) -> dict[str, Any]:

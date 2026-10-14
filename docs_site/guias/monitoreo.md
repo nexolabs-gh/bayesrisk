@@ -6,10 +6,10 @@ cartera?**, **¿el modelo sigue ordenando?** y **¿cada tramo sigue acertando su
 partir de la tarjeta guardada y de la cartera nueva, sin volver a correr el desarrollo ni conservar
 sus datos.
 
-!!! warning "Experimental"
-    El monitoreo sale en la 2.13.0 por la puerta guiada y el config completo, fuera de la garantía
-    SemVer 2.x. La pantalla, el capítulo del informe y el libro `Monitoreo.xlsx` llegan en la
-    versión siguiente; hasta entonces su firma y sus resúmenes pueden cambiar.
+!!! note "Estable desde la 2.14.0"
+    El monitoreo salió en la 2.13.0 por la puerta guiada y el config completo, y desde la 2.14.0
+    tiene sus tres puertas —también la pantalla, con el trabajo «Monitorear un modelo en uso»—,
+    su capítulo en el informe y el libro `Monitoreo.xlsx`. Está bajo la garantía SemVer 2.x.
 
 ## La tarjeta que se monitorea
 
@@ -125,8 +125,8 @@ identidad de la corrida: moverlas de carpeta no cambia el `config_hash`; cambiar
 cambia su huella. Cada corrida recalcula la serie entera: monitorear más periodos es una corrida
 nueva con todos ellos, y ninguna corrida anterior se toca.
 
-La misma corrida por el config completo lleva tres secciones —`data` sin target ni partición,
-`monitoring` y la auditoría— y `mon.to_yaml()` las muestra:
+La misma corrida por el config completo lleva sus secciones —`data` sin target ni partición,
+`monitoring`, el informe y la auditoría— y `mon.to_yaml()` las muestra:
 
 ```yaml
 monitoring:
@@ -134,3 +134,17 @@ monitoring:
   period: cohorte
   default: bad_flag
 ```
+
+## En la pantalla, el informe y el Excel
+
+En la pantalla (`bayesrisk-ui`), el trabajo **«Monitorear un modelo en uso»** pide lo mismo: la
+tarjeta —la de una corrida del scorecard hecha en esa pantalla, que se guarda sola con cada corrida
+que se puede monitorear, o una tarjeta guardada que se sube como `.zip`—, la cartera y sus columnas
+de periodo y de desenlace. Resultados muestra el veredicto, la serie por periodo, cada tramo y cada
+variable por periodo, con las mismas frases y cifras que el resumen.
+
+El informe de la corrida tiene su capítulo, «Monitoreo del modelo en uso», con el veredicto y la
+serie, cada tramo y cada variable por periodo; y `mon.export_excel()` deja
+`excel/Monitoreo.xlsx`, un libro único con el resumen, los periodos, los tramos y las variables.
+Las tres puertas —esta guía, el config completo y la pantalla— dan, con el mismo config, el mismo
+`config_hash` y las mismas tablas.

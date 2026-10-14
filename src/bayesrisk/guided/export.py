@@ -95,6 +95,12 @@ def decisions_book(family: str = "scorecard") -> str:
     return f"{len(stage_books(family)) + 1:02d} Decisiones.xlsx"
 
 
+#: El libro único de una corrida de monitoreo (SDD-33 §6.4): no tiene etapas previas que numerar.
+MONITORING_BOOK: Final = "Monitoreo.xlsx"
+_HOJA_PERIODOS: Final = "Periodos"
+_HOJA_TRAMOS: Final = "Tramos por periodo"
+_HOJA_VARIABLES: Final = "Variables"
+
 #: Los libros del scorecard: ``01 Datos y muestras.xlsx`` … ``11 Escala maestra.xlsx``.
 STAGE_BOOKS: Final[dict[str, str]] = stage_books("scorecard")
 #: El último libro del scorecard: ``12 Decisiones.xlsx``.
@@ -143,8 +149,13 @@ def write_stage_workbooks(
     temporal = directory.with_name(f".{directory.name}.{token}.tmp")
     temporal.mkdir()
     nombres: list[str] = []
-    libros = stage_books(family)
+    libros = {} if family == "monitoreo" else stage_books(family)
     try:
+        if family == "monitoreo" and (resumen := summaries.get("monitoring")) is not None:
+            # SDD-33 §6.4: un libro único —resumen, periodos, tramos × periodo, variables—, desde
+            # el MISMO resumen de la etapa que el notebook, la pantalla y el informe (D-SIM-5).
+            write_workbook(_hojas_del_monitoreo(resumen), temporal / MONITORING_BOOK, index=False)
+            nombres.append(MONITORING_BOOK)
         for stage, libro in libros.items():
             resumen = summaries.get(stage)
             if resumen is None:
@@ -152,7 +163,7 @@ def write_stage_workbooks(
             hojas, con_indice = _hojas_de_la_etapa(stage, resumen, tablas)
             write_workbook(hojas, temporal / libro, index=con_indice)
             nombres.append(libro)
-        decisiones = _hojas_de_decisiones(trail_path)
+        decisiones = _hojas_de_decisiones(trail_path) if family != "monitoreo" else {}
         if decisiones:
             write_workbook(decisiones, temporal / decisions_book(family), index=False)
             nombres.append(decisions_book(family))
@@ -272,6 +283,39 @@ def _hojas_de_la_etapa(
     hojas[_SHEET_INDEX] = pd.DataFrame(indice)
     con_indice[_SHEET_INDEX] = False
     return hojas, con_indice
+
+
+def _hojas_del_monitoreo(resumen: StageSummary) -> dict[str, pd.DataFrame]:
+    """Las hojas de ``Monitoreo.xlsx``: el resumen, la serie, cada tramo y cada variable."""
+    import pandas as pd
+
+    from bayesrisk.guided.summaries import TITULO_TRAMOS_POR_PERIODO, TITULO_VARIABLES_POR_PERIODO
+
+    hojas: dict[str, pd.DataFrame] = {
+        _SHEET_SUMMARY: pd.DataFrame(
+            {"Línea": [*resumen.lines, *(f"⚠ {alerta}" for alerta in resumen.alerts)]}
+        )
+    }
+    contenido = [("Resumen del monitoreo: el veredicto, su acción y qué revisar", _SHEET_SUMMARY)]
+    if resumen.table is not None and not resumen.table.empty:
+        hojas[_HOJA_PERIODOS] = resumen.table
+        contenido.append(("Cada periodo: los cuatro indicadores y su veredicto", _HOJA_PERIODOS))
+    por_titulo = {titulo: tabla for titulo, tabla, _formatos in resumen.extra_tables}
+    for titulo, hoja in (
+        (TITULO_TRAMOS_POR_PERIODO, _HOJA_TRAMOS),
+        (TITULO_VARIABLES_POR_PERIODO, _HOJA_VARIABLES),
+    ):
+        tabla = por_titulo.get(titulo)
+        if tabla is not None and not tabla.empty:
+            hojas[hoja] = tabla
+            contenido.append((titulo, hoja))
+    hojas[_SHEET_INDEX] = pd.DataFrame(
+        [
+            {"Hoja": hoja, "Contenido": texto, "Filas": len(hojas[hoja].index)}
+            for texto, hoja in contenido
+        ]
+    )
+    return hojas
 
 
 def _nombre_de_hoja(clave: str, existentes: Mapping[str, Any], *, titulo: str | None = None) -> str:

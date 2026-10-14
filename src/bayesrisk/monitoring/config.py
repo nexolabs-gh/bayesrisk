@@ -8,18 +8,18 @@ mínimos y la tabla de decisión son constantes del motor (§5.2, D-MNT-6). La s
 de la 2.10.0: ausente, no se serializa (D-ESC-7); declarada, entra al ``config_hash`` sin la ruta
 de la tarjeta, que identifica su ``bundle_hash`` en el lineage (§5.3).
 
-**Experimental (fuera de la garantía SemVer 2.x).**
-Sale en la 2.13.0 por la puerta guiada y la completa (capa A del SDD-33); se declara estable
-cuando la pantalla, el informe y el Excel cierren sus tres puertas (capa B, D-MNT-8).
+**Estable (SemVer 2.x).**
+Salió en la 2.13.0 por la puerta guiada y la completa (capa A del SDD-33) y es estable desde la
+2.14.0, con la pantalla, el informe y el Excel (capa B, D-MNT-8).
 """
 
 from __future__ import annotations
 
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
-from bayesrisk.core.config import BayesRiskBaseConfig
+from bayesrisk.core.config import BayesRiskBaseConfig, declara_esenciales
 from bayesrisk.core.exceptions import ConfigError
 
 __all__ = ["MonitoringConfig"]
@@ -32,6 +32,10 @@ class MonitoringConfig(BayesRiskBaseConfig):
     """Monitorea una tarjeta en uso: población, orden y PD de sus tramos, periodo a periodo."""
 
     # SDD-33 D-MNT-1. El docstring de la clase es la descripción del schema: copy público.
+    # Las tres hojas son esenciales (§13): son las entradas de la institución y la sección no tiene
+    # «Avanzado» (capa B, D-MNT-8).
+    model_config = ConfigDict(json_schema_extra=declara_esenciales)
+
     bundle: str = Field(
         ...,
         title="Tarjeta",
@@ -39,6 +43,15 @@ class MonitoringConfig(BayesRiskBaseConfig):
             "La carpeta de la tarjeta guardada que se monitorea, con su escala maestra y la "
             "referencia de Desarrollo que congela al guardarse."
         ),
+        json_schema_extra={
+            "ui_essential": True,
+            "ui_widget": "text_input",
+            "ui_group": "Entradas",
+            "ui_order": 1,
+            "ui_help": "La tarjeta se elige arriba: la de una corrida del scorecard hecha en esta "
+            "pantalla o una subida como .zip (la carpeta que guarda la tarjeta, comprimida). Sólo "
+            "se monitorean tarjetas guardadas desde la 2.13.0, con su escala maestra.",
+        },
     )
     period: str = Field(
         ...,
@@ -47,6 +60,13 @@ class MonitoringConfig(BayesRiskBaseConfig):
             "La columna que dice a qué periodo pertenece cada operación: texto, número o fecha "
             "(una fecha se agrupa por mes)."
         ),
+        json_schema_extra={
+            "column_role": "input",
+            "ui_essential": True,
+            "ui_widget": "text_input",
+            "ui_group": "Entradas",
+            "ui_order": 2,
+        },
     )
     default: str | None = Field(
         default=None,
@@ -55,6 +75,17 @@ class MonitoringConfig(BayesRiskBaseConfig):
             "La marca de incumplimiento de cada operación: 1 malo, 0 bueno y vacío si todavía no "
             "madura. Sin ella sólo se mide la población."
         ),
+        json_schema_extra={
+            "column_role": "input",
+            "ui_essential": True,
+            "ui_widget": "text_input",
+            "ui_group": "Entradas",
+            "ui_order": 3,
+            # En blanco el monitoreo mide sólo la población: encender el campo no siembra una
+            # columna vacía, que el config rechaza.
+            "ui_null_label": "sin desenlace: sólo la población",
+            "ui_activate_blank": True,
+        },
     )
 
     @model_validator(mode="after")

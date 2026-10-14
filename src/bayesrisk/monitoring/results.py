@@ -2,7 +2,7 @@
 
 Sólo contenedores; no importa ``pandas`` en runtime (el paquete se importa liviano).
 
-**Experimental (fuera de la garantía SemVer 2.x).**
+**Estable (SemVer 2.x).**
 """
 
 from __future__ import annotations

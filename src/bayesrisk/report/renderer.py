@@ -42,6 +42,7 @@ from pydantic import BaseModel
 from bayesrisk.report._manifest import (
     DOCUMENT_TITLE,
     IFRS9_DOCUMENT_TITLE,
+    MONITORING_DOCUMENT_TITLE,
     PROVISIONING_DOCUMENT_TITLE,
     REPORT_TEMPLATE_VERSION,
     REPORT_TITLE,
@@ -382,13 +383,9 @@ def build_document_view(
     """
     section_views = _section_views(bundle, ai_blocks, config, chart_format)
     return {
-        "title": "Reporte IFRS 9 / ECL" if _is_ifrs9_run(bundle) else REPORT_TITLE,
+        "title": _report_title(bundle),
         "document_title": _document_title(bundle),
-        "cover_kicker": (
-            "Informe regulatorio — pérdida crediticia esperada"
-            if _is_ifrs9_run(bundle)
-            else "Informe de validación de modelos"
-        ),
+        "cover_kicker": _cover_kicker(bundle),
         "exec_scope_note": _exec_scope_note(bundle),
         "template_id": config.html.template_id,
         "template_version": REPORT_TEMPLATE_VERSION,
@@ -570,6 +567,29 @@ def _is_ifrs9_run(bundle: ReportInputBundle) -> bool:
     return "provisioning_ifrs9" in bundle.cards and "scorecard" not in bundle.cards
 
 
+def _is_monitoring_run(bundle: ReportInputBundle) -> bool:
+    """Una corrida de monitoreo (SDD-33, capa B): monitoreó una tarjeta y no corrió el scorecard."""
+    return "monitoring" in bundle.cards and "scorecard" not in bundle.cards
+
+
+def _report_title(bundle: ReportInputBundle) -> str:
+    """El título del artefacto según lo que la corrida ES."""
+    if _is_ifrs9_run(bundle):
+        return "Reporte IFRS 9 / ECL"
+    if _is_monitoring_run(bundle):
+        return "Reporte de monitoreo"
+    return REPORT_TITLE
+
+
+def _cover_kicker(bundle: ReportInputBundle) -> str:
+    """La línea sobre el título de la portada, según lo que la corrida ES."""
+    if _is_ifrs9_run(bundle):
+        return "Informe regulatorio — pérdida crediticia esperada"
+    if _is_monitoring_run(bundle):
+        return "Informe de monitoreo de modelos"
+    return "Informe de validación de modelos"
+
+
 def _document_title(bundle: ReportInputBundle) -> str:
     """Titula el documento según lo que la corrida ES, compartido por HTML, ``.qmd`` y Word.
 
@@ -580,6 +600,8 @@ def _document_title(bundle: ReportInputBundle) -> str:
     """
     if _is_ifrs9_run(bundle):
         return IFRS9_DOCUMENT_TITLE
+    if _is_monitoring_run(bundle):
+        return MONITORING_DOCUMENT_TITLE
     if _PROVISIONING_CARDS & bundle.cards.keys():
         return PROVISIONING_DOCUMENT_TITLE
     return DOCUMENT_TITLE
@@ -603,6 +625,13 @@ def _exec_scope_note(bundle: ReportInputBundle) -> str:
             "Alcance: cálculo de la pérdida crediticia esperada IFRS 9 (función experimental) y "
             f"validación formal{backtesting}. Todos los valores provienen de la corrida trazada "
             "en la portada: no se completan con supuestos."
+        )
+    if _is_monitoring_run(bundle):
+        return (
+            "Alcance: monitoreo de un modelo en uso —población, calibración y discriminación por "
+            "periodo contra la referencia de Desarrollo que congeló su tarjeta—, con un veredicto "
+            "por periodo. No vuelve a validar ni a construir el modelo. Todos los valores "
+            "provienen de la corrida trazada en la portada: no se completan con supuestos."
         )
     if _is_ifrs9_run(bundle):
         return (

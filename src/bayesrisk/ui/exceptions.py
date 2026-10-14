@@ -49,6 +49,13 @@ class UiScenarioTablesError(UiError):
     """
 
 
+class UiCardError(UiError):
+    """La tarjeta subida no es un ``.zip`` de tarjeta o no se puede monitorear (→ 422; SDD-33 B).
+
+    El mensaje es el mismo que daría ``bayesrisk.Monitor`` con esa tarjeta.
+    """
+
+
 class UiRunNotFoundError(UiError):
     """``run_id`` desconocido, inválido o cuya ruta escaparía del ``workdir`` (→ 404)."""
 
