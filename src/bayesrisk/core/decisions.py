@@ -3,8 +3,9 @@
 La sección INFRA ``decisions`` (:class:`~bayesrisk.core.config.schema.DecisionEntry`) es el
 registro, en orden y con su historia, de lo que una persona decidió con ``exclude``, ``keep``,
 ``merge_bins`` o ``set_bins`` —en el scorecard—, con ``set_grades`` o ``set_cutoff`` —en su escala
-maestra (SDD-32 D-ESC-5)— o con ``exclude`` y ``rebut_backstops`` —en una provisión IFRS 9
-(FLUJO-GUIADO-IFRS9 D-ECL-8)—. :class:`~bayesrisk.core.study.Study` la declara
+maestra (SDD-32 D-ESC-5)—, con ``exclude`` y ``rebut_backstops`` —en una provisión IFRS 9
+(FLUJO-GUIADO-IFRS9 D-ECL-8)— o con ``choose`` —la corrida que la institución eligió entre las
+comparadas (SDD-34 D-CMP-6)—. :class:`~bayesrisk.core.study.Study` la declara
 al trail en cada corrida, después del preámbulo que reciba (la entrada y las inferencias de la
 puerta guiada): así la corrida guiada, ``bayesrisk.run(loads_config(yaml))`` y la pantalla dan
 **las mismas** decisiones humanas, con el mismo payload que la puerta emitía antes de la 2.3.0.
@@ -82,15 +83,20 @@ _FAMILIA: Final[Mapping[str, str]] = {
     # distintas, así que un `set_cutoff` posterior no reemplaza a un `set_grades`.
     "set_grades": "escala_tramos",
     "set_cutoff": "escala_corte",
+    # SDD-34 D-CMP-6: una sola elección vigente por comparación, la última.
+    "choose": "eleccion",
 }
 #: La hoja que deja escrita cada acción de la escala maestra; su sujeto es la columna del puntaje.
 _HOJAS_DE_LA_ESCALA: Final[Mapping[str, str]] = {
     "set_grades": "master_scale.grade_edges",
     "set_cutoff": "master_scale.approval_cutoff",
 }
+#: La huella del resumen comparable que ``choose`` eligió (SDD-34 D-CMP-6). No es una hoja del
+#: config: el sujeto es una corrida comparada y la elección se ata a la huella de su resumen.
+_HOJA_ELECCION: Final = "comparison.choice"
 #: Hojas cuyo contenido es un valor del sujeto y no una lista de variables: no se filtran por
 #: variable ni se leen como nombres al cotejar la huella acumulada.
-_HOJAS_DE_VALOR: Final = frozenset(_HOJAS_DE_LA_ESCALA.values())
+_HOJAS_DE_VALOR: Final = frozenset({*_HOJAS_DE_LA_ESCALA.values(), _HOJA_ELECCION})
 
 
 def _familia(registro: DecisionEntry) -> str:
@@ -102,6 +108,17 @@ def _familia(registro: DecisionEntry) -> str:
     if registro.action == "exclude" and _HOJA_COVARIABLES in registro.value:
         return "covariables"
     return _FAMILIA[registro.action]
+
+
+def _clave(registro: DecisionEntry, variable: str) -> tuple[str, str]:
+    """La clave con que se busca el último registro: la familia y el sujeto.
+
+    La elección es una por comparación —la última reemplaza a las anteriores, se nombre la corrida
+    que se nombre—, así que su sujeto no distingue (SDD-34 D-CMP-6).
+    """
+    if registro.action == "choose":
+        return ("eleccion", "*")
+    return (_familia(registro), variable)
 
 
 def payload_de_decision(entry: DecisionEntry) -> dict[str, Any]:
@@ -132,14 +149,14 @@ def eventos_de_decisiones(config: BayesRiskConfig) -> list[dict[str, Any]]:
     ultimo: dict[tuple[str, str], int] = {}
     for posicion, registro in enumerate(registros):
         for variable in registro.columns:
-            ultimo[(_familia(registro), variable)] = posicion
+            ultimo[_clave(registro, variable)] = posicion
     # Primera pasada: el estado de cada variable en el ÚLTIMO registro de su familia.
     cotejo: list[tuple[list[str], dict[str, tuple[str, ...]]]] = []
     for posicion, registro in enumerate(registros):
         aplicadas: list[str] = []
         sin_efecto: dict[str, tuple[str, ...]] = {}
         for variable in registro.columns:
-            if ultimo[(_familia(registro), variable)] != posicion:
+            if ultimo[_clave(registro, variable)] != posicion:
                 # Historia: una decisión posterior sobre la misma variable la reemplazó.
                 aplicadas.append(variable)
                 continue
@@ -246,6 +263,13 @@ def _hojas_que_no_coinciden(
     config: BayesRiskConfig, registro: DecisionEntry, variable: str
 ) -> tuple[str, ...]:
     """Las hojas que ya no reflejan la decisión sobre ``variable``; vacío si la aplica."""
+    if registro.action == "choose":
+        # La corrida elegida tiene que seguir entre las comparadas: la misma huella de su resumen.
+        # Reemplazada, o con su resumen cambiado, la elección queda sin efecto (D-CMP-6, D-DEC-3).
+        elegida = registro.value.get(_HOJA_ELECCION)
+        if not isinstance(elegida, str) or elegida not in _huellas_comparadas(config):
+            return (_HOJA_ELECCION,)
+        return ()
     if registro.action == "rebut_backstops":
         # Las presunciones de mora: las dos hojas tienen que estar en la huella y seguir con el
         # mismo número, y la columna de mora tiene que seguir siendo el sujeto registrado. Una
@@ -294,6 +318,29 @@ def _hojas_que_no_coinciden(
     if guardada is None or vigente is None or _cortes(guardada) != _cortes(vigente):
         return (_HOJA_CORTES,)
     return ()
+
+
+def _huellas_comparadas(config: BayesRiskConfig) -> frozenset[str]:
+    """Las huellas de los resúmenes que ``comparison.runs`` nombra; los que no se leen, fuera.
+
+    Import perezoso: el núcleo no arrastra el dominio de la comparación al importarse.
+    """
+    import importlib
+
+    rutas = _valor_en(getattr(config, "comparison", None), "runs")
+    if rutas is None or isinstance(rutas, str | bytes) or not isinstance(rutas, Iterable):
+        return frozenset()
+    comparable = importlib.import_module("bayesrisk.comparison.comparable")
+    huellas: set[str] = set()
+    for ruta in rutas:
+        try:
+            resumen, _archivo = comparable.leer(ruta)
+        except Exception:
+            # Una corrida que no se lee no prueba la elección: queda fuera, y el paso de la
+            # comparación dirá por qué no se puede leer.
+            continue
+        huellas.add(comparable.huella(resumen))
+    return frozenset(huellas)
 
 
 def _mismo_valor(guardado: Any, vigente: Any) -> bool:

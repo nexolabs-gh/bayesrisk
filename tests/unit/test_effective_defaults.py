@@ -306,7 +306,12 @@ HOJAS_CON_DEFAULT_EFECTIVO = 523
 #: aparece con sus tres hojas —``sections.monitoring.bundle`` y ``.period``, obligatorias, y
 #: ``.default`` con default ``null``—, enumeradas contra ``375e02e``: ninguna otra hoja nueva ni
 #: retirada. La sección no entra al formulario hasta la capa B.
-DESCRIPTORES_TOTALES = 1099
+#:
+#: 1099 → 1100 el 2026-10-14 con la capa A del SDD-34 (S49): la sección nueva ``comparison``
+#: aparece con su única hoja —``sections.comparison.runs``, obligatoria—, enumerada contra
+#: ``af6c06a``: ninguna otra hoja nueva ni retirada. La sección no entra al formulario hasta la
+#: capa B.
+DESCRIPTORES_TOTALES = 1100
 
 
 #: Las 19 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de

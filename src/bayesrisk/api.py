@@ -215,6 +215,7 @@ def run(
         <run_dir>/environment.json    # si `audit` está activo y captura entorno
         <run_dir>/model_card.json     # si `governance` está activa
         <run_dir>/model_card.md       # idem
+        <run_dir>/comparable.json     # si terminó un scorecard o una provisión IFRS 9 (SDD-34)
         <run_dir>/study/              # lo que produce `Study.save`: config, lineage y artefactos
 
     Cada archivo aparece **sólo si su sección está activa**: ``audit`` sin ``governance`` deja trail
@@ -575,6 +576,15 @@ def _escribir_layout_del_run(
     if card is not None:
         (directorio / "model_card.json").write_text(card.to_json(), encoding="utf-8")
         (directorio / "model_card.md").write_text(card.to_markdown(), encoding="utf-8")
+
+    # SDD-34 §6.1 (D-CMP-2): el resumen comparable que la corrida armó al cerrar —una terminada
+    # de scorecard que midió su desempeño o de IFRS 9 que provisionó—, para compararla después
+    # sin abrir su estudio. Import perezoso: arrastra el dominio de la comparación.
+    resumen = getattr(study, "_resumen_comparable", None)
+    if resumen is not None:
+        from bayesrisk.comparison.comparable import escribir
+
+        escribir(resumen, directorio)
 
     if study.run_context.run_id is not None:
         # `Study.save` sustituye su directorio de forma atómica, así que va a un SUBdirectorio: si

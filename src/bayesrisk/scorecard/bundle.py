@@ -79,6 +79,40 @@ _MONITORING_REFERENCE_KEYS: Final = frozenset(
 _AUC_INITIAL_KEYS: Final = frozenset({"source", "auc", "variance", "n_bad", "n_good", "cause"})
 _UNSEEN_REFERENCE_KEYS: Final = frozenset({"bin_index", "woe", "raw_points", "points"})
 _BUNDLE_FILES: Final = frozenset({"manifest.json", "bins.parquet"})
+#: Las claves de todo manifiesto (esquema 1); el 2 suma ``unseen_reference`` y, desde el 3, la
+#: escala y su referencia de monitoreo son opcionales. Constantes y no literales dentro del
+#: validador porque la huella computacional del modelo (SDD-34 §3.3) clasifica cada una en los dos
+#: sentidos: un campo nuevo de la tarjeta no entra ni sale de esa huella sin una decisión.
+_MANIFEST_KEYS: Final = frozenset(
+    {
+        "schema_version",
+        "format",
+        "input_schema",
+        "row_identity",
+        "treatment_policy",
+        "special_catalog",
+        "model",
+        "fit_lineage",
+        "rules_sha256",
+        "files",
+        "bundle_hash",
+    }
+)
+#: Las claves de ``manifest.model`` (esquema 1 y 2); el 3 suma ``clip``.
+_MODEL_KEYS: Final = frozenset(
+    {
+        "features",
+        "woe_columns",
+        "intercept",
+        "beta",
+        "score_column",
+        "score_direction",
+        "rounding_method",
+        "min_score",
+        "max_score",
+        "calibration",
+    }
+)
 _MAX_MANIFEST_BYTES: Final = 2 * 1024 * 1024
 _MAX_RULES_BYTES: Final = 256 * 1024 * 1024
 _MAX_RULES_ROWS: Final = 1_000_000
@@ -1890,19 +1924,7 @@ def _validate_inference_contracts(value: Mapping[str, Any], features: list[str])
 def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ScorecardBundleError("manifest.json debe contener un objeto JSON.")
-    required = {
-        "schema_version",
-        "format",
-        "input_schema",
-        "row_identity",
-        "treatment_policy",
-        "special_catalog",
-        "model",
-        "fit_lineage",
-        "rules_sha256",
-        "files",
-        "bundle_hash",
-    }
+    required = set(_MANIFEST_KEYS)
     schema = value.get("schema_version")
     if (
         isinstance(schema, bool)
@@ -1936,18 +1958,7 @@ def _validate_manifest(value: Any, *, require_files: bool) -> dict[str, Any]:
     elif files and (set(files) != {"bins.parquet"} or not _is_sha256(files.get("bins.parquet"))):
         raise ScorecardBundleError("manifest.files contiene una entrada inválida.")
     model = value["model"]
-    model_keys = {
-        "features",
-        "woe_columns",
-        "intercept",
-        "beta",
-        "score_column",
-        "score_direction",
-        "rounding_method",
-        "min_score",
-        "max_score",
-        "calibration",
-    }
+    model_keys = set(_MODEL_KEYS)
     if schema >= 3:
         model_keys = model_keys | {"clip"}
     if not isinstance(model, dict) or set(model) != model_keys:

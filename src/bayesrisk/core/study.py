@@ -87,6 +87,7 @@ _DOMAIN_MODULES: Final[dict[str, str]] = {
     "validation": "bayesrisk.validation",
     "master_scale": "bayesrisk.master_scale",
     "monitoring": "bayesrisk.monitoring",
+    "comparison": "bayesrisk.comparison",
 }
 _DOMAIN_CONFIG_CLASSES: Final[dict[str, tuple[str, str]]] = {
     "data": ("bayesrisk.data.config", "DataConfig"),
@@ -119,6 +120,7 @@ _DOMAIN_CONFIG_CLASSES: Final[dict[str, tuple[str, str]]] = {
     "validation": ("bayesrisk.validation.config", "ValidationConfig"),
     "master_scale": ("bayesrisk.master_scale.config", "MasterScaleConfig"),
     "monitoring": ("bayesrisk.monitoring.config", "MonitoringConfig"),
+    "comparison": ("bayesrisk.comparison.config", "ComparisonConfig"),
 }
 # Secciones de INFRAESTRUCTURA que el schema de la interfaz expande sin que sean pasos (D-GOB-10).
 # Va aparte de ``_DOMAIN_CONFIG_CLASSES`` a propósito: ``_default_step_names`` deriva el pipeline
@@ -160,6 +162,9 @@ _DEFAULT_DOMAIN_ORDER: Final[tuple[str, ...]] = (
     # El monitoreo (SDD-33, D-MNT-1) es una corrida propia desde la tarjeta guardada: sólo pide la
     # cartera de ``data``. Nacido después de la 2.10.0, sólo corre si está declarado.
     "monitoring",
+    # La comparación (SDD-34, D-CMP-1) es una corrida propia sin ``data``: lee los resúmenes
+    # comparables de otras corridas. Nacida después de la 2.10.0, sólo corre si está declarada.
+    "comparison",
     # ``report`` corre AL FINAL: es la foto de todo lo que corrió. Antes vivía tras ``stability``,
     # de modo que ``ReportBuilder`` nunca veía las cards de provisiones y su capítulo condicional
     # era inalcanzable (SDD-28 D8). ``report`` es INFRA (no entra al ``config_hash``), así que
@@ -305,6 +310,9 @@ class Study:
         # `(dominio, clave)`: esto es el resumen firmable, no un duplicado del store.
         self.results: dict[str, Any] = {}
         self.run_context = RunContext()
+        # El resumen comparable de la última corrida terminada (SDD-34 §6.1, D-CMP-2), armado al
+        # cerrar; ``bayesrisk.run`` y la pantalla lo escriben. ``None`` si no es elegible.
+        self._resumen_comparable: dict[str, Any] | None = None
         self._injected_artifacts: set[ArtifactKey] = set()
         # Las claves inyectadas PARA la próxima corrida y las de la corrida en curso: la procedencia
         # acumulada (`_injected_artifacts`) se sigue declarando en cada lineage, pero un `data_hash`
@@ -414,6 +422,7 @@ class Study:
         self.run_context.run_id = run_id
         self.run_context.started_at = datetime.now(UTC)
         self.run_context.status = "running"
+        self._resumen_comparable = None
         # Todo el estado por corrida se reinicia ANTES de la primera emisión, que puede fallar: un
         # Study reutilizado no conserva el lineage, el error ni el cierre de su corrida anterior
         # (pasada 2 de Codex en S24; decisión de Cami del 2026-09-28).
@@ -533,8 +542,34 @@ class Study:
             raise
         self.run_context.finished_at = datetime.now(UTC)
         self.run_context.status = "done"
+        self._armar_resumen_comparable()
         self._emit("run_end", None, {"run_id": run_id, "status": "done"})
         return self
+
+    def _armar_resumen_comparable(self) -> None:
+        """El resumen comparable de la corrida recién terminada (SDD-34 §6.1, D-CMP-2).
+
+        Va después de marcar ``done`` —la tarjeta sólo se congela de una corrida terminada— y antes
+        de ``run_end``, con el registro de auditoría todavía abierto: armarlo **nunca** hace fallar
+        la corrida (D-VIS). Si algo inesperado lo impide, la corrida sigue terminada, el registro
+        lo declara y la comparación dirá que esta corrida no tiene resumen. Import perezoso: el
+        núcleo no arrastra dominios al importarse.
+        """
+        try:
+            comparable = importlib.import_module("bayesrisk.comparison.comparable")
+            self._resumen_comparable = comparable.armar_al_cerrar(self)
+        except Exception as exc:  # D-VIS: el resumen nunca tumba una corrida terminada
+            self._resumen_comparable = None
+            self._emit(
+                "decision",
+                None,
+                {
+                    "regla": "resumen_comparable_no_disponible",
+                    "umbral": None,
+                    "valor": {"causa": f"{type(exc).__name__}: {exc}"},
+                    "accion": "omitir",
+                },
+            )
 
     def check_pipeline(self, steps: list[str] | None = None) -> list[str]:
         """Resuelve y valida el pipeline **sin ejecutar nada**; devuelve los pasos en orden.

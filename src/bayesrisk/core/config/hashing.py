@@ -62,7 +62,10 @@ def _hash_exclude() -> dict[str, Any]:
       cualquier otra ruta del config;
     - ``monitoring.bundle``, la tarjeta que se monitorea, desde la 2.13.0 (SDD-33 §5.3, D-MNT-1):
       mover la tarjeta de carpeta no cambia la corrida; su contenido lo identifica su
-      ``bundle_hash``, en el lineage y en la ficha de la etapa.
+      ``bundle_hash``, en el lineage y en la ficha de la etapa;
+    - ``comparison.runs``, las corridas que se comparan, desde la 2.15.0 (SDD-34 §5.3, D-CMP-1):
+      qué se comparó lo identifica la huella de cada resumen, en orden, en el lineage
+      (``comparison_hashes``); mover las carpetas no cambia la comparación.
     """
     exclude: dict[str, Any] = dict.fromkeys(INFRA_SECTIONS, True)
     exclude["data"] = {"load": {"source": True}}
@@ -71,6 +74,7 @@ def _hash_exclude() -> dict[str, Any]:
         "scenarios": {"scenarios": {"__all__": {"macro_path_path": True}}},
     }
     exclude["monitoring"] = {"bundle": True}
+    exclude["comparison"] = {"runs": True}
     return exclude
 
 

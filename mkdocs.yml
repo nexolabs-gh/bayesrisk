@@ -65,6 +65,7 @@ nav:
       - Desempeño y estabilidad: guias/desempeno-estabilidad.md
       - Validación formal: guias/validacion-formal.md
       - Monitorear un modelo en uso: guias/monitoreo.md
+      - Comparar modelos: guias/comparar-modelos.md
       - Gobernanza y ficha del modelo: guias/gobernanza.md
       - Reanudar con artefactos: guias/puerta-artefactos.md
       - La provisión IFRS 9 de punta a punta: guias/provision-ifrs9.md

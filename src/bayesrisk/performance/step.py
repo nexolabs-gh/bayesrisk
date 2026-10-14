@@ -25,7 +25,7 @@ from bayesrisk.core.mixins import AuditableMixin
 from bayesrisk.core.registry import register
 from bayesrisk.core.steps import ArtifactKey, campo_de_card, card_publicada
 from bayesrisk.performance.config import PerformanceConfig
-from bayesrisk.performance.evaluator import PerformanceEvaluator
+from bayesrisk.performance.evaluator import _INTERNAL_RISK_COLUMN, PerformanceEvaluator
 from bayesrisk.performance.exceptions import PerformanceDataError
 
 if TYPE_CHECKING:
@@ -164,6 +164,54 @@ class PerformanceStep(AuditableMixin):
         )
         study.artifacts.set("performance", "result", result.model_copy(deep=True))
         study.artifacts.set("performance", "card", result.card.model_copy(deep=True))
+
+
+def riesgo_evaluado(study: Study) -> DataFrame:
+    """La muestra, el desenlace y el riesgo de cada fila que ``performance`` evaluó (SDD-34 §6.1).
+
+    Es la misma cadena que :meth:`PerformanceStep.execute` —el frame armado desde
+    ``scorecard.score`` y ``calibration.calibrated_pd_frame`` con la sección ``performance`` de la
+    corrida, y el riesgo que el evaluador ordena: la PD calibrada de fábrica, o el puntaje con su
+    orientación hacia el incumplimiento—, así que el AUC de cada muestra calculado sobre estas
+    columnas es el que la etapa publicó. Lo lee el resumen comparable para la prueba de DeLong
+    pareada entre corridas.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columnas ``partition`` (texto), ``default`` (0/1) y ``risk`` (mayor = más riesgo), con el
+        índice de la corrida, sólo las filas de las muestras que ``performance`` evalúa.
+    """
+    pd = _import_pandas()
+    score = _as_dataframe(study.artifacts.get("scorecard", "score"), pd, "scorecard.score")
+    calibrated_pd_frame = _as_dataframe(
+        study.artifacts.get("calibration", "calibrated_pd_frame"),
+        pd,
+        "calibration.calibrated_pd_frame",
+    )
+    cfg = _performance_config_from_study(study, fallback=PerformanceConfig())
+    frame = _assemble_performance_frame(
+        score=score, calibrated_pd_frame=calibrated_pd_frame, config=cfg, pd=pd
+    )
+    evaluador = PerformanceEvaluator.from_config(cfg)
+    cfg_ejecucion, preparado = evaluador._preparar(
+        frame,
+        score_column=cfg.score_column,
+        pd_column=cfg.pd_column,
+        target_column=cfg.target_column,
+        partition_column=cfg.partition_column,
+    )
+    return cast(
+        DataFrame,
+        pd.DataFrame(
+            {
+                "partition": preparado[cfg_ejecucion.partition_column].astype(str),
+                "default": preparado[cfg_ejecucion.target_column].astype("int64"),
+                "risk": preparado[_INTERNAL_RISK_COLUMN].astype("float64"),
+            },
+            index=preparado.index,
+        ),
+    )
 
 
 def _import_pandas() -> Any:

@@ -23,14 +23,20 @@ salieron experimentales en la 2.8.0 y la 2.9.0 y son estables desde que cerraron
 :class:`~bayesrisk.guided.monitor.Monitor`, la puerta guiada del monitoreo de un modelo en uso
 (SDD-33), sale en la 2.13.0 como excepción experimental por símbolo (D-MNT-8): estable cuando
 cierren sus tres puertas en la capa B.
+
+:class:`~bayesrisk.guided.comparison.Comparison`, la puerta guiada de la comparación de modelos
+(SDD-34), sale en la 2.15.0 como excepción experimental por símbolo (D-CMP-9): estable cuando
+cierren sus tres puertas en la capa B.
 """
 
+from bayesrisk.guided.comparison import Comparison, ComparisonInputError, ComparisonRunError
 from bayesrisk.guided.ecl import Ecl, EclInputError, EclRunError
 from bayesrisk.guided.monitor import Monitor, MonitorInputError, MonitorRunError
 from bayesrisk.guided.scorecard import Scorecard, ScorecardInputError, ScorecardRunError
 from bayesrisk.guided.summaries import (
     STAGE_LABELS,
     STAGE_LABELS_CARTERA,
+    STAGE_LABELS_COMPARACION,
     STAGE_LABELS_MONITOREO,
     FinalSummary,
     StageSummary,
@@ -39,7 +45,11 @@ from bayesrisk.guided.summaries import (
 __all__ = [
     "STAGE_LABELS",
     "STAGE_LABELS_CARTERA",
+    "STAGE_LABELS_COMPARACION",
     "STAGE_LABELS_MONITOREO",
+    "Comparison",
+    "ComparisonInputError",
+    "ComparisonRunError",
     "Ecl",
     "EclInputError",
     "EclRunError",

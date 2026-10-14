@@ -233,6 +233,14 @@ def save(
         from bayesrisk.ui.cards import guardar_de_la_corrida
 
         guardar_de_la_corrida(study, staging)
+        # SDD-34 §6.1 (D-CMP-2): el resumen comparable que la corrida armó al cerrar, para que el
+        # trabajo «Comparar modelos» (capa B) la ofrezca. Sólo se escribe: armarlo es de la
+        # corrida, que lo hace con su registro de auditoría todavía abierto.
+        resumen = getattr(study, "_resumen_comparable", None)
+        if resumen is not None:
+            from bayesrisk.comparison.comparable import escribir
+
+            escribir(resumen, staging)
         (staging / _RESULTS_FILENAME).write_text(
             json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
         )

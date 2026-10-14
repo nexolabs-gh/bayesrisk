@@ -318,3 +318,24 @@ def test_la_guia_del_monitoreo_se_ejecuta_de_corrido(
     assert veredicto.period == "2024Q2"
     assert (tmp_path / "tarjeta" / "manifest.json").is_file()
     assert (tmp_path / "bayesrisk-runs" / "monitoreo" / "run" / "audit_trail.jsonl").is_file()
+
+
+#: La guía de la comparación (SDD-34 §13, capa A): las dos corridas, la comparación de tres líneas
+#: y la elección de la institución, ejecutadas en un solo espacio de nombres.
+_COMPARACION = ("comparar-corridas", "comparar", "comparar-eleccion")
+
+
+def test_la_guia_de_la_comparacion_se_ejecuta_de_corrido(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_binning_process: object
+) -> None:
+    del fake_binning_process  # OR-Tools revienta el proceso de pytest (S20)
+    origen = _DOCS / "guias" / "comparar-modelos.md"
+    texto = origen.read_text(encoding="utf-8")
+    codigo = "\n".join(_bloque(texto, nombre, origen.name) for nombre in _COMPARACION)
+    assert "Comparison(" in codigo and "comp.run()" in codigo and "comp.choose(" in codigo
+    espacio = _ejecutar(codigo, origen, tmp_path, monkeypatch)
+    comp = espacio["comp"]
+    assert comp.study.run_context.status == "done", comp.study.run_context.error
+    assert comp.names == ("consumo_v01", "consumo_v02")
+    assert comp.study.artifacts.get("comparison", "card").chosen == "consumo_v02"
+    assert (tmp_path / "bayesrisk-runs" / "consumo_v02" / "run" / "comparable.json").is_file()

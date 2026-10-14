@@ -6,8 +6,10 @@
 > escala maestra; comparar y avisar cuando no son las mismas operaciones; la institución elige con
 > su motivo; DeLong pareada, frontera como núcleo y un PSI común de fábrica; IFRS 9 en la misma
 > enmienda, con los montos restados sólo en la misma unidad; capa A en la 2.15.0 y B en la 2.16.0.
-> Diseño sin código: **la capa A se programa en una sesión siguiente**, con tests nacidos rojos,
-> controles negativos y Codex sobre el código; cada release pide su OK aparte. Por decisión de Cami
+> **Capa A implementada en S49 (2026-10-14), sin publicar** —el resumen comparable en cada corrida
+> terminada, el dominio `comparison`, `bayesrisk.Comparison` (experimental) y la familia de
+> resúmenes «comparación»; el oráculo de §0.3 reproducido por el motor con OptBinning real; lo que
+> el código precisó, en §14— → 2.15.0 con su OK; la capa B, después. Cada release pide su OK aparte. Por decisión de Cami
 > del mismo día, tras H2b va H10 (benchmarks públicos).
 >
 > Propuesto en S47 (2026-10-14). Es el hito **H2b** del ROADMAP, que Cami pidió
@@ -77,7 +79,7 @@
 | **Módulo** | `bayesrisk.comparison` (dominio y corrida nuevos); toca `api.run` y `ui/runs.py` (el resumen comparable que deja cada corrida), `core/config` (la sección), `core/lineage` (las huellas comparadas), `guided/` (la puerta `bayesrisk.Comparison` y su resumen), `report`, `ui/jobs.py` + `web/` (capa B) y `docs_site/` |
 | **Fase** | F1 (el scorecard, en decisión de comité) y H2 (provisiones) |
 | **Tanda de producción** | T9 (SDD-31: un módulo a la vez, con su §13) |
-| **Estado** | Aprobado por Cami el 2026-10-14 (§12) |
+| **Estado** | Aprobado por Cami el 2026-10-14 (§12); capa A implementada en S49, sin publicar (§14) |
 | **Depende de** | SDD-07 (`selection`: el IV), SDD-08 (`model`: los coeficientes), SDD-11 (`performance` y `stability`), SDD-22 (`validation`), SDD-31, SDD-32 (la escala maestra: la participación por tramo), SDD-33 (el AUC con la varianza del anexo 3.1 del BCE, `monitoring/engine.py`) |
 | **Lo consumen** | La guía del scorecard y la de IFRS 9, un trabajo nuevo de la pantalla, el informe de comparación; H6 (el retador ML, que compara **dentro** de una corrida) |
 | **Autor / Fecha** | Claude Code / 2026-10-14 |
@@ -776,3 +778,91 @@ estable.
   (medirla a mano son ~290 líneas de código propio, `medir_h2b.py` y `medir_h2b_delong.py`);
   **objetivo**, 3 · 1 · 1 · ≈ 1 s · 3 (corrida guardada, referencia, empate). Las del scorecard
   (15 · 37 · 414 · ≈ 1 s · 5) no cambian: el resumen comparable no agrega nada que configurar.
+
+## 14. Lo que el código precisó (capa A)
+
+Implementada en S49 (2026-10-14) sobre `af6c06a` + el arreglo de `Study.load` (`4711693`). Nada de
+lo que sigue cambia una decisión de §12: son precisiones medidas al programar, con su evidencia en
+el repo privado (`evidencia/s49/`: `humo_comparacion.py`, `humo_puerta.py`, `humo_ifrs9.py`,
+`medir_oraculo_s49.py` y `salidas/`).
+
+1. **Dónde se arma el resumen.** Al cierre de `Study.run`, después de marcar la corrida `done` —la
+   tarjeta sólo se congela de una corrida terminada— y antes de `run_end`, con el registro de
+   auditoría todavía abierto: un fallo inesperado se declara (`resumen_comparable_no_disponible`,
+   con su causa) y la corrida sigue terminada (D-VIS). Después de `run_end` no se puede: el sink de
+   MLflow cierra ahí y SDD-01 §11 fija el orden. La corrida lo guarda en el `Study`; `bayesrisk.run`
+   lo escribe en su `run_dir` y `runs.save` en `runs/<id>/`, sin volver a armarlo. Costo medido en
+   `consumo_comportamiento`: 0,29 s para congelar la tarjeta y 0,19 s para el PSI común, sobre
+   corridas de 7–10 s. Un objeto vivo (`Scorecard`, `Ecl`, `Study`) usa el que armó su corrida o lo
+   arma igual: `created_at` es el del lineage, así que el resumen es determinista y el del objeto
+   vivo, el de `bayesrisk.run` y el de `runs.save` son el mismo byte a byte (test).
+2. **El riesgo de la prueba pareada.** `evaluation_scores` guarda `risk`, el valor con que
+   `performance` ordenó al calcular su AUC —la PD calibrada de fábrica, o el puntaje con su
+   orientación si la corrida evalúa el puntaje—, con su `basis`; `performance` expone esa misma
+   cadena (`performance.step.riesgo_evaluado`, sin una segunda regla) y el AUC calculado sobre esos
+   valores es el publicado, exacto (test). Por eso los p-valores del oráculo no son los de §0.3, que
+   S47 midió sobre el puntaje entero, con más empates: `tramos_4` 0,656 (0,83 en §0.3), `sin_mejor`
+   0,717 (0,71) e `iv_005` < 0,001 (igual). Las conclusiones —dos empates y una caída real— no
+   cambian.
+3. **La huella de la cartera** es la de `("data", "special").frame`: la cartera validada y con sus
+   especiales enmascarados, antes de etiquetar y particionar, con el algoritmo de `data_hash`. En
+   una corrida de cartera (IFRS 9) coincide con `data_hash`; si los datos llegaron ya preparados
+   (puntajes externos inyectados), es nula con su razón.
+4. **Lo que falta, con su razón.** Un campo que la corrida no tiene va en nulo y su razón en
+   `missing` (`{campo: razón}`); cada campo se calcula aparte, así que uno que falla no tumba al
+   resto, y el armado comprueba al final que el JSON es canónico (sin números no finitos) para que
+   escribirlo no pueda fallar por su contenido.
+5. **La huella computacional**, campo por campo, con las tablas de `comparison.comparable`. Salen,
+   además de la procedencia de §3.3: `schema_version` y `format` (la misma tarjeta en otro esquema),
+   `model.score_column` (el nombre de la columna de salida, no su valor), los campos de ajuste de la
+   calibración (`target_pd`, `anchor_kind`, `fit_partition`, la tolerancia y los diagnósticos: su
+   efecto ya está en el método y sus parámetros) y `master_scale.source` (formados o fijados). El
+   gate ata las tablas, en los dos sentidos, a las claves que `FittedScorecardBundle` exige
+   —extraídas a `_MANIFEST_KEYS` y `_MODEL_KEYS`, sin cambiar su validación—, a
+   `_MASTER_SCALE_KEYS` y a los campos de `CalibrationParameters`; un campo sin clasificar deja la
+   huella nula con su razón. Las dos copias de §0.3 (`sin_stepwise`, `corr_050`) tienen la huella de
+   la base con otro `config_hash` (oráculo).
+6. **El PSI común** se mide con `stability.step.compute_stability` sobre el mismo frame que leyó la
+   etapa, con la receta de fábrica y sólo la comparación de evaluación; la receta común es una
+   constante atada por test a los defaults de `StabilityConfig`.
+7. **El motivo de una validación que no pasa** es la primera prueba decisiva y cuántas más («Hosmer-
+   Lemeshow en Fuera de tiempo (OOT) y 7 pruebas más»): la lista entera de `otra_cartera` volvía
+   ilegible la línea 6 de la lectura. Sale de la misma lectura del resumen final, en su forma breve.
+8. **`choose(nombre, reason=...)`**, con el nombre de argumento de toda la librería (`reason`), no
+   `motivo=` como escribió §4.1. Vuelve a comparar en el acto —milisegundos—, como dice §4.1. La
+   acción `choose` entra a `DecisionEntry` (su `value` es `{"comparison.choice": huella}`) y el
+   cotejo de D-DEC lee las huellas de los resúmenes de `comparison.runs`: la última elección
+   reemplaza a las anteriores, y una cuya corrida ya no está queda `decision_sin_efecto`, con su
+   aviso en el resumen («la corrida elegida ya no está entre las comparadas»).
+9. **Los errores.** El dominio levanta `ComparisonDataError`; la puerta guiada, `ComparisonInputError`
+   y `ComparisonRunError`, como `MonitoringInputError` frente a `MonitorInputError`.
+10. **`("comparison", "variables")` es largo** (variable × modelo, con `included`), no ancho: con diez
+    modelos el ancho tendría 60 columnas. El resumen lo pinta ancho —una columna por modelo con su
+    signo e IV de Desarrollo—, y es lo que el informe y el Excel leerán en la capa B.
+11. **La lectura**, medida con el motor sobre §0.3 (oráculo): el ejemplo de §3.6 decía «Comparten
+    tres variables», y son **dos** (`sin_mejor` quita `ingreso_mensual`, que §0.3 contó «en todas»);
+    la línea de la validación nombra a todos los que fallan (también `iv_005`); la de la frontera
+    agrega, cuando la frontera tiene más de un modelo, quién queda superado («en discriminación y
+    estabilidad queda superada iv_005»); un nombre de corrida se escribe tal cual, también al
+    comienzo de la línea; y una alternativa sin prueba dice si es por otras operaciones o por otros
+    datos.
+12. **Holdout y partición al azar** (§8): el resumen no guarda la estrategia de partición, así que
+    toda corrida evaluada en Holdout lleva la advertencia de que, si la muestra se separó al azar,
+    su PSI no mide deriva en el tiempo.
+13. **Las puertas en la capa A.** La guiada y la completa dan el mismo `config_hash`, las mismas
+    huellas y los mismos artefactos (test); la de la pantalla es de la capa B, con el trabajo
+    «Comparar modelos». La puerta guiada no declara `report` en la capa A: el capítulo es de la B.
+    Y la sección no lleva todavía sus marcas de pantalla —`runs` esencial, su widget—: llegan con
+    la pantalla y el espejo del front, como en la capa A del monitoreo.
+14. **Nombres repetidos**: todos los de un nombre repetido llevan su posición en la lista
+    («consumo (1)», «consumo (3)»), no sólo el segundo.
+15. **IFRS 9**: `by_stage` suma por etapa las filas de cada cartera del escenario ponderado (`all`,
+    el único que publica la provisión) y `total` va aparte; los escenarios salen de la ficha con su
+    peso. El oráculo reproduce §0.3 al peso: −221.355 (−4,6 %), todo en Stage 2; −68.545, con
+    +39.110 en Stage 1 y −107.655 en Stage 2.
+16. **Sin prueba, las cifras.** Entre dos corridas sin la misma muestra evaluada (o con la prueba no
+    evaluable) la frontera compara el AUC por su valor y lo declara: la tabla de pruebas dice
+    `no_test` u `not_evaluable` con su razón y la lectura, «sin prueba».
+17. **Las cinco cifras, después** (la línea base de §13): 3 líneas de usuario para comparar
+    (`import`, `Comparison(...)`, `run()`), 1 campo visible de la sección, 1 perilla, 0,37 s para tres
+    resúmenes desde `bayesrisk.run` y 3 conceptos. Las del scorecard no cambian.

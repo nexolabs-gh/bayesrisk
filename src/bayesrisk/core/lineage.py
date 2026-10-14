@@ -55,15 +55,23 @@ class LineageBundle(BaseModel):
     #: queda fuera del ``config_hash`` y su contenido lo identifica esto. Sólo existe en esas
     #: corridas: vacío, no se serializa, y el lineage de toda otra corrida queda byte a byte igual.
     bundle_hash: str | None = None
+    #: La huella de cada resumen comparable que una corrida de comparación leyó, en orden (SDD-34
+    #: §9, D-CMP-1): las rutas quedan fuera del ``config_hash`` y esto identifica qué se comparó.
+    #: Sólo existe en esas corridas: vacío, no se serializa, y el lineage de toda otra corrida queda
+    #: byte a byte igual.
+    comparison_hashes: tuple[str, ...] = ()
 
     # Sin anotación de retorno A PROPÓSITO (como el serializador de D-ESC-7 en el config): con
     # `-> Any` Pydantic vacía el schema de serialización.
     @model_serializer(mode="wrap")
     def _omitir_bundle_hash_vacio(self, handler: SerializerFunctionWrapHandler):  # type: ignore[no-untyped-def]
-        """``bundle_hash`` sólo se serializa cuando la corrida lo pobló (una de monitoreo)."""
+        """``bundle_hash`` y ``comparison_hashes`` sólo se serializan si la corrida los pobló."""
         volcado = handler(self)
-        if isinstance(volcado, dict) and volcado.get("bundle_hash", ...) is None:
-            del volcado["bundle_hash"]
+        if isinstance(volcado, dict):
+            if volcado.get("bundle_hash", ...) is None:
+                del volcado["bundle_hash"]
+            if "comparison_hashes" in volcado and not volcado["comparison_hashes"]:
+                del volcado["comparison_hashes"]
         return volcado
 
 

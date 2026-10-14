@@ -2594,6 +2594,11 @@
           "value": "standard"
         }
       },
+      "comparison": {
+        "runs": {
+          "has_default": false
+        }
+      },
       "data": {
         "load": {
           "backend": {
@@ -5068,7 +5073,7 @@
         "description": "Una decisión humana con motivo, tal como se tomó.\n\nNo es una opción que se configure: es el registro de algo que una persona decidió. Su efecto ya\nestá escrito en las secciones del config que definen el modelo; la huella guarda cómo quedaron\nal decidir, para que cada corrida compruebe que la decisión sigue aplicada.",
         "properties": {
           "action": {
-            "description": "Qué se decidió: excluir o mantener variables, fijar los tramos de una, rebatir los días de mora con que IFRS 9 presume el Stage 2 y el Stage 3, o fijar los tramos de la escala maestra o su puntaje de aprobación.",
+            "description": "Qué se decidió: excluir o mantener variables, fijar los tramos de una, rebatir los días de mora con que IFRS 9 presume el Stage 2 y el Stage 3, fijar los tramos de la escala maestra o su puntaje de aprobación, o elegir una de las corridas comparadas.",
             "enum": [
               "exclude",
               "keep",
@@ -5076,7 +5081,8 @@
               "set_bins",
               "rebut_backstops",
               "set_grades",
-              "set_cutoff"
+              "set_cutoff",
+              "choose"
             ],
             "title": "Acción",
             "type": "string"
@@ -12898,6 +12904,35 @@
         "description": "Ajusta la PD cruda del modelo a una tasa central de anclaje aprobada.",
         "title": "Calibración"
       },
+      "comparison": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "description": "Pone lado a lado entre 2 y 10 corridas guardadas, la primera como referencia.",
+            "properties": {
+              "runs": {
+                "description": "Las corridas que se comparan, en orden: la primera es la referencia (el modelo en uso). Cada una es la carpeta de una corrida terminada o su resumen comparable.",
+                "items": {
+                  "type": "string"
+                },
+                "title": "Corridas",
+                "type": "array"
+              }
+            },
+            "required": [
+              "runs"
+            ],
+            "title": "ComparisonConfig",
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Pone lado a lado entre 2 y 10 corridas guardadas: si son comparables, cuáles son el mismo modelo, qué diferencias son reales y cuáles no quedan superadas.",
+        "title": "Comparación"
+      },
       "data": {
         "anyOf": [
           {
@@ -16368,6 +16403,7 @@
     "validation",
     "master_scale",
     "monitoring",
+    "comparison",
     "report",
     "audit",
     "governance",

@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from bayesrisk.audit.config import AuditConfig
     from bayesrisk.binning.config import BinningConfig
     from bayesrisk.calibration.config import CalibrationConfig
+    from bayesrisk.comparison.config import ComparisonConfig
     from bayesrisk.data.config import DataConfig
     from bayesrisk.eda.config import EdaConfig
     from bayesrisk.explain.config import ExplainConfig
@@ -125,6 +126,7 @@ _STABILITY_CONFIG_CLS: type[BaseModel] | None = None
 _VALIDATION_CONFIG_CLS: type[BaseModel] | None = None
 _MASTER_SCALE_CONFIG_CLS: type[BaseModel] | None = None
 _MONITORING_CONFIG_CLS: type[BaseModel] | None = None
+_COMPARISON_CONFIG_CLS: type[BaseModel] | None = None
 _REPORT_CONFIG_CLS: type[BaseModel] | None = None
 _AUDIT_CONFIG_CLS: type[BaseModel] | None = None
 _GOVERNANCE_CONFIG_CLS: type[BaseModel] | None = None
@@ -218,6 +220,9 @@ DECISION_ACTIONS: tuple[str, ...] = (
     "rebut_backstops",
     "set_grades",
     "set_cutoff",
+    # SDD-34 D-CMP-6 (extensión de D-DEC): la elección de la institución entre corridas comparadas.
+    # Su sujeto es una corrida, no una variable, y su huella es la del resumen elegido.
+    "choose",
 )
 #: Las acciones de tramos fijan los cortes de UNA variable numérica.
 _ACCIONES_DE_TRAMOS: frozenset[str] = frozenset({"merge_bins", "set_bins"})
@@ -241,13 +246,21 @@ class DecisionEntry(BayesRiskBaseConfig):
     # `master_scale.approval_cutoff` (`set_cutoff`); su sujeto es la columna del puntaje.
 
     action: Literal[
-        "exclude", "keep", "merge_bins", "set_bins", "rebut_backstops", "set_grades", "set_cutoff"
+        "exclude",
+        "keep",
+        "merge_bins",
+        "set_bins",
+        "rebut_backstops",
+        "set_grades",
+        "set_cutoff",
+        "choose",
     ] = Field(
         title="Acción",
         description=(
             "Qué se decidió: excluir o mantener variables, fijar los tramos de una, rebatir los "
-            "días de mora con que IFRS 9 presume el Stage 2 y el Stage 3, o fijar los tramos de "
-            "la escala maestra o su puntaje de aprobación."
+            "días de mora con que IFRS 9 presume el Stage 2 y el Stage 3, fijar los tramos de "
+            "la escala maestra o su puntaje de aprobación, o elegir una de las corridas "
+            "comparadas."
         ),
     )
     columns: tuple[str, ...] = Field(
@@ -308,7 +321,9 @@ class DecisionEntry(BayesRiskBaseConfig):
 #: YAML de toda corrida. Una sección de esta lista se serializa **sólo cuando está declarada**:
 #: ausente (o ``None``), el ``config_hash`` y el YAML son byte a byte los de la 2.10.0. Toda sección
 #: que se agregue a la raíz entra aquí (un gate lo exige en los dos sentidos).
-SECCIONES_NACIDAS_DESPUES_DE_2_10_0: frozenset[str] = frozenset({"master_scale", "monitoring"})
+SECCIONES_NACIDAS_DESPUES_DE_2_10_0: frozenset[str] = frozenset(
+    {"master_scale", "monitoring", "comparison"}
+)
 
 
 class BayesRiskConfig(BayesRiskBaseConfig):
@@ -642,6 +657,20 @@ class BayesRiskConfig(BayesRiskBaseConfig):
             description=(
                 "Mide, periodo a periodo, si la cartera de una tarjeta en uso cambió, si el modelo "
                 "sigue ordenando y si cada tramo acierta su PD, con un veredicto y su acción."
+            ),
+        )
+    if TYPE_CHECKING:
+        # Vista de mypy: tipo estricto. En runtime el campo es `Any` (rama `else`) y la
+        # validación/coerción a `ComparisonConfig` la hace `_valida_comparison` vía hook diferido.
+        # Nacida después de la 2.10.0: sólo se serializa si está declarada (D-ESC-7, SDD-34 §5.1).
+        comparison: ComparisonConfig | None = None
+    else:
+        comparison: Any = Field(
+            default=None,
+            title="Comparación",
+            description=(
+                "Pone lado a lado entre 2 y 10 corridas guardadas: si son comparables, cuáles son "
+                "el mismo modelo, qué diferencias son reales y cuáles no quedan superadas."
             ),
         )
     if TYPE_CHECKING:
@@ -1293,6 +1322,32 @@ class BayesRiskConfig(BayesRiskBaseConfig):
                 "monitoring debe ser JSON-canónico y determinista (sin sets, objetos no "
                 "serializables ni floats no finitos), o importa `bayesrisk.monitoring` para "
                 "validarlo como MonitoringConfig."
+            ) from exc
+        return valor
+
+    @field_validator("comparison", mode="before")
+    @classmethod
+    def _valida_comparison(cls, valor: Any) -> Any:
+        """Valida/coacciona la sección ``comparison`` según haya o no capa cargada.
+
+        Con ``bayesrisk.comparison`` importado (``_COMPARISON_CONFIG_CLS`` poblado), un ``dict`` se
+        valida y coacciona a :class:`ComparisonConfig`; una instancia ya validada pasa tal cual.
+        Sin la capa cargada, es un *blob* opaco: se exige JSON-canónico y determinista; la identidad
+        la normaliza ``config_hash`` (D-HASH-1).
+        """
+        if valor is None:
+            return valor
+        if _COMPARISON_CONFIG_CLS is not None:
+            if isinstance(valor, _COMPARISON_CONFIG_CLS):
+                return valor
+            return _COMPARISON_CONFIG_CLS.model_validate(valor)
+        try:
+            json.dumps(valor, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "comparison debe ser JSON-canónico y determinista (sin sets, objetos no "
+                "serializables ni floats no finitos), o importa `bayesrisk.comparison` para "
+                "validarlo como ComparisonConfig."
             ) from exc
         return valor
 

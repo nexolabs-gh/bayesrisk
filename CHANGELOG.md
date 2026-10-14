@@ -9,6 +9,26 @@ entradas anteriores conservan el nombre con el que se publicaron.
 
 ## [No publicado]
 
+### Añadido
+
+- **Comparar modelos (experimental).** `bayesrisk.Comparison(runs=[...])` pone lado a lado entre 2
+  y 10 corridas guardadas —objetos ya corridos, la carpeta de una corrida o su resumen—, la primera
+  como referencia, sin volver a correrlas. Dice si se midieron sobre las mismas operaciones, cuáles
+  son el mismo modelo con otro config, qué diferencias de AUC son reales (la prueba de DeLong
+  pareada, corte 0,05) y cuáles ruido, quién reparte mejor sus tramos (el índice de concentración
+  del BCE) y qué modelos no quedan superados por ningún otro en discriminación y estabilidad o en
+  discriminación y concentración, con un PSI medido con la misma receta para todas. También
+  compara provisiones IFRS 9 por etapa, restando montos sólo cuando la unidad es la misma con
+  certeza. La comparación no elige: `comp.choose(nombre, reason=...)` registra la elección de la
+  institución con su motivo, atada a la huella del resumen elegido. Guía «Comparar modelos». La
+  pantalla, el informe y el Excel llegan en la versión siguiente.
+- **El resumen comparable de cada corrida.** Toda corrida terminada de un scorecard que midió su
+  desempeño, y toda de IFRS 9 que calculó su provisión, deja `comparable.json` junto a su
+  evidencia —en el `run_dir` de `bayesrisk.run` y en la carpeta de la corrida de la pantalla—:
+  sólo agregados, sus huellas y el riesgo de su muestra de evaluación en orden, sin
+  identificadores de operación. Armarlo nunca hace fallar una corrida: si algo lo impide, el
+  registro de auditoría lo dice. Ninguna cifra, `config_hash` ni YAML existente cambia.
+
 ### Corregido
 
 - **`Study.load` en un proceso nuevo.** El primer `Study.load(ruta, trust=True)` de un

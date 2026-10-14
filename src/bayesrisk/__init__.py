@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 __version__ = "2.14.0"
 
 __all__ = [
+    "Comparison",
     "DatasetCheck",
     "Ecl",
     "FittedScorecardBundle",
@@ -40,10 +41,10 @@ _LAZY = frozenset(
 )
 
 _SCORECARD_LAZY = frozenset({"apply", "fit_scorecard_bundle", "FittedScorecardBundle"})
-# Las puertas guiadas (SDD-31; enmiendas FLUJO-GUIADO-SCORECARD y FLUJO-GUIADO-IFRS9; SDD-33) se
-# importan al acceder al atributo, como `run`: arrastran pandas y los mapas de rótulos del informe,
-# que el núcleo liviano no carga.
-_GUIDED_LAZY = frozenset({"Scorecard", "Ecl", "Monitor"})
+# Las puertas guiadas (SDD-31; enmiendas FLUJO-GUIADO-SCORECARD y FLUJO-GUIADO-IFRS9; SDD-33 y
+# SDD-34) se importan al acceder al atributo, como `run`: arrastran pandas y los mapas de rótulos
+# del informe, que el núcleo liviano no carga.
+_GUIDED_LAZY = frozenset({"Scorecard", "Ecl", "Monitor", "Comparison"})
 
 if TYPE_CHECKING:  # pragma: no cover - solo para el type-checker, no en runtime
     from bayesrisk.api import (
@@ -54,7 +55,7 @@ if TYPE_CHECKING:  # pragma: no cover - solo para el type-checker, no en runtime
         check_pipeline,
         run,
     )
-    from bayesrisk.guided import Ecl, Monitor, Scorecard
+    from bayesrisk.guided import Comparison, Ecl, Monitor, Scorecard
     from bayesrisk.scorecard.bundle import FittedScorecardBundle, apply, fit_scorecard_bundle
 
 

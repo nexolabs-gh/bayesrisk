@@ -65,6 +65,9 @@ STABLE_DOMAINS: Final[tuple[str, ...]] = (
 """Dominios bajo garantía SemVer 2.x: su API pública no rompe hasta un 3.0."""
 
 EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
+    # La comparación de modelos (SDD-34 D-CMP-9): sale en la 2.15.0 por la puerta guiada y el
+    # config completo como adelanto declarado; entra a la garantía al cerrar sus tres puertas.
+    "comparison",
     "explain",
     "forward",
     "governance",
@@ -85,6 +88,11 @@ EXPERIMENTAL_SYMBOLS: Final[dict[str, str]] = {
     # métodos y la forma de sus resúmenes, y sus cifras siguen la marca experimental de `survival`
     # y `provisioning` (la lectura de D-EST-5). `bayesrisk.guided.monitor.Monitor` hizo lo mismo:
     # adelanto en la 2.13.0 (capa A del SDD-33) y estable en la 2.14.0, con sus tres puertas.
+    "bayesrisk.guided.comparison.Comparison": (
+        "SDD-34 D-CMP-9: la puerta guiada de la comparación sale en la 2.15.0 como adelanto "
+        "declarado (capa A); se retira de aquí cuando cierren sus tres puertas —pantalla, informe "
+        "y Excel— en la capa B (2.16.0)."
+    ),
 }
 """Símbolos experimentales dentro de un dominio estable, cada uno con su razón y su salida."""
 

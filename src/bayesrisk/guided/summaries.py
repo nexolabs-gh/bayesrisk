@@ -94,6 +94,7 @@ __all__ = [
     "SIN_DECISIONES",
     "STAGE_LABELS",
     "STAGE_LABELS_CARTERA",
+    "STAGE_LABELS_COMPARACION",
     "STAGE_LABELS_MONITOREO",
     "STAGE_ORDER",
     "FinalSummary",
@@ -152,19 +153,29 @@ STAGE_LABELS_MONITOREO: Final[dict[str, str]] = {
     "monitoring": "Monitoreo",
     "report": "Informe y ficha",
 }
+#: Rótulos de la familia de comparación (SDD-34, D-CMP-1): una corrida propia sin ``data`` que pone
+#: lado a lado los resúmenes comparables de otras corridas.
+STAGE_LABELS_COMPARACION: Final[dict[str, str]] = {
+    "comparison": "Comparación",
+    "report": "Informe y ficha",
+}
 _FAMILIAS: Final[dict[str, dict[str, str]]] = {
     "scorecard": STAGE_LABELS,
     "cartera": STAGE_LABELS_CARTERA,
     "monitoreo": STAGE_LABELS_MONITOREO,
+    "comparacion": STAGE_LABELS_COMPARACION,
 }
 #: El título del resumen final de cada familia (deja de estar fijo en «Resumen del scorecard»).
 _TITULOS: Final[dict[str, str]] = {
     "scorecard": "Resumen del scorecard",
     "cartera": "Resumen de la provisión IFRS 9",
     "monitoreo": "Resumen del monitoreo",
+    "comparacion": "Resumen de la comparación",
 }
 #: El bloque que reemplaza a «Validación técnica» en el resumen final del monitoreo (§3.5).
 ROTULO_VEREDICTO: Final = "Veredicto"
+#: El de la comparación: lo que la institución eligió, porque la comparación no elige (D-CMP-6).
+ROTULO_ELECCION: Final = "Elección"
 #: Lo que dice el estado técnico de una provisión, que no tiene veredicto técnico: en su lugar, el
 #: resumen final lista lo que la cifra supone («Supuestos»). Viaja en ``FinalSummary.validation``
 #: para los consumidores que todavía leen ese campo (la pantalla, hasta la capa B).
@@ -194,7 +205,8 @@ def family_of(config: Any) -> str:
 
     ``"cartera"`` si provisiona IFRS 9 y no corre ningún dominio del scorecard
     (``RESULT_DOMAINS``); ``"monitoreo"`` si monitorea una tarjeta (SDD-33) sin dominios del
-    scorecard ni provisión; si no, ``"scorecard"``. No la decide un argumento: la misma corrida
+    scorecard ni provisión; ``"comparacion"`` si compara corridas guardadas (SDD-34); si no,
+    ``"scorecard"``. No la decide un argumento: la misma corrida
     habla igual por la puerta guiada, por su YAML y por la pantalla.
     """
     if config is None:
@@ -205,6 +217,8 @@ def family_of(config: Any) -> str:
         return "cartera"
     if getattr(config, "monitoring", None) is not None:
         return "monitoreo"
+    if getattr(config, "comparison", None) is not None:
+        return "comparacion"
     return "scorecard"
 
 
@@ -467,9 +481,11 @@ class FinalSummary:
 
     @property
     def _rotulo_validacion(self) -> str:
-        """«Veredicto» en el monitoreo (§3.5); «Validación técnica» en el scorecard."""
+        """«Veredicto» en el monitoreo, «Elección» en la comparación, «Validación técnica» si no."""
         if self.family == "monitoreo":
             return ROTULO_VEREDICTO
+        if self.family == "comparacion":
+            return ROTULO_ELECCION
         return RESUMEN_FINAL_ROTULOS["validation"]
 
     def headline(self) -> tuple[str, ...]:
@@ -577,7 +593,7 @@ class FinalSummary:
             salida["title"] = self.title
             salida["family"] = self.family
             salida["assumptions"] = list(self.assumptions)
-        elif self.family == "monitoreo":
+        elif self.family in {"monitoreo", "comparacion"}:
             salida["title"] = self.title
             salida["family"] = self.family
         return salida
@@ -743,9 +759,11 @@ def build_stage_summaries(study: Study, context: SummaryContext) -> tuple[StageS
 def build_stage_summary(stage: str, study: Study, context: SummaryContext) -> StageSummary:
     """Arma el resumen de ``stage`` con lo que el ``Study`` ya publicó, en la voz de su familia."""
     familia = family_of(getattr(study, "config", None))
-    builder = {"cartera": _BUILDERS_CARTERA, "monitoreo": _BUILDERS_MONITOREO}.get(
-        familia, _BUILDERS
-    ).get(stage)
+    builder = {
+        "cartera": _BUILDERS_CARTERA,
+        "monitoreo": _BUILDERS_MONITOREO,
+        "comparacion": _BUILDERS_COMPARACION,
+    }.get(familia, _BUILDERS).get(stage)
     label = stage_labels(familia).get(stage, stage)
     if builder is None:
         return StageSummary(stage=stage, label=label, lines=("Etapa sin resumen propio.",))
@@ -2244,8 +2262,13 @@ def _resumen_validation(study: Study, context: SummaryContext) -> StageSummary:
     )
 
 
-def _pruebas_decisivas(study: Study) -> tuple[str, ...]:
-    """Las pruebas que fallaron o quedaron en revisión, en palabras, con su muestra."""
+def _pruebas_decisivas(study: Study, *, breve: bool = False) -> tuple[str, ...]:
+    """Las pruebas que fallaron o quedaron en revisión, en palabras, con su muestra.
+
+    ``breve`` deja sólo la prueba y su muestra («Hosmer-Lemeshow en OOT»), sin el p-valor ni la
+    brecha: es el motivo que el resumen comparable guarda de una validación que no pasa (SDD-34
+    §6.1), desde la misma lectura.
+    """
     decisivas: list[str] = []
     calibracion = _artifact(study, "validation", "calibration")
     grupos_hl = _artifact(study, "validation", "hosmer_lemeshow_groups")
@@ -2267,6 +2290,9 @@ def _pruebas_decisivas(study: Study) -> tuple[str, ...]:
                 )
                 if es_hl:
                     brecha += _mayor_diferencia_hl(grupos_hl, str(fila.get("partition")))
+                if breve:
+                    decisivas.append(f"{prueba} en {_partition_label(str(fila.get('partition')))}")
+                    continue
                 decisivas.append(
                     f"{prueba} en {_partition_label(str(fila.get('partition')))} "
                     f"(p-valor {_pvalor(fila.get('p_value'))}{brecha})"
@@ -4416,6 +4442,347 @@ def _alertas_del_monitoreo(card: Mapping[str, Any]) -> list[str]:
     return salida
 
 
+# ────────────────────────────── comparación (SDD-34) ──────────────────────────────
+
+#: Los títulos de las tablas adicionales del resumen «Comparación».
+TITULO_VARIABLES_COMPARADAS: Final = "Variables: signo e IV de Desarrollo en cada modelo"
+TITULO_PRUEBAS_PAREADAS: Final = "Pruebas de DeLong pareadas entre modelos"
+TITULO_PROVISION_POR_ETAPA: Final = "Provisión por etapa contra la referencia"
+#: Lo que dice cada resultado de una prueba pareada (SDD-34 §3.5).
+_RESULTADOS_DE_PRUEBA: Final[dict[str, str]] = {
+    "tie": "Empatan",
+    "a_better": "Discrimina más el primero",
+    "b_better": "Discrimina más el segundo",
+    "not_evaluable": "Prueba no evaluable",
+    "no_test": "Sin prueba: otras operaciones",
+}
+_FORMATOS_MODELOS: Final[dict[str, _Kind]] = {
+    "AUC": "num3",
+    "Gini": "num3",
+    "KS": "num3",
+    "PSI común": "num",
+    "PSI propio": "num",
+    "Índice BCE": "num2",
+    "Tramos": "int",
+    "Variables": "int",
+}
+_FORMATOS_PRUEBAS: Final[dict[str, _Kind]] = {
+    "Diferencia de AUC": "num3",
+    "Estadístico": "num2",
+    "p-valor": "pvalor",
+}
+_FORMATOS_PROVISION: Final[dict[str, _Kind]] = {
+    "Operaciones": "int",
+    "Exposición": "int",
+    "ECL": "int",
+    "Cobertura": "pct",
+    "Diferencia de ECL": "int",
+    "Diferencia (%)": "pct",
+    "Cobertura: diferencia (pp)": "num2",
+}
+
+
+def _frontera_legible(modelo: Mapping[Any, Any], clave: str) -> str:
+    dentro = modelo.get(f"frontier_{clave}")
+    if dentro is None:
+        return "fuera del gráfico"
+    if dentro:
+        return "sí"
+    por = [str(n) for n in modelo.get(f"superated_by_{clave}") or ()]
+    return f"no: la supera {_enumerar(por)}" if por else "no"
+
+
+def _tabla_de_modelos(modelos: pd.DataFrame) -> pd.DataFrame:
+    """La tabla de decisión de la comparación: un modelo por fila (SDD-34 §6.2, §13)."""
+    con_receta_propia = bool(modelos["own_recipe"].fillna(False).astype(bool).any())
+    filas = []
+    for fila in modelos.to_dict(orient="records"):
+        salida: dict[str, Any] = {
+            "Modelo": fila["name"],
+            "Muestra": _partition_label(str(fila["evaluation_sample"])),
+            "AUC": _float(fila["auc"]),
+            "Gini": _float(fila["gini"]),
+            "KS": _float(fila["ks"]),
+            "PSI común": _float(fila["psi_common"]),
+            "Banda": BAND_LABELS.get(str(fila["psi_common_band"]), "—")
+            if fila["psi_common_band"] is not None
+            else "—",
+        }
+        if con_receta_propia:
+            salida["PSI propio"] = _float(fila["psi_own"])
+        salida.update(
+            {
+                "Índice BCE": _float(fila["concentration_index"]),
+                "Tramos": _int(fila["k"]),
+                "Variables": _int(fila["n_variables"]),
+                "Validación": VALIDATION_STATUS_LABELS.get(str(fila["validation_status"]), "—")
+                if fila["validation_status"] is not None
+                else "—",
+                "Frontera: AUC y PSI": _frontera_legible(fila, "stability"),
+                "Frontera: Gini e índice": _frontera_legible(fila, "concentration"),
+                "El mismo modelo que": fila["same_as"] or "—",
+                "Elegida": "sí" if fila["chosen"] else "",
+            }
+        )
+        filas.append(salida)
+    return pd.DataFrame(filas)
+
+
+def _tabla_de_variables_comparadas(variables: pd.DataFrame, nombres: Sequence[str]) -> pd.DataFrame:
+    """Una fila por variable de la unión y una columna por modelo: signo e IV de Desarrollo."""
+    filas = []
+    for variable, grupo in variables.groupby("feature", sort=False):
+        fila: dict[str, Any] = {"Variable": str(variable)}
+        por_modelo = {str(r["model"]): r for r in grupo.to_dict(orient="records")}
+        for nombre in nombres:
+            datos = por_modelo.get(nombre)
+            if datos is None or not datos["included"]:
+                fila[nombre] = "—"
+                continue
+            marca = "" if datos["sign_ok"] is not False else " (signo contrario)"
+            fila[nombre] = (
+                f"{datos['sign'] or ''} IV {_cifra(datos['iv_development'], decimales=3)}{marca}"
+            )
+        filas.append(fila)
+    return pd.DataFrame(filas)
+
+
+def _tabla_de_pruebas_pareadas(pruebas: pd.DataFrame) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "Modelo A": fila["model_a"],
+                "Modelo B": fila["model_b"],
+                "Diferencia de AUC": _float(fila["difference"]),
+                "Estadístico": _float(fila["statistic"]),
+                "p-valor": _float(fila["p_value"]),
+                "Resultado": _RESULTADOS_DE_PRUEBA.get(str(fila["result"]), str(fila["result"])),
+            }
+            for fila in pruebas.to_dict(orient="records")
+        ]
+    )
+
+
+def _tabla_de_provision_comparada(provision: pd.DataFrame) -> pd.DataFrame:
+    def _redondo(valor: Any) -> int | None:
+        numero = _float(valor)
+        return None if numero is None else round(numero)
+
+    return pd.DataFrame(
+        [
+            {
+                "Corrida": fila["model"],
+                "Etapa": "Total" if str(fila["stage"]) == "total" else f"Stage {fila['stage']}",
+                "Operaciones": _int(fila["n"]),
+                "Exposición": _redondo(fila["exposure"]),
+                "ECL": _redondo(fila["ecl"]),
+                "Cobertura": _float(fila["coverage"]),
+                "Diferencia de ECL": _redondo(fila["ecl_difference"]),
+                "Diferencia (%)": _float(fila["ecl_difference_pct"]),
+                "Cobertura: diferencia (pp)": _float(fila["coverage_difference_pp"]),
+            }
+            for fila in provision.to_dict(orient="records")
+        ]
+    )
+
+
+def _alertas_de_la_comparacion(card: Mapping[str, Any], modelos: pd.DataFrame) -> list[str]:
+    """Lo que la persona tiene que revisar antes de leer la frontera (§3.3, §3.5, §8)."""
+    from bayesrisk.comparison.textos import MUESTRAS
+
+    alertas: list[str] = []
+    for nombre, nivel in zip(card["names"][1:], card["levels"][1:], strict=True):
+        # En IFRS 9 la misma cartera es el nivel más alto: una provisión no tiene muestra evaluada.
+        if nivel == "misma_cartera" and card["family"] == "scorecard":
+            alertas.append(
+                f"{nombre} se evaluó sobre otras operaciones de la misma cartera: sus cifras no "
+                "tienen prueba pareada."
+            )
+        elif nivel == "otra_cartera":
+            alertas.append(f"{nombre} se midió sobre otros datos: la comparación es orientativa.")
+    if card["family"] != "scorecard":
+        return alertas
+    for fila in modelos.to_dict(orient="records"):
+        nombre = fila["name"]
+        if fila["optimistic"]:
+            alertas.append(
+                f"{nombre} no tiene OOT ni Holdout: sus cifras son de Desarrollo, optimistas, y "
+                "queda fuera de los gráficos y de la frontera."
+            )
+        if fila["own_recipe"]:
+            alertas.append(
+                f"{nombre} midió su PSI con otra receta: la frontera usa el PSI común de fábrica."
+            )
+        if fila["auc"] is None:
+            muestra = MUESTRAS.get(str(fila["evaluation_sample"]), "su muestra")
+            alertas.append(f"La discriminación de {nombre} no es evaluable en {muestra}.")
+    return alertas
+
+
+def _resumen_comparison(study: Study, context: SummaryContext) -> StageSummary:
+    """Comparación (SDD-34 §6.3, §13): la lectura, la tabla de modelos y las variables."""
+    del context
+    rotulo = STAGE_LABELS_COMPARACION["comparison"]
+    card = _card(study, "comparison", "card")
+    modelos = _artifact(study, "comparison", "models")
+    if card is None or not isinstance(modelos, pd.DataFrame) or modelos.empty:
+        return StageSummary(
+            stage="comparison", label=rotulo, lines=("La comparación no publicó su resumen.",)
+        )
+    lineas = tuple(str(linea) for linea in card.get("reading") or ())
+    extra: list[tuple[str, pd.DataFrame, Mapping[str, _Kind]]] = []
+    if card["family"] == "ifrs9":
+        provision = _artifact(study, "comparison", "provision")
+        tabla = modelos[["name", "as_of", "currency", "scenarios", "n", "exposure", "ecl"]]
+        tabla_legible = pd.DataFrame(
+            {
+                "Corrida": tabla["name"],
+                "Fecha de corte": tabla["as_of"],
+                "Moneda": [m or "no declarada" for m in tabla["currency"]],
+                "Escenarios": tabla["scenarios"],
+                "Operaciones": [_int(v) for v in tabla["n"]],
+                "Exposición": [round(float(v)) for v in tabla["exposure"]],
+                "ECL": [round(float(v)) for v in tabla["ecl"]],
+                "Cobertura": [_float(v) for v in modelos["coverage"]],
+            }
+        )
+        if isinstance(provision, pd.DataFrame) and not provision.empty:
+            extra.append(
+                (
+                    TITULO_PROVISION_POR_ETAPA,
+                    _tabla_de_provision_comparada(provision),
+                    _FORMATOS_PROVISION,
+                )
+            )
+        return StageSummary(
+            stage="comparison",
+            label=rotulo,
+            lines=lineas[:8],
+            alerts=tuple(_alertas_de_la_comparacion(card, modelos)),
+            table=tabla_legible,
+            formats={**_FORMATOS_PROVISION, "Exposición": "int", "ECL": "int"},
+            extra_tables=tuple(extra),
+        )
+    variables = _artifact(study, "comparison", "variables")
+    if isinstance(variables, pd.DataFrame) and not variables.empty:
+        extra.append(
+            (
+                TITULO_VARIABLES_COMPARADAS,
+                _tabla_de_variables_comparadas(variables, list(card["names"])),
+                {},
+            )
+        )
+    pruebas = _artifact(study, "comparison", "tests")
+    if isinstance(pruebas, pd.DataFrame) and not pruebas.empty:
+        extra.append(
+            (TITULO_PRUEBAS_PAREADAS, _tabla_de_pruebas_pareadas(pruebas), _FORMATOS_PRUEBAS)
+        )
+    return StageSummary(
+        stage="comparison",
+        label=rotulo,
+        lines=lineas[:8],
+        alerts=tuple(_alertas_de_la_comparacion(card, modelos)),
+        table=_tabla_de_modelos(modelos),
+        formats=_FORMATOS_MODELOS,
+        extra_tables=tuple(extra),
+    )
+
+
+def _resumen_final_comparacion(
+    study: Study | None, stages: Sequence[StageSummary], context: SummaryContext
+) -> FinalSummary:
+    """El resumen final de la comparación: ejecución, elección, cinco cifras, alertas y archivos."""
+    card = _card(study, "comparison", "card") if study is not None else None
+    if card is None:
+        eleccion = "no hay elección: la comparación no corrió"
+    elif card.get("chosen"):
+        eleccion = f"{card['chosen']} — «{card.get('chosen_reason') or ''}»"
+    else:
+        eleccion = "la institución no registró una elección (choose)"
+    return FinalSummary(
+        execution=_estado_de_ejecucion(study, stages, context, STAGE_LABELS_COMPARACION),
+        validation=eleccion,
+        figures=_cinco_cifras_comparacion(card, study) if card is not None else (),
+        review=(
+            *(f"{s.label}: {a}" for s in stages for a in s.alerts),
+            *(f"{_ROTULO_DECISIONES}: {a}" for a in _decisiones_sin_efecto(study)),
+        ),
+        decisions=tuple(context.decision_lines),
+        files=_archivos(study, context),
+        stages=tuple(stages),
+        title=_TITULOS["comparacion"],
+        family="comparacion",
+    )
+
+
+def _cinco_cifras_comparacion(
+    card: Mapping[str, Any], study: Study | None
+) -> tuple[tuple[str, str], ...]:
+    """Cuántas, la referencia, la comparabilidad, las dos fronteras o la provisión, y la prueba."""
+    from bayesrisk.comparison.textos import NIVELES
+
+    nombres = list(card["names"])
+    niveles = list(card["levels"])
+    distintos = [f"{n} ({NIVELES[v]})" for n, v in zip(nombres[1:], niveles[1:], strict=True)]
+    iguales = all(v in {"misma_muestra", "misma_cartera"} for v in niveles[1:]) and (
+        card["family"] == "ifrs9" or all(v == "misma_muestra" for v in niveles[1:])
+    )
+    cifras: list[tuple[str, str]] = [
+        ("Corridas comparadas", f"{_miles(len(nombres))}: {_enumerar(nombres)}"),
+        ("Referencia", nombres[0]),
+        (
+            "Comparabilidad",
+            "las mismas operaciones en todas"
+            if iguales and card["family"] == "scorecard"
+            else ("la misma cartera y fecha de corte" if iguales else _enumerar(distintos)),
+        ),
+    ]
+    if card["family"] == "ifrs9":
+        provision = _artifact(study, "comparison", "provision") if study is not None else None
+        if isinstance(provision, pd.DataFrame) and not provision.empty:
+            totales = provision[provision["stage"].astype(str) == "total"]
+            ref = totales.iloc[0]
+            cifras.append(
+                (
+                    "ECL de la referencia",
+                    f"{_miles(round(float(ref['ecl'])))} (cobertura {_pct(ref['coverage'])})",
+                )
+            )
+            diferencias = [
+                f"{fila['model']} {_miles(round(float(fila['ecl_difference'])))}"
+                if fila["same_unit"] and _float(fila["ecl_difference"]) is not None
+                else f"{fila['model']} (otra unidad: cobertura {_pct(fila['coverage'])})"
+                for fila in totales.iloc[1:].to_dict(orient="records")
+            ]
+            cifras.append(("Diferencia de ECL contra la referencia", _enumerar(diferencias)))
+    if card["family"] == "scorecard":
+        cifras.append(
+            (
+                "Frontera: AUC y PSI",
+                _enumerar(list(card["frontier_stability"])) or "ningún modelo evaluable",
+            )
+        )
+        cifras.append(
+            (
+                "Frontera: Gini e índice",
+                _enumerar(list(card["frontier_concentration"])) or "ningún modelo evaluable",
+            )
+        )
+        cifras.append(
+            (
+                "Prueba de DeLong",
+                f"{_miles(int(card['n_paired_tests']))} de {_miles(int(card['n_tests']))} pares "
+                "pareados, corte 0,05, sin corrección por multiplicidad",
+            )
+        )
+    return tuple(cifras)
+
+
+_BUILDERS_COMPARACION: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
+    "comparison": _resumen_comparison,
+}
+
+
 _BUILDERS: Final[dict[str, Callable[[Study, SummaryContext], StageSummary]]] = {
     "data": _resumen_data,
     "eda": _resumen_eda,
@@ -4470,6 +4837,8 @@ def build_final_summary(
         return _resumen_final_cartera(study, stages, context)
     if familia == "monitoreo":
         return _resumen_final_monitoreo(study, stages, context)
+    if familia == "comparacion":
+        return _resumen_final_comparacion(study, stages, context)
     execution = _estado_de_ejecucion(study, stages, context)
     validation = _estado_de_validacion(study, context)
     figures = _cinco_cifras(study) if study is not None else ()
@@ -4514,6 +4883,12 @@ def _decisiones_sin_efecto(study: Study | None) -> tuple[str, ...]:
             razon = "los cortes de la escala maestra cambiaron o se retiraron del config"
         elif accion == "set_cutoff":
             razon = "el puntaje de aprobación cambió o se retiró del config"
+        elif accion == "choose":
+            # SDD-34 D-CMP-6: la elección se ata a la huella del resumen elegido.
+            razon = (
+                "la corrida elegida ya no está entre las comparadas (se reemplazó o cambió su "
+                "resumen)"
+            )
         elif accion == "exclude":
             razon = (
                 "las variables ya no están excluidas en el config"

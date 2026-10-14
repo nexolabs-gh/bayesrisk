@@ -146,29 +146,13 @@ class PerformanceEvaluator(AuditableMixin, BaseBayesRiskEstimator):
         """
         pd_module = _import_pandas()
         np_module = _import_numpy()
-        pa_module = _import_pandera()
         sklearn_metrics = _import_sklearn_metrics()
-        cfg = _validate_runtime_config(
-            self,
+        cfg, prepared = self._preparar(
+            frame,
             score_column=score_column,
             pd_column=pd_column,
             target_column=target_column,
             partition_column=partition_column,
-        )
-
-        copied = _as_dataframe(frame, pd_module)
-        validated = _validate_input_schema(
-            copied,
-            cfg=cfg,
-            pd=pd_module,
-            pa=pa_module,
-        )
-        modelable = _modelable_frame(validated, cfg=cfg, pd=pd_module)
-        prepared = _prepare_modelable_frame(
-            modelable,
-            cfg=cfg,
-            pd=pd_module,
-            np=np_module,
         )
 
         performance_records: list[DecilePerformanceRecord] = []
@@ -292,6 +276,48 @@ class PerformanceEvaluator(AuditableMixin, BaseBayesRiskEstimator):
         self.discriminant_records_ = result.discriminant_records
         self.card_ = result.card
         return result
+
+    def _preparar(
+        self,
+        frame: DataFrame,
+        *,
+        score_column: str,
+        pd_column: str,
+        target_column: str,
+        partition_column: str,
+    ) -> tuple[PerformanceConfig, DataFrame]:
+        """El config de ejecución y el frame modelable con su riesgo interno, antes de medir.
+
+        Es el comienzo de :meth:`evaluate`, aparte para que el resumen comparable (SDD-34 §6.1)
+        lea **el mismo** riesgo, fila a fila, con que esta etapa calcula su AUC: una sola cadena,
+        no una segunda regla de orientación.
+        """
+        pd_module = _import_pandas()
+        np_module = _import_numpy()
+        pa_module = _import_pandera()
+        cfg = _validate_runtime_config(
+            self,
+            score_column=score_column,
+            pd_column=pd_column,
+            target_column=target_column,
+            partition_column=partition_column,
+        )
+
+        copied = _as_dataframe(frame, pd_module)
+        validated = _validate_input_schema(
+            copied,
+            cfg=cfg,
+            pd=pd_module,
+            pa=pa_module,
+        )
+        modelable = _modelable_frame(validated, cfg=cfg, pd=pd_module)
+        prepared = _prepare_modelable_frame(
+            modelable,
+            cfg=cfg,
+            pd=pd_module,
+            np=np_module,
+        )
+        return cfg, prepared
 
 
 @dataclass(frozen=True)

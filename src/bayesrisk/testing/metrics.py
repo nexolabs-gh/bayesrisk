@@ -74,6 +74,10 @@ DOMAINS_WITHOUT_METRICS: Final[dict[str, str]] = {
         "Su lectura —el veredicto por periodo, los cuatro indicadores y la tabla tramo × periodo— "
         "vive en sus artefactos y su resumen; su SDD (SDD-33) no pide escalares al canal."
     ),
+    "comparison": (
+        "Su lectura —la comparabilidad, las pruebas pareadas, la frontera y la elección— vive en "
+        "sus artefactos y su resumen; su SDD (SDD-34 §9) no pide escalares al canal."
+    ),
     "tuning": "Fuera de F1; su SDD declara su lista cuando se aborde.",
     "ml": "Fuera de F1; su SDD declara su lista cuando se aborde.",
     "explain": "Fuera de F1; su SDD declara su lista cuando se aborde.",
