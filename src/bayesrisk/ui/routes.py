@@ -1042,6 +1042,14 @@ def run_pipeline(
         config
     )  # (a) precondición: config válido (ValidationError → 422)
     source = datasets.materialize(dataset_id, workdir=workdir)  # (b) UiDatasetError → 404
+    if isinstance(config.get("monitoring"), dict):
+        # SDD-33 capa B (pasada 1 de Codex): un panel —la misma operación en varios periodos, con
+        # su identidad en el índice— se aplana con la regla de `bayesrisk.Monitor`, para que el
+        # paso de datos no lo rechace y las dos puertas den la misma tabla (D-SIM-1). Lo que esa
+        # regla rechaza es un `ConfigError` (→ 422 con su motivo).
+        from bayesrisk.guided.monitor import preparar_panel
+
+        source = preparar_panel(source, workdir / "datasets" / "paneles")
     wired = _wire_report_output_dir(_wire_dataset_source(config, source), workdir=workdir)
     trail = runs.reservar_trail(workdir)  # (b-ter) D-GOB-7: el trail nunca cae en el cwd
     wired = _wire_audit_trail(wired, trail=trail)

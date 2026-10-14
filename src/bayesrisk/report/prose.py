@@ -39,6 +39,7 @@ from bayesrisk.stability.results import BAND_LABELS, PSI_METRIC_LABELS
 from bayesrisk.validation.results import (
     HL_NOT_EVALUABLE_REASON_LABELS,
     STABILITY_SOURCE_LABELS,
+    TRAFFIC_LIGHT_LABELS,
     VALIDATION_FAMILY_LABELS,
     VALIDATION_STATUS_LABELS,
 )
@@ -365,6 +366,11 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
             "Las cifras IFRS 9 son el cálculo contable que reportó el motor (función "
             "experimental), no bandas de validación: la columna Estado no les aplica semáforo."
         )
+
+    # El monitoreo (SDD-33, capa B; pasada 1 de Codex): el veredicto y las cifras del último periodo
+    # con desenlace. Sin ellas, el resumen ejecutivo de un monitoreo diría que la corrida no evaluó
+    # nada.
+    metrics.extend(_metricas_del_monitoreo(bundle, notes))
 
     if not metrics:
         notes.append(
@@ -2919,9 +2925,111 @@ def _results_provisioning_ifrs9(bundle: ReportInputBundle) -> tuple[str, ...]:
 # ────────────────────────────── conclusiones y limitaciones ──────────────────────────────
 
 
+def _metricas_del_monitoreo(bundle: ReportInputBundle, notes: list[str]) -> list[ExecutiveMetric]:
+    """El veredicto y las cifras del último periodo con desenlace (SDD-33, capa B)."""
+    card = _card(bundle, "monitoring")
+    if card is None:
+        return []
+    from bayesrisk.monitoring.textos import VEREDICTOS
+
+    veredicto = _mapping(card.get("verdict"))
+    metricas = [
+        ExecutiveMetric(
+            label="Veredicto del monitoreo",
+            scope=f"Periodo {_text(veredicto.get('period')) or '—'}",
+            value=VEREDICTOS.get(str(veredicto.get("verdict")), _NOT_AVAILABLE),
+            band="Lectura del motor",
+        )
+    ]
+    fila = _ultimo_periodo_con_desenlace(bundle)
+    if fila is not None:
+        periodo = f"Periodo {fila.get('period')}"
+        metricas.append(
+            ExecutiveMetric(
+                label="PSI del puntaje",
+                scope=periodo,
+                value=_cifra(fila.get("psi_score")),
+                band=_luz_de_monitoreo(fila.get("psi_score_light")),
+            )
+        )
+        metricas.append(
+            ExecutiveMetric(
+                label="Tasa de malos frente a la PD esperada",
+                scope=periodo,
+                value=f"{_pct(fila.get('bad_rate'))} frente a {_pct(fila.get('expected_pd'))}",
+                band=_luz_de_monitoreo(fila.get("portfolio_light")),
+            )
+        )
+        metricas.append(
+            ExecutiveMetric(
+                label="AUC sobre los tramos",
+                scope=f"{periodo} · inicial {_cifra(card.get('auc_initial'))}",
+                value=_cifra(fila.get("auc")),
+                band=_luz_de_monitoreo(fila.get("auc_light")),
+            )
+        )
+    notes.append(
+        "El veredicto del monitoreo es la lectura del motor con umbrales fijos —PSI 0,10 y 0,25; "
+        "p-valores 0,05 y 0,01—, periodo a periodo contra la referencia de Desarrollo de la "
+        "tarjeta. La decisión sobre el modelo la firma la institución."
+    )
+    return metricas
+
+
+def _ultimo_periodo_con_desenlace(bundle: ReportInputBundle) -> dict[str, Any] | None:
+    """La última fila de la tabla de periodos del monitoreo con operaciones con desenlace."""
+    tabla = bundle.tables.get("monitoring.periods")
+    if tabla is None or not hasattr(tabla, "to_dict"):
+        return None
+    con_desenlace: list[dict[str, Any]] = [
+        {str(k): v for k, v in fila.items()}
+        for fila in tabla.to_dict(orient="records")
+        if (_int(fila.get("n_with_outcome")) or 0)
+    ]
+    return con_desenlace[-1] if con_desenlace else None
+
+
+def _luz_de_monitoreo(valor: Any) -> str:
+    """El semáforo del monitoreo en palabras, con «No evaluable»."""
+    if valor is None or str(valor) == "not_evaluable":
+        return "No evaluable"
+    return str(TRAFFIC_LIGHT_LABELS.get(str(valor), str(valor)))
+
+
+def _hallazgos_del_monitoreo(bundle: ReportInputBundle) -> list[str]:
+    """Lo que el motor puede afirmar de una corrida de monitoreo: su veredicto y su razón."""
+    card = _card(bundle, "monitoring")
+    if card is None:
+        return []
+    from bayesrisk.monitoring.textos import VEREDICTOS
+
+    veredicto = _mapping(card.get("verdict"))
+    hallazgos = [
+        f"Veredicto del monitoreo: {VEREDICTOS.get(str(veredicto.get('verdict')), '—')} en "
+        f"{_text(veredicto.get('period')) or '—'} — {_text(veredicto.get('action')) or ''}",
+        f"Por qué: {_text(veredicto.get('reason')) or '—'}.",
+    ]
+    if veredicto.get("partial_evidence"):
+        hallazgos.append(
+            "Parte de la evidencia no se pudo evaluar en ese periodo (ver «Qué revisar» en el "
+            "resumen de la corrida): lo no evaluable no cuenta como verde."
+        )
+    return hallazgos
+
+
 def conclusions_body(bundle: ReportInputBundle) -> tuple[str, ...]:
     """Resume los hallazgos que el motor sí puede afirmar; el juicio lo firma un humano."""
     hallazgos: list[str] = []
+    monitoreo = _hallazgos_del_monitoreo(bundle)
+    if monitoreo:
+        # SDD-33 capa B (pasada 1 de Codex): una corrida de monitoreo concluye con su veredicto,
+        # no con «no evaluó desempeño», y la decisión que pide es otra que la de un desarrollo.
+        return (
+            *monitoreo,
+            "Estos hallazgos son los que el motor puede sostener con los números de la corrida. "
+            "La decisión sobre el modelo —seguir usándolo, recalibrarlo o redesarrollarlo— es un "
+            "juicio de la institución y no se deriva automáticamente de ellos.",
+        )
 
     performance = _card(bundle, "performance")
     if performance is not None:
@@ -3110,9 +3218,19 @@ def limitations_body(bundle: ReportInputBundle) -> tuple[str, ...]:
     """Limitaciones: alcance de la fase, caveats de determinismo y secciones ausentes."""
     tiene_provisiones = _card(bundle, "provisioning") is not None
     tiene_ifrs9 = _card(bundle, "provisioning_ifrs9") is not None
+    tiene_monitoreo = _card(bundle, "monitoring") is not None and _card(bundle, "scorecard") is None
     validation = _card(bundle, "validation") if "validation" in bundle.results else None
     validation_families = set(_sequence(validation.get("families_run"))) if validation else set()
-    if tiene_ifrs9 and not tiene_provisiones:
+    if tiene_monitoreo:
+        # SDD-33 capa B (pasada 1 de Codex): un monitoreo no construye ni valida un modelo; decirlo
+        # contradiría su capítulo.
+        alcance = (
+            "El alcance de este informe es el monitoreo de un modelo en uso: la tarjeta guardada "
+            "se aplicó a la cartera de cada periodo y se comparó con la referencia de Desarrollo "
+            "que congeló (capítulo «Monitoreo del modelo en uso»). No vuelve a construir ni a "
+            "validar el modelo."
+        )
+    elif tiene_ifrs9 and not tiene_provisiones:
         # Corrida IFRS 9 (SDD-16): el capítulo de ECL ES el alcance. Decir aquí que "IFRS 9
         # corresponde a fases posteriores" sería falso; y la cadena mínima ECL no corre la
         # validación completa del scorecard, así que tampoco se reclama (G8). La salvedad sobre
@@ -3150,12 +3268,12 @@ def limitations_body(bundle: ReportInputBundle) -> tuple[str, ...]:
     else:
         alcance = "El alcance de este informe es la construcción y evaluación del scorecard."
 
-    if validation is None:
+    if validation is None and not tiene_monitoreo:
         alcance += (
             " Esta corrida no ejecutó la capa de validación formal; el informe no infiere sus "
             "resultados."
         )
-    else:
+    elif validation is not None:
         families = tuple(
             _familia_en_frase(item) for item in _sequence(validation.get("families_run"))
         )

@@ -384,6 +384,7 @@ export function jobSkeleton(
   catalogo: EffectiveDefaults | undefined,
 ): Record<string, unknown> {
   const skeleton = structuredClone(base)
+  apagarSeccionesAjenas(skeleton, job)
   for (const section of job.sections) {
     const canonica = childMap(nodeAtPath(catalogo, [section]))
     if (canonica === undefined) continue
@@ -393,6 +394,28 @@ export function jobSkeleton(
   aplicarOverridesDelTrabajo(skeleton, job)
   recortarCapitulosDelInforme(skeleton, job)
   return skeleton
+}
+
+/**
+ * Deja en `null` las secciones del formulario que el trabajo NO ofrece y que traía el config
+ * anterior (D-JOB-9; pasada 1 de Codex sobre la capa B del SDD-33).
+ *
+ * 🔴 Sin esto, entrar a un trabajo después de correr otro conservaba sus etapas, ocultas: tras un
+ * scorecard, «Monitorear un modelo en uso» seguía con `binning`, `model` y el resto encendidos —el
+ * sidebar no los muestra— y con `target` y `partition` en «no aplica» la corrida no podía arrancar.
+ * Es el flujo natural del monitoreo (correr el scorecard y monitorear su tarjeta) y también el de la
+ * provisión IFRS 9. Dos personas que llegan al mismo trabajo tienen que producir el mismo config,
+ * vengan de donde vengan.
+ *
+ * Sólo toca las secciones del FORMULARIO (`CONFIG_SECTIONS`) presentes en el config: lo que no es
+ * una sección —`repro`, `run`, `name`…— y las que el config no trae quedan como estaban. Va PRIMERO,
+ * antes de la proyección canónica, que siembra las del trabajo.
+ */
+function apagarSeccionesAjenas(skeleton: Record<string, unknown>, job: Job): void {
+  for (const { key } of CONFIG_SECTIONS) {
+    if (job.sections.includes(key)) continue
+    if (key in skeleton && skeleton[key] !== null) skeleton[key] = null
+  }
 }
 
 /**

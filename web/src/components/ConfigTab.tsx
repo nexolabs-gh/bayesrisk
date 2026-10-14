@@ -1444,6 +1444,7 @@ export function ConfigTab({
               <MonitoringCardPicker
                 bundlePath={textoEn(config, "monitoring.bundle")}
                 onElegir={(ruta) => setField(["monitoring", "bundle"], ruta)}
+                getBundle={() => textoEn(getConfig(), "monitoring.bundle")}
               />
             ) : null}
             {sectionEntry.nullable ? (

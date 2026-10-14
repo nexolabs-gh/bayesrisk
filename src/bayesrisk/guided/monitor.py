@@ -149,35 +149,13 @@ class Monitor(_PuertaGuiada):
         identifica por él la vuelve a usar como índice); el paso decide en cada periodo qué índice
         recibe la tarjeta. El snapshot se escribe desde ese frame.
         """
-        from bayesrisk.monitoring.step import INDICE_DEL_PANEL
-
         frame, source, source_label = self._cargar(data)
-        if INDICE_DEL_PANEL in frame.columns:
-            # El paso lee esa columna como el índice del panel: una del usuario con el mismo nombre
-            # se tomaría por él (pasada 5 de Codex).
-            raise MonitorInputError(
-                f"La cartera trae una columna llamada «{INDICE_DEL_PANEL}», un nombre reservado: "
-                "el monitoreo la usa para conservar el índice de una cartera con la misma "
-                "operación en varios periodos. Renómbrala y vuelve a construir el monitoreo."
-            )
-        if not frame.index.has_duplicates:
+        plano = aplanar_panel(frame)
+        if plano is None:
             return frame, source, source_label
         import io
 
         nombre = frame.index.name
-        if nombre is not None and nombre in frame.columns:
-            raise MonitorInputError(
-                f"El índice de la cartera se repite entre periodos y se llama como una columna "
-                f"({nombre!r}): no se puede pasar a columna sin pisarla. Renombra el índice o la "
-                "columna y vuelve a construir el monitoreo."
-            )
-        # El índice también es identidad cuando no tiene nombre (una tarjeta con id=None identifica
-        # por él): se conserva siempre, con su dtype (pasada 4 de Codex), en la columna reservada
-        # —la señal de que la puerta lo aplanó, para que el paso sepa que el índice que queda es de
-        # posición (pasada 6)— y, con nombre, también en su columna.
-        plano = frame.rename_axis(INDICE_DEL_PANEL).reset_index()
-        if nombre is not None:
-            plano.insert(1, nombre, plano[INDICE_DEL_PANEL])
         self._descartar_snapshot()
         buffer = io.BytesIO()
         plano.to_parquet(buffer)
@@ -427,6 +405,84 @@ class Monitor(_PuertaGuiada):
         sin él se detiene con el comando de instalación.
         """
         return self._exportar_excel()
+
+
+# ── el panel, compartido por la puerta guiada y la pantalla ─────────────────────────────
+
+
+def aplanar_panel(frame: pd.DataFrame) -> pd.DataFrame | None:
+    """La cartera con su índice repetido pasado a columna, o ``None`` si el índice no se repite.
+
+    Una sola regla para las dos entradas de la cartera —``Monitor`` y la pantalla (pasada 1 de Codex
+    sobre la capa B: la pantalla mandaba el panel tal cual y el paso de datos lo rechazaba)—: el
+    índice pasa a la columna reservada :data:`~bayesrisk.monitoring.step.INDICE_DEL_PANEL`, con su
+    dtype, y —si tiene nombre— también a una columna con ese nombre. El nombre reservado se rechaza
+    siempre, se repita o no el índice (pasada 5).
+
+    Raises
+    ------
+    MonitorInputError
+        Si la cartera trae una columna con el nombre reservado, o un índice que se repite y se
+        llama como una columna.
+    """
+    from bayesrisk.monitoring.step import INDICE_DEL_PANEL
+
+    if INDICE_DEL_PANEL in frame.columns:
+        # El paso lee esa columna como el índice del panel: una del usuario con el mismo nombre se
+        # tomaría por él (pasada 5 de Codex).
+        raise MonitorInputError(
+            f"La cartera trae una columna llamada «{INDICE_DEL_PANEL}», un nombre reservado: el "
+            "monitoreo la usa para conservar el índice de una cartera con la misma operación en "
+            "varios periodos. Renómbrala y vuelve a construir el monitoreo."
+        )
+    if not frame.index.has_duplicates:
+        return None
+    nombre = frame.index.name
+    if nombre is not None and nombre in frame.columns:
+        raise MonitorInputError(
+            f"El índice de la cartera se repite entre periodos y se llama como una columna "
+            f"({nombre!r}): no se puede pasar a columna sin pisarla. Renombra el índice o la "
+            "columna y vuelve a construir el monitoreo."
+        )
+    # El índice también es identidad cuando no tiene nombre (una tarjeta con id=None identifica por
+    # él): se conserva siempre, con su dtype (pasada 4 de Codex), en la columna reservada —la señal
+    # de que se aplanó, para que el paso sepa que el índice que queda es de posición (pasada 6)— y,
+    # con nombre, también en su columna.
+    plano = frame.rename_axis(INDICE_DEL_PANEL).reset_index()
+    if nombre is not None:
+        plano.insert(1, nombre, plano[INDICE_DEL_PANEL])
+    return plano
+
+
+def preparar_panel(source: Path, directorio: Path) -> Path:
+    """La cartera de la pantalla lista para el monitoreo: la misma, o su panel aplanado.
+
+    Lee el parquet que materializó la pantalla y, si su índice se repite, escribe el panel aplanado
+    con :func:`aplanar_panel` junto a él (con su huella en el nombre) y devuelve esa ruta: la misma
+    tabla que guarda ``Monitor``, así que las dos puertas dan el mismo ``data_hash`` (D-SIM-1).
+
+    Raises
+    ------
+    MonitorInputError
+        Lo que :func:`aplanar_panel` rechaza.
+    """
+    import hashlib
+    import io
+
+    frame = pd.read_parquet(source)
+    plano = aplanar_panel(frame)
+    if plano is None:
+        return source
+    buffer = io.BytesIO()
+    plano.to_parquet(buffer)
+    contenido = buffer.getvalue()
+    directorio.mkdir(parents=True, exist_ok=True)
+    destino = directorio / f"panel-{hashlib.sha256(contenido).hexdigest()[:16]}.parquet"
+    if not destino.exists():
+        temporal = destino.with_name(f".{destino.name}.tmp")
+        temporal.write_bytes(contenido)
+        temporal.replace(destino)
+    return destino
 
 
 # ── la tarjeta en la pantalla (SDD-33 §4.3, capa B) ─────────────────────────────────────

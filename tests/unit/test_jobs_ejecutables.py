@@ -112,9 +112,13 @@ def _esqueleto(job: dict[str, Any], catalogo: dict[str, Any]) -> dict[str, Any]:
 
     ⚠️ **Es una réplica de `jobSkeleton` (`web/src/lib/jobs.ts`), y eso es una deuda declarada.** No
     hay forma de compararlas ejecutándolas —una es TypeScript y la otra Python—, así que lo que las
-    ata es el orden de los cuatro pasos y un gate estático que vigila que el front no gane un quinto
+    ata es el orden de los cinco pasos y un gate estático que vigila que el front no gane un sexto
     sin que nadie lo mire (`test_la_siembra_del_front_sigue_teniendo_estos_cuatro_pasos`).
     """
+    # Réplica de `apagarSeccionesAjenas` (pasada 1 de Codex sobre la capa B del SDD-33): apaga las
+    # secciones del formulario que el trabajo no ofrece y que traía el config anterior. Aquí el
+    # esqueleto parte vacío —un usuario que entra directo por el trabajo—, así que no hay nada que
+    # apagar; la transición desde otro trabajo la prueba `jobs.test.ts`.
     esqueleto: dict[str, Any] = {}
     for seccion in job["sections"]:
         nodo = catalogo["sections"].get(seccion)
@@ -367,7 +371,9 @@ def test_la_siembra_del_front_sigue_teniendo_estos_cuatro_pasos() -> None:
     obliga a mirarlo — que es todo lo que un ancla puede prometer, y más que callarse.
 
     Eran tres hasta el 2026-09-07: el cuarto —apagar las secciones latentes— entró con D-GOB-11 y
-    este gate se puso rojo ese día, como estaba escrito que haría.
+    este gate se puso rojo ese día, como estaba escrito que haría. Y cinco desde la capa B del
+    SDD-33: el primero apaga las secciones ajenas que traía el config anterior (pasada 1 de Codex);
+    el nombre del test conserva su historia.
     """
     from pathlib import Path
 
@@ -377,6 +383,7 @@ def test_la_siembra_del_front_sigue_teniendo_estos_cuatro_pasos() -> None:
     cuerpo_funcion = cuerpo[inicio : cuerpo.index("\n}", inicio)]
 
     pasos = (
+        "apagarSeccionesAjenas",
         "canonicalProjection",
         "apagarSeccionesLatentes",
         "aplicarOverridesDelTrabajo",
@@ -390,8 +397,8 @@ def test_la_siembra_del_front_sigue_teniendo_estos_cuatro_pasos() -> None:
 
     posiciones = [cuerpo_funcion.index(paso) for paso in pasos]
     assert posiciones == sorted(posiciones), (
-        "el orden es parte del contrato: proyección canónica, latentes en `null`, overrides y "
-        "recorte de capítulos"
+        "el orden es parte del contrato: secciones ajenas en `null`, proyección canónica, "
+        "latentes en `null`, overrides y recorte de capítulos"
     )
 
 

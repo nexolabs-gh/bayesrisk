@@ -4,6 +4,7 @@ import { CircleAlert, CircleCheck, FileUp, Loader2, RefreshCw } from "lucide-rea
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ApiError, listCards, uploadCard, type MonitorableCard } from "@/lib/api"
+import { subirYElegir } from "@/lib/monitoring-card"
 import { describeApiError } from "@/lib/validation"
 
 interface MonitoringCardPickerProps {
@@ -11,6 +12,8 @@ interface MonitoringCardPickerProps {
   bundlePath: string | null
   /** Escribe la ruta de la tarjeta elegida en `monitoring.bundle`. */
   onElegir: (ruta: string) => void
+  /** El `monitoring.bundle` vigente del store: una subida sólo escribe si no cambió entre tanto. */
+  getBundle: () => string | null
 }
 
 /**
@@ -23,9 +26,15 @@ interface MonitoringCardPickerProps {
  * pantalla también, con el mismo motivo. Aquí no se interpreta nada (SDD-23 §11).
  *
  * Un gesto vigente por vez: una respuesta que llega después de otro gesto (otra elección, otra
- * subida) no escribe nada, para que una subida lenta no pise la tarjeta que la persona ya eligió.
+ * subida), de desmontar la sección o de un cambio de `monitoring.bundle` por otra vía no escribe
+ * nada, para que una subida lenta no pise la tarjeta que la persona ya eligió (`subirYElegir`;
+ * pasada 1 de Codex sobre la capa B).
  */
-export function MonitoringCardPicker({ bundlePath, onElegir }: MonitoringCardPickerProps) {
+export function MonitoringCardPicker({
+  bundlePath,
+  onElegir,
+  getBundle,
+}: MonitoringCardPickerProps) {
   const [tarjetas, setTarjetas] = useState<MonitorableCard[] | null>(null)
   const [cargando, setCargando] = useState(false)
   const [subiendo, setSubiendo] = useState(false)
@@ -55,9 +64,15 @@ export function MonitoringCardPicker({ bundlePath, onElegir }: MonitoringCardPic
     }
   }, [])
 
-  // La lista se lee al mostrar la sección: es lo único que este componente trae por su cuenta.
+  // La lista se lee al mostrar la sección: es lo único que este componente trae por su cuenta. Al
+  // desmontarse, todo gesto en vuelo queda anulado: su respuesta ya no escribe en el config.
   useEffect(() => {
     void actualizar()
+    const turnos = { gesto, lectura }
+    return () => {
+      turnos.gesto.current += 1
+      turnos.lectura.current += 1
+    }
   }, [actualizar])
 
   const elegir = (ruta: string) => {
@@ -74,9 +89,12 @@ export function MonitoringCardPicker({ bundlePath, onElegir }: MonitoringCardPic
     setSubiendo(true)
     setAviso(null)
     try {
-      const tarjeta = await uploadCard(elegido)
-      if (mio !== gesto.current) return
-      onElegir(tarjeta.path)
+      const tarjeta = await subirYElegir(
+        { getBundle, setBundle: onElegir, subir: uploadCard },
+        elegido,
+        () => mio === gesto.current,
+      )
+      if (tarjeta === null) return
       setTarjetas((actual) => [
         ...(actual ?? []).filter((t) => t.path !== tarjeta.path),
         tarjeta,

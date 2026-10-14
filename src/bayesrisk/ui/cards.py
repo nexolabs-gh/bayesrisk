@@ -84,7 +84,7 @@ def listar(workdir: Path) -> list[dict[str, Any]]:
             ficha = json.loads(ficha_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if not isinstance(ficha, dict) or not (carpeta / "manifest.json").is_file():
+        if not isinstance(ficha, dict) or not _completa(carpeta):
             continue
         salida.append({**_ficha_publica(ficha), "path": str(carpeta)})
     salida.sort(key=lambda f: str(f.get("created_at") or ""), reverse=True)
@@ -93,7 +93,7 @@ def listar(workdir: Path) -> list[dict[str, Any]]:
             datos = json.loads(manifiesto.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if not isinstance(datos, dict):
+        if not isinstance(datos, dict) or not _completa(manifiesto.parent):
             continue
         salida.append(
             {
@@ -149,10 +149,7 @@ def subir_zip(content: bytes, filename: Any, *, workdir: Path, max_bytes: int) -
             except MonitorInputError as exc:
                 raise UiCardError(str(exc)) from exc
             destino = raiz / f"tarjeta-{tarjeta.bundle_hash[:16]}"
-            if destino.exists():
-                shutil.rmtree(temporal)  # mismo contenido por construcción: el nombre es su huella
-            else:
-                temporal.rename(destino)
+            _publicar(temporal, destino, tarjeta.bundle_hash)
         except BaseException:
             shutil.rmtree(temporal, ignore_errors=True)
             raise
@@ -165,6 +162,46 @@ def subir_zip(content: bytes, filename: Any, *, workdir: Path, max_bytes: int) -
         "n_grades": len(tarjeta.manifest["master_scale"]["grade_pd"]),
         "path": str(destino),
     }
+
+
+def _publicar(temporal: Path, destino: Path, huella: str) -> None:
+    """Deja la tarjeta validada en ``destino``; una carpeta previa sólo se reutiliza si es íntegra.
+
+    El nombre lleva la huella, pero no la demuestra: una carpeta a medias (sin ``bins.parquet``) o
+    con otro contenido no se reutiliza, se reemplaza por la que se acaba de validar (pasada 1 de
+    Codex sobre la capa B). Si otra subida de la misma tarjeta la publica entre tanto, se usa la
+    suya cuando es íntegra.
+    """
+    if _integra(destino, huella):
+        shutil.rmtree(temporal)
+        return
+    if destino.exists():
+        apartado = destino.with_name(f".{destino.name}.rota-{uuid.uuid4().hex[:8]}")
+        destino.rename(apartado)
+        shutil.rmtree(apartado, ignore_errors=True)
+    try:
+        temporal.rename(destino)
+    except OSError:
+        if not _integra(destino, huella):
+            raise
+        shutil.rmtree(temporal)
+
+
+def _integra(carpeta: Path, huella: str) -> bool:
+    """Dice si ``carpeta`` es una tarjeta monitoreable con exactamente esta huella."""
+    if not _completa(carpeta):
+        return False
+    from bayesrisk.guided.monitor import MonitorInputError, leer_tarjeta_monitoreable
+
+    try:
+        return leer_tarjeta_monitoreable(carpeta).bundle_hash == huella
+    except (MonitorInputError, OSError):
+        return False
+
+
+def _completa(carpeta: Path) -> bool:
+    """Los dos archivos de una tarjeta están (la lista no ofrece una carpeta a medias)."""
+    return all((carpeta / nombre).is_file() for nombre in _ARCHIVOS)
 
 
 def _entradas_de_la_tarjeta(archivo: zipfile.ZipFile, max_bytes: int) -> dict[str, Any]:

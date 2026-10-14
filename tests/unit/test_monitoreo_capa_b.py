@@ -398,3 +398,84 @@ def test_la_ficha_de_la_tarjeta_es_json_legible(entorno: dict[str, Any], tmp_pat
     assert ficha is not None
     assert json.loads((tmp_path / "tarjeta.json").read_text(encoding="utf-8")) == ficha
     assert ficha["name"] == "desarrollo" and ficha["n_grades"] >= 3
+
+
+# ──────────────────── 6. La pasada 1 de Codex sobre la capa B ────────────────────
+
+
+def test_el_informe_del_monitoreo_no_se_contradice(entorno: dict[str, Any]) -> None:
+    """El resumen ejecutivo, las conclusiones y las limitaciones hablan del monitoreo: no dicen
+    que la corrida no evaluó nada ni que construyó un scorecard."""
+    documento = _informe(entorno["raiz"] / "mon", "monitoring_report.html")
+    assert "Veredicto del monitoreo" in documento
+    assert "Las métricas clave no están disponibles" not in documento
+    assert "no evaluó desempeño, estabilidad ni calibración" not in documento
+    assert "construcción y evaluación del scorecard" not in documento
+    assert "El alcance de este informe es el monitoreo de un modelo en uso" in documento
+    assert "seguir usándolo, recalibrarlo o redesarrollarlo" in documento
+
+
+def test_una_carpeta_de_tarjeta_a_medias_no_se_reutiliza_ni_se_lista(
+    entorno: dict[str, Any], cliente: Any, tmp_path: Path
+) -> None:
+    from bayesrisk.ui.cards import listar
+
+    contenido = _zip(_archivos_de(entorno["ruta"]))
+    primera = _subir(cliente, "t.zip", contenido)
+    assert primera.status_code == 200, primera.text
+    carpeta = Path(primera.json()["path"])
+    (carpeta / "bins.parquet").unlink()
+    assert listar(tmp_path / "ui") == []
+    segunda = _subir(cliente, "t.zip", contenido)
+    assert segunda.status_code == 200, segunda.text
+    assert segunda.json()["path"] == str(carpeta)
+    assert FittedScorecardBundle.load(carpeta).bundle_hash == primera.json()["bundle_hash"]
+    assert [t["path"] for t in listar(tmp_path / "ui")] == [str(carpeta)]
+
+
+def test_la_pantalla_monitorea_un_panel_con_la_identidad_en_el_indice(
+    cliente: Any, tmp_path: Path, fake_binning_process: object
+) -> None:
+    """El parquet ORIGINAL —``loan_id`` en el índice, repetido entre periodos— corre por la
+    pantalla como corre por ``Monitor``: la misma regla de aplanado, el mismo ``config_hash`` y la
+    misma serie (antes el paso de datos lo rechazaba por el índice repetido)."""
+    del fake_binning_process
+    sc = Scorecard(
+        cartera().set_index("loan_id"),
+        target="bad_flag",
+        id="loan_id",
+        cohort="cohorte",
+        oot_cohorts=["2024Q2"],
+        name="dev-indice",
+        run_dir=tmp_path / "dev",
+    )
+    sc._echo = lambda _t: None
+    sc.run()
+    tarjeta = FittedScorecardBundle.from_study(sc.study)
+    datos = cartera(semilla=47).set_index("loan_id")
+    panel = pd.concat([datos, datos.loc[datos["cohorte"] == "2024Q2"].assign(cohorte="2024Q3")])
+    assert panel.index.has_duplicates
+    mon = Monitor(tarjeta, panel, period="cohorte", default="bad_flag", run_dir=tmp_path / "m")
+    mon._echo = lambda _t: None
+    mon.run()
+    assert mon.study.run_context.status == "done", mon.study.run_context.error
+    original = tmp_path / "panel.parquet"
+    panel.to_parquet(original)
+    subida = cliente.post(
+        "/api/upload",
+        files={"file": ("panel.parquet", original.read_bytes(), "application/octet-stream")},
+    )
+    assert subida.status_code == 200, subida.text
+    cargado = cliente.post("/api/config/from-yaml", json={"yaml": mon.to_yaml()})
+    assert cargado.status_code == 200, cargado.text
+    corrida = cliente.post(
+        "/api/run",
+        json={"config": cargado.json()["config"], "dataset_id": subida.json()["dataset_id"]},
+    )
+    assert corrida.status_code == 200, corrida.text
+    assert corrida.json()["status"] == "done", corrida.json()
+    resultados = cliente.get(f"/api/results/{corrida.json()['run_id']}").json()
+    assert resultados["lineage"]["config_hash"] == mon.config_hash
+    assert resultados["lineage"]["data_hash"] == mon.study.run_context.lineage.data_hash
+    etapas = {e["stage"]: e for e in resultados["summaries"]["stages"]}
+    assert etapas["monitoring"] == mon.summary("monitoring").to_dict()

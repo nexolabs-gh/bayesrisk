@@ -723,3 +723,15 @@ Base medida: `db1d638` (la 2.13.0 publicada). Ninguna precisión cambia un contr
    periodo— y su paso en la metodología con los umbrales que la card publica; el documento se
    titula «Informe de Monitoreo del Modelo». Las tablas completas del motor van al anexo de
    tablas, como en las demás familias.
+7. **Pasada 1 de Codex sobre la capa B** (`cd0f236`): un high y cuatro medium, reales y ninguno
+   contractual, corregidos con su test nacido rojo y su control negativo. Una subida lenta de una
+   tarjeta podía pisar la que la persona eligió después (al salir y volver a la sección, o al
+   escribir la ruta): la respuesta sólo escribe si el gesto sigue vigente y `monitoring.bundle` no
+   cambió entre tanto. Entrar a un trabajo tras correr otro conservaba sus etapas ocultas —tras un
+   scorecard, el monitoreo no podía arrancar—: el esqueleto del trabajo apaga ahora las secciones
+   del formulario que el trabajo no ofrece (también en IFRS 9). La pantalla mandaba un panel con la
+   identidad en el índice tal cual y el paso de datos lo rechazaba: aplica la misma regla de
+   aplanado que `Monitor` (una sola función), con el mismo `data_hash`. Una carpeta de tarjeta a
+   medias se reutilizaba y se listaba: se verifica antes de reutilizarse y la lista exige los dos
+   archivos. Y el resumen ejecutivo, las conclusiones y las limitaciones del informe del monitoreo
+   hablan del monitoreo, en vez de decir que la corrida no evaluó nada o que construyó un scorecard.

@@ -119,6 +119,31 @@ describe("jobSkeleton (elegir un trabajo siembra SU esqueleto · D-JOB-16)", () 
     expect(skeleton.survival).toBeNull()
   })
 
+  it("al venir de otro trabajo, apaga sus secciones: el monitoreo no hereda las del scorecard", () => {
+    // Pasada 1 de Codex sobre la capa B del SDD-33: tras correr un scorecard, entrar a «Monitorear
+    // un modelo en uso» conservaba `binning`, `model`… ocultas y con target en «no aplica» la
+    // corrida no arrancaba. Dos personas que llegan al mismo trabajo producen el mismo config.
+    const trasUnScorecard = {
+      ...vacio,
+      binning: { max_n_bins: 5 },
+      model: { stepwise: { enabled: true } },
+      master_scale: {},
+      repro: { seed: 7 },
+    }
+    const desde = jobSkeleton(trasUnScorecard, porId("monitoreo_modelo"), CATALOGO)
+    const directo = jobSkeleton(vacio, porId("monitoreo_modelo"), CATALOGO)
+    expect(desde.binning).toBeNull()
+    expect(desde.model).toBeNull()
+    expect(desde.master_scale).toBeNull()
+    expect(desde.survival).toBeNull()
+    // Lo que no es una sección del formulario queda como estaba.
+    expect(desde.repro).toEqual({ seed: 7 })
+    // Y las secciones del trabajo son las mismas que entrando directo.
+    for (const seccion of porId("monitoreo_modelo").sections) {
+      expect(desde[seccion]).toEqual(directo[seccion])
+    }
+  })
+
   it("NO trae dataset: el primer gesto sigue siendo traer el tuyo", () => {
     const skeleton = jobSkeleton(vacio, porId("scorecard_pd"), CATALOGO)
     expect(Object.keys(skeleton)).not.toContain("dataset_id")
@@ -168,10 +193,16 @@ describe("jobSkeleton (elegir un trabajo siembra SU esqueleto · D-JOB-16)", () 
     expect(jobSkeleton(traida, porId("scorecard_pd"), CATALOGO).governance).toBeNull()
   })
 
-  it("una latente que el trabajo no ofrece no se toca", () => {
+  it("una latente que el trabajo no ofrece no se siembra", () => {
+    // La guarda del paso de latentes: no escribe una clave para una sección que el trabajo no
+    // ofrece. (Hasta la capa B del SDD-33 este test pedía además que una sección ajena traída del
+    // config anterior «no se tocara»: ese era el defecto que la pasada 1 de Codex encontró —el
+    // trabajo heredaba etapas ocultas—, y desde entonces el primer paso las apaga.)
     const raro: Job = { ...porId("scorecard_pd"), latent_sections: ["survival"] }
-    const skeleton = jobSkeleton({ ...vacio, survival: { method: "km" } }, raro, CATALOGO)
-    expect(skeleton.survival).toEqual({ method: "km" })
+    const skeleton = jobSkeleton({ name: "nikodym-study", data: null }, raro, CATALOGO)
+    expect(Object.keys(skeleton)).not.toContain("survival")
+    const traida = jobSkeleton({ ...vacio, survival: { method: "km" } }, raro, CATALOGO)
+    expect(traida.survival).toBeNull()
   })
 })
 
