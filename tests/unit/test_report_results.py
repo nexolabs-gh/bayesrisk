@@ -144,6 +144,11 @@ def test_report_input_bundle_golden_copias_frozen_y_extra() -> None:
         # SDD-33 capa B: el cuerpo de «Veredicto y serie por periodo» del monitoreo, escrito por el
         # resumen de la etapa, aditivo con default vacío; sin monitoreo, el informe no cambia.
         "monitoring_body",
+        # SDD-34 capa B: el cuerpo de «Las corridas y su comparabilidad» y el de «La elección»,
+        # escritos por el resumen de la etapa, aditivos con default vacío; sin comparación, el
+        # informe no cambia.
+        "comparison_body",
+        "comparison_choice",
         # D-PAN-4: las columnas que el EDA perfiló como numéricas, aditivas con default vacío: sólo
         # sus tramos se reescriben con comparadores en es-CL.
         "eda_numeric_profiles",
@@ -156,6 +161,8 @@ def test_report_input_bundle_golden_copias_frozen_y_extra() -> None:
     assert bundle.ifrs9_extras == {}, "sin corrida el bundle no afirma escenarios ni PD"
     assert bundle.master_scale_body == (), "sin corrida el bundle no afirma ninguna escala"
     assert bundle.monitoring_body == (), "sin corrida el bundle no afirma ningún monitoreo"
+    assert bundle.comparison_body == (), "sin corrida el bundle no afirma ninguna comparación"
+    assert bundle.comparison_choice == (), "sin corrida el bundle no afirma ninguna elección"
     assert bundle.governance is None, "sin gobernanza declarada el bundle no afirma ninguna"
     assert bundle.pipeline_params == {}
     assert bundle.currency == "", "sin moneda declarada el bundle no afirma ninguna"

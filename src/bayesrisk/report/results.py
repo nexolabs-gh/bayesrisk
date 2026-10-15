@@ -215,6 +215,18 @@ class ReportInputBundle(_ReportBaseModel):
     con el notebook, la pantalla y el Excel (D-SIM-5). Aditivo (default vacío): sin monitoreo, el
     documento es byte a byte el de siempre.
     """
+    comparison_body: tuple[str, ...] = Field(default=())
+    """El cuerpo de «Las corridas y su comparabilidad» de la comparación (SDD-34, capa B).
+
+    La lectura y las alertas («Qué revisar») del resumen de la etapa «Comparación»: una sola
+    fuente con el notebook, la pantalla y el Excel (D-SIM-5). Aditivo (default vacío): sin
+    comparación, el documento es byte a byte el de siempre.
+    """
+    comparison_choice: tuple[str, ...] = Field(default=())
+    """El cuerpo de «La elección»: lo que la institución registró con su motivo, o que no lo hizo.
+
+    Aditivo (default vacío), como ``comparison_body``.
+    """
     eda_numeric_profiles: tuple[str, ...] = Field(default=())
     """Las columnas que el EDA perfiló como numéricas (D-PAN-4, CIFRAS-EN-PANTALLA).
 

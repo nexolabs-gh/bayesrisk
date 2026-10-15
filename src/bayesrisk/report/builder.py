@@ -38,6 +38,7 @@ from bayesrisk.report.document import (
     APPENDIX_TABLES_ID,
     CANONICAL_SECTION_ORDER,
     CHAPTER_SPECS,
+    COMPARISON_SECTIONS,
     CONTEXT_DOMAINS,
     EXECUTIVE_SUMMARY_ID,
     HL_GROUP_TABLE_PREFIX,
@@ -114,6 +115,9 @@ _CARD_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     # El monitoreo (SDD-33, capa B): su card activa el capítulo condicional «Monitoreo del modelo
     # en uso» (``ChapterSpec.requires_domain='monitoring'``). Opcional como las demás.
     ("monitoring", "card"),
+    # La comparación (SDD-34, capa B): su card activa el capítulo condicional «Comparación de
+    # modelos». Opcional como las demás.
+    ("comparison", "card"),
 )
 _CARD_KEY_BY_DOMAIN: Final[dict[str, str]] = dict(_CARD_ARTIFACTS)
 _RESULT_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (("validation", "result"),)
@@ -179,13 +183,30 @@ _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     ("monitoring", "periods"),
     ("monitoring", "grades_by_period"),
     ("monitoring", "variables_by_period"),
+    # La comparación (SDD-34, capa B): los artefactos agregados completos, para el anexo y para los
+    # dos gráficos (``comparison.models``). El cuerpo muestra las tablas del resumen.
+    ("comparison", "runs"),
+    ("comparison", "models"),
+    ("comparison", "tests"),
+    ("comparison", "samples"),
+    ("comparison", "variables"),
+    ("comparison", "provision"),
 )
 #: Las claves de la puntuación fuera del ajuste (enmienda PUNTUAR-POBLACION-TTD, D-TTD-2) se
 #: publican siempre, vacías cuando la corrida no tiene esas filas. Una tabla sin filas no es
 #: evidencia ni dato: no llega al informe, ni a sus exports, ni al anexo. Así el informe de una
 #: corrida sin filas fuera del ajuste queda idéntico al de antes.
 _OMITIDAS_SI_VACIAS: Final[frozenset[tuple[str, str]]] = frozenset(
-    {("scorecard", "out_of_model_score"), ("calibration", "out_of_model_calibrated_pd_frame")}
+    {
+        ("scorecard", "out_of_model_score"),
+        ("calibration", "out_of_model_calibrated_pd_frame"),
+        # Una comparación de scorecards no tiene provisión, y una de IFRS 9 no tiene pruebas,
+        # muestras ni variables: el paso las publica vacías con sus columnas (SDD-34, capa B).
+        ("comparison", "tests"),
+        ("comparison", "samples"),
+        ("comparison", "variables"),
+        ("comparison", "provision"),
+    }
 )
 _FIGURE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (("eda", "figures"),)
 _VALID_OUTPUT_FORMATS: Final[frozenset[str]] = frozenset(
@@ -207,6 +228,7 @@ _PARAM_DOMAINS: Final[tuple[str, ...]] = (
     "validation",
     "master_scale",
     "monitoring",
+    "comparison",
 )
 
 
@@ -239,6 +261,8 @@ class ReportBuilder:
         tables.update(tablas_escala)
         monitoring_body, tablas_monitoreo = _monitoreo(study)
         tables.update(tablas_monitoreo)
+        comparison_body, comparison_choice, tablas_comparacion = _comparacion(study)
+        tables.update(tablas_comparacion)
         tables.update(_serie_de_estabilidad(study))
         tables.update(_extract_card_dataframes(cards))
         figures = self._collect_figures(study)
@@ -272,6 +296,9 @@ class ReportBuilder:
             master_scale_body=master_scale_body,
             # SDD-33 capa B: el cuerpo del capítulo del monitoreo, desde su resumen.
             monitoring_body=monitoring_body,
+            # SDD-34 capa B: el cuerpo del capítulo de la comparación, desde su resumen.
+            comparison_body=comparison_body,
+            comparison_choice=comparison_choice,
         )
         return bundle.model_copy(update={"sections": self.build_sections(bundle)})
 
@@ -375,6 +402,8 @@ class ReportBuilder:
             return self._ifrs9_subsections(bundle, number)
         if spec.id == "monitoring":
             return self._monitoring_subsections(bundle, number)
+        if spec.id == "comparison":
+            return self._comparison_subsections(bundle, number)
         if spec.id == APPENDIX_PARAMETERS_ID:
             return self._domain_subsections(
                 spec.id,
@@ -494,6 +523,41 @@ class ReportBuilder:
                     level=2,
                     number=f"{number}.{len(sections) + 1}",
                     body=bundle.monitoring_body if hijo == "verdict" else (),
+                )
+            )
+        return tuple(sections)
+
+    def _comparison_subsections(
+        self,
+        bundle: ReportInputBundle,
+        number: str,
+    ) -> tuple[ReportSection, ...]:
+        """Las subsecciones de «Comparación de modelos» (SDD-34, capa B).
+
+        Cada una muestra las tablas que el resumen «Comparación» ya escribió
+        (``KEY_TABLES["comparison.<hijo>"]``), y las de discriminación y concentración su gráfico
+        (el renderer, por ``source_domain``). La primera lleva la lectura con qué revisar y la
+        última, la elección; las demás no se emiten si su tabla no se publicó.
+        """
+        sections: list[ReportSection] = []
+        cuerpos = {"reading": bundle.comparison_body, "choice": bundle.comparison_choice}
+        for hijo, (titulo, tablas) in COMPARISON_SECTIONS.items():
+            cuerpo = cuerpos.get(hijo, ())
+            if not cuerpo and not any(clave in bundle.tables for clave in tablas):
+                continue
+            sections.append(
+                ReportSection(
+                    id=domain_section_id("comparison", hijo),
+                    title=titulo,
+                    status="included",
+                    source_domain=f"comparison.{hijo}",
+                    source_key=None,
+                    payload={},
+                    metric_sections={},
+                    kind="data",
+                    level=2,
+                    number=f"{number}.{len(sections) + 1}",
+                    body=cuerpo,
                 )
             )
         return tuple(sections)
@@ -735,7 +799,11 @@ def _hay_pagina_ejecutiva(bundle: ReportInputBundle) -> bool:
         return False
     if any(domain in bundle.cards for domain in RESULT_DOMAINS):
         return True
-    return bundle.summary.get("family") in {_FAMILIA_CARTERA, _FAMILIA_MONITOREO}
+    return bundle.summary.get("family") in {
+        _FAMILIA_CARTERA,
+        _FAMILIA_MONITOREO,
+        _FAMILIA_COMPARACION,
+    }
 
 
 #: La familia de resúmenes de una provisión (``bayesrisk.guided.summaries.family_of``).
@@ -743,6 +811,8 @@ _FAMILIA_CARTERA: Final = "cartera"
 #: Y la de una corrida de monitoreo (SDD-33): su página dice «Veredicto» donde el scorecard dice
 #: «Validación técnica».
 _FAMILIA_MONITOREO: Final = "monitoreo"
+#: Y la de una comparación (SDD-34): su página dice la «Elección» de la institución y la lectura.
+_FAMILIA_COMPARACION: Final = "comparacion"
 
 
 def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]:
@@ -775,6 +845,10 @@ def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]
             "se buscan en su carpeta de destino, y el registro de auditoría deja constancia de "
             "cada uno que se escribió.",
         )
+    if chapter_id == EXECUTIVE_SUMMARY_ID and (bundle.summary or {}).get("family") == (
+        _FAMILIA_COMPARACION
+    ):
+        return prose.comparison_executive(bundle)
     if chapter_id == EXECUTIVE_SUMMARY_ID:
         return (
             "Lo que cuenta la corrida al terminar, con la misma fuente que la puerta guiada y la "
@@ -802,6 +876,8 @@ def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]
         return prose.ifrs9_intro(bundle)
     if chapter_id == "monitoring":
         return prose.monitoring_intro(bundle)
+    if chapter_id == "comparison":
+        return prose.comparison_intro(bundle)
     if chapter_id == "conclusions":
         return prose.conclusions_body(bundle)
     if chapter_id == "limitations":
@@ -839,6 +915,7 @@ def _run_summary(study: Study, config: ReportConfig) -> dict[str, Any]:
     """
     from bayesrisk.guided.summaries import (
         RESUMEN_FINAL_ROTULOS,
+        ROTULO_ELECCION,
         ROTULO_SUPUESTOS,
         ROTULO_VEREDICTO,
         SIN_ALERTAS,
@@ -871,6 +948,11 @@ def _run_summary(study: Study, config: ReportConfig) -> dict[str, Any]:
         # «Validación técnica»; el resto del molde es el mismo.
         payload["family"] = _FAMILIA_MONITOREO
         payload["labels"]["validation"] = ROTULO_VEREDICTO
+    elif family_of(study.config) == _FAMILIA_COMPARACION:
+        # Una comparación (SDD-34, capa B): la página dice la «Elección» de la institución donde
+        # el scorecard dice «Validación técnica»: la comparación no elige (D-CMP-6).
+        payload["family"] = _FAMILIA_COMPARACION
+        payload["labels"]["validation"] = ROTULO_ELECCION
     try:
         contexto = SummaryContext(
             project_dir=None,
@@ -1278,6 +1360,37 @@ def _monitoreo(study: Study) -> tuple[tuple[str, ...], dict[str, DataFrameLike]]
         for clave, columnas, filas in contenido["tables"]
     }
     return cuerpo, tablas
+
+
+def _comparacion(
+    study: Study,
+) -> tuple[tuple[str, ...], tuple[str, ...], dict[str, DataFrameLike]]:
+    """El cuerpo, la elección y las tablas del capítulo «Comparación de modelos» (SDD-34, capa B).
+
+    Los arma :func:`bayesrisk.guided.summaries.comparison_report_extras` (import perezoso): la
+    misma lectura, alertas y tablas que el resumen de la etapa, ya escritas. El informe no
+    recalcula nada. Las alertas se dicen como «Qué revisar». Sin comparación, nada.
+    """
+    if not study.artifacts.has("comparison", "card"):
+        return (), (), {}
+    from bayesrisk.guided.summaries import comparison_report_extras
+
+    contenido = comparison_report_extras(study)
+    if not contenido:
+        return (), (), {}
+    pd = importlib.import_module("pandas")
+    cuerpo = (
+        *(linea if linea.endswith(".") else f"{linea}." for linea in contenido["lines"]),
+        *(
+            f"Qué revisar: {alerta}" if alerta.endswith(".") else f"Qué revisar: {alerta}."
+            for alerta in contenido["alerts"]
+        ),
+    )
+    tablas: dict[str, DataFrameLike] = {
+        clave: cast(DataFrameLike, pd.DataFrame(filas, columns=columnas))
+        for clave, columnas, filas in contenido["tables"]
+    }
+    return cuerpo, tuple(contenido["choice"]), tablas
 
 
 def _serie_de_estabilidad(study: Study) -> dict[str, DataFrameLike]:

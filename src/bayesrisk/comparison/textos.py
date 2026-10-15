@@ -20,6 +20,7 @@ from bayesrisk.report.prose import _enumerar
 __all__ = [
     "MUESTRAS",
     "NIVELES",
+    "fuera_de_los_graficos",
     "lectura_ifrs9",
     "lectura_scorecard",
     "numero_en_palabras",
@@ -403,3 +404,53 @@ def lectura_ifrs9(
     if eleccion_texto:
         lineas.append(eleccion_texto)
     return tuple(f"{linea}." for linea in lineas if linea)
+
+
+#: La causa de un índice no evaluable (``concentration_reason`` del artefacto), en palabras.
+_CAUSAS_SIN_INDICE: Final[dict[str, str]] = {
+    "sin escala maestra": "sin escala maestra",
+    "un_tramo": "un solo tramo",
+    "sin_tramos": "sin tramos",
+    "sin_operaciones": "sin operaciones en la muestra",
+}
+
+
+def _nulo(valor: Any) -> bool:
+    """``None`` o ``NaN``: un artefacto de pandas guarda la cifra ausente como ``NaN``."""
+    return valor is None or (isinstance(valor, float) and valor != valor)
+
+
+def fuera_de_los_graficos(
+    modelos: Sequence[Mapping[str, Any]],
+) -> dict[str, tuple[tuple[str, str], ...]]:
+    """Los modelos que no entran a cada gráfico (SDD-34 §3.5, §8), con su razón en palabras.
+
+    La condición es la misma con que el paso decide quién entra a cada frontera: un modelo con
+    cifras de Desarrollo, sin discriminación evaluable o sin la segunda cifra del gráfico —el PSI
+    común con su banda, o el índice del BCE— queda fuera de ese gráfico. El gráfico los declara
+    bajo el eje: nunca los omite en silencio.
+    """
+    from bayesrisk.comparison.engine import ORDEN_DE_BANDA
+
+    salida: dict[str, list[tuple[str, str]]] = {"stability": [], "concentration": []}
+    for modelo in modelos:
+        nombre = str(modelo["name"])
+        if modelo.get("optimistic") is True:
+            comun: str | None = "sin OOT ni Holdout: cifras de Desarrollo"
+        elif _nulo(modelo.get("auc")):
+            muestra = MUESTRAS.get(str(modelo.get("evaluation_sample")), "su muestra")
+            comun = f"discriminación no evaluable en {muestra}"
+        else:
+            comun = None
+        if comun is not None:
+            salida["stability"].append((nombre, comun))
+            salida["concentration"].append((nombre, comun))
+            continue
+        if modelo.get("psi_common_band") not in ORDEN_DE_BANDA:
+            salida["stability"].append((nombre, "PSI común no evaluable"))
+        if _nulo(modelo.get("concentration_index")):
+            causa = modelo.get("concentration_reason")
+            salida["concentration"].append(
+                (nombre, _CAUSAS_SIN_INDICE.get(str(causa), "índice no evaluable"))
+            )
+    return {eje: tuple(lista) for eje, lista in salida.items()}

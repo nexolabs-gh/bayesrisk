@@ -9,8 +9,8 @@ por ningún otro**. La comparación no elige: la institución registra su elecci
 
 !!! warning "Experimental desde la 2.15.0"
     La comparación sale en la 2.15.0 por código —la puerta guiada y el config completo— y puede
-    crecer de forma aditiva. La pantalla, el capítulo del informe y el libro Excel llegan en la
-    versión siguiente, y con ellos entra a la garantía SemVer 2.x.
+    crecer de forma aditiva. El capítulo del informe y el libro Excel que se describen abajo llegan
+    en la versión siguiente con la pantalla, y con las tres puertas entra a la garantía SemVer 2.x.
 
 ## Lo que deja cada corrida
 
@@ -137,6 +137,25 @@ frontera —en provisiones, «más» no es «mejor»—. Los montos se restan s�
 misma con certeza: la misma cartera con las mismas columnas de monto, o la misma moneda declarada en
 las dos. Una moneda sin declarar no es «la misma»: si no, cada provisión se muestra por separado y
 la cobertura se compara en puntos.
+
+## El informe y el libro Excel
+
+La comparación escribe su informe en `reports/` —HTML, Word y la fuente editable—: el **«Informe de
+Comparación de Modelos»**, con una página ejecutiva que dice la lectura y la elección, y el capítulo
+«Comparación de modelos»: las corridas y su comparabilidad; la discriminación y la estabilidad, con
+el gráfico del AUC frente al PSI común y la tabla de pruebas pareadas; la concentración, con el
+gráfico del Gini frente al índice del BCE; las variables de cada modelo —en IFRS 9, la provisión por
+etapa—, y la elección. En cada gráfico los modelos de la frontera van rellenos y los superados,
+huecos; los que no entran —sin OOT ni Holdout, sin escala maestra— se declaran bajo el eje. En el
+notebook, `comp.summary("comparison")` muestra los mismos dos gráficos.
+
+```python
+comp.export_excel()
+```
+
+deja `excel/Comparación.xlsx`, un libro único: el resumen, los modelos, las pruebas pareadas, cada
+modelo en cada muestra, las variables —o la provisión por etapa—, las corridas y un índice. Son las
+tablas del mismo resumen que el notebook y el informe, celda a celda. Exige el extra `excel`.
 
 ## Lo que queda en la evidencia
 

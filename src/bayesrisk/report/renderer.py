@@ -40,6 +40,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal, TypeAlias, cast
 from pydantic import BaseModel
 
 from bayesrisk.report._manifest import (
+    COMPARISON_DOCUMENT_TITLE,
     DOCUMENT_TITLE,
     IFRS9_DOCUMENT_TITLE,
     MONITORING_DOCUMENT_TITLE,
@@ -572,12 +573,19 @@ def _is_monitoring_run(bundle: ReportInputBundle) -> bool:
     return "monitoring" in bundle.cards and "scorecard" not in bundle.cards
 
 
+def _is_comparison_run(bundle: ReportInputBundle) -> bool:
+    """Una corrida de comparación (SDD-34, capa B): comparó corridas y no corrió el scorecard."""
+    return "comparison" in bundle.cards and "scorecard" not in bundle.cards
+
+
 def _report_title(bundle: ReportInputBundle) -> str:
     """El título del artefacto según lo que la corrida ES."""
     if _is_ifrs9_run(bundle):
         return "Reporte IFRS 9 / ECL"
     if _is_monitoring_run(bundle):
         return "Reporte de monitoreo"
+    if _is_comparison_run(bundle):
+        return "Reporte de comparación de modelos"
     return REPORT_TITLE
 
 
@@ -587,6 +595,8 @@ def _cover_kicker(bundle: ReportInputBundle) -> str:
         return "Informe regulatorio — pérdida crediticia esperada"
     if _is_monitoring_run(bundle):
         return "Informe de monitoreo de modelos"
+    if _is_comparison_run(bundle):
+        return "Informe de comparación de modelos"
     return "Informe de validación de modelos"
 
 
@@ -602,6 +612,8 @@ def _document_title(bundle: ReportInputBundle) -> str:
         return IFRS9_DOCUMENT_TITLE
     if _is_monitoring_run(bundle):
         return MONITORING_DOCUMENT_TITLE
+    if _is_comparison_run(bundle):
+        return COMPARISON_DOCUMENT_TITLE
     if _PROVISIONING_CARDS & bundle.cards.keys():
         return PROVISIONING_DOCUMENT_TITLE
     return DOCUMENT_TITLE
@@ -632,6 +644,14 @@ def _exec_scope_note(bundle: ReportInputBundle) -> str:
             "periodo contra la referencia de Desarrollo que congeló su tarjeta—, con un veredicto "
             "por periodo. No vuelve a validar ni a construir el modelo. Todos los valores "
             "provienen de la corrida trazada en la portada: no se completan con supuestos."
+        )
+    if _is_comparison_run(bundle):
+        return (
+            "Alcance: comparación de modelos ya corridos —sus cifras lado a lado, si se midieron "
+            "sobre las mismas operaciones, qué diferencias son reales y qué modelos no quedan "
+            "superados—. No vuelve a correr, validar ni construir ningún modelo, y no elige: la "
+            "elección es de la institución. Todos los valores provienen de los resúmenes de las "
+            "corridas trazadas en la portada: no se completan con supuestos."
         )
     if _is_ifrs9_run(bundle):
         return (
@@ -1221,6 +1241,9 @@ _CHART_TITLES: Final[dict[str, str]] = {
     "coefficients": "Coeficientes del modelo (β, IC 95 %)",
     "stability": "Estabilidad PSI/CSI por comparación",
     "reliability": "Curva de calibración (confiabilidad) por partición",
+    # SDD-34 capa B: los dos gráficos de la comparación, con el título de su única fuente.
+    "frontier_stability": "Discriminación y estabilidad: AUC frente a PSI común",
+    "frontier_concentration": "Discriminación y concentración: Gini frente al índice del BCE",
 }
 
 
@@ -1337,6 +1360,39 @@ def _chart_reliability(charts: Any, bundle: ReportInputBundle, fmt: ChartFormat)
     )
 
 
+def _chart_frontier(
+    charts: Any, bundle: ReportInputBundle, fmt: ChartFormat, eje: str
+) -> str | bytes | None:
+    """Un gráfico de la comparación desde ``comparison.models`` y su card (SDD-34, capa B).
+
+    La misma función que el resumen del notebook (``charts.comparison_charts``): el SVG del
+    informe es el del ``_repr_html_``. Sin la tabla, sin la card, en IFRS 9 o sin ningún modelo
+    dibujable, nada: es la omisión prescrita, no una degradación.
+    """
+    modelos = bundle.tables.get("comparison.models")
+    card = bundle.cards.get("comparison")
+    if modelos is None or not isinstance(card, Mapping) or card.get("family") != "scorecard":
+        return None
+    for nombre, _titulo, imagen in charts.comparison_charts(modelos, card, fmt=fmt):
+        if nombre == eje:
+            return cast("str | bytes", imagen)
+    return None
+
+
+def _chart_frontier_stability(
+    charts: Any, bundle: ReportInputBundle, fmt: ChartFormat
+) -> str | bytes | None:
+    """AUC frente a PSI común, con la frontera marcada (SDD-34 §6.3)."""
+    return _chart_frontier(charts, bundle, fmt, "stability")
+
+
+def _chart_frontier_concentration(
+    charts: Any, bundle: ReportInputBundle, fmt: ChartFormat
+) -> str | bytes | None:
+    """Gini frente al índice del BCE, con la frontera marcada (SDD-34 §6.3)."""
+    return _chart_frontier(charts, bundle, fmt, "concentration")
+
+
 # Mapeo sección → gráficos (nombre estable + builder). El nombre alimenta el ``id`` HTML del slot.
 _CHART_BUILDERS: Final[
     dict[
@@ -1352,6 +1408,9 @@ _CHART_BUILDERS: Final[
     "model": (("coefficients", _chart_coefficients),),
     "stability": (("stability", _chart_stability),),
     "calibration": (("reliability", _chart_reliability),),
+    # SDD-34 capa B: cada gráfico de la comparación en su subsección del capítulo.
+    "comparison.discrimination": (("frontier_stability", _chart_frontier_stability),),
+    "comparison.concentration": (("frontier_concentration", _chart_frontier_concentration),),
 }
 
 

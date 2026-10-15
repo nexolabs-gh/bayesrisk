@@ -617,6 +617,8 @@ def methodology_body(bundle: ReportInputBundle, domain: str) -> tuple[str, ...]:
         return _methodology_provisioning_ifrs9(bundle)
     if domain == "monitoring":
         return _methodology_monitoring(bundle)
+    if domain == "comparison":
+        return _methodology_comparison(bundle)
     return ()
 
 
@@ -664,6 +666,68 @@ def _methodology_monitoring(bundle: ReportInputBundle) -> tuple[str, ...]:
         "rojo aislado o si sólo una prueba de discriminación está en rojo; y sin acción si todo "
         "lo evaluable está en verde. Lo que no se puede evaluar no cuenta como verde, y un periodo "
         "sin desenlace nunca es «sin acción». Los umbrales son fijos: no se configuran.",
+    )
+
+
+def _methodology_comparison(bundle: ReportInputBundle) -> tuple[str, ...]:
+    """Cómo se comparan los modelos (SDD-34, capa B): muestra, huellas, prueba y frontera.
+
+    El corte de la prueba y la receta del PSI común salen de la card de la corrida
+    (``constants``), no de este texto: son constantes del motor (§5.2) y el informe las nombra.
+    """
+    card = _card(bundle, "comparison")
+    if card is None:
+        return ()
+    if card.get("family") == "ifrs9":
+        return (
+            "Cada provisión se lee del resumen comparable que su corrida dejó al terminar, sin "
+            "volver a calcularla. Dos provisiones se comparan sobre la misma cartera cuando "
+            "coinciden la huella de la cartera, la fecha de corte y la moneda del informe; si no, "
+            "la comparación lo avisa y es orientativa.",
+            "Por etapa —1, 2, 3 y el total— se ponen lado a lado las operaciones, la exposición, "
+            "la ECL y la cobertura y, contra la referencia —la primera corrida—, la diferencia de "
+            "ECL en monto y en porcentaje. Los montos se restan sólo en la misma unidad: por "
+            "construcción (la misma cartera y las mismas columnas de monto) o por declaración (la "
+            "misma moneda); si no, cada provisión se muestra por separado y se compara la "
+            "cobertura, en puntos.",
+            "En provisiones, más no es mejor: no hay gráficos ni frontera, y la elección es de la "
+            "institución.",
+        )
+    constantes = _mapping(card.get("constants"))
+    alfa = _num(constantes.get("delong_alpha"), decimals=2)
+    receta = _mapping(constantes.get("psi_recipe"))
+    tramos = _miles(int(_float(receta.get("bins")) or 0))
+    cortes = _sequence(receta.get("thresholds"))
+    revisar = corte(float(cortes[0])) if cortes else "—"
+    redesarrollar = corte(float(cortes[1])) if len(cortes) > 1 else "—"
+    return (
+        "Cada modelo se lee del resumen comparable que su corrida dejó al terminar, sin volver a "
+        "correrlo, y se compara en su muestra de evaluación: la OOT si la corrida la tiene; si "
+        "no, el Holdout. Un modelo sin ninguna de las dos muestra sus cifras de Desarrollo, "
+        "optimistas, y queda fuera de los gráficos y de la frontera.",
+        "La comparación es justa sólo sobre las mismas operaciones. Con la huella de la cartera "
+        "antes de etiquetar y particionar, y las de las filas evaluadas y su desenlace, cada "
+        "modelo queda en uno de tres niveles contra la referencia: la misma muestra evaluada, la "
+        "misma cartera con otra muestra u otra cartera. Nunca se bloquea: se avisa. Dos corridas "
+        "con la misma huella computacional —las reglas, los coeficientes, el escalamiento, la "
+        "calibración y los tramos con que puntúan— son el mismo modelo, lo diga o no su "
+        "configuración.",
+        "La discriminación se compara con la prueba de DeLong pareada, sólo entre modelos "
+        f"evaluados sobre la misma muestra: dos modelos empatan si no rechaza la igualdad (p ≥ "
+        f"{alfa}). Sin la misma muestra no hay prueba y se comparan las cifras, declarado; con N "
+        "modelos se hacen N(N-1)/2 pruebas, sin corrección por multiplicidad. La estabilidad se "
+        "compara por la banda de un PSI común, medido con la misma receta en todos: "
+        f"{tramos} tramos por cuantiles de Desarrollo, «Revisar» desde {revisar} y "
+        f"«Redesarrollar» desde {redesarrollar}. La concentración de los tramos de la escala "
+        "maestra, con el índice de Herfindahl normalizado del Banco Central Europeo, "
+        "1 + ln(HHI)/ln(K), por número de operaciones: 0 si los tramos pesan igual y 1 si todo "
+        "cae en uno, sin umbral.",
+        "Un modelo queda superado si otro es al menos igual de bueno en las dos cifras de un "
+        "gráfico y mejor en una; la frontera es el núcleo de esa relación: sale sólo el modelo "
+        "al que supera otro que está en la frontera. Es lo único que la comparación concluye. "
+        "Elegir dentro "
+        "de la frontera es pesar la discriminación contra la estabilidad o la concentración, y "
+        "esa elección la registra la institución con su motivo.",
     )
 
 
@@ -2636,6 +2700,60 @@ def monitoring_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
         f"«{columna}», {alcance}.",
         "El veredicto es la lectura del motor con umbrales fijos; la decisión sobre el modelo "
         "—seguir usándolo, recalibrarlo o redesarrollarlo— la firma la institución.",
+    )
+
+
+def comparison_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
+    """Titular del capítulo de la comparación (SDD-34, capa B): qué se comparó y contra qué.
+
+    La lectura, las tablas y los gráficos los dicen las subsecciones, desde el resumen de la
+    etapa; aquí sólo lo que la card trae para situarlos.
+    """
+    card = _card(bundle, "comparison")
+    if card is None:
+        return ()
+    nombres = [str(nombre) for nombre in _sequence(card.get("names"))]
+    if not nombres:
+        return ()
+    from bayesrisk.comparison.textos import numero_en_palabras
+
+    scorecard = card.get("family") == "scorecard"
+    que = "modelos de scorecard ya corridos" if scorecard else "provisiones IFRS 9 ya calculadas"
+    return (
+        f"Este capítulo pone lado a lado {numero_en_palabras(len(nombres))} {que} "
+        f"—{_enumerar(nombres)}—, sin volver a correr nada, desde el resumen comparable que cada "
+        f"corrida dejó al terminar. La referencia es {nombres[0]}, la primera: contra ella se "
+        "miden la comparabilidad y las diferencias.",
+        (
+            "Cada subsección muestra las tablas del mismo resumen que la puerta guiada y el libro "
+            "Comparación.xlsx; los modelos que no entran a un gráfico se declaran bajo él."
+            if scorecard
+            else "Cada subsección muestra las tablas del mismo resumen que la puerta guiada y el "
+            "libro Comparación.xlsx."
+        ),
+        "La comparación no elige: dice qué modelos no quedan superados, y la elección, con su "
+        "motivo, es de la institución.",
+    )
+
+
+def comparison_executive(bundle: ReportInputBundle) -> tuple[str, ...]:
+    """La página ejecutiva de una comparación (SDD-34, capa B): qué es y su lectura.
+
+    La lectura es la de la card —la misma del resumen «Comparación», la pantalla y el Excel—; la
+    elección, las cifras clave, qué revisar y los archivos los pone el resumen final debajo.
+    """
+    card = _card(bundle, "comparison")
+    lectura = (
+        tuple(str(linea) for linea in _sequence(card.get("reading"))) if card is not None else ()
+    )
+    return (
+        "Lo que cuenta la comparación al terminar, con la misma fuente que la puerta guiada: el "
+        "estado de la ejecución, la elección de la institución, las cifras clave, qué revisar y "
+        "dónde queda cada archivo. Primero, su lectura:",
+        *(linea if linea.endswith(".") else f"{linea}." for linea in lectura),
+        "Las rutas son las que el informe escribió al generarse: si la corrida se copia o se "
+        "archiva después, los archivos se buscan en su carpeta de destino, y el registro de "
+        "auditoría deja constancia de cada uno que se escribió.",
     )
 
 

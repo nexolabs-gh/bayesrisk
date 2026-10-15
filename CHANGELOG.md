@@ -7,6 +7,27 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Añadido
+
+- **La comparación de modelos en el informe y en Excel.** La corrida de `bayesrisk.Comparison`
+  escribe el «Informe de Comparación de Modelos»: una página ejecutiva con la lectura y la
+  elección de la institución, y el capítulo «Comparación de modelos» con las corridas y su
+  comparabilidad, la discriminación y la estabilidad (el gráfico del AUC frente al PSI común y la
+  tabla de pruebas pareadas), la concentración (el gráfico del Gini frente al índice del BCE), las
+  variables de cada modelo —o, en IFRS 9, la provisión por etapa— y la elección. En los gráficos,
+  la frontera va marcada y los modelos que no entran se declaran bajo el eje; el resumen
+  `comp.summary("comparison")` los muestra también en el notebook, con el mismo SVG.
+  `comp.export_excel()` deja `excel/Comparación.xlsx`, un libro único con las tablas del mismo
+  resumen. La comparación sigue experimental: la pantalla llega con la versión siguiente.
+
+### Cambiado
+
+- En la tabla de variables de la comparación, cada celda dice primero el IV y después el signo
+  del coeficiente («IV 0,164, β -»): una celda que empezaba por el signo la planilla la protegía
+  como fórmula.
+
 ## [2.15.0] — 2026-10-14
 
 ### Añadido

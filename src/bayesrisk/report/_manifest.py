@@ -23,6 +23,10 @@ MONITORING_DOCUMENT_TITLE: Final = "Informe de Monitoreo del Modelo"
 """Título del documento de una corrida de monitoreo (SDD-33, capa B): mide un modelo en uso, no lo
 valida ni lo construye, y titularla «Validación de Scorecard» describiría otro documento."""
 
+COMPARISON_DOCUMENT_TITLE: Final = "Informe de Comparación de Modelos"
+"""Título del documento de una corrida de comparación (SDD-34, capa B): pone modelos lado a lado y
+no valida ni construye ninguno, así que «Validación de Scorecard» describiría otro documento."""
+
 PROVISIONING_DOCUMENT_TITLE: Final = "Informe de Provisiones y Validación de Scorecard"
 """Título cuando la corrida calculó scorecard **y** provisiones. El caso IFRS 9 puro ya tenía su
 título, pero una corrida de provisiones que además corre el scorecard que las alimenta —el preset

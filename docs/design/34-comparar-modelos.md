@@ -881,3 +881,53 @@ el repo privado (`evidencia/s49/`: `humo_comparacion.py`, `humo_puerta.py`, `hum
     prueba—; el código ya lo hacía (sin AUC no hay componentes de DeLong ni frontera, y la lectura
     lo dice), y queda su test. Cambiarlo a «la primera muestra evaluable» sería otra regla de §3.2:
     no se programa sin decisión.
+
+## 15. Lo que el código precisó (capa B, parte 1)
+
+Implementada en S50 (2026-10-14) sobre la 2.15.0: el informe, los dos gráficos, el `_repr_html_` del
+resumen y `Comparación.xlsx`, todo por código; la pantalla, la etapa estable y la 2.16.0 son la
+parte 2. Nada de lo que sigue cambia una decisión de §12; la evidencia está en el repo privado
+(`evidencia/s50/`).
+
+1. **Una sola fuente para los gráficos.** `report.charts.comparison_charts(models, card)` los arma
+   desde el artefacto `("comparison", "models")` y la card de la etapa —los cortes de banda son los
+   de la receta común que la card publica—, y la llaman el resumen del notebook y el informe: el SVG
+   del `_repr_html_` es el del HTML byte a byte (test). El HTML del informe recorta los blancos al
+   final de línea, así que la función los recorta también. El resumen los lleva en un campo nuevo,
+   `StageSummary.charts`, fuera del `repr`, del texto y de `to_dict`: ninguna otra etapa cambia su
+   serialización. Sin `matplotlib`, el resumen sale sin gráficos; el informe ya degradaba igual.
+2. **Qué se dibuja.** Un punto por modelo que entró a la frontera de ese gráfico: los de la frontera,
+   rellenos; los superados, huecos; la referencia lo dice en su rótulo. Quién queda fuera lo decide
+   `comparison.textos.fuera_de_los_graficos`, con la misma condición con que el paso elige quién
+   entra a cada frontera (sin OOT ni Holdout; sin discriminación evaluable; sin PSI común con banda
+   o sin índice), y la razón se escribe bajo el eje. Los modelos que caen casi en el mismo punto (3 %
+   del ancho y 4 % del alto) comparten un rótulo —el caso típico es el mismo modelo con otro config,
+   que daba nombres encimados—, y la leyenda va bajo el eje, donde no tapa puntos. En el de
+   estabilidad, las líneas de «Revisar» y «Redesarrollar» que caen en el rango. Deterministas en el
+   mismo proceso y en otro con otro `PYTHONHASHSEED` (test); el Word los lleva en PNG.
+3. **El capítulo.** «Comparación de modelos», condicional a la card de la etapa, con seis
+   subsecciones: las corridas y su comparabilidad (la lectura y «Qué revisar» como cuerpo), la
+   discriminación y la estabilidad (gráfico, tabla y pruebas pareadas), la concentración (gráfico y
+   tabla), las variables, la provisión por etapa (IFRS 9) y la elección. Una subsección sin tabla no
+   se emite, salvo la primera y la última, que tienen texto. Las tablas del cuerpo son las del
+   resumen: la de modelos se reparte por columnas entre discriminación y concentración, con las
+   mismas celdas (test); los artefactos completos van al anexo de tablas, y los vacíos —la
+   provisión de una comparación de scorecards, las pruebas de una de IFRS 9— no. La metodología gana
+   «Cómo se comparan los modelos», con el corte de la prueba y la receta del PSI leídos de la card.
+4. **La página ejecutiva** dice la lectura (la de la card) y, donde el scorecard dice «Validación
+   técnica», la «Elección». El título es «Informe de Comparación de Modelos».
+5. **El resumen gana dos tablas**, «Muestras: cada modelo en cada muestra» y «Corridas y su
+   comparabilidad» (versión, nivel, el mismo modelo y las dos huellas, recortadas a 16 caracteres):
+   el informe y el Excel las leen de ahí. Y la celda de la tabla de variables dice primero el IV y
+   después el signo («IV 0,164, β -»): empezar por «-» hacía que la planilla la protegiera como
+   fórmula («'- IV…»).
+6. **`Comparación.xlsx`**: Resumen, Modelos, Pruebas, Muestras, Variables —o Provisión por
+   etapa—, **Corridas** e Índice. Corridas no estaba en la lista de §6.3; entra porque la tabla ya
+   está en el resumen para el informe. Como `Monitoreo.xlsx`, es un libro único: sin libros por
+   etapa ni de decisiones (la elección está en el resumen y en la lectura). Una hoja sin filas no se
+   escribe.
+7. **La puerta guiada declara `report`** (HTML, Word y la fuente editable; el PDF si WeasyPrint
+   está): `report` es INFRA, así que el `config_hash` es el de la capa A (test).
+8. **Un defecto de la capa A, de paso**: la alerta «La discriminación de X no es evaluable en …» no
+   salía nunca cuando otro modelo sí tenía AUC, porque el artefacto guarda el AUC ausente como
+   `NaN` y la alerta preguntaba `is None`. Corregida, con su test.

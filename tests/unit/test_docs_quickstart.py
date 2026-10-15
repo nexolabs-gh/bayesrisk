@@ -339,3 +339,6 @@ def test_la_guia_de_la_comparacion_se_ejecuta_de_corrido(
     assert comp.names == ("consumo_v01", "consumo_v02")
     assert comp.study.artifacts.get("comparison", "card").chosen == "consumo_v02"
     assert (tmp_path / "bayesrisk-runs" / "consumo_v02" / "run" / "comparable.json").is_file()
+    # SDD-34 capa B: la puerta declara el informe y la corrida lo escribe con su capítulo.
+    informe = tmp_path / "bayesrisk-runs" / "comparacion" / "reports" / "comparison_report.html"
+    assert "Informe de Comparación de Modelos" in informe.read_text(encoding="utf-8")

@@ -381,6 +381,11 @@ class StageSummary:
     extra_tables: tuple[tuple[str, pd.DataFrame, Mapping[str, _Kind]], ...] = field(
         default=(), repr=False
     )
+    #: Los gráficos de la etapa, cada uno con su título y su SVG (SDD-34 §6.3: el resumen
+    #: «Comparación» lleva los dos de la frontera, el mismo SVG del informe). Sólo el notebook
+    #: los pinta: quedan fuera del ``repr``, del texto y de ``to_dict``, así que una etapa sin
+    #: gráficos —todas las demás— se serializa exactamente igual.
+    charts: tuple[tuple[str, str], ...] = field(default=(), repr=False)
 
     def text(self, *, with_table: bool = True) -> str:
         """El resumen como texto para la consola."""
@@ -416,6 +421,8 @@ class StageSummary:
             partes.append("<ul>")
             partes.extend(f"<li>⚠ {html.escape(alerta)}</li>" for alerta in self.alerts)
             partes.append("</ul>")
+        for _titulo, svg in self.charts:
+            partes.append(f'<figure class="bayesrisk-chart">{svg}</figure>')
         if self.table is not None and not self.table.empty:
             partes.append(_formatear(self.table, self.formats).to_html(index=False, border=0))
         for titulo, tabla, formatos in self.extra_tables:
@@ -4448,6 +4455,17 @@ def _alertas_del_monitoreo(card: Mapping[str, Any]) -> list[str]:
 TITULO_VARIABLES_COMPARADAS: Final = "Variables: signo e IV de Desarrollo en cada modelo"
 TITULO_PRUEBAS_PAREADAS: Final = "Pruebas de DeLong pareadas entre modelos"
 TITULO_PROVISION_POR_ETAPA: Final = "Provisión por etapa contra la referencia"
+TITULO_CORRIDAS_COMPARADAS: Final = "Corridas y su comparabilidad"
+TITULO_MUESTRAS_COMPARADAS: Final = "Muestras: cada modelo en cada muestra"
+#: El estado de una muestra en el resumen comparable (el de ``performance``).
+_ESTADOS_DE_MUESTRA: Final[dict[str, str]] = {"ok": "evaluable", "not_evaluable": "no evaluable"}
+_FORMATOS_MUESTRAS: Final[dict[str, _Kind]] = {
+    "Operaciones": "int",
+    "Malos": "int",
+    "AUC": "num3",
+    "Gini": "num3",
+    "KS": "num3",
+}
 #: Lo que dice cada resultado de una prueba pareada (SDD-34 §3.5).
 _RESULTADOS_DE_PRUEBA: Final[dict[str, str]] = {
     "tie": "Empatan",
@@ -4540,9 +4558,11 @@ def _tabla_de_variables_comparadas(variables: pd.DataFrame, nombres: Sequence[st
                 fila[nombre] = "—"
                 continue
             marca = "" if datos["sign_ok"] is not False else " (signo contrario)"
-            fila[nombre] = (
-                f"{datos['sign'] or ''} IV {_cifra(datos['iv_development'], decimales=3)}{marca}"
-            )
+            # El IV primero y el signo después: una celda que empieza por «-» o «+» la protege
+            # la planilla como fórmula («'- IV…» en Comparación.xlsx).
+            signo = datos["sign"] if datos["sign"] in {"+", "-"} else None
+            iv = f"IV {_cifra(datos['iv_development'], decimales=3)}"
+            fila[nombre] = f"{iv}, β {signo}{marca}" if signo else f"{iv}{marca}"
         filas.append(fila)
     return pd.DataFrame(filas)
 
@@ -4586,6 +4606,74 @@ def _tabla_de_provision_comparada(provision: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _tabla_de_muestras_comparadas(muestras: pd.DataFrame) -> pd.DataFrame:
+    """Cada modelo en cada una de sus muestras: operaciones, malos y discriminación (§6.2)."""
+    return pd.DataFrame(
+        [
+            {
+                "Modelo": fila["model"],
+                "Muestra": _partition_label(str(fila["sample"])),
+                "Operaciones": _int(fila["n"]),
+                "Malos": _int(fila["n_bad"]),
+                "AUC": _float(fila["auc"]),
+                "Gini": _float(fila["gini"]),
+                "KS": _float(fila["ks"]),
+                "Estado": _ESTADOS_DE_MUESTRA.get(str(fila["status"]), str(fila["status"])),
+            }
+            for fila in muestras.to_dict(orient="records")
+        ]
+    )
+
+
+def _corridas_comparadas(study: Study) -> list[tuple[str, pd.DataFrame, Mapping[str, _Kind]]]:
+    """Las corridas comparadas: versión, comparabilidad, el mismo modelo y sus huellas (§3.3)."""
+    from bayesrisk.comparison.textos import NIVELES
+
+    corridas = _artifact(study, "comparison", "runs")
+    if not isinstance(corridas, pd.DataFrame) or corridas.empty:
+        return []
+
+    def _texto(valor: Any) -> str | None:
+        return (
+            None if valor is None or (isinstance(valor, float) and valor != valor) else str(valor)
+        )
+
+    tabla = pd.DataFrame(
+        [
+            {
+                "Corrida": fila["name"],
+                "Versión": _texto(fila["bayesrisk"]) or "—",
+                "Comparabilidad": NIVELES.get(str(fila["level"]), str(fila["level"])),
+                "El mismo modelo que": _texto(fila["same_as"]) or "—",
+                "Huella del config": (_texto(fila["config_hash"]) or "—")[:16],
+                "Huella del resumen": str(fila["summary_hash"])[:16],
+            }
+            for fila in corridas.to_dict(orient="records")
+        ]
+    )
+    return [(TITULO_CORRIDAS_COMPARADAS, tabla, {})]
+
+
+def _graficos_de_la_comparacion(
+    card: Mapping[str, Any], modelos: pd.DataFrame
+) -> tuple[tuple[str, str], ...]:
+    """Los dos gráficos de la frontera como SVG, los mismos del informe (SDD-34 §6.3).
+
+    Los arma :func:`bayesrisk.report.charts.comparison_charts`, la única fuente que también usa el
+    informe. Sin ``matplotlib`` (el extra ``report``) el resumen sale sin gráficos: las cifras y la
+    frontera siguen en la tabla de modelos.
+    """
+    from bayesrisk.report.exceptions import ReportDependencyError
+
+    try:
+        from bayesrisk.report.charts import comparison_charts
+
+        graficos = comparison_charts(modelos, card, fmt="svg")
+    except ReportDependencyError:
+        return ()
+    return tuple((titulo, str(imagen)) for _eje, titulo, imagen in graficos)
+
+
 def _alertas_de_la_comparacion(card: Mapping[str, Any], modelos: pd.DataFrame) -> list[str]:
     """Lo que la persona tiene que revisar antes de leer la frontera (§3.3, §3.5, §8)."""
     from bayesrisk.comparison.textos import MUESTRAS
@@ -4613,7 +4701,9 @@ def _alertas_de_la_comparacion(card: Mapping[str, Any], modelos: pd.DataFrame) -
             alertas.append(
                 f"{nombre} midió su PSI con otra receta: la frontera usa el PSI común de fábrica."
             )
-        if fila["auc"] is None:
+        # El artefacto guarda el AUC ausente como NaN cuando otro modelo sí lo tiene: `is None`
+        # no lo veía y la alerta no salía nunca (S50).
+        if _float(fila["auc"]) is None:
             muestra = MUESTRAS.get(str(fila["evaluation_sample"]), "su muestra")
             alertas.append(f"La discriminación de {nombre} no es evaluable en {muestra}.")
     return alertas
@@ -4654,6 +4744,7 @@ def _resumen_comparison(study: Study, context: SummaryContext) -> StageSummary:
                     _FORMATOS_PROVISION,
                 )
             )
+        extra.extend(_corridas_comparadas(study))
         return StageSummary(
             stage="comparison",
             label=rotulo,
@@ -4677,6 +4768,16 @@ def _resumen_comparison(study: Study, context: SummaryContext) -> StageSummary:
         extra.append(
             (TITULO_PRUEBAS_PAREADAS, _tabla_de_pruebas_pareadas(pruebas), _FORMATOS_PRUEBAS)
         )
+    muestras = _artifact(study, "comparison", "samples")
+    if isinstance(muestras, pd.DataFrame) and not muestras.empty:
+        extra.append(
+            (
+                TITULO_MUESTRAS_COMPARADAS,
+                _tabla_de_muestras_comparadas(muestras),
+                _FORMATOS_MUESTRAS,
+            )
+        )
+    extra.extend(_corridas_comparadas(study))
     return StageSummary(
         stage="comparison",
         label=rotulo,
@@ -4685,7 +4786,106 @@ def _resumen_comparison(study: Study, context: SummaryContext) -> StageSummary:
         table=_tabla_de_modelos(modelos),
         formats=_FORMATOS_MODELOS,
         extra_tables=tuple(extra),
+        charts=_graficos_de_la_comparacion(card, modelos),
     )
+
+
+#: Las columnas de la tabla de modelos que el informe muestra en cada subsección (SDD-34 §6.3):
+#: la misma tabla del resumen, repartida por columnas, con las mismas celdas.
+_COLUMNAS_DISCRIMINACION: Final[tuple[str, ...]] = (
+    "Modelo",
+    "Muestra",
+    "AUC",
+    "Gini",
+    "KS",
+    "PSI común",
+    "Banda",
+    "PSI propio",
+    "Variables",
+    "Validación",
+    "Frontera: AUC y PSI",
+)
+_COLUMNAS_CONCENTRACION: Final[tuple[str, ...]] = (
+    "Modelo",
+    "Gini",
+    "Índice BCE",
+    "Tramos",
+    "Frontera: Gini e índice",
+)
+
+
+def _lineas_de_la_eleccion(card: Mapping[str, Any]) -> list[str]:
+    """La elección de la institución con su motivo, o que no la registró (D-CMP-6)."""
+    if card.get("chosen"):
+        return [
+            f"La institución eligió {card['chosen']}, con este motivo: "
+            f"«{card.get('chosen_reason') or ''}».",
+            "La elección queda en el registro de auditoría con su autor y su motivo, atada a la "
+            "huella del resumen de esa corrida: si la corrida se reemplaza o su resumen cambia, "
+            "la elección queda sin efecto y el resumen lo dice.",
+        ]
+    return [
+        "La institución no registró una elección. La comparación no elige: muestra qué modelos "
+        "no quedan superados, y pesar la discriminación contra la estabilidad o la concentración "
+        "es de la institución, que registra su elección con su motivo."
+    ]
+
+
+def comparison_report_extras(study: Study) -> dict[str, Any]:
+    """Lo que el informe cuenta de la comparación (SDD-34, capa B).
+
+    **Una sola fuente** (D-SIM-5): la lectura, las alertas y las tablas del resumen de la etapa
+    «Comparación», ya escritas como las lee una persona, con las claves del informe de
+    :data:`bayesrisk.report.document.COMPARISON_SECTIONS`. La tabla de modelos se reparte entre
+    «Discriminación y estabilidad» y «Concentración» por columnas: las mismas celdas. Trae
+    ``lines``, ``alerts``, ``choice`` y ``tables`` (``(clave, columnas, filas)``). Sin la etapa,
+    ``{}``.
+    """
+    from bayesrisk.report.document import (
+        COMPARISON_CONCENTRATION_TABLE,
+        COMPARISON_MODELS_TABLE,
+        COMPARISON_PROVISION_TABLE,
+        COMPARISON_PROVISIONS_TABLE,
+        COMPARISON_RUNS_TABLE,
+        COMPARISON_TESTS_TABLE,
+        COMPARISON_VARIABLES_TABLE,
+    )
+
+    card = _card(study, "comparison", "card")
+    if card is None:
+        return {}
+    contexto = SummaryContext(project_dir=None, run_dir=None, source_label="", partition_label="")
+    resumen = _resumen_comparison(study, contexto)
+    tablas: list[tuple[str, dict[str, Any] | None]] = []
+    if resumen.table is not None and not resumen.table.empty:
+        if card["family"] == "scorecard":
+            for clave, columnas in (
+                (COMPARISON_MODELS_TABLE, _COLUMNAS_DISCRIMINACION),
+                (COMPARISON_CONCENTRATION_TABLE, _COLUMNAS_CONCENTRACION),
+            ):
+                presentes = [c for c in columnas if c in resumen.table.columns]
+                tablas.append(
+                    (clave, _tabla_transportable(resumen.table[presentes], resumen.formats))
+                )
+        else:
+            tablas.append(
+                (COMPARISON_PROVISIONS_TABLE, _tabla_transportable(resumen.table, resumen.formats))
+            )
+    claves = {
+        TITULO_CORRIDAS_COMPARADAS: COMPARISON_RUNS_TABLE,
+        TITULO_PRUEBAS_PAREADAS: COMPARISON_TESTS_TABLE,
+        TITULO_VARIABLES_COMPARADAS: COMPARISON_VARIABLES_TABLE,
+        TITULO_PROVISION_POR_ETAPA: COMPARISON_PROVISION_TABLE,
+    }
+    for titulo, tabla, formatos in resumen.extra_tables:
+        if titulo in claves:
+            tablas.append((claves[titulo], _tabla_transportable(tabla, formatos)))
+    return {
+        "lines": list(resumen.lines),
+        "alerts": list(resumen.alerts),
+        "choice": _lineas_de_la_eleccion(card),
+        "tables": [(k, t["columns"], t["rows"]) for k, t in tablas if t is not None],
+    }
 
 
 def _resumen_final_comparacion(

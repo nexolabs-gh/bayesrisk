@@ -100,6 +100,16 @@ MONITORING_BOOK: Final = "Monitoreo.xlsx"
 _HOJA_PERIODOS: Final = "Periodos"
 _HOJA_TRAMOS: Final = "Tramos por periodo"
 _HOJA_VARIABLES: Final = "Variables"
+#: El libro único de una comparación (SDD-34 §6.3): Resumen, Modelos, Pruebas, Muestras, Variables
+#: (o Provisión por etapa), Corridas e Índice, desde el resumen «Comparación».
+COMPARISON_BOOK: Final = "Comparación.xlsx"
+_HOJA_MODELOS: Final = "Modelos"
+_HOJA_PRUEBAS: Final = "Pruebas"
+_HOJA_MUESTRAS: Final = "Muestras"
+_HOJA_PROVISION: Final = "Provisión por etapa"
+_HOJA_CORRIDAS: Final = "Corridas"
+#: Las familias de un libro único, sin libros por etapa ni de decisiones.
+_LIBRO_UNICO: Final = frozenset({"monitoreo", "comparacion"})
 
 #: Los libros del scorecard: ``01 Datos y muestras.xlsx`` … ``11 Escala maestra.xlsx``.
 STAGE_BOOKS: Final[dict[str, str]] = stage_books("scorecard")
@@ -149,13 +159,20 @@ def write_stage_workbooks(
     temporal = directory.with_name(f".{directory.name}.{token}.tmp")
     temporal.mkdir()
     nombres: list[str] = []
-    libros = {} if family == "monitoreo" else stage_books(family)
+    libros = {} if family in _LIBRO_UNICO else stage_books(family)
     try:
         if family == "monitoreo" and (resumen := summaries.get("monitoring")) is not None:
             # SDD-33 §6.4: un libro único —resumen, periodos, tramos × periodo, variables—, desde
             # el MISMO resumen de la etapa que el notebook, la pantalla y el informe (D-SIM-5).
             write_workbook(_hojas_del_monitoreo(resumen), temporal / MONITORING_BOOK, index=False)
             nombres.append(MONITORING_BOOK)
+        if family == "comparacion" and (resumen := summaries.get("comparison")) is not None:
+            # SDD-34 §6.3: un libro único desde el MISMO resumen «Comparación» que el notebook,
+            # la pantalla y el informe (D-SIM-5).
+            write_workbook(
+                _hojas_de_la_comparacion(resumen), temporal / COMPARISON_BOOK, index=False
+            )
+            nombres.append(COMPARISON_BOOK)
         for stage, libro in libros.items():
             resumen = summaries.get(stage)
             if resumen is None:
@@ -163,7 +180,7 @@ def write_stage_workbooks(
             hojas, con_indice = _hojas_de_la_etapa(stage, resumen, tablas)
             write_workbook(hojas, temporal / libro, index=con_indice)
             nombres.append(libro)
-        decisiones = _hojas_de_decisiones(trail_path) if family != "monitoreo" else {}
+        decisiones = _hojas_de_decisiones(trail_path) if family not in _LIBRO_UNICO else {}
         if decisiones:
             write_workbook(decisiones, temporal / decisions_book(family), index=False)
             nombres.append(decisions_book(family))
@@ -304,6 +321,61 @@ def _hojas_del_monitoreo(resumen: StageSummary) -> dict[str, pd.DataFrame]:
     for titulo, hoja in (
         (TITULO_TRAMOS_POR_PERIODO, _HOJA_TRAMOS),
         (TITULO_VARIABLES_POR_PERIODO, _HOJA_VARIABLES),
+    ):
+        tabla = por_titulo.get(titulo)
+        if tabla is not None and not tabla.empty:
+            hojas[hoja] = tabla
+            contenido.append((titulo, hoja))
+    hojas[_SHEET_INDEX] = pd.DataFrame(
+        [
+            {"Hoja": hoja, "Contenido": texto, "Filas": len(hojas[hoja].index)}
+            for texto, hoja in contenido
+        ]
+    )
+    return hojas
+
+
+def _hojas_de_la_comparacion(resumen: StageSummary) -> dict[str, pd.DataFrame]:
+    """Las hojas de ``Comparación.xlsx`` (SDD-34 §6.3), desde el resumen «Comparación».
+
+    Resumen (la lectura y qué revisar), Modelos (la tabla de decisión), Pruebas, Muestras,
+    Variables —o, en IFRS 9, Provisión por etapa—, Corridas e Índice. Una hoja sin filas no se
+    escribe: una comparación de provisiones no tiene pruebas, muestras ni variables.
+    """
+    import pandas as pd
+
+    from bayesrisk.guided.summaries import (
+        TITULO_CORRIDAS_COMPARADAS,
+        TITULO_MUESTRAS_COMPARADAS,
+        TITULO_PROVISION_POR_ETAPA,
+        TITULO_PRUEBAS_PAREADAS,
+        TITULO_VARIABLES_COMPARADAS,
+    )
+
+    hojas: dict[str, pd.DataFrame] = {
+        _SHEET_SUMMARY: pd.DataFrame(
+            {"Línea": [*resumen.lines, *(f"⚠ {alerta}" for alerta in resumen.alerts)]}
+        )
+    }
+    contenido = [("Resumen de la comparación: la lectura y qué revisar", _SHEET_SUMMARY)]
+    if resumen.table is not None and not resumen.table.empty:
+        hojas[_HOJA_MODELOS] = resumen.table
+        contenido.append(
+            (
+                "Cada modelo: discriminación, estabilidad, concentración, validación y frontera"
+                if "AUC" in resumen.table.columns
+                else "Cada provisión: fecha de corte, moneda, escenarios, exposición, ECL y "
+                "cobertura",
+                _HOJA_MODELOS,
+            )
+        )
+    por_titulo = {titulo: tabla for titulo, tabla, _formatos in resumen.extra_tables}
+    for titulo, hoja in (
+        (TITULO_PRUEBAS_PAREADAS, _HOJA_PRUEBAS),
+        (TITULO_MUESTRAS_COMPARADAS, _HOJA_MUESTRAS),
+        (TITULO_VARIABLES_COMPARADAS, _HOJA_VARIABLES),
+        (TITULO_PROVISION_POR_ETAPA, _HOJA_PROVISION),
+        (TITULO_CORRIDAS_COMPARADAS, _HOJA_CORRIDAS),
     ):
         tabla = por_titulo.get(titulo)
         if tabla is not None and not tabla.empty:

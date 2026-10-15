@@ -20,6 +20,7 @@ from __future__ import annotations
 import html
 import itertools
 import math
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast
 
 from bayesrisk.report.cifras import cifra, corte
@@ -35,8 +36,11 @@ if TYPE_CHECKING:  # pragma: no cover - sólo para type-checkers, nunca en runti
 ChartFormat: TypeAlias = Literal["svg", "png"]
 
 __all__ = [
+    "COMPARISON_CHART_TITLES",
     "ChartFormat",
+    "comparison_charts",
     "render_coefficients_forest",
+    "render_comparison_frontier",
     "render_discrimination_bars",
     "render_eda_default_rate",
     "render_eda_profiles",
@@ -928,3 +932,209 @@ def render_eda_profiles(
 def _short_label(label: str, limit: int = 14) -> str:
     """Acorta un rótulo de tramo para el eje; el literal completo vive en la tabla."""
     return label if len(label) <= limit else f"{label[: limit - 1]}…"
+
+
+# ─────────────────────────── comparación de modelos (SDD-34, capa B) ───────────────────────────
+
+#: Los dos gráficos de la comparación de scorecards (SDD-34 §6.3): discriminación frente a
+#: estabilidad y discriminación frente a concentración. Una sola fuente de los títulos para el
+#: resumen del notebook y el informe.
+COMPARISON_CHART_TITLES: dict[str, str] = {
+    "stability": "Discriminación y estabilidad: AUC frente a PSI común",
+    "concentration": "Discriminación y concentración: Gini frente al índice del BCE",
+}
+_COMPARISON_AXES: dict[str, tuple[str, str, str, str]] = {
+    # eje → (columna X, rótulo X, columna Y, rótulo Y)
+    "stability": (
+        "psi_common",
+        "PSI común del puntaje (receta de fábrica; menos es más estable)",
+        "auc",
+        "AUC en la muestra de evaluación",
+    ),
+    "concentration": (
+        "concentration_index",
+        "Índice de concentración del BCE (0: tramos parejos; 1: todo en uno)",
+        "gini",
+        "Gini en la muestra de evaluación",
+    ),
+}
+_FRONTIER_COLOR = "#1f4e79"
+_SUPERATED_COLOR = "#9aa0a6"
+_REVIEW_BAND_COLOR = "#9e6b00"
+_REDEVELOP_BAND_COLOR = "#c1440e"
+#: Ancho del texto de los modelos fuera del gráfico, en caracteres por línea.
+_OUTSIDE_NOTE_WIDTH = 130
+
+
+def render_comparison_frontier(
+    models: pd.DataFrame,
+    *,
+    axis: Literal["stability", "concentration"],
+    outside: tuple[tuple[str, str], ...] = (),
+    thresholds: tuple[float, float] = (_DEFAULT_STABLE_THRESHOLD, _DEFAULT_REVIEW_THRESHOLD),
+    title: str,
+    fmt: ChartFormat = "svg",
+) -> str | bytes:
+    """Un punto por modelo y la frontera marcada (SDD-34 §3.5, §6.3).
+
+    ``models`` es el artefacto ``("comparison", "models")``: se usan ``name``, la columna de cada
+    eje y ``frontier_<axis>``. Se dibujan los modelos con ``frontier_<axis>`` no nulo —los que
+    entraron a esa frontera—: los de la frontera, rellenos; los superados, huecos. La referencia
+    (la primera fila) lo dice en su rótulo, y los modelos que caen casi en el mismo punto —el
+    mismo modelo con otro config, o cifras iguales— comparten uno, para que los nombres no se
+    pisen. Los modelos fuera del gráfico, con su razón, van en ``outside`` y se declaran bajo el
+    eje: el gráfico nunca los omite en silencio. En el de estabilidad, las líneas de banda del PSI
+    común (``thresholds``) que caen en el rango.
+    """
+    import textwrap
+
+    columna_x, rotulo_x, columna_y, rotulo_y = _COMPARISON_AXES[axis]
+    columnas = ("name", columna_x, columna_y, f"frontier_{axis}")
+    _require_columns(models, frozenset(columnas), what="render_comparison_frontier")
+    registros = _frame_records(models, columnas)
+    puntos: list[tuple[str, float, float, bool, bool]] = []
+    for posicion, registro in enumerate(registros):
+        dentro = registro[f"frontier_{axis}"]
+        x = _optional_float(registro[columna_x])
+        y = _optional_float(registro[columna_y])
+        if _is_missing(dentro) or x is None or y is None:
+            continue
+        puntos.append((str(registro["name"]), x, y, bool(dentro), posicion == 0))
+    if not puntos:
+        raise ReportInputError(
+            "render_comparison_frontier: ningún modelo tiene las dos cifras de este gráfico."
+        )
+
+    xs = [p[1] for p in puntos]
+    ys = [p[2] for p in puntos]
+    if axis == "stability":
+        derecha = max(max(xs) * 1.35, thresholds[0] * 1.15)
+    else:
+        derecha = min(1.0, max(max(xs) * 1.35, 0.05))
+    margen = max((max(ys) - min(ys)) * 0.25, 0.01)
+    abajo, arriba = min(ys) - margen, max(ys) + margen
+
+    nota = ""
+    if outside:
+        nota = textwrap.fill(
+            "Fuera del gráfico: " + "; ".join(f"{nombre} ({razon})" for nombre, razon in outside),
+            width=_OUTSIDE_NOTE_WIDTH,
+        )
+    lineas_nota = nota.count("\n") + 1 if nota else 0
+    figure = _new_figure((7.0, 4.9 + 0.22 * lineas_nota), dpi=100)
+    axes = figure.subplots()
+
+    for dentro, color, etiqueta in (
+        (True, _FRONTIER_COLOR, "En la frontera"),
+        (False, _SUPERATED_COLOR, "Superado por un modelo de la frontera"),
+    ):
+        grupo = [p for p in puntos if p[3] is dentro]
+        if not grupo:
+            continue
+        axes.scatter(
+            [p[1] for p in grupo],
+            [p[2] for p in grupo],
+            s=56,
+            marker="o",
+            facecolors=color if dentro else "white",
+            edgecolors=color,
+            linewidths=1.4,
+            label=etiqueta,
+            zorder=3,
+        )
+    # Un rótulo por grupo de puntos cercanos (3 % del ancho y 4 % del alto), en el orden de la
+    # comparación: los nombres de un mismo lugar se leen juntos en vez de encimarse.
+    grupos: list[list[tuple[str, float, float, bool, bool]]] = []
+    for punto in puntos:
+        for grupo_cercano in grupos:
+            primero = grupo_cercano[0]
+            if abs(punto[1] - primero[1]) <= 0.03 * derecha and abs(
+                punto[2] - primero[2]
+            ) <= 0.04 * (arriba - abajo):
+                grupo_cercano.append(punto)
+                break
+        else:
+            grupos.append([punto])
+    for grupo_cercano in grupos:
+        nombres = [f"{p[0]} (referencia)" if p[4] else p[0] for p in grupo_cercano]
+        axes.annotate(
+            textwrap.fill(", ".join(nombres), width=40),
+            (grupo_cercano[0][1], grupo_cercano[0][2]),
+            xytext=(6, 5),
+            textcoords="offset points",
+            fontsize=8,
+        )
+
+    if axis == "stability":
+        for corte_banda, color, texto in (
+            (thresholds[0], _REVIEW_BAND_COLOR, f"Revisar desde {corte(thresholds[0])}"),
+            (thresholds[1], _REDEVELOP_BAND_COLOR, f"Redesarrollar desde {corte(thresholds[1])}"),
+        ):
+            if corte_banda <= derecha:
+                axes.axvline(corte_banda, linestyle="--", color=color, linewidth=1.0, label=texto)
+    axes.set_xlim(-0.02 * derecha, derecha)  # un punto en cero no queda cortado por el eje
+    axes.set_ylim(abajo, arriba)
+    axes.set_xlabel(rotulo_x)
+    axes.set_ylabel(rotulo_y)
+    axes.xaxis.set_major_formatter(_numeric_formatter(2))
+    axes.yaxis.set_major_formatter(_numeric_formatter(2))
+    axes.grid(True, linewidth=0.4, alpha=0.4)
+    axes.set_title(title)
+    # La leyenda y la nota van bajo el eje, con su sitio reservado: dentro del gráfico taparían
+    # puntos.
+    alto_nota = (0.035 * lineas_nota + 0.02) if nota else 0.0
+    alto_leyenda = 0.07
+    handles, labels = axes.get_legend_handles_labels()
+    figure.tight_layout(rect=(0.0, alto_nota + alto_leyenda, 1.0, 1.0))
+    figure.legend(
+        handles,
+        labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, alto_nota),
+        ncol=3,
+        frameon=False,
+        fontsize=8.0,
+    )
+    if nota:
+        figure.text(0.01, 0.01, nota, fontsize=7.5, va="bottom", ha="left")
+    return _render(figure, title, fmt)
+
+
+def comparison_charts(
+    models: pd.DataFrame, card: Mapping[str, Any], *, fmt: ChartFormat = "svg"
+) -> tuple[tuple[str, str, str | bytes], ...]:
+    """Los dos gráficos de una comparación de scorecards: ``(eje, título, imagen)``.
+
+    **Una sola fuente** para el resumen del notebook (``_repr_html_``) y el informe (D-SIM-5):
+    los dos llaman a esta función con el artefacto ``("comparison", "models")`` y la card de la
+    etapa, y reciben el mismo SVG. Los cortes de banda son los de la receta común de la card; los
+    modelos fuera de cada gráfico, los de
+    :func:`bayesrisk.comparison.textos.fuera_de_los_graficos`. Un gráfico sin ningún modelo
+    dibujable no se emite: sus modelos siguen declarados en la tabla.
+    """
+    from bayesrisk.comparison.textos import fuera_de_los_graficos
+
+    receta = (card.get("constants") or {}).get("psi_recipe") or {}
+    cortes = receta.get("thresholds") or (_DEFAULT_STABLE_THRESHOLD, _DEFAULT_REVIEW_THRESHOLD)
+    umbrales = (float(cortes[0]), float(cortes[1]))
+    fuera = fuera_de_los_graficos(cast("list[dict[str, Any]]", models.to_dict(orient="records")))
+    salida: list[tuple[str, str, str | bytes]] = []
+    for eje in ("stability", "concentration"):
+        titulo = COMPARISON_CHART_TITLES[eje]
+        try:
+            imagen = render_comparison_frontier(
+                models,
+                axis=eje,
+                outside=fuera.get(eje, ()),
+                thresholds=umbrales,
+                title=titulo,
+                fmt=fmt,
+            )
+        except ReportInputError:
+            continue
+        if isinstance(imagen, str):
+            # Sin blancos al final de línea: el HTML del informe los recorta, y el SVG del
+            # notebook tiene que ser el mismo byte a byte.
+            imagen = "\n".join(linea.rstrip() for linea in imagen.split("\n"))
+        salida.append((eje, titulo, imagen))
+    return tuple(salida)

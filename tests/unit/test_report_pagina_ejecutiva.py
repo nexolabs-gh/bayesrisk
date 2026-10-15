@@ -106,12 +106,18 @@ def test_el_capitulo_es_el_primero_del_documento_y_condicional_al_scorecard() ->
     capa C de FLUJO-GUIADO-IFRS9 (D-ECL-12)— en las de provisión IFRS 9, con SU resumen final; una
     corrida IFRS 9 cuyo resumen es del molde del scorecard sigue sin página
     (``test_report_ifrs9_capa_c``). Desde la capa B del SDD-33, también en las de monitoreo, con
-    su «Veredicto» (``test_monitoreo_capa_b``)."""
+    su «Veredicto» (``test_monitoreo_capa_b``), y desde la del SDD-34 en las de comparación, con su
+    «Elección» y su lectura (``test_comparison_capa_b``)."""
     spec = CHAPTER_SPECS[0]
     assert spec.id == EXECUTIVE_SUMMARY_ID
     assert spec.kind == "summary"
     assert spec.numbered is False
-    assert set(spec.requires_any_domain) == {*RESULT_DOMAINS, "provisioning_ifrs9", "monitoring"}
+    assert set(spec.requires_any_domain) == {
+        *RESULT_DOMAINS,
+        "provisioning_ifrs9",
+        "monitoring",
+        "comparison",
+    }
 
 
 def test_el_informe_abre_con_la_pagina_tras_la_portada(corrida: Scorecard) -> None:

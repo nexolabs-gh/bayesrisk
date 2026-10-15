@@ -61,7 +61,9 @@ libro `Monitoreo.xlsx` (`mon.export_excel()`).
 comparabilidad, los modelos repetidos, la prueba de DeLong pareada, el índice de concentración del
 BCE, la frontera y la elección de la institución con `choose` (ver
 [Comparación de modelos](#comparacion-de-modelos)). **Experimental** desde la 2.15.0, por la puerta
-guiada y el config completo; entra a la garantía cuando cierre sus tres puertas.
+guiada y el config completo; entra a la garantía cuando cierre sus tres puertas. La versión
+siguiente suma el «Informe de Comparación de Modelos», con sus dos gráficos, y el libro
+`Comparación.xlsx` (`comp.export_excel()`).
 
 ::: bayesrisk.guided.comparison.Comparison
 

@@ -49,6 +49,14 @@ __all__ = [
     "APPENDIX_TABLES_ID",
     "CANONICAL_SECTION_ORDER",
     "CHAPTER_SPECS",
+    "COMPARISON_CONCENTRATION_TABLE",
+    "COMPARISON_MODELS_TABLE",
+    "COMPARISON_PROVISIONS_TABLE",
+    "COMPARISON_PROVISION_TABLE",
+    "COMPARISON_RUNS_TABLE",
+    "COMPARISON_SECTIONS",
+    "COMPARISON_TESTS_TABLE",
+    "COMPARISON_VARIABLES_TABLE",
     "CONTEXT_DOMAINS",
     "DOMAIN_TITLES",
     "EDA_DEFAULT_RATE_TABLE",
@@ -106,6 +114,8 @@ DOMAIN_TITLES: Final[dict[str, str]] = {
     "master_scale": "Escala maestra y puntos de corte",
     # SDD-33 capa B: el capítulo de una corrida de monitoreo y sus parámetros en el anexo C.
     "monitoring": "Monitoreo del modelo en uso",
+    # SDD-34 capa B: el capítulo de una corrida de comparación y su parámetro en el anexo C.
+    "comparison": "Comparación de modelos",
     "survival": "Supervivencia y curva PD lifetime",
     "markov": "Matrices de transición",
     "forward": "Escenarios forward-looking",
@@ -222,6 +232,8 @@ APPENDIX_PARAMETER_DOMAINS: Final[tuple[str, ...]] = (
     "master_scale",
     # La tarjeta, la columna de periodo y la de desenlace del monitoreo (SDD-33, capa B).
     "monitoring",
+    # Las corridas comparadas, en orden (SDD-34, capa B).
+    "comparison",
 )
 
 APPENDIX_LINEAGE_ID: Final = "appendix_lineage"
@@ -243,6 +255,9 @@ METHODOLOGY_STEPS: Final[tuple[tuple[str, str], ...]] = (
     # SDD-33 capa B: la referencia, los cuatro indicadores, sus umbrales fijos y la tabla de
     # decisión de una corrida de monitoreo.
     ("monitoring", "Cómo se monitorea el modelo"),
+    # SDD-34 capa B: la muestra de evaluación, la comparabilidad, la prueba, el PSI común, el
+    # índice y la frontera de una corrida de comparación.
+    ("comparison", "Cómo se comparan los modelos"),
 )
 
 #: La PD acumulada por período y cartera de la curva de supervivencia. No es un artefacto del motor:
@@ -278,6 +293,39 @@ MONITORING_SECTIONS: Final[dict[str, tuple[str, tuple[str, ...]]]] = {
     "verdict": ("Veredicto y serie por periodo", (MONITORING_SERIES_TABLE,)),
     "grades": ("Cada tramo por periodo", (MONITORING_GRADES_TABLE,)),
     "variables": ("Cada variable por periodo", (MONITORING_VARIABLES_TABLE,)),
+}
+
+#: Las tablas del cuerpo del capítulo «Comparación de modelos» (SDD-34, capa B). No son artefactos
+#: del motor: las arma el builder con la MISMA función que el resumen de la etapa
+#: (:func:`bayesrisk.guided.summaries.comparison_report_extras`); la tabla de modelos se reparte por
+#: columnas entre discriminación y concentración. Los artefactos completos (``comparison.runs``,
+#: ``models``, ``tests``, ``samples``, ``variables``, ``provision``) van al anexo de tablas.
+COMPARISON_RUNS_TABLE: Final = "comparison.runs_compared"
+COMPARISON_MODELS_TABLE: Final = "comparison.discrimination_table"
+COMPARISON_TESTS_TABLE: Final = "comparison.paired_tests"
+COMPARISON_CONCENTRATION_TABLE: Final = "comparison.concentration_table"
+COMPARISON_VARIABLES_TABLE: Final = "comparison.variables_table"
+COMPARISON_PROVISIONS_TABLE: Final = "comparison.provisions"
+COMPARISON_PROVISION_TABLE: Final = "comparison.provision_by_stage"
+
+#: Las subsecciones del capítulo de la comparación: id → (título, tablas del cuerpo). La primera y
+#: la última llevan su texto —la lectura con qué revisar, y la elección— aunque no tengan tabla;
+#: las demás se emiten sólo si su tabla se publicó (una comparación de IFRS 9 no tiene gráficos ni
+#: variables; una de scorecards no tiene provisión). Los dos gráficos van en «discrimination» y
+#: «concentration».
+COMPARISON_SECTIONS: Final[dict[str, tuple[str, tuple[str, ...]]]] = {
+    "reading": ("Las corridas y su comparabilidad", (COMPARISON_RUNS_TABLE,)),
+    "discrimination": (
+        "Discriminación y estabilidad",
+        (COMPARISON_MODELS_TABLE, COMPARISON_TESTS_TABLE),
+    ),
+    "concentration": ("Concentración de los tramos", (COMPARISON_CONCENTRATION_TABLE,)),
+    "variables": ("Las variables de cada modelo", (COMPARISON_VARIABLES_TABLE,)),
+    "provision": (
+        "Provisión por etapa",
+        (COMPARISON_PROVISIONS_TABLE, COMPARISON_PROVISION_TABLE),
+    ),
+    "choice": ("La elección", ()),
 }
 
 # Tablas que el CUERPO del informe muestra por dominio: las que un validador necesita leer para
@@ -322,6 +370,8 @@ KEY_TABLES: Final[dict[str, tuple[str, ...]]] = {
     "master_scale": (MASTER_SCALE_SCALE_TABLE, MASTER_SCALE_CUTOFFS_TABLE),
     # El capítulo del monitoreo (SDD-33, capa B): cada subsección muestra su tabla.
     **{f"monitoring.{hijo}": tablas for hijo, (_titulo, tablas) in MONITORING_SECTIONS.items()},
+    # El capítulo de la comparación (SDD-34, capa B): cada subsección muestra sus tablas.
+    **{f"comparison.{hijo}": tablas for hijo, (_titulo, tablas) in COMPARISON_SECTIONS.items()},
 }
 
 #: La tabla de la tasa por período o cohorte, que además del máximo configurable de filas por
@@ -431,6 +481,20 @@ _TABLE_TITLES: Final[dict[str, str]] = {
     "monitoring.periods": "Indicadores del monitoreo por periodo",
     "monitoring.grades_by_period": "Tramos de la escala por periodo",
     "monitoring.variables_by_period": "CSI de cada variable por periodo",
+    # SDD-34 capa B: las tablas del cuerpo (desde el resumen) y los artefactos completos.
+    COMPARISON_RUNS_TABLE: "Comparación — las corridas y su comparabilidad",
+    COMPARISON_MODELS_TABLE: "Comparación — discriminación, estabilidad y frontera",
+    COMPARISON_TESTS_TABLE: "Comparación — pruebas de DeLong pareadas",
+    COMPARISON_CONCENTRATION_TABLE: "Comparación — concentración de los tramos y frontera",
+    COMPARISON_VARIABLES_TABLE: "Comparación — signo e IV de cada variable por modelo",
+    COMPARISON_PROVISIONS_TABLE: "Comparación — cada provisión",
+    COMPARISON_PROVISION_TABLE: "Comparación — provisión por etapa contra la referencia",
+    "comparison.runs": "Corridas comparadas",
+    "comparison.models": "Cifras de cada modelo comparado",
+    "comparison.tests": "Pruebas entre pares de modelos",
+    "comparison.samples": "Cada modelo en cada muestra",
+    "comparison.variables": "Cada variable en cada modelo",
+    "comparison.provision": "Provisión por etapa de cada corrida",
 }
 _BINNING_TABLE_PREFIX: Final = "binning.tables."
 #: Prefijo de los perfiles por variable del análisis exploratorio (`UnivariateResult.profiles`,
@@ -498,7 +562,7 @@ CHAPTER_SPECS: Final[tuple[ChapterSpec, ...]] = (
         title="Resumen de la corrida",
         kind="summary",
         numbered=False,
-        requires_any_domain=(*RESULT_DOMAINS, "provisioning_ifrs9", "monitoring"),
+        requires_any_domain=(*RESULT_DOMAINS, "provisioning_ifrs9", "monitoring", "comparison"),
     ),
     ChapterSpec(id="toc", title="Índice", kind="toc", numbered=False),
     ChapterSpec(
@@ -591,6 +655,13 @@ CHAPTER_SPECS: Final[tuple[ChapterSpec, ...]] = (
         kind="prose",
         requires_domain="monitoring",
     ),
+    # Capítulo CONDICIONAL de la comparación (SDD-34, capa B): sólo si la corrida comparó modelos.
+    ChapterSpec(
+        id="comparison",
+        title=DOMAIN_TITLES["comparison"],
+        kind="prose",
+        requires_domain="comparison",
+    ),
     ChapterSpec(
         id="conclusions",
         title="Conclusiones y recomendación",
@@ -645,6 +716,7 @@ _CHILD_ORDER: Final[dict[str, tuple[str, ...]]] = {
     "provisions": PROVISION_DOMAINS,
     "ifrs9": _IFRS9_CHILDREN,
     "monitoring": tuple(MONITORING_SECTIONS),
+    "comparison": tuple(COMPARISON_SECTIONS),
     APPENDIX_PARAMETERS_ID: APPENDIX_PARAMETER_DOMAINS,
 }
 

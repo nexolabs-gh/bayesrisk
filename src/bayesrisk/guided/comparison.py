@@ -222,6 +222,16 @@ class Comparison(_PuertaGuiada):
             "repro": {"seed": 20240706, "strict_determinism": False},
             "run": {"steps": None, "fail_fast": True},
             "comparison": {"runs": rutas},
+            # SDD-34 capa B: el informe con su capítulo (``report`` es INFRA, fuera del
+            # `config_hash`): ninguna sección del scorecard se exige y el capítulo se activa por la
+            # card de la comparación, como el del monitoreo.
+            "report": {
+                "output_dir": str(self._reports_dir),
+                "basename": "comparison_report",
+                "formats": ["pdf", "md", "docx"],
+                "pdf": {"enabled": True, "fail_if_unavailable": False},
+                "sections": {"required_sections": []},
+            },
             "audit": {"enabled": True},
         }
         self._config = self._validar_config(cfg)
@@ -292,3 +302,17 @@ class Comparison(_PuertaGuiada):
         self._agregar_registro(registro)
         self._echo(f"Decisión registrada: choose → {name} — «{motivo}».")
         return self.run()
+
+    # ── exportar (SDD-34 §6.3, capa B) ──────────────────────────────────────────────────
+
+    def export_excel(self) -> tuple[Path, ...]:
+        """``Comparación.xlsx`` en ``<run_dir>/<name>/excel/``: un libro único (SDD-34 §6.3).
+
+        Sus hojas son el resumen (la lectura y qué revisar), los modelos (la tabla de decisión,
+        con las dos fronteras), las pruebas de DeLong pareadas, cada modelo en cada muestra, las
+        variables —o, en IFRS 9, la provisión por etapa—, las corridas con su comparabilidad y un
+        índice: las tablas del mismo resumen «Comparación» que el notebook y el informe.
+        Opcional: nunca es la vía para ver un resultado. Exige el extra ``excel`` (``openpyxl``);
+        sin él se detiene con el comando de instalación.
+        """
+        return self._exportar_excel()
