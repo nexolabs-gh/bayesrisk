@@ -66,7 +66,17 @@ def serialize_summaries(
     except Exception as exc:  # se publica el motivo; la corrida no se pierde
         return {"stages": [], "final": None, "error": _mensaje(exc)}
     return {
-        "stages": [etapa.to_dict() for etapa in etapas],
+        "stages": [
+            {
+                **etapa.to_dict(),
+                **(
+                    {"charts": [{"title": t, "svg": svg} for t, svg in etapa.charts]}
+                    if etapa.charts
+                    else {}
+                ),
+            }
+            for etapa in etapas
+        ],
         "final": final.to_dict(),
         "error": None,
     }

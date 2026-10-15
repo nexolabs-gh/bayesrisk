@@ -7,10 +7,19 @@ sobre las mismas operaciones**, **cuáles son el mismo modelo**, **qué diferenc
 son reales y cuáles ruido**, **quién reparte mejor sus tramos** y **qué modelos no quedan superados
 por ningún otro**. La comparación no elige: la institución registra su elección con su motivo.
 
-!!! warning "Experimental desde la 2.15.0"
-    La comparación sale en la 2.15.0 por código —la puerta guiada y el config completo— y puede
-    crecer de forma aditiva. El capítulo del informe y el libro Excel que se describen abajo llegan
-    en la versión siguiente con la pantalla, y con las tres puertas entra a la garantía SemVer 2.x.
+!!! note "Estable desde la 2.16.0"
+    La comparación está disponible por código y en la pantalla, con su informe y su libro Excel.
+    Su API pública está bajo la garantía SemVer 2.x.
+
+## Desde la pantalla
+
+Elige **Comparar modelos**. En **Comparación**, marca entre 2 y 10 corridas terminadas
+o sube sus archivos `comparable.json`. Pulsa **Usar como referencia** en la corrida de partida.
+Este trabajo empieza en Configuración: los resúmenes ya contienen las medidas necesarias.
+
+Pulsa **Ejecutar**. Resultados muestra la lectura, las tablas y los dos gráficos del informe;
+para provisiones IFRS 9 muestra la comparación por etapa. La pestaña Reporte abre el informe.
+La elección registrada se presenta como **Elección**, sin escoger un modelo por la institución.
 
 ## Lo que deja cada corrida
 

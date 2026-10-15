@@ -309,15 +309,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // propio; (3) sobre un config roto, un aviso de columnas sería ruido encima del error que el
   // usuario ya tiene delante.
   const validHash = validation.kind === "valid" ? validation.hash : null
+  const requiereDatos = config.data !== null && config.data !== undefined
   useEffect(() => {
     // La demo estática no tiene backend que materialice un dataset, y sirve corridas reales ya
     // compatibles por construcción: preguntar sólo produciría un fallo de red y un aviso falso.
     if (DEMO_MODE) return
-    if (validHash === null || datasetId === null || datasetId === "") {
+    const seq = ++preflightSeq.current
+    if (!requiereDatos || validHash === null || datasetId === null || datasetId === "") {
       setPreflight({ kind: "idle" })
       return
     }
-    const seq = ++preflightSeq.current
     setPreflight({ kind: "checking" })
     void preflightDataset(configRef.current, datasetId, externalRefsRef.current)
       .then((res) => {
@@ -349,7 +350,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // el usuario sigue tecleando, la validación vuelve a `checking`, el hash desaparece y esto no
     // corre; cuando reaparece, `configRef.current` es exactamente el config que lo produjo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [validHash, datasetId, externalKey])
+  }, [validHash, datasetId, externalKey, requiereDatos])
 
   // Los setters de useState son estables → el value solo cambia con el estado real.
   const value = useMemo<AppState>(

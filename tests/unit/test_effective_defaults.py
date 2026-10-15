@@ -141,7 +141,8 @@ from bayesrisk.ui.routes import schema_payload
 #: 636 → 639 el 2026-10-13 con la capa B del SDD-33: `monitoring` entra al formulario y el barrido
 #: suma, enumerados contra la 2.13.0, **0 desapariciones y 3 apariciones**: ``monitoring.bundle``,
 #: ``monitoring.period`` y ``monitoring.default``.
-HOJAS_DEL_FORMULARIO = 639
+# S51: aparecen sólo comparison.runs y comparison.runs[]; ninguna desaparición.
+HOJAS_DEL_FORMULARIO = 641
 
 #: Hojas que el barrido de PARIDAD contra el catálogo de defaults efectivos resuelve.
 #:
@@ -187,7 +188,7 @@ HOJAS_DEL_FORMULARIO = 639
 #: arriba (sin uniones discriminadas, las dos cifras suben lo mismo). 520 → 523 el 2026-10-13 con
 #: la capa B del SDD-33: los tres nodos de ``monitoring`` (``bundle`` y ``period`` sin default,
 #: como decisiones obligatorias; ``default`` con el suyo, ``null``).
-HOJAS_CON_DEFAULT_EFECTIVO = 523
+HOJAS_CON_DEFAULT_EFECTIVO = 525
 
 #: Descriptores de hoja que el barrido de paridad compara, en las DOS coordenadas (`$defs` y
 #: `sections`). Segundo golden, por la misma razón que el de 394: un barrido que recorra menos
@@ -333,6 +334,7 @@ SECCIONES_ESPERADAS = (
     "master_scale",
     # SDD-33 capa B: el monitoreo, la sección del trabajo «Monitorear un modelo en uso».
     "monitoring",
+    "comparison",
     "survival",
     "forward",
     "provisioning_cmf",
@@ -928,6 +930,7 @@ ANCLAS_POR_SECCION: dict[str, str] = {
     "validation": "validation.calibration.hl_n_groups",
     "master_scale": "master_scale.approval_cutoff",
     "monitoring": "monitoring.period",
+    "comparison": "comparison.runs",
     "survival": "survival.method",
     "forward": "forward.satellite.reference_rate_col",
     "provisioning_cmf": "provisioning_cmf.matrices.active_version",

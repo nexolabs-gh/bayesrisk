@@ -576,9 +576,34 @@ export async function uploadCard(file: File): Promise<MonitorableCard> {
 }
 
 /** POST /api/run — ejecuta la corrida (síncrona) vía bayesrisk.run. */
+export interface ComparableRun {
+  path: string
+  name: string
+  family: "scorecard" | "ifrs9"
+  origin: "run" | "upload"
+  created_at: string | null
+  comparison_hash: string
+}
+
+export function listComparables(): Promise<{ comparables: ComparableRun[] }> {
+  if (DEMO_MODE) return Promise.resolve({ comparables: [] })
+  return request("comparables/list", { method: "POST", body: "{}" })
+}
+
+export async function uploadComparable(file: File): Promise<ComparableRun> {
+  if (DEMO_MODE) throw new ApiError("Instala bayesrisk para comparar tus corridas.", 0)
+  const form = new FormData()
+  form.append("file", file)
+  const res = await fetch(`${API_BASE}/api/comparables/upload`, {
+    method: "POST", headers: tokenHeaders(), body: form,
+  })
+  if (!res.ok) throw new ApiError(`HTTP ${res.status}`, res.status, await res.json())
+  return (await res.json()) as ComparableRun
+}
+
 export function runPipeline(
   config: ConfigDict,
-  datasetId: string,
+  datasetId: string | null,
   externalArtifacts: ExternalArtifactRef[] = [],
 ): Promise<RunResponse> {
   if (DEMO_MODE) return demoRunPipeline()

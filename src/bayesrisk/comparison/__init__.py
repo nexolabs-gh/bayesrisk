@@ -9,10 +9,7 @@ motivo (D-CMP-1…9). Al importarse, registra :class:`ComparisonConfig` en el ho
 :mod:`bayesrisk.core.config.schema` y el paso con ``@register("standard", domain="comparison")``,
 sin arrastrar pandas: el motor se carga al ejecutar.
 
-**Experimental (fuera de la garantía SemVer 2.x).**
-Sale en la 2.15.0 por la puerta guiada (``bayesrisk.Comparison``) y el config completo (capa A del
-SDD-34, D-CMP-9); entra a la garantía cuando cierren sus tres puertas —la pantalla, el informe y el
-Excel— en la capa B.
+**Estable (SemVer 2.x).** Desde la 2.16.0, con sus tres puertas (D-CMP-9).
 """
 
 from __future__ import annotations

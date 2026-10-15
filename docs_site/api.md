@@ -10,9 +10,10 @@ publicado (`2.15.0`).
     `performance` y `stability`— es **API estable**: no rompe hasta una versión 3.0. También lo son el
     informe (`report`), el trail de auditoría (`audit`), porque ya son superficie de integración,
     la puerta guiada (`guided`, `bayesrisk.Scorecard`), la escala maestra (`master_scale`) y el
-    monitoreo (`monitoring`, `bayesrisk.Monitor`), desde que cerraron sus tres puertas.
+    monitoreo (`monitoring`, `bayesrisk.Monitor`) y la comparación (`comparison`,
+    `bayesrisk.Comparison`), desde que cerraron sus tres puertas.
     Las superficies que aún crecen (modelado ML, provisiones, survival, forward-looking, stress,
-    validación, gobernanza, tracking y la comparación de modelos) están marcadas como
+    validación, gobernanza y tracking) están marcadas como
     **experimentales** en su
     *docstring*, fuera de la garantía SemVer 2.x.
 
@@ -60,10 +61,9 @@ libro `Monitoreo.xlsx` (`mon.export_excel()`).
 —el `comparable.json` que deja toda corrida terminada de scorecard o de IFRS 9 desde la 2.15.0—: la
 comparabilidad, los modelos repetidos, la prueba de DeLong pareada, el índice de concentración del
 BCE, la frontera y la elección de la institución con `choose` (ver
-[Comparación de modelos](#comparacion-de-modelos)). **Experimental** desde la 2.15.0, por la puerta
-guiada y el config completo; entra a la garantía cuando cierre sus tres puertas. La versión
-siguiente suma el «Informe de Comparación de Modelos», con sus dos gráficos, y el libro
-`Comparación.xlsx` (`comp.export_excel()`).
+[Comparación de modelos](#comparacion-de-modelos)). **Estable desde la 2.16.0**, por las puertas guiada, completa y de pantalla. Incluye el
+«Informe de Comparación de Modelos», con sus dos gráficos, y el libro `Comparación.xlsx`
+(`comp.export_excel()`).
 
 ::: bayesrisk.guided.comparison.Comparison
 
@@ -572,7 +572,7 @@ Una corrida propia, sin datos, que lee el resumen comparable de cada corrida —
 riesgo de su muestra de evaluación, sin identificadores— y los pone lado a lado: si se midieron
 sobre las mismas operaciones, cuáles son el mismo modelo, qué diferencias de AUC son reales (DeLong
 pareada, corte 0,05), quién reparte mejor sus tramos (el índice del BCE) y la frontera, con un PSI
-común de receta de fábrica para todas. **Experimental** desde la 2.15.0. Su única hoja son las
+común de receta de fábrica para todas. **Estable** desde la 2.16.0. Su única hoja son las
 corridas, en orden; la primera es la referencia.
 
 ::: bayesrisk.comparison.config.ComparisonConfig

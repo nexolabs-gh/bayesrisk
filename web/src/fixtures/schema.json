@@ -12916,14 +12916,17 @@
                   "type": "string"
                 },
                 "title": "Corridas",
-                "type": "array"
+                "type": "array",
+                "ui_essential": true,
+                "ui_widget": "text_list"
               }
             },
             "required": [
               "runs"
             ],
             "title": "ComparisonConfig",
-            "type": "object"
+            "type": "object",
+            "ui_essentials_declared": true
           },
           {
             "type": "null"

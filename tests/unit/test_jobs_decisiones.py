@@ -56,6 +56,7 @@ SECCIONES_DEL_FORMULARIO = (
     "master_scale",
     # SDD-33 capa B: el monitoreo, la sección del trabajo «Monitorear un modelo en uso».
     "monitoring",
+    "comparison",
     "survival",
     # IFRS9-FIRMABLE capa C: los escenarios de la institución, entre la curva y las provisiones.
     "forward",

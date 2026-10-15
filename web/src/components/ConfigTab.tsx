@@ -16,6 +16,7 @@ import { FieldRenderer } from "@/components/FieldRenderer"
 import { PreflightNotice } from "@/components/PreflightNotice"
 import { applyPreset } from "@/components/RunTab"
 import { MonitoringCardPicker } from "@/components/MonitoringCardPicker"
+import { ComparablePicker } from "@/components/ComparablePicker"
 import { bundleDeLaSeccion } from "@/lib/monitoring-card"
 import { ScenarioTablesCard } from "@/components/ScenarioTablesCard"
 import type { TablasLeidas } from "@/lib/scenario-tables"
@@ -1453,6 +1454,14 @@ export function ConfigTab({
                 activa={sectionActive}
                 getGeneracion={getGeneracionConfig}
               />
+            ) : null}
+            {section === "comparison" ? (
+              <ComparablePicker key={generacionConfig} activa={sectionActive}
+                runs={Array.isArray((config.comparison as { runs?: unknown } | null)?.runs)
+                  ? (config.comparison as { runs: unknown[] }).runs.filter(
+                    (ruta): ruta is string => typeof ruta === "string",
+                  ) : []}
+                onChange={(runs) => setField(["comparison", "runs"], runs)} />
             ) : null}
             {sectionEntry.nullable ? (
               <SectionToggle

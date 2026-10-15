@@ -8,18 +8,16 @@ corridas son constantes del motor (§5.2). La sección nació después de la 2.1
 serializa (D-ESC-7); declarada, entra al ``config_hash`` **sin** las rutas, porque qué se comparó
 lo identifica la huella de cada resumen en el lineage (§5.3, §9).
 
-**Experimental (fuera de la garantía SemVer 2.x).**
-Sale en la 2.15.0 por la puerta guiada y la completa (capa A del SDD-34, D-CMP-9); entra a la
-garantía cuando cierren sus tres puertas (capa B).
+**Estable (API pública bajo SemVer 2.x) desde la 2.16.0.**
 """
 
 from __future__ import annotations
 
 from typing import Final, Self
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
-from bayesrisk.core.config import BayesRiskBaseConfig
+from bayesrisk.core.config import BayesRiskBaseConfig, declara_esenciales
 from bayesrisk.core.exceptions import ConfigError
 
 __all__ = ["MAX_RUNS", "MIN_RUNS", "ComparisonConfig"]
@@ -36,9 +34,7 @@ MAX_RUNS: Final = 10
 class ComparisonConfig(BayesRiskBaseConfig):
     """Pone lado a lado entre 2 y 10 corridas guardadas, la primera como referencia."""
 
-    # SDD-34 D-CMP-1. El docstring de la clase es la descripción del schema: copy público. La
-    # marca de esenciales (§13: `runs`, la única hoja) y el widget llegan con la pantalla en la
-    # capa B, con el espejo del front, como en la capa A del monitoreo.
+    model_config = ConfigDict(json_schema_extra=declara_esenciales)
 
     runs: tuple[str, ...] = Field(
         ...,
@@ -47,6 +43,7 @@ class ComparisonConfig(BayesRiskBaseConfig):
             "Las corridas que se comparan, en orden: la primera es la referencia (el modelo en "
             "uso). Cada una es la carpeta de una corrida terminada o su resumen comparable."
         ),
+        json_schema_extra={"ui_essential": True, "ui_widget": "text_list"},
     )
 
     @model_validator(mode="after")

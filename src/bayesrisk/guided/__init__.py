@@ -25,8 +25,8 @@ salieron experimentales en la 2.8.0 y la 2.9.0 y son estables desde que cerraron
 cierren sus tres puertas en la capa B.
 
 :class:`~bayesrisk.guided.comparison.Comparison`, la puerta guiada de la comparación de modelos
-(SDD-34), sale en la 2.15.0 como excepción experimental por símbolo (D-CMP-9): estable cuando
-cierren sus tres puertas en la capa B.
+(SDD-34), es estable desde la 2.16.0 (D-CMP-9): cerraron sus tres puertas. Antes de esa versión,
+se publicó como adelanto en la 2.15.0.
 """
 
 from bayesrisk.guided.comparison import Comparison, ComparisonInputError, ComparisonRunError

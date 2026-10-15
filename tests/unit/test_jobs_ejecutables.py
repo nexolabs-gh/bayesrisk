@@ -70,6 +70,7 @@ _DECISIONES_CONTESTADAS: dict[str, Any] = {
     # columna de periodo del monitoreo.
     "monitoring.bundle": "tarjeta",
     "monitoring.period": "periodo",
+    "comparison.runs": ["corrida-a", "corrida-b"],
 }
 
 
@@ -267,7 +268,7 @@ def test_el_barrido_no_es_vacuo(trabajos: list[dict[str, Any]]) -> None:
     """Un gate que recorre cero da verde y no prueba nada: pasó ya dos veces en este repo."""
     disponibles = [j for j in trabajos if j["status"] == "available"]
     # 10 → 11 con la capa B del SDD-33: «Monitorear un modelo en uso».
-    assert len(trabajos) == 11, f"el catálogo tiene {len(trabajos)} trabajos, no 11"
+    assert len(trabajos) == 12, f"el catálogo tiene {len(trabajos)} trabajos, no 12"
     assert len(disponibles) >= 7, f"sólo {len(disponibles)} disponibles: el gate mediría casi nada"
     for ancla in ("scorecard_pd", "pd_lifetime", "comparar_provisiones", "provisiones_ifrs9"):
         assert ancla in {j["id"] for j in disponibles}, f"«{ancla}» debería estar disponible"
@@ -283,7 +284,11 @@ def test_el_esqueleto_no_llega_vacio(
             f"«{job['label']}»: el esqueleto siembra {sorted(esqueleto)} y el trabajo declara "
             f"{sorted(job['sections'])}"
         )
-        assert esqueleto["data"], "la sección data no puede quedar vacía"
+        if "data" in job["sections"]:
+            assert esqueleto["data"], "la sección data no puede quedar vacía"
+        else:
+            assert job["id"] == "comparar_modelos"
+            assert "comparison" in esqueleto and "data" not in esqueleto
 
 
 # --------------------------------------------------------------------------------------------

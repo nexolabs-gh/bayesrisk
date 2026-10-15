@@ -167,6 +167,11 @@ export const CONFIG_SECTIONS: ConfigSectionDef[] = [
       "La tarjeta que se monitorea, la columna de periodo y la de desenlace de la cartera nueva.",
   },
   {
+    key: "comparison",
+    label: "Comparación",
+    description: "Las corridas guardadas que se comparan, con una como referencia.",
+  },
+  {
     key: "survival",
     label: "Survival — PD lifetime",
     description:

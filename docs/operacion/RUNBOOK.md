@@ -162,13 +162,13 @@ if ($LASTEXITCODE -ne 0) { throw 'URL remota privada no se pudo leer' }
 if ($bayesriskPublicRemote -ne 'https://github.com/nexolabs-gh/bayesrisk.git') {
     throw "remoto público inesperado: $bayesriskPublicRemote"
 }
-if ($bayesriskPrivateRemote -ne 'https://github.com/nexolabs-gh/bayesrisk-privado.git') {
+if ($bayesriskPrivateRemote -ne 'https://github.com/nexolabs-gh/nikodym-privado.git') {
     throw "remoto privado inesperado: $bayesriskPrivateRemote"
 }
 ```
 
 Nunca imprimir ni copiar el token. Los remotos esperados son `nexolabs-gh/bayesrisk` y
-`nexolabs-gh/bayesrisk-privado`, ambos por HTTPS.
+`nexolabs-gh/nikodym-privado`, ambos por HTTPS.
 
 ### 2.4 UTF-8, symlinks y reparse points
 

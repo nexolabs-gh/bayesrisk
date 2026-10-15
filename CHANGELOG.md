@@ -11,6 +11,12 @@ entradas anteriores conservan el nombre con el que se publicaron.
 
 ### Añadido
 
+- Pantalla «Comparar modelos»: selección de 2 a 10 corridas, referencia explícita y subida
+  autenticada de resúmenes comparables, sin cargar una cartera; Resultados comparte las tablas y
+  los gráficos del informe. Comparación estable bajo SemVer 2.x (SDD-34 D-CMP-9).
+
+### Añadido
+
 - **La comparación de modelos en el informe y en Excel.** La corrida de `bayesrisk.Comparison`
   escribe el «Informe de Comparación de Modelos»: una página ejecutiva con la lectura y la
   elección de la institución, y el capítulo «Comparación de modelos» con las corridas y su

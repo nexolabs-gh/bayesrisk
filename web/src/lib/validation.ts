@@ -298,6 +298,7 @@ export function pipelineWarning(state: ValidationState): string | null {
 export function canRun(
   validation: ValidationState,
   datasetId: string | null,
+  requiereDatos = true,
 ): { ok: boolean; reason?: string } {
   switch (validation.kind) {
     case "idle":
@@ -309,7 +310,7 @@ export function canRun(
     case "unreachable":
       return { ok: false, reason: "Sin backend: no se pudo validar el config" }
   }
-  if (datasetId === null || datasetId === "") {
+  if (requiereDatos && (datasetId === null || datasetId === "")) {
     return { ok: false, reason: "Falta elegir dataset" }
   }
   return { ok: true }

@@ -1,8 +1,6 @@
 """``bayesrisk.Comparison``: la puerta guiada de la comparación de modelos (SDD-34 D-CMP-1…9).
 
-**Experimental (fuera de la garantía SemVer 2.x).**
-Sale en la 2.15.0 como adelanto declarado (capa A del SDD-34, D-CMP-9): estable cuando cierren sus
-tres puertas —pantalla, informe y Excel— en la capa B.
+**Estable (API pública bajo SemVer 2.x) desde la 2.16.0.**
 
 Se construye con lo único que la institución tiene que decir: **qué corridas** comparar, en orden
 —la primera es la referencia (el modelo en uso)—. Cada una puede ser un objeto vivo ya corrido (un
@@ -41,6 +39,14 @@ _MUESTRAS: Final[dict[str, str]] = {
 }
 
 
+def leer_resumen_comparable(ruta: Path) -> tuple[dict[str, Any], str]:
+    """Lee la entrada de la pantalla con la misma validación que la puerta guiada."""
+    from bayesrisk.comparison.comparable import huella, leer
+
+    resumen, _archivo = leer(ruta)
+    return resumen, huella(resumen)
+
+
 class ComparisonInputError(ConfigError):
     """Lo que la puerta guiada de la comparación rechaza **antes de correr**.
 
@@ -59,9 +65,7 @@ class ComparisonRunError(BayesRiskError):
 class Comparison(_PuertaGuiada):
     """La comparación de entre 2 y 10 corridas terminadas, con la entrada mínima (D-CMP-1).
 
-    **Experimental (fuera de la garantía SemVer 2.x).**
-    Sale en la 2.15.0 (capa A del SDD-34); su firma y sus resúmenes pueden crecer de forma aditiva
-    hasta cerrar sus tres puertas.
+    **Estable (API pública bajo SemVer 2.x) desde la 2.16.0.**
 
     Parameters
     ----------

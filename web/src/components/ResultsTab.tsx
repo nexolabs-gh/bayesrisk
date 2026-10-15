@@ -2059,7 +2059,7 @@ function RunSummarySection({ summaries }: { summaries: RunSummaries }) {
               <div className="flex flex-wrap gap-x-2">
                 {/* Un monitoreo dice su «Veredicto» (SDD-33 §3.5), no una validación técnica. */}
                 <dt className="font-medium text-foreground">
-                  {final.family === "monitoreo" ? "Veredicto:" : "Validación técnica:"}
+                  {final.family === "comparacion" ? "Elección:" : final.family === "monitoreo" ? "Veredicto:" : "Validación técnica:"}
                 </dt>
                 <dd className="text-foreground/90">{final.validation}</dd>
               </div>
@@ -2130,6 +2130,7 @@ function RunSummarySection({ summaries }: { summaries: RunSummaries }) {
             {stages.map((stage) => (
               <details
                 key={stage.stage}
+                open={stage.stage === "comparison"}
                 className="rounded-lg border border-border/70 bg-background/30 px-3 py-2"
               >
                 <summary className="cursor-pointer text-sm font-medium text-foreground">
@@ -2152,6 +2153,12 @@ function RunSummarySection({ summaries }: { summaries: RunSummaries }) {
                     ))}
                   </ul>
                 ) : null}
+                {(stage.charts ?? []).map((chart) => (
+                  <figure key={chart.title} className="my-4 rounded bg-white p-2">
+                    <img className="h-auto w-full" alt={chart.title}
+                      src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(chart.svg)}`} />
+                  </figure>
+                ))}
                 {stage.table ? <SummaryTableView table={stage.table} /> : null}
                 {(stage.extra_tables ?? []).map((tabla) => (
                   <SummaryTableView key={tabla.title} table={tabla} title={tabla.title} />

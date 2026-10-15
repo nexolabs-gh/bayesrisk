@@ -940,3 +940,35 @@ parte 2. Nada de lo que sigue cambia una decisión de §12; la evidencia está e
    `leer` rechaza ahora esos números —un resumen comparable es JSON canónico, y el armado nunca los
    escribe—; el gráfico declara fuera lo no finito, y el resumen «Comparación» no cae si un gráfico
    falla (queda en el registro de la librería, como en el informe).
+
+## 16. Lo que el código precisó (capa B, parte 2)
+
+Implementada en S51 (2026-10-15): la pantalla y la declaración de estabilidad de D-CMP-9, para
+la 2.16.0. No añade decisiones de producto. Evidencia y controles negativos en el repo privado
+(`evidencia/s51/`).
+
+1. **El trabajo empieza en Configuración.** Su catálogo declara `comparison`, `report` y
+   `governance`, sin `data`. La navegación omite Datos y el preflight; `/api/run` sólo materializa
+   un dataset cuando el config declara esa sección. Los trabajos que cargan datos conservan esa
+   condición para ejecutar. Cambiar de trabajo invalida también la selección del dataset anterior.
+2. **Lista y subida autenticadas.** Las dos rutas POST usan las credenciales de la sesión. La lista
+   valida los resúmenes de `runs/*/comparable.json` y los subidos dentro del workdir; devuelve su
+   identidad y sus huellas, sin observaciones. La subida exige `.json`, respeta el tope de la UI y
+   usa el lector común antes de publicar el archivo con su huella completa como nombre. Un resumen
+   repetido ocupa la misma ruta. Los resúmenes inválidos no se publican ni se ofrecen en la lista.
+3. **La referencia es el orden existente.** El selector permite elegir hasta diez corridas y mover
+   una al principio. El mínimo de dos lo valida el config. Subir sólo amplía la lista: elegir es
+   un gesto explícito sobre el config vigente, para que una respuesta tardía no cambie de trabajo
+   ni restaure una selección anterior.
+4. **Los gráficos viajan como SVG.** El serializador de la pantalla agrega `charts` al resumen
+   sólo cuando hay gráficos; `StageSummary.to_dict()` mantiene su contrato. Son los mismos bytes
+   que la puerta guiada, servidos como imágenes en el navegador, sin HTML activo ni otra receta
+   estadística. En el caso sintético de dos scorecards del recorrido e2e: 45.844 bytes de resultados,
+   de ellos 35.904 bytes de SVG (17.504 y 18.400). La comparación IFRS 9 entrega la tabla por etapa,
+   sin esos gráficos; ambas familias se verifican por HTTP.
+5. **La única hoja sigue siendo `runs`.** Gana la marca esencial y el widget de lista. El censo de
+   pantalla pasa de 639 a 641 rutas (`comparison.runs` y su elemento); el de defaults, de 523 a
+   525. El schema global conserva 1.100 rutas: el dominio ya existía. El catálogo ofrece doce
+   trabajos y el espejo de esenciales declara dieciocho secciones y 63 campos.
+6. **D-CMP-9.** `comparison` y `bayesrisk.Comparison` pasan a estables bajo SemVer 2.x, con la guía
+   de las tres puertas, el informe y el Excel. La demo conserva sus corridas versionadas.

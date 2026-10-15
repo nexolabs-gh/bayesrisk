@@ -71,6 +71,22 @@ const minima = (model_card: ModelCard | null): ResultsResponse => ({
   model_card,
 })
 
+it("la comparación muestra Elección y usa el SVG recibido como imagen", () => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg"><text>modelo</text></svg>'
+  const html = render({ ...minima(null), summaries: {
+    final: { execution: "Terminada", validation: "Sin elección", figures: [], review: [],
+      decisions: [], files: [], family: "comparacion" },
+    stages: [{ stage: "comparison", label: "Comparación", lines: ["Misma cartera"],
+      alerts: [], table: { columns: ["Modelo"], rows: [["base"]] },
+      charts: [{ title: "AUC frente a PSI", svg }] }],
+  } })
+  expect(html).toContain("Elección:")
+  expect(html).not.toContain("Validación técnica:")
+  expect(html).toContain(encodeURIComponent(svg))
+  expect(html).toContain('alt="AUC frente a PSI"')
+  expect(html).toContain("Misma cartera")
+})
+
 describe("con card, el panel pinta «Ficha del modelo»", () => {
   const html = render(minima(MODEL_CARD_F1))
 

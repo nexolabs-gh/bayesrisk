@@ -85,6 +85,8 @@ CREDENTIALED_PATHS: frozenset[tuple[str, str]] = frozenset(
         ("POST", "/api/scenario-tables"),
         ("POST", "/api/cards/list"),
         ("POST", "/api/cards/upload"),
+        ("POST", "/api/comparables/list"),
+        ("POST", "/api/comparables/upload"),
     }
 )
 

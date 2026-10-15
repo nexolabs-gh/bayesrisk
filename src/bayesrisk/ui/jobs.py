@@ -336,6 +336,23 @@ _JOBS: tuple[dict[str, Any], ...] = (
         "unavailable_reason": None,
     },
     {
+        "id": "comparar_modelos",
+        "label": "Comparar modelos",
+        "description": (
+            "Compara corridas guardadas: su discriminación, estabilidad y concentración, o sus "
+            "provisiones por etapa, con un informe para fundamentar la elección."
+        ),
+        "sections": ("comparison", "report", "governance"),
+        "missing_sections": (),
+        "external_input": None,
+        "external_artifacts": (),
+        "overrides": (),
+        "jurisdiction_code": None,
+        "jurisdiction_label": None,
+        "status": _AVAILABLE,
+        "unavailable_reason": None,
+    },
+    {
         "id": "provision_interna",
         "label": "Provisión interna / LGD",
         "description": (
@@ -954,6 +971,14 @@ _DECISIONES_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
     # SDD-33 capa B: las dos entradas obligatorias del monitoreo. La tarjeta se elige en la pantalla
     # (una corrida del scorecard o un .zip) y escribe su ruta; el periodo es una columna. El
     # desenlace es opcional (sin él sólo se mide la población), así que no se pregunta.
+    "comparison": (
+        {
+            "path": "comparison.runs",
+            "question": "¿Qué corridas vas a comparar?",
+            "help": "Elige entre 2 y 10 corridas guardadas; la primera es la referencia.",
+            "answer_forms": (),
+        },
+    ),
     "monitoring": (
         {
             "path": "monitoring.bundle",

@@ -1041,8 +1041,12 @@ def run_pipeline(
     BayesRiskConfig.model_validate(
         config
     )  # (a) precondición: config válido (ValidationError → 422)
-    source = datasets.materialize(dataset_id, workdir=workdir)  # (b) UiDatasetError → 404
-    if isinstance(config.get("monitoring"), dict):
+    source = (
+        datasets.materialize(dataset_id, workdir=workdir)
+        if isinstance(config.get("data"), dict)
+        else None
+    )  # SDD-34: comparar corridas no carga una cartera.
+    if source is not None and isinstance(config.get("monitoring"), dict):
         # SDD-33 capa B (pasada 1 de Codex): un panel —la misma operación en varios periodos, con
         # su identidad en el índice— se aplana con la regla de `bayesrisk.Monitor`, para que el
         # paso de datos no lo rechace y las dos puertas den la misma tabla (D-SIM-1). Lo que esa
@@ -1050,7 +1054,9 @@ def run_pipeline(
         from bayesrisk.guided.monitor import preparar_panel
 
         source = preparar_panel(source, workdir / "datasets" / "paneles")
-    wired = _wire_report_output_dir(_wire_dataset_source(config, source), workdir=workdir)
+    wired = _wire_report_output_dir(
+        _wire_dataset_source(config, source) if source is not None else config, workdir=workdir
+    )
     trail = runs.reservar_trail(workdir)  # (b-ter) D-GOB-7: el trail nunca cae en el cwd
     wired = _wire_audit_trail(wired, trail=trail)
     resolved = BayesRiskConfig.model_validate(wired)
@@ -1063,7 +1069,7 @@ def run_pipeline(
         workdir=workdir,
         governance=resolved.governance,
         trail=trail,
-        source_label=str(dataset_id),
+        source_label=str(dataset_id) if source is not None else "Corridas guardadas",
     )
     return {"run_id": run_id, "status": study.run_context.status}
 
@@ -1370,6 +1376,29 @@ def build_router() -> APIRouter:
                 content, file.filename, workdir=Path(settings.workdir), max_bytes=max_bytes
             )
         except UiCardError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @router.post("/comparables/list")
+    async def comparables_list_endpoint(request: Request) -> dict[str, Any]:
+        """Resúmenes disponibles para comparar, sin exponer sus observaciones."""
+        from bayesrisk.ui.comparables import listar
+
+        return {"comparables": listar(Path(request.app.state.settings.workdir))}
+
+    @router.post("/comparables/upload")
+    async def comparables_upload_endpoint(file: UploadFile, request: Request) -> dict[str, Any]:
+        """Valida el resumen con el lector de la puerta guiada antes de publicarlo."""
+        from bayesrisk.ui.comparables import subir
+        from bayesrisk.ui.exceptions import UiComparableError
+
+        settings = request.app.state.settings
+        max_bytes = settings.upload_max_mb * 1024 * 1024
+        content = await file.read(max_bytes + 1)
+        try:
+            return subir(
+                content, file.filename, workdir=Path(settings.workdir), max_bytes=max_bytes
+            )
+        except UiComparableError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @router.get("/jobs")

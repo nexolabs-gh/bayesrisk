@@ -167,7 +167,7 @@ def test_governance_es_la_ultima_seccion_del_formulario_y_se_llama_gobernanza() 
     gobernanza rompe la promesa de D-GOB-11, que es que sea lo último que se ve.
     """
     secciones = _config_sections_del_front()
-    assert len(secciones) == 20, [k for k, _ in secciones]
+    assert len(secciones) == 21, [k for k, _ in secciones]
     assert secciones[-2][0] == "report", "el informe sigue siendo el último paso del pipeline"
     assert secciones[-1] == ("governance", "Gobernanza")
 
@@ -186,7 +186,7 @@ def test_los_diez_trabajos_ofrecen_governance_y_la_declaran_latente() -> None:
     """
     trabajos = list_jobs(incluir_referencia=True)
     # 10 → 11 con la capa B del SDD-33: «Monitorear un modelo en uso» también la ofrece latente.
-    assert len(trabajos) == 11
+    assert len(trabajos) == 12
     for job in trabajos:
         assert job["sections"][-1] == "governance", (job["id"], job["sections"])
         assert job["latent_sections"] == _LATENTES_ESPERADAS.get(job["id"], ["governance"]), (

@@ -85,6 +85,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   master_scale: ChartBarIncreasing,
   // El modelo en uso, periodo a periodo, con su veredicto (SDD-33, capa B).
   monitoring: ListChecks,
+  comparison: GitCompare,
   survival: TrendingDown,
   // Los escenarios de la institución: trayectorias que desplazan la curva (IFRS9-FIRMABLE capa C).
   forward: ChartSpline,
@@ -160,9 +161,10 @@ const [DATA_SECTION, ...FLOW_SECTIONS] = SECTIONS
 function navItems(
   secciones: ConfigSectionDef[],
   conError: ReadonlySet<string> = new Set(),
+  requiereDatos = true,
 ): NavItem[] {
   return [
-    { value: DATA_SECTION.value, label: DATA_SECTION.label, icon: DATA_SECTION.icon },
+    ...(requiereDatos ? [{ value: DATA_SECTION.value, label: DATA_SECTION.label, icon: DATA_SECTION.icon }] : []),
     {
       value: "config",
       label: "Configuración",
@@ -245,9 +247,9 @@ function configKeyOf(active: string): string | null {
  * un incumplimiento, cómo particionar—. En esos dos estados el rótulo «OPCIONAL» señalaría como
  * saltable justo el paso que falta.
  */
-function flowSteps(configOpcional: boolean): (FlowStep & { value: string })[] {
+function flowSteps(configOpcional: boolean, requiereDatos = true): (FlowStep & { value: string })[] {
   return [
-    { value: DATA_SECTION.value, label: "Datos" },
+    ...(requiereDatos ? [{ value: DATA_SECTION.value, label: "Datos" }] : []),
     { value: "config", label: "Configuración", optional: configOpcional },
     { value: "ejecutar", label: "Ejecutar" },
     { value: "resultados", label: "Resultados" },
@@ -259,9 +261,9 @@ function flowSteps(configOpcional: boolean): (FlowStep & { value: string })[] {
 const FLOW_ORDER = ["datos", "config", "ejecutar", "resultados", "reporte"]
 
 /** Paso del stepper que corresponde a la sección abierta (cualquier `config:*` es el paso 2). */
-function stepIndexOf(active: string): number {
+function stepIndexOf(active: string, requiereDatos = true): number {
   const value = configKeyOf(active) === null ? active : "config"
-  const index = FLOW_ORDER.indexOf(value)
+  const index = FLOW_ORDER.filter((v) => requiereDatos || v !== "datos").indexOf(value)
   return index === -1 ? 0 : index
 }
 
@@ -287,6 +289,7 @@ function App() {
 
   // Las secciones que existen esta sesión (D-JOB-1). Sin trabajo elegido son todas.
   const configSections = sectionsOfJob(job)
+  const requiereDatos = job === null || job.sections.includes("data")
   // Qué secciones marcar en el sidebar (D-VIS-4). Se deriva del mismo `lookup` que pinta los
   // errores: una sola fuente, así que la marca no puede desincronizarse del mensaje.
   const seccionesRotas = seccionesConError(validation)
@@ -317,11 +320,16 @@ function App() {
   // pestaña que el sidebar ya no ofrece: ni encabezado ni forma de salir salvo el sidebar.
   useEffect(() => {
     const abierta = configKeyOf(active)
-    if (abierta === null || configSections.length === 0) return
+    if (configSections.length === 0) return
+    if (active === "datos" && !requiereDatos) {
+      setActive(configValue(configSections[0].key))
+      return
+    }
+    if (abierta === null) return
     if (!configSections.some((s) => s.key === abierta)) {
       setActive(configValue(configSections[0].key))
     }
-  }, [active, configSections])
+  }, [active, configSections, requiereDatos])
 
   // "config" a secas (p.ej. una navegación programática) cae en la primera sub-sección DEL TRABAJO:
   // con el catálogo entero caería siempre en `data`, que puede no ser la primera del trabajo activo.
@@ -402,6 +410,8 @@ function App() {
       jobSkeleton(actual, elegido, cargado.payload.effective_defaults),
     )
     setSeed({ kind: "job", jobId: elegido.id, label: elegido.label })
+    setDatasetId(null)
+    setSelectedDataset(null)
     // El trabajo cambia el dominio: la corrida anterior ya no le corresponde (mismo corte que
     // `applyPreset`, y por el mismo P0 de lineage mixto en Resultados y Reporte).
     setResults(null)
@@ -435,7 +445,7 @@ function App() {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <AppSidebar
-        items={navItems(configSections, seccionesRotas)}
+        items={navItems(configSections, seccionesRotas, requiereDatos)}
         active={active}
         onSelect={setActive}
         onHome={() => setView("landing")}
@@ -444,8 +454,8 @@ function App() {
       <main className="min-w-0 flex-1">
         <div className="mx-auto max-w-4xl px-6 py-10 lg:px-10">
           <FlowStepper
-            steps={flowSteps(seed?.kind === "preset")}
-            current={stepIndexOf(active)}
+            steps={flowSteps(seed?.kind === "preset", requiereDatos)}
+            current={stepIndexOf(active, requiereDatos)}
           />
 
           <header className="mb-8">

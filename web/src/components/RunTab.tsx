@@ -189,11 +189,12 @@ export function RunTab({ onNavigate }: RunTabProps) {
   // Preset al que se quiere cambiar teniendo el config editado: espera confirmación (ver §M5).
   const [confirmar, setConfirmar] = useState<PresetSummary | null>(null)
 
-  const gate = canRun(validation, datasetId)
+  const requiereDatos = config.data !== null && config.data !== undefined
+  const gate = canRun(validation, datasetId, requiereDatos)
   // Aviso del preflight (D-PRE-5): cambia el ASPECTO del botón y pone la advertencia al lado, pero
   // NO toca `disabled`. Informar no es bloquear: la corrida sigue siendo la autoridad sobre sí
   // misma, y quitarle al usuario la posibilidad de intentar sería peor que un aviso que sobre.
-  const hint = runHint(preflight)
+  const hint = requiereDatos ? runHint(preflight) : null
   const running = outcome.kind === "running"
   const configHash = validation.kind === "valid" ? validation.hash : null
   // El arranque de la sesión (provider) siembra y valida el preset solo: mientras no termina
@@ -273,13 +274,13 @@ export function RunTab({ onNavigate }: RunTabProps) {
   }
 
   async function handleRun() {
-    if (!gate.ok || datasetId === null) return // guard (el botón ya está deshabilitado)
+    if (!gate.ok) return // guard (el botón ya está deshabilitado)
     setOutcome({ kind: "running" })
     try {
       // Los insumos externos van con la corrida (D-PUE-3): el archivo ya está subido, así que lo
       // que viaja es su referencia. Se derivan de lo que el trabajo PIDE, no de lo que quedó
       // subido, para no mandar un archivo que el backend declararía inerte.
-      const run = await runPipeline(config, datasetId, externalRefs)
+      const run = await runPipeline(config, requiereDatos ? datasetId : null, externalRefs)
       setLastRun({ runId: run.run_id, status: run.status })
       // Encadena los artefactos al store (los consume Resultados). Si `status:"failed"`,
       // el mensaje sale del campo `error` del results parcial (no es error de app).
@@ -506,7 +507,7 @@ export function RunTab({ onNavigate }: RunTabProps) {
             ) : gate.ok ? (
               <p className="text-xs text-muted-foreground">
                 Config válido · dataset{" "}
-                <span className="font-mono text-muted-foreground">{datasetId}</span>
+                <span className="font-mono text-muted-foreground">{requiereDatos ? datasetId : "Corridas guardadas"}</span>
               </p>
             ) : preparing ? null : (
               <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -535,7 +536,7 @@ export function RunTab({ onNavigate }: RunTabProps) {
               // D-JOB-2 y visible en la primera pantalla de Ejecutar. Ningún test lo habría cazado:
               // el copy de un `EmptyState` no lo asevera nadie.
               description={
-                seed?.kind === "job"
+                !requiereDatos ? "Elige tus corridas en Configuración y ejecuta la comparación." : seed?.kind === "job"
                   ? "Este trabajo ya tiene sus secciones cargadas: trae tu dataset y completa en Configuración lo que sólo puedes decidir tú."
                   : seed?.kind === "empty"
                     ? "Todavía no hay nada que correr: trae tu dataset y activa en Configuración las secciones del pipeline que necesitas."
@@ -546,7 +547,7 @@ export function RunTab({ onNavigate }: RunTabProps) {
               tag="Ejecutar"
               // Sin dataset el botón de arriba no abre: el CTA lleva al paso que falta.
               action={
-                datasetId === null
+                requiereDatos && datasetId === null
                   ? {
                       label: seed?.kind === "empty" ? "Traer mi dataset" : "Elegir dataset",
                       onClick: () => onNavigate("datos"),

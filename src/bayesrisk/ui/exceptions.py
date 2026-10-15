@@ -56,6 +56,10 @@ class UiCardError(UiError):
     """
 
 
+class UiComparableError(UiError):
+    """El archivo subido no es un resumen comparable válido (→ 422, SDD-34)."""
+
+
 class UiRunNotFoundError(UiError):
     """``run_id`` desconocido, inválido o cuya ruta escaparía del ``workdir`` (→ 404)."""
 

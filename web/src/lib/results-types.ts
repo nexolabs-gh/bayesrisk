@@ -1313,6 +1313,7 @@ export interface RunLineage {
  * notebook y pantalla (D-SIM-5).
  */
 export interface StageSummaryView {
+  charts?: { title: string; svg: string }[]
   stage: string
   label: string
   lines: string[]

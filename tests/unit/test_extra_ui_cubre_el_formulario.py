@@ -50,6 +50,7 @@ EXTRA_POR_SECCION = {
     # SDD-33 capa B: el monitoreo aplica la tarjeta y ajusta la pendiente con scipy
     # (`monitoring/step.py` lo exige al importar su motor).
     "monitoring": "scoring",
+    "comparison": None,
     "survival": "survival",  # además de `scoring`: `cox_ph`/`aft` exigen lifelines (KM no)
     # IFRS9-FIRMABLE capa C: lo que la pantalla ofrece de `forward` es la vía de los escenarios de
     # la institución, que el trabajo IFRS 9 enciende al subir las dos tablas, y corre con el núcleo
