@@ -985,3 +985,10 @@ la 2.16.0. No añade decisiones de producto. Evidencia y controles negativos en 
    intentaba atribuirla a una etapa inexistente. Se exige el desglose que el productor del esquema 1
    ya escribe desde la 2.15.0: etapas 1, 2 y 3, una vez cada una, también las que tienen cero
    operaciones. Lista vacía, etapa ausente y etapa duplicada nacieron rojas y se rechazan al leer.
+   La tercera pasada encontró diferencias fraccionarias legítimas: tres diferencias de 0,25 se
+   descartaban por redondeo, pero el total de 0,75 no, y la atribución fallaba. Ahora la lectura
+   atribuye las diferencias originales y usa el formateador común para los montos menores de una
+   unidad. Cuatro casos por HTTP cubren aumentos, bajas, una sola etapa y el mismo total repartido
+   distinto. Los cálculos y los archivos comparables no cambian. El arreglo queda pendiente de
+   confirmación independiente: se alcanzó el tope de tres pasadas de S51; la 2.16.0 no se publica
+   mientras no se cumpla la condición de revisión sin hallazgos materiales.

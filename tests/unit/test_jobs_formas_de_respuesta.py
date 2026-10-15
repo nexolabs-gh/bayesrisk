@@ -215,8 +215,10 @@ def test_el_barrido_no_es_vacuo() -> None:
     # más las dos de «Provisiones IFRS 9» (unidad y horizonte de la curva, FLUJO-GUIADO-IFRS9
     # §3.12) y, desde la capa C de IFRS9-FIRMABLE, las dos de `forward` (las variables macro de las
     # dos tablas), que se contestan con un dato y no llevan formas; y, desde la capa B del SDD-33,
-    # las dos del monitoreo (la tarjeta y la columna de periodo), también sin formas.
-    assert len(decisiones) == 11, sorted(decisiones)
+    # las dos del monitoreo (la tarjeta y la columna de periodo), también sin formas; y, desde
+    # la capa B del SDD-34, las corridas guardadas de la comparación, una lista sin formas.
+    assert len(decisiones) == 12, sorted(decisiones)
+    assert decisiones["comparison.runs"]["answer_forms"] == []
     con_formas = {p: d["answer_forms"] for p, d in decisiones.items() if d["answer_forms"]}
     assert sorted(con_formas) == ["data.partition.strategy", "data.target.bad_rule"]
     assert len(con_formas["data.partition.strategy"]) == 4

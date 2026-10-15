@@ -1164,7 +1164,7 @@ cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en un
 1. **Bump en un commit propio.** `__version__` en `src/bayesrisk/__init__.py` (pyproject lo lee),
    `CHANGELOG.md` (`## [No publicado]` → `## [X.Y.Z] — AAAA-MM-DD`), `docs_site/index.md`
    («Estado: X.Y.Z — release estable») y `docs_site/api.md` («código publicado (`X.Y.Z`)»). Suite
-   completa sobre ese árbol, push, CI 18/18 job a job (§8).
+   completa sobre ese árbol, push, CI 13/13 job a job (§8).
 2. **Recaptura de la demo**, sólo si la release mueve el `config_hash` de un preset publicado o el
    copy del informe, y sólo con OK de Cami: rama temporal desde el bump
    (`git push -f origin HEAD:refs/heads/recaptura-X.Y.Z`),

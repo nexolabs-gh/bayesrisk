@@ -328,7 +328,8 @@ def lectura_scorecard(
 
 
 def _monto(valor: float, moneda: str | None) -> str:
-    texto = conteo(round(abs(valor)))
+    # Las fracciones también son montos válidos: redondearlas a cero borraba la diferencia.
+    texto = cifra(abs(valor)) if 0 < abs(valor) < 1 else conteo(round(abs(valor)))
     return f"{texto} {moneda}" if moneda else texto
 
 
@@ -371,8 +372,9 @@ def lectura_ifrs9(
             )
             continue
         diferencia = prov["ecl"] - ref["ecl"]
-        por_etapa = [(e, d) for e, d in prov["stage_differences"] if round(d) != 0]
-        if round(diferencia) == 0:
+        # La atribución usa las diferencias originales; el redondeo es sólo presentación.
+        por_etapa = [(e, d) for e, d in prov["stage_differences"] if d != 0]
+        if diferencia == 0:
             if not por_etapa:
                 lineas.append(f"{nombre} provisiona lo mismo que {ref['name']}")
                 continue

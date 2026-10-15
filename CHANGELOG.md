@@ -15,8 +15,6 @@ entradas anteriores conservan el nombre con el que se publicaron.
   autenticada de resúmenes comparables, sin cargar una cartera; Resultados comparte las tablas y
   los gráficos del informe. Comparación estable bajo SemVer 2.x (SDD-34 D-CMP-9).
 
-### Añadido
-
 - **La comparación de modelos en el informe y en Excel.** La corrida de `bayesrisk.Comparison`
   escribe el «Informe de Comparación de Modelos»: una página ejecutiva con la lectura y la
   elección de la institución, y el capítulo «Comparación de modelos» con las corridas y su
@@ -26,13 +24,23 @@ entradas anteriores conservan el nombre con el que se publicaron.
   la frontera va marcada y los modelos que no entran se declaran bajo el eje; el resumen
   `comp.summary("comparison")` los muestra también en el notebook, con el mismo SVG.
   `comp.export_excel()` deja `excel/Comparación.xlsx`, un libro único con las tablas del mismo
-  resumen. La comparación sigue experimental: la pantalla llega con la versión siguiente.
+  resumen.
 
 ### Cambiado
 
 - En la tabla de variables de la comparación, cada celda dice primero el IV y después el signo
   del coeficiente («IV 0,164, β -»): una celda que empezaba por el signo la planilla la protegía
   como fórmula.
+
+### Corregido
+
+- Una respuesta tardía de una ejecución anterior ya no mezcla sus resultados con el informe
+  de la corrida vigente, aunque se cambie de trabajo o se vuelva a ejecutar.
+- La lectura y la subida de resúmenes comparables verifican también su estructura interna:
+  un JSON corrupto se rechaza antes de ofrecerlo para comparar, conservando las huellas de
+  los archivos válidos.
+- Las diferencias fraccionarias de provisión se conservan en la lectura y en su atribución por
+  etapa: ya no desaparecen por redondeo ni impiden terminar una comparación IFRS 9 válida.
 
 ## [2.15.0] — 2026-10-14
 

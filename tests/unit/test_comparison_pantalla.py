@@ -155,6 +155,46 @@ def test_ifrs9_por_http_compara_las_etapas_sin_graficos(cliente: Any) -> None:
     assert any("etapa" in t["title"].lower() for t in etapa["extra_tables"])
 
 
+@pytest.mark.parametrize(
+    ("ecl", "lectura"),
+    [
+        (
+            [1.25, 2.25, 3.25],
+            "alternativa provisiona 0,7500 más que referencia (12,5 %), "
+            "la mayor diferencia en Stage 1 (0,2500 más).",
+        ),
+        (
+            [0.75, 1.75, 2.75],
+            "alternativa provisiona 0,7500 menos que referencia (-12,5 %), "
+            "la mayor diferencia en Stage 1 (0,2500 menos).",
+        ),
+        (
+            [1.0, 2.25, 3.0],
+            "alternativa provisiona 0,2500 más que referencia (4,2 %), todo en Stage 2.",
+        ),
+        (
+            [1.25, 1.75, 3.0],
+            "alternativa provisiona lo mismo que referencia en total, repartido distinto: "
+            "Stage 1 0,2500 más y Stage 2 0,2500 menos.",
+        ),
+    ],
+)
+def test_ifrs9_fraccionario_por_http_conserva_el_monto_y_su_etapa(
+    cliente: Any, ecl: list[float], lectura: str
+) -> None:
+    rutas = []
+    for nombre, montos in (("referencia", [1.0, 2.0, 3.0]), ("alternativa", ecl)):
+        subida = _subir(cliente, bytes_canonicos(_provision(nombre, "cartera", montos)))
+        assert subida.status_code == 200, subida.text
+        rutas.append(subida.json()["path"])
+    respuesta = cliente.post("/api/run", json={"config": {"comparison": {"runs": rutas}}})
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["status"] == "done"
+    resultados = cliente.get(f"/api/results/{respuesta.json()['run_id']}").json()
+    etapa = next(e for e in resultados["summaries"]["stages"] if e["stage"] == "comparison")
+    assert lectura in etapa["lines"]
+
+
 def test_subida_respeta_tipo_y_tope_antes_de_publicar(tmp_path: Path) -> None:
     from bayesrisk.ui.comparables import subir
     from bayesrisk.ui.exceptions import UiComparableError

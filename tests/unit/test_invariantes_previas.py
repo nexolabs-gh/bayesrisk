@@ -197,6 +197,11 @@ def test_un_requisito_incumplido_no_es_una_columna_que_falte() -> None:
 #: el día que sus trabajos pasaron a disponibles — la exención llevaba tiempo siendo falsa y una
 #: lista escrita a mano no tenía forma de notarlo. Ése *es* el defecto que esto cierra.
 EXENTAS: dict[str, str] = {
+    # SDD-34 capa B: compara resúmenes guardados, sin archivo de cartera ni columnas.
+    "comparison": (
+        "no lee columnas: su `model_validator` exige entre dos y diez rutas no vacías y el "
+        "lector valida los resúmenes comparables antes de usarlos"
+    ),
     # IFRS9-FIRMABLE capa C: `forward` no lee columnas del archivo de cartera sino sus dos tablas
     # aparte, que se validan al subirlas (`POST /api/scenario-tables`, con las reglas del motor) y
     # otra vez antes de correr; un requisito sobre las columnas de la cartera no tendría qué mirar.
