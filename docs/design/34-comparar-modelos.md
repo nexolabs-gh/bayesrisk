@@ -907,8 +907,8 @@ parte 2. Nada de lo que sigue cambia una decisión de §12; la evidencia está e
    mismo proceso y en otro con otro `PYTHONHASHSEED` (test); el Word los lleva en PNG.
 3. **El capítulo.** «Comparación de modelos», condicional a la card de la etapa, con seis
    subsecciones: las corridas y su comparabilidad (la lectura y «Qué revisar» como cuerpo), la
-   discriminación y la estabilidad (gráfico, tabla y pruebas pareadas), la concentración (gráfico y
-   tabla), las variables, la provisión por etapa (IFRS 9) y la elección. Una subsección sin tabla no
+   discriminación y la estabilidad (gráfico, tabla, pruebas pareadas y cada modelo en cada
+   muestra), la concentración (gráfico y tabla), las variables, la provisión por etapa (IFRS 9) y la elección. Una subsección sin tabla no
    se emite, salvo la primera y la última, que tienen texto. Las tablas del cuerpo son las del
    resumen: la de modelos se reparte por columnas entre discriminación y concentración, con las
    mismas celdas (test); los artefactos completos van al anexo de tablas, y los vacíos —la
@@ -931,3 +931,7 @@ parte 2. Nada de lo que sigue cambia una decisión de §12; la evidencia está e
 8. **Un defecto de la capa A, de paso**: la alerta «La discriminación de X no es evaluable en …» no
    salía nunca cuando otro modelo sí tenía AUC, porque el artefacto guarda el AUC ausente como
    `NaN` y la alerta preguntaba `is None`. Corregida, con su test.
+9. **Lo que la revisión del código precisó.** Pasada 1 de Codex (medium): la tabla «Muestras» estaba
+   en el resumen y en `Comparación.xlsx` pero no en el cuerpo del informe; ahora va en
+   «Discriminación y estabilidad», y un test exige que toda tabla del resumen llegue al cuerpo, con
+   sus celdas.

@@ -158,6 +158,30 @@ def test_las_tablas_del_informe_son_las_del_resumen(entorno: dict[str, Any]) -> 
             assert html_lib.escape(celda, quote=False) in documento, celda
 
 
+def test_toda_tabla_del_resumen_llega_al_cuerpo_del_informe(entorno: dict[str, Any]) -> None:
+    """Pasada 1 de Codex: «Muestras» estaba en el resumen y en el Excel, pero no en el informe."""
+    from bayesrisk.guided.summaries import _tabla_transportable, comparison_report_extras
+    from bayesrisk.report.document import COMPARISON_SECTIONS
+
+    for clave_entorno in ("comp", "ifrs9"):
+        comp = entorno[clave_entorno]
+        resumen = comp.summary("comparison")
+        publicadas = {k: (c, f) for k, c, f in comparison_report_extras(comp.study)["tables"]}
+        del_cuerpo = {t for _titulo, tablas in COMPARISON_SECTIONS.values() for t in tablas}
+        assert set(publicadas) <= del_cuerpo
+        filas_del_informe = {tuple(fila) for _c, filas in publicadas.values() for fila in filas}
+        for _titulo, tabla, formatos in resumen.extra_tables:
+            transportada = _tabla_transportable(tabla, formatos)
+            assert transportada is not None
+            for fila in transportada["rows"]:
+                assert tuple(fila) in filas_del_informe, (clave_entorno, _titulo, fila)
+        documento = _informe(comp).read_text(encoding="utf-8").replace("<wbr>", "")
+        for _c, filas in publicadas.values():
+            for fila in filas:
+                for celda in fila:
+                    assert html_lib.escape(celda, quote=False) in documento, celda
+
+
 def test_los_dos_graficos_estan_en_el_informe_con_la_frontera_marcada(
     entorno: dict[str, Any],
 ) -> None:

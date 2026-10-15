@@ -54,6 +54,7 @@ __all__ = [
     "COMPARISON_PROVISIONS_TABLE",
     "COMPARISON_PROVISION_TABLE",
     "COMPARISON_RUNS_TABLE",
+    "COMPARISON_SAMPLES_TABLE",
     "COMPARISON_SECTIONS",
     "COMPARISON_TESTS_TABLE",
     "COMPARISON_VARIABLES_TABLE",
@@ -303,6 +304,7 @@ MONITORING_SECTIONS: Final[dict[str, tuple[str, tuple[str, ...]]]] = {
 COMPARISON_RUNS_TABLE: Final = "comparison.runs_compared"
 COMPARISON_MODELS_TABLE: Final = "comparison.discrimination_table"
 COMPARISON_TESTS_TABLE: Final = "comparison.paired_tests"
+COMPARISON_SAMPLES_TABLE: Final = "comparison.samples_table"
 COMPARISON_CONCENTRATION_TABLE: Final = "comparison.concentration_table"
 COMPARISON_VARIABLES_TABLE: Final = "comparison.variables_table"
 COMPARISON_PROVISIONS_TABLE: Final = "comparison.provisions"
@@ -317,7 +319,7 @@ COMPARISON_SECTIONS: Final[dict[str, tuple[str, tuple[str, ...]]]] = {
     "reading": ("Las corridas y su comparabilidad", (COMPARISON_RUNS_TABLE,)),
     "discrimination": (
         "Discriminación y estabilidad",
-        (COMPARISON_MODELS_TABLE, COMPARISON_TESTS_TABLE),
+        (COMPARISON_MODELS_TABLE, COMPARISON_TESTS_TABLE, COMPARISON_SAMPLES_TABLE),
     ),
     "concentration": ("Concentración de los tramos", (COMPARISON_CONCENTRATION_TABLE,)),
     "variables": ("Las variables de cada modelo", (COMPARISON_VARIABLES_TABLE,)),
@@ -485,6 +487,7 @@ _TABLE_TITLES: Final[dict[str, str]] = {
     COMPARISON_RUNS_TABLE: "Comparación — las corridas y su comparabilidad",
     COMPARISON_MODELS_TABLE: "Comparación — discriminación, estabilidad y frontera",
     COMPARISON_TESTS_TABLE: "Comparación — pruebas de DeLong pareadas",
+    COMPARISON_SAMPLES_TABLE: "Comparación — cada modelo en cada muestra",
     COMPARISON_CONCENTRATION_TABLE: "Comparación — concentración de los tramos y frontera",
     COMPARISON_VARIABLES_TABLE: "Comparación — signo e IV de cada variable por modelo",
     COMPARISON_PROVISIONS_TABLE: "Comparación — cada provisión",
