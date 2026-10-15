@@ -1215,8 +1215,10 @@ cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en un
 
 ## 11. Mecánica del agente en este checkout
 
-El reparto de roles —Claude Code writer único, Codex revisor adversarial read-only— es regla durable
-y vive en [`AGENTS.md`](../../AGENTS.md). Aquí va sólo el literal, que es reemplazable.
+El reparto de roles es regla durable y vive en [`AGENTS.md`](../../AGENTS.md): hasta el 2026-10-14
+el writer fue Claude Code y Codex el revisor; desde el 2026-10-15 (S51) el writer es Codex y la
+revisión, otra sesión de Codex nueva y de sólo lectura. Aquí va sólo el literal, que es
+reemplazable.
 
 ### 11.1 Revisión adversarial de cierre
 
@@ -1289,6 +1291,14 @@ Dos precisiones medidas el 2026-09-09 (dieciséis lanzamientos seguidos, plugin 
 **Prohibido mientras Claude sea el writer:** `/codex:rescue` y el subagente `codex:codex-rescue`.
 Ese comando **sí** es invocable por el modelo y su subagente añade `--write` por defecto, de modo
 que un descuido crea un segundo writer sobre el mismo checkout.
+
+**Con Codex como writer (desde S51).** La revisión es otra sesión de Codex, nueva y de sólo
+lectura, nunca el hilo que escribió. El writer la lanza con la vía 2 desde PowerShell: el guion
+privado `privado/evidencia/s50/lanzar_codex.ps1 -Base <sha> -Foco <archivo> -Salida <archivo>`
+hace lo de arriba —el `codex.exe` de la app delante del shim y el companion del plugin con
+`--scope branch`— y deja el informe en un archivo UTF-8 (2–5 min por pasada sobre código). El
+foco declara el tope de pasadas y el criterio de parada, y lo contractual se eleva. Un segundo
+writer sigue prohibido.
 
 ### 11.2 Skills de arranque y cierre
 

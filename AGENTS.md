@@ -43,18 +43,25 @@ y elevar a Cami sólo la decisión que siga siendo humana.
 
 ## Reparto de roles
 
-Vigente desde el 2026-08-26. Es una regla durable, no un estado: si se invierte, se edita aquí.
+Regla durable, no un estado: cuando cambia el writer, se edita aquí. Del 2026-08-26 al 2026-10-14
+el writer fue Claude Code y Codex el revisor. **Desde el 2026-10-15 (S51) el writer es Codex**, por
+decisión de Cami: se agotó la cuota de Claude Code. Vuelve a Claude Code sólo cuando Cami lo diga, y
+entonces se edita esta sección.
 
-- **Claude Code es el writer único del checkout.** Mide, diseña, implementa, ejecuta gates y
-  controles negativos, commitea y pushea. Su configuración vive en `.claude/`.
-- **Codex es el revisor adversarial read-only.** Se le pide revisión al cerrar cada capa, sobre el
-  working tree. No escribe en este checkout mientras Claude sea el writer.
-- **`/codex:rescue` y el subagente `codex:codex-rescue` no se usan mientras Claude sea el writer.**
-  El plugin instalado empuja en dirección contraria —su subagente añade `--write` por defecto y su
-  comando sí es invocable por el modelo—, así que la barrera tiene que ser esta regla, no la
-  herramienta.
-- Fan-out de subagentes de **lectura** para medir, explorar o revisar es normal y no pide permiso;
-  lo que no se duplica es el writer.
+- **Un solo writer por checkout: hoy, Codex.** Mide, diseña, implementa, ejecuta gates y controles
+  negativos, commitea y pushea, y cierra cada sesión con `privado/HANDOFF.md` al día: es el puente
+  para quien escriba después, sea quien sea.
+- **Claude Code no escribe en este checkout mientras Codex sea el writer.** Su configuración sigue en
+  `.claude/`; cuando vuelva, arranca en tibio desde el `HANDOFF` y verifica lo que se hizo.
+- **La revisión adversarial nunca la hace el hilo que escribió.** Mientras Codex escriba, es otra
+  sesión de Codex, nueva y de sólo lectura, lanzada al cerrar cada capa sobre su rango de commits.
+  Es menos independiente que un revisor de otro modelo: por eso los controles negativos, los tests
+  nacidos rojos y el CI job a job no se relajan.
+- **Nunca dos writers a la vez.** Ni `/codex:rescue` ni el subagente `codex:codex-rescue` desde
+  Claude —su `--write` por defecto crea un segundo writer—, ni otra sesión con escritura sobre el
+  mismo árbol.
+- Fan-out de agentes de **lectura** para medir, explorar o revisar es normal y no pide permiso; lo
+  que no se duplica es el writer.
 
 El literal de cómo se invoca la revisión —y qué parte la ejecuta una persona— vive en el runbook,
 que es reemplazable cuando cambie la versión del plugin.
@@ -151,9 +158,9 @@ desde 2026-09-18») y la misión en [`docs/ESPECIFICACIONES.md`](docs/ESPECIFICA
   mutuamente excluyentes con su impacto y señalar una recomendación concreta.
 - Cada cierre entrega un **prompt completo y listo para copiar** en una sesión fresca, además del
   **agente destinatario**, el modelo y el nivel de esfuerzo recomendados para esa sesión, su motivo
-  y la condición que justificaría escalarlo. Recomendar el modelo del agente que **ejecutará** —hoy
-  Claude Code—, no el del revisor. Ninguna versión concreta de modelo se fija en este archivo: si
-  hace falta un default por agente, vive en el runbook. No inventar un objetivo de producto que
+  y la condición que justificaría escalarlo. Recomendar el modelo del agente que **ejecutará** —el
+  writer vigente de «Reparto de roles»—, no el del revisor. Ninguna versión concreta de modelo se
+  fija en este archivo: si hace falta un default por agente, vive en el runbook. No inventar un objetivo de producto que
   Cami no haya elegido.
 
 ## Qué puede hacer sin preguntar
