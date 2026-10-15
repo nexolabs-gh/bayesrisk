@@ -192,7 +192,11 @@ def _resumen_minimo() -> dict[str, Any]:
         "as_of": "2025-06-30",
         "scenarios": [{"name": "base", "weight": 1.0}],
         "amount_columns": {"exposure": "ead", "balance": "drawn", "limit": "credit_limit"},
-        "by_stage": [{"stage": 1, "n": 1, "exposure": 1.0, "ecl": 0.1, "coverage": 0.1}],
+        "by_stage": [
+            {"stage": 1, "n": 1, "exposure": 1.0, "ecl": 0.1, "coverage": 0.1},
+            {"stage": 2, "n": 0, "exposure": 0.0, "ecl": 0.0, "coverage": None},
+            {"stage": 3, "n": 0, "exposure": 0.0, "ecl": 0.0, "coverage": None},
+        ],
         "total": {"n": 1, "exposure": 1.0, "ecl": 0.1, "coverage": 0.1},
     }
 

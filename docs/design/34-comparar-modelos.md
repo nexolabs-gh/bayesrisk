@@ -981,3 +981,7 @@ la 2.16.0. No añade decisiones de producto. Evidencia y controles negativos en 
    superiores válidas y filas internas incompletas (`samples: [{}]`): el lector común valida ahora
    los tipos y campos anidados de ambas familias antes de ofrecerlos. Devuelve el objeto original,
    sin coerción ni defaults, y conserva su huella. Trece entradas corruptas nacieron rojas en HTTP.
+   La segunda pasada encontró un desglose IFRS 9 vacío: con diferencia en el total, la lectura
+   intentaba atribuirla a una etapa inexistente. Se exige el desglose que el productor del esquema 1
+   ya escribe desde la 2.15.0: etapas 1, 2 y 3, una vez cada una, también las que tienen cero
+   operaciones. Lista vacía, etapa ausente y etapa duplicada nacieron rojas y se rechazan al leer.

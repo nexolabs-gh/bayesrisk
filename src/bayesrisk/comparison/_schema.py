@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
 
 from bayesrisk.comparison.exceptions import ComparisonDataError
 
@@ -130,6 +130,14 @@ class _Ifrs9(_Comun):
     amount_columns: _ColumnasDeMonto | None
     by_stage: list[_ProvisionPorEtapa]
     total: _Provision
+
+    @field_validator("by_stage")
+    @classmethod
+    def _tres_etapas(cls, filas: list[_ProvisionPorEtapa]) -> list[_ProvisionPorEtapa]:
+        # El productor del esquema 1 siempre publica las tres, incluso con cero operaciones.
+        if sorted(f.stage for f in filas) != [1, 2, 3]:
+            raise ValueError("el desglose debe traer las etapas 1, 2 y 3 una vez cada una")
+        return filas
 
 
 def validar_forma(resumen: dict[str, Any], *, origen: str) -> None:
