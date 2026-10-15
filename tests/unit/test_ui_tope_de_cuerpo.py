@@ -50,22 +50,22 @@ def _posts_de_json() -> list[str]:
 
     Escribirlos a mano dejaría el test ciego ante un POST nuevo, que es justo el caso que este
     middleware tiene que cubrir sin que nadie se acuerde de venir aquí. Las únicas exclusiones son
-    los multipart —``/api/upload`` y, desde la capa B del SDD-33, ``/api/cards/upload``—, que el
-    mismo tope global cubre y tienen sus propios tests.
+    los multipart —datasets, tarjetas y resúmenes comparables—, que el mismo tope global cubre y
+    tienen sus propios tests.
     """
     todos = frozenset(MUTATING_PATHS) | frozenset(CREDENTIALED_PATHS) | frozenset(PUBLIC_PATHS)
     return sorted(ruta for metodo, ruta in todos if metodo == "POST" and ruta not in _MULTIPART)
 
 
 #: Los POST que llevan un archivo (multipart) y no JSON.
-_MULTIPART = frozenset({"/api/upload", "/api/cards/upload"})
+_MULTIPART = frozenset({"/api/upload", "/api/cards/upload", "/api/comparables/upload"})
 
 
 # ─────────────────────────── control de que la medición sigue en pie ───────────────────────────
 
 
-def test_el_contrato_tiene_cinco_post_de_json() -> None:
-    """Ancla de la medición previa: 6 POST de JSON sin tope + ``/api/upload`` con el suyo.
+def test_el_contrato_tiene_ocho_post_de_json() -> None:
+    """Censo de los ocho POST de JSON; las tres subidas son multipart.
 
     Si el contrato gana un POST, este número cambia y hay que mirar si el tope le sirve tal cual.
     ``/api/scenario-tables`` (IFRS9-FIRMABLE capa C) es el sexto: su cuerpo son dos ``dataset_id``
@@ -73,11 +73,13 @@ def test_el_contrato_tiene_cinco_post_de_json() -> None:
     tope global de JSON le sirve tal cual y los tests de abajo lo recorren.
     ``/api/cards/list`` (SDD-33 capa B) es el séptimo: su cuerpo es un objeto vacío y lista las
     tarjetas del ``workdir``.
+    ``/api/comparables/list`` (SDD-34 capa B) es el octavo: también recibe un objeto vacío.
     No es un golden decorativo: es lo que impide que la lista derivada quede vacía y los tests
     parametrizados de abajo pasen recorriendo cero endpoints.
     """
     assert _posts_de_json() == [
         "/api/cards/list",
+        "/api/comparables/list",
         "/api/config/from-yaml",
         "/api/config/to-yaml",
         "/api/preflight",
@@ -90,8 +92,9 @@ def test_el_contrato_tiene_cinco_post_de_json() -> None:
 # ────────────────────────────────── multipart: el caso de origen ──────────────────────────────────
 
 
+@pytest.mark.parametrize("ruta", sorted(_MULTIPART))
 def test_un_multipart_sobre_el_tope_no_llega_a_escribir_el_temporal(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, ruta: str
 ) -> None:
     """🔴 El corazón del arreglo: con ``Content-Length`` honesto el parser ni siquiera corre.
 
@@ -107,9 +110,7 @@ def test_un_multipart_sobre_el_tope_no_llega_a_escribir_el_temporal(
 
     monkeypatch.setattr(formparsers, "SpooledTemporaryFile", _prohibido)
 
-    respuesta = _cliente(tmp_path).post(
-        "/api/upload", files={"file": ("grande.csv", _GRANDE, "text/csv")}
-    )
+    respuesta = _cliente(tmp_path).post(ruta, files={"file": ("grande.csv", _GRANDE, "text/csv")})
 
     assert respuesta.status_code == 422
     assert "límite admitido" in respuesta.json()["detail"]
@@ -142,7 +143,7 @@ def test_el_tope_del_multipart_lo_gobierna_upload_max_mb(tmp_path: Path) -> None
     assert holgado.status_code == 200
 
 
-# ─────────────────────────────────── los cinco POST de JSON ───────────────────────────────────
+# ─────────────────────────────────── los ocho POST de JSON ────────────────────────────────────
 
 
 @pytest.mark.parametrize("ruta", _posts_de_json())
