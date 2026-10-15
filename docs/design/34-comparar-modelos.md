@@ -935,3 +935,8 @@ parte 2. Nada de lo que sigue cambia una decisión de §12; la evidencia está e
    en el resumen y en `Comparación.xlsx` pero no en el cuerpo del informe; ahora va en
    «Discriminación y estabilidad», y un test exige que toda tabla del resumen llegue al cuerpo, con
    sus celdas.
+   Pasada 2 (medium, la última del tope de la sesión): un `comparable.json` editado a mano con
+   `NaN` o un infinito en una cifra presente llegaba a los gráficos y podía tumbar `summary()`.
+   `leer` rechaza ahora esos números —un resumen comparable es JSON canónico, y el armado nunca los
+   escribe—; el gráfico declara fuera lo no finito, y el resumen «Comparación» no cae si un gráfico
+   falla (queda en el registro de la librería, como en el informe).
