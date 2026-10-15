@@ -972,3 +972,12 @@ la 2.16.0. No añade decisiones de producto. Evidencia y controles negativos en 
    trabajos y el espejo de esenciales declara dieciocho secciones y 63 campos.
 6. **D-CMP-9.** `comparison` y `bayesrisk.Comparison` pasan a estables bajo SemVer 2.x, con la guía
    de las tres puertas, el informe y el Excel. La demo conserva sus corridas versionadas.
+7. **La revisión de las dos partes.** La primera pasada reprodujo una respuesta tardía de A que
+   escribía sus resultados después de terminar B, dejando el informe de B junto a las cifras de A.
+   Cada ejecución tiene ahora un intento vigente en el provider, invalidado por una nueva ejecución
+   o por reemplazar el config; ambas esperas comprueban esa vigencia antes de escribir. No se usa
+   el `config_hash`: las rutas de la comparación no entran en él. Cuatro recorridos de navegador
+   demoran el POST o el GET, con y sin cambio de trabajo. También encontró resúmenes con claves
+   superiores válidas y filas internas incompletas (`samples: [{}]`): el lector común valida ahora
+   los tipos y campos anidados de ambas familias antes de ofrecerlos. Devuelve el objeto original,
+   sin coerción ni defaults, y conserva su huella. Trece entradas corruptas nacieron rojas en HTTP.

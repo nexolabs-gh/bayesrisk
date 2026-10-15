@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 
 /** Resúmenes sintéticos del formato público: el navegador sólo sube los archivos y el motor compara. */
 function comparable(name: string) {
@@ -22,8 +22,7 @@ function comparable(name: string) {
   }
 }
 
-test("compara dos corridas sin cargar datos y muestra las tablas, los gráficos y el informe", async ({ page }) => {
-  await page.goto("/")
+async function prepararComparacion(page: Page) {
   await page.getByRole("button", { name: /^Comparar modelos/ }).click()
   const nav = page.locator('nav[aria-label="Secciones"]')
   await expect(nav.getByRole("button", { name: /Cargar datos/ })).toHaveCount(0)
@@ -36,6 +35,12 @@ test("compara dos corridas sin cargar datos y muestra las tablas, los gráficos 
     expect((await subida).status()).toBe(200)
     await page.getByRole("checkbox", { name: new RegExp(name) }).check()
   }
+  return nav
+}
+
+test("compara dos corridas sin cargar datos y muestra las tablas, los gráficos y el informe", async ({ page }) => {
+  await page.goto("/")
+  const nav = await prepararComparacion(page)
   const alternativa = page.getByRole("listitem").filter({ has: page.getByRole("checkbox", { name: /S51 alternativa/ }) })
   await alternativa.getByRole("button", { name: "Usar como referencia" }).click()
   await expect(alternativa.getByRole("button", { name: "Referencia", exact: true })).toBeDisabled()
@@ -57,3 +62,66 @@ test("compara dos corridas sin cargar datos y muestra las tablas, los gráficos 
   await nav.getByRole("button", { name: "Reporte", exact: true }).click()
   await expect(page.locator("iframe")).toBeVisible()
 })
+
+for (const [reemplazar, etapa] of [[true, "resultados"], [true, "ejecución"], [false, "resultados"], [false, "ejecución"]] as const) {
+test(`una respuesta tardía de ${etapa} no mezcla corridas ${reemplazar ? "al cambiar de trabajo" : "al ejecutar otra vez"}`, async ({ page }) => {
+  test.setTimeout(60_000)
+  const resultados = (id: string) => ({
+    run_id: id, status: "done", error: null, model_card: null,
+    summaries: { error: null, stages: [], final: {
+      family: "comparacion", execution: "Terminada", validation: `Elección de ${id}`,
+      figures: [], review: [], decisions: [], files: [],
+    } },
+  })
+  let liberarA!: () => void
+  const esperaA = new Promise<void>((resolve) => { liberarA = resolve })
+  let confirmarEspera!: () => void
+  const esperando = new Promise<void>((resolve) => { confirmarEspera = resolve })
+  let numero = 0
+  await page.route("**/api/run", async (route) => {
+    numero += 1
+    const id = numero === 1 ? "corrida-a" : "corrida-b"
+    if (id === "corrida-a" && etapa === "ejecución") {
+      confirmarEspera()
+      await esperaA
+    }
+    await route.fulfill({ json: { run_id: id, status: "done" } })
+  })
+  await page.route("**/api/results/corrida-a", async (route) => {
+    if (etapa === "resultados") {
+      confirmarEspera()
+      await esperaA
+    }
+    await route.fulfill({ json: resultados("corrida-a") })
+  })
+  await page.route("**/api/results/corrida-b", (route) => route.fulfill({ json: resultados("corrida-b") }))
+  await page.route("**/api/report/corrida-b", (route) => route.fulfill({
+    contentType: "text/html", body: "<p>Informe de corrida-b</p>",
+  }))
+  await page.goto("/")
+  let nav = await prepararComparacion(page)
+  await nav.getByRole("button", { name: "Ejecutar", exact: true }).click()
+  await page.getByRole("button", { name: "Ejecutar corrida" }).click()
+  await esperando
+  if (reemplazar) {
+    await page.getByRole("button", { name: "Volver a los modelos" }).click()
+    nav = await prepararComparacion(page)
+  } else {
+    await nav.getByRole("button", { name: "Comparación", exact: true }).click()
+  }
+  await nav.getByRole("button", { name: "Ejecutar", exact: true }).click()
+  const terminadaB = page.waitForResponse("**/api/results/corrida-b")
+  await page.getByRole("button", { name: "Ejecutar corrida" }).click()
+  await (await terminadaB).finished()
+  await nav.getByRole("button", { name: "Resultados", exact: true }).click()
+  await expect(page.getByText("Elección de corrida-b", { exact: true })).toBeVisible()
+  const tardia = page.waitForResponse(etapa === "ejecución" ? "**/api/run" : "**/api/results/corrida-a")
+  liberarA()
+  await (await tardia).finished()
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+  await expect(page.getByText("Elección de corrida-b", { exact: true })).toBeVisible()
+  await expect(page.getByText("Elección de corrida-a", { exact: true })).toHaveCount(0)
+  await nav.getByRole("button", { name: "Reporte", exact: true }).click()
+  await expect(page.frameLocator("iframe").getByText("Informe de corrida-b", { exact: true })).toBeVisible()
+})
+}

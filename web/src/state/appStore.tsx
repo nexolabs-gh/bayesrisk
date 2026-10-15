@@ -36,6 +36,7 @@ import type { PreflightState } from "@/lib/preflight"
 import type { DescarteJson } from "@/lib/form-engine"
 import type { LoadedSchema } from "@/lib/schema"
 import { buildErrorLookup, type ValidationState } from "@/lib/validation"
+import { crearControlDeCorridas } from "@/lib/run-request"
 
 /** Identidad de la última corrida disparada (SDD-23 §7.4): id + estado terminal. */
 export interface LastRun {
@@ -155,6 +156,8 @@ export interface AppState {
    * sobre la capa B del SDD-33).
    */
   getGeneracionConfig: () => number
+  /** Abre un intento de ejecución y devuelve si aún puede publicar estado al terminar una espera. */
+  iniciarCorrida: () => () => boolean
 }
 
 const AppStateContext = createContext<AppState | null>(null)
@@ -179,6 +182,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [])
   const olvidarDescartesJson = useCallback(() => setDescartesJson([]), [])
   const getGeneracionConfig = useCallback(() => generacionRef.current, [])
+  const iniciarCorrida = useMemo(() => crearControlDeCorridas(getGeneracionConfig), [getGeneracionConfig])
   const [seed, setSeedState] = useState<SeedState | null>(null)
   // Toda siembra reemplaza el config entero: los avisos de textos descartados hablaban del anterior.
   const setSeed = useCallback<Dispatch<SetStateAction<SeedState | null>>>((siguiente) => {
@@ -389,6 +393,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       avisarDescarteJson,
       olvidarDescartesJson,
       generacionConfig,
+      iniciarCorrida,
       getGeneracionConfig,
     }),
     [
@@ -410,6 +415,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       welcomeDismissed,
       descartesJson,
       generacionConfig,
+      iniciarCorrida,
       // Estables (`useCallback` sin dependencias): no recalculan nada, pero el lint los exige.
       avisarDescarteJson,
       olvidarDescartesJson,

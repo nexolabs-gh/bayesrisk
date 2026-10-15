@@ -206,6 +206,14 @@ def test_la_huella_del_resumen_no_depende_del_formato_del_archivo() -> None:
     assert comparable.huella(alterado) != comparable.huella(resumen)
 
 
+def test_validar_la_forma_no_transforma_valores_ni_huellas() -> None:
+    resumen = _resumen_minimo()
+    resumen["total"]["ecl"] = 1  # Es número JSON válido; el lector no lo convierte en 1.0.
+    original = comparable.bytes_canonicos(resumen)
+    assert comparable.validar(resumen) is resumen
+    assert comparable.bytes_canonicos(resumen) == original
+
+
 def test_un_resumen_de_otro_esquema_o_incompleto_se_rechaza() -> None:
     resumen = _resumen_minimo()
     with pytest.raises(ComparisonDataError, match="esquema"):

@@ -176,6 +176,7 @@ export function RunTab({ onNavigate }: RunTabProps) {
     setLastRun,
     setResults,
     externalRefs,
+    iniciarCorrida,
   } = useAppState()
   const [outcome, setOutcome] = useState<RunOutcome>({ kind: "idle" })
   // Catálogo de presets (SDD-28): se puebla desde `GET /api/config/presets`. `switching` bloquea
@@ -275,23 +276,29 @@ export function RunTab({ onNavigate }: RunTabProps) {
 
   async function handleRun() {
     if (!gate.ok) return // guard (el botón ya está deshabilitado)
+    const vigente = iniciarCorrida()
+    setResults(null)
+    setLastRun(null)
     setOutcome({ kind: "running" })
     try {
       // Los insumos externos van con la corrida (D-PUE-3): el archivo ya está subido, así que lo
       // que viaja es su referencia. Se derivan de lo que el trabajo PIDE, no de lo que quedó
       // subido, para no mandar un archivo que el backend declararía inerte.
       const run = await runPipeline(config, requiereDatos ? datasetId : null, externalRefs)
+      if (!vigente()) return
       setLastRun({ runId: run.run_id, status: run.status })
       // Encadena los artefactos al store (los consume Resultados). Si `status:"failed"`,
       // el mensaje sale del campo `error` del results parcial (no es error de app).
       let runError: string | undefined
       try {
         const results = await getResults(run.run_id)
+        if (!vigente()) return
         setResults(results)
         if (typeof results.error === "string") runError = results.error
       } catch {
         // La corrida existe aunque no podamos traer sus artefactos; no rompe la app.
       }
+      if (!vigente()) return
       setOutcome({
         kind: "done",
         runId: run.run_id,
@@ -300,7 +307,7 @@ export function RunTab({ onNavigate }: RunTabProps) {
       })
     } catch (err) {
       // ApiError (422 config inválido / 404 dataset o run desconocido) → inline + reintento.
-      setOutcome({ kind: "error", message: runErrorMessage(err) })
+      if (vigente()) setOutcome({ kind: "error", message: runErrorMessage(err) })
     }
   }
 

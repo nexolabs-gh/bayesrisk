@@ -12,7 +12,7 @@ Lo que la corrida no tiene va en nulo con su razón en ``missing``; armarlo nunc
 corrida. La comparación (:mod:`bayesrisk.comparison.step`) lee estos archivos y nada más: no abre
 carpetas con ``Study.load``.
 
-**Experimental (fuera de la garantía SemVer 2.x).** Sale en la 2.15.0 (capa A del SDD-34).
+**Estable (SemVer 2.x).** Desde la 2.16.0 (capa B del SDD-34).
 """
 
 from __future__ import annotations
@@ -314,6 +314,9 @@ def validar(resumen: Any, *, origen: str = "el resumen") -> dict[str, Any]:
             f"{origen} no tiene la forma de un resumen comparable: faltan {faltan}, "
             f"sobran {sobran}."
         )
+    from bayesrisk.comparison._schema import validar_forma
+
+    validar_forma(resumen, origen=origen)
     return resumen
 
 

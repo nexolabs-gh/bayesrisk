@@ -9,7 +9,7 @@ queda en el lineage (``comparison_hashes``); las rutas, fuera del ``config_hash`
 La función pura :func:`comparar` hace todo el cálculo sobre los resúmenes ya leídos; el paso sólo
 los lee, la llama, declara al registro de auditoría lo que comparó y publica.
 
-**Experimental (fuera de la garantía SemVer 2.x).** Sale en la 2.15.0 (capa A del SDD-34).
+**Estable (SemVer 2.x).** Desde la 2.16.0 (capa B del SDD-34).
 """
 
 from __future__ import annotations

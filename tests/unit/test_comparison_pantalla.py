@@ -57,6 +57,43 @@ def test_un_resumen_invalido_no_se_publica(cliente: Any, tmp_path: Path, conteni
     assert not list((tmp_path / "ui" / "comparables").glob("*.json"))
 
 
+@pytest.mark.parametrize(
+    ("familia", "campo", "contenido"),
+    [
+        ("scorecard", "samples", [{}]),
+        ("scorecard", "samples", "no es una lista"),
+        ("scorecard", "evaluation_scores", {"risk": [0.1], "default": []}),
+        ("scorecard", "model_hash", {}),
+        ("scorecard", "score_psi", [{}]),
+        ("scorecard", "score_psi_common", {"comparison": "dev_vs_oot", "psi": "1", "band": []}),
+        ("scorecard", "grades", {"k": 2, "share_by_sample": {"oot": [0.5, "0.5"]}}),
+        ("scorecard", "variables", [{"feature": "ingreso"}]),
+        ("scorecard", "validation", []),
+        ("ifrs9", "by_stage", [{}]),
+        ("ifrs9", "total", {"n": 3}),
+        ("ifrs9", "scenarios", ["base"]),
+        ("ifrs9", "amount_columns", "ead"),
+    ],
+)
+def test_la_estructura_anidada_corrupta_no_se_publica_ni_se_lista(
+    cliente: Any, tmp_path: Path, familia: str, campo: str, contenido: Any
+) -> None:
+    resumen = (
+        _resumen("corrupto")
+        if familia == "scorecard"
+        else _provision("corrupto", "cartera", [1.0, 2.0, 3.0])
+    )
+    resumen[campo] = contenido
+    respuesta = _subir(cliente, bytes_canonicos(resumen))
+    assert respuesta.status_code == 422, respuesta.text
+    assert campo in respuesta.json()["detail"]
+    assert not list((tmp_path / "ui" / "comparables").glob("*.json"))
+    antigua = tmp_path / "ui" / "runs" / "antigua" / "comparable.json"
+    antigua.parent.mkdir(parents=True)
+    antigua.write_bytes(bytes_canonicos(resumen))
+    assert cliente.post("/api/comparables/list", json={}).json()["comparables"] == []
+
+
 def test_listado_y_subida_exigen_credenciales(tmp_path: Path) -> None:
     pytest.importorskip("fastapi")
     from _ui_client import build_test_runtime, ui_client

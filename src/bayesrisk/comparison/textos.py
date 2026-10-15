@@ -6,7 +6,7 @@ estabilidad; la concentración; la frontera; la validación técnica; las variab
 de la institución. En IFRS 9: la comparabilidad, cuánto provisiona cada una contra la referencia y
 dónde, y la elección (§3.7).
 
-**Experimental (fuera de la garantía SemVer 2.x).** Sale en la 2.15.0 (capa A del SDD-34).
+**Estable (SemVer 2.x).** Desde la 2.16.0 (capa B del SDD-34).
 """
 
 from __future__ import annotations

@@ -10,7 +10,7 @@
 - :func:`nivel_de_comparabilidad` y :func:`misma_unidad` — los tres niveles de §3.3 y la regla de
   la unidad de los montos de §3.7 (D-CMP-5, D-CMP-8).
 
-**Experimental (fuera de la garantía SemVer 2.x).** Sale en la 2.15.0 (capa A del SDD-34).
+**Estable (SemVer 2.x).** Desde la 2.16.0 (capa B del SDD-34).
 """
 
 from __future__ import annotations
