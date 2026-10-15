@@ -268,6 +268,10 @@ def _ubicar(ruta: Path) -> Path:
     )
 
 
+def _no_finito(constante: str) -> Any:
+    raise ValueError(f"trae el número no finito {constante}, que un resumen comparable no admite")
+
+
 def leer(ruta: str | Path) -> tuple[dict[str, Any], Path]:
     """El resumen de ``ruta`` —el archivo o la carpeta de su corrida—, validado, y dónde estaba.
 
@@ -278,7 +282,10 @@ def leer(ruta: str | Path) -> tuple[dict[str, Any], Path]:
     """
     archivo = _ubicar(Path(ruta))
     try:
-        resumen = json.loads(archivo.read_text(encoding="utf-8"))
+        # NaN e infinitos no son JSON canónico —el armado nunca los escribe—: un archivo editado
+        # a mano que los traiga no es un resumen de esta versión (pasada 2 de Codex sobre la
+        # capa B: llegaban a los gráficos).
+        resumen = json.loads(archivo.read_text(encoding="utf-8"), parse_constant=_no_finito)
     except (OSError, ValueError) as exc:
         raise ComparisonDataError(
             f"No se pudo leer el resumen comparable {archivo}: {exc}"

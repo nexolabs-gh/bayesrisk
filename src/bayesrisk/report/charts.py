@@ -999,6 +999,8 @@ def render_comparison_frontier(
         y = _optional_float(registro[columna_y])
         if _is_missing(dentro) or x is None or y is None:
             continue
+        if not (math.isfinite(x) and math.isfinite(y)):
+            continue  # declarado fuera por `fuera_de_los_graficos`: no se puede dibujar
         puntos.append((str(registro["name"]), x, y, bool(dentro), posicion == 0))
     if not puntos:
         raise ReportInputError(

@@ -368,6 +368,32 @@ def test_la_puerta_declara_report_sin_mover_el_config_hash(entorno: dict[str, An
     assert config_hash(sin_informe) == comp.config_hash
 
 
+def test_un_resumen_con_cifras_no_finitas_se_rechaza_al_leerlo(tmp_path: Path) -> None:
+    """Pasada 2 de Codex: un ``comparable.json`` editado a mano con ``NaN`` no llega al gráfico."""
+    from bayesrisk.guided import ComparisonInputError
+
+    rutas = _escribir(tmp_path / "sc", [_resumen("ref"), _resumen("otra")])
+    texto = rutas[1].read_text(encoding="utf-8")
+    assert texto.count('"psi":0.01') >= 1
+    rutas[1].write_text(texto.replace('"psi":0.01', '"psi":NaN'), encoding="utf-8")
+    with pytest.raises(ComparisonInputError, match="no finito NaN"):
+        Comparison(rutas, run_dir=tmp_path / "cmp")
+
+
+def test_una_cifra_no_finita_queda_fuera_del_grafico_declarada(entorno: dict[str, Any]) -> None:
+    """La defensa del gráfico: un infinito en una cifra presente se declara, no se dibuja."""
+    import math as _math
+
+    from bayesrisk.report.charts import comparison_charts
+
+    comp = entorno["comp"]
+    modelos = comp.study.artifacts.get("comparison", "models").copy()
+    modelos.loc[modelos["name"] == "parejo", "psi_common"] = _math.inf
+    card = comp.study.artifacts.get("comparison", "card").model_dump(mode="json")
+    graficos = {eje: svg for eje, _t, svg in comparison_charts(modelos, card)}
+    assert "parejo (PSI común no evaluable)" in _texto_del_svg(str(graficos["stability"]))
+
+
 def test_una_oot_no_evaluable_queda_fuera_de_los_graficos_con_su_alerta(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

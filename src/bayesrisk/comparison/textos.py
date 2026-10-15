@@ -11,6 +11,7 @@ dónde, y la elección (§3.7).
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from typing import Any, Final
 
@@ -416,8 +417,11 @@ _CAUSAS_SIN_INDICE: Final[dict[str, str]] = {
 
 
 def _nulo(valor: Any) -> bool:
-    """``None`` o ``NaN``: un artefacto de pandas guarda la cifra ausente como ``NaN``."""
-    return valor is None or (isinstance(valor, float) and valor != valor)
+    """``None``, ``NaN`` o infinito: lo que el gráfico no puede dibujar.
+
+    Un artefacto de pandas guarda la cifra ausente como ``NaN``.
+    """
+    return valor is None or (isinstance(valor, float) and not math.isfinite(valor))
 
 
 def fuera_de_los_graficos(
@@ -446,7 +450,7 @@ def fuera_de_los_graficos(
             salida["stability"].append((nombre, comun))
             salida["concentration"].append((nombre, comun))
             continue
-        if modelo.get("psi_common_band") not in ORDEN_DE_BANDA:
+        if modelo.get("psi_common_band") not in ORDEN_DE_BANDA or _nulo(modelo.get("psi_common")):
             salida["stability"].append((nombre, "PSI común no evaluable"))
         if _nulo(modelo.get("concentration_index")):
             causa = modelo.get("concentration_reason")

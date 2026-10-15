@@ -4663,6 +4663,8 @@ def _graficos_de_la_comparacion(
     informe. Sin ``matplotlib`` (el extra ``report``) el resumen sale sin gráficos: las cifras y la
     frontera siguen en la tabla de modelos.
     """
+    import logging
+
     from bayesrisk.report.exceptions import ReportDependencyError
 
     try:
@@ -4670,6 +4672,11 @@ def _graficos_de_la_comparacion(
 
         graficos = comparison_charts(modelos, card, fmt="svg")
     except ReportDependencyError:
+        return ()
+    except Exception as exc:  # un gráfico nunca tumba el resumen, como en el informe
+        logging.getLogger(__name__).warning(
+            "resumen «Comparación»: gráficos omitidos por degradación con gracia: %s", exc
+        )
         return ()
     return tuple((titulo, str(imagen)) for _eje, titulo, imagen in graficos)
 
