@@ -989,6 +989,6 @@ la 2.16.0. No añade decisiones de producto. Evidencia y controles negativos en 
    descartaban por redondeo, pero el total de 0,75 no, y la atribución fallaba. Ahora la lectura
    atribuye las diferencias originales y usa el formateador común para los montos menores de una
    unidad. Cuatro casos por HTTP cubren aumentos, bajas, una sola etapa y el mismo total repartido
-   distinto. Los cálculos y los archivos comparables no cambian. El arreglo queda pendiente de
-   confirmación independiente: se alcanzó el tope de tres pasadas de S51; la 2.16.0 no se publica
-   mientras no se cumpla la condición de revisión sin hallazgos materiales.
+   distinto. Los cálculos y los archivos comparables no cambian. Cami autorizó una cuarta pasada
+   de confirmación sobre las dos partes de la capa B: `approve`, sin hallazgos materiales, sobre
+   `0476201..c6d275ae`. La revisión fue por inspección; los tests y controles los ejecutó el writer.

@@ -156,6 +156,8 @@ desde 2026-09-18») y la misión en [`docs/ESPECIFICACIONES.md`](docs/ESPECIFICA
   seguras; preguntar sólo cuando falte una decisión que realmente corresponda a Cami.
 - Cada pregunta debe ser explícita: explicar qué se decide y por qué importa, ofrecer 2–3 opciones
   mutuamente excluyentes con su impacto y señalar una recomendación concreta.
+  Hacerla siempre mediante la herramienta interactiva de preguntas disponible, no como una lista
+  de opciones en la respuesta final (preferencia de Cami, 2026-10-15).
 - Cada cierre entrega un **prompt completo y listo para copiar** en una sesión fresca, además del
   **agente destinatario**, el modelo y el nivel de esfuerzo recomendados para esa sesión, su motivo
   y la condición que justificaría escalarlo. Recomendar el modelo del agente que **ejecutará** —el
