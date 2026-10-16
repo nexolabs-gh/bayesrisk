@@ -12,7 +12,7 @@ que NO debe cambiar: el ``config_hash`` y las columnas producidas de F1 y F4.
 
 from __future__ import annotations
 
-import re
+import ast
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -171,9 +171,54 @@ def _columnas_del_dataset(preset: dict[str, Any]) -> tuple[str, ...]:
     return tuple(c["name"] for c in catalogo[preset["dataset_id"]]["columns"])
 
 
-_REQUIRES_DE_ETIQUETAS = re.compile(
-    r"\(\s*(?:\"data\"|_DATA_DOMAIN)\s*,\s*\"(?:labels|splits)\"\s*\)"
+def _requiere_etiquetas(codigo: str) -> bool:
+    """Inspecciona requires estáticos y derivados; no cuenta lecturas ni optional_requires."""
+    valores: list[ast.expr] = []
+    for nodo in ast.walk(ast.parse(codigo)):
+        if isinstance(nodo, ast.AnnAssign):
+            if isinstance(nodo.target, ast.Name) and nodo.target.id == "requires" and nodo.value:
+                valores.append(nodo.value)
+        elif isinstance(nodo, ast.Assign):
+            if any(isinstance(t, ast.Name) and t.id == "requires" for t in nodo.targets):
+                valores.append(nodo.value)
+        elif isinstance(nodo, ast.Call) and isinstance(nodo.func, ast.Attribute):
+            receptor = nodo.func.value
+            if (
+                isinstance(receptor, ast.Name)
+                and receptor.id == "requires"
+                and nodo.func.attr in {"append", "extend"}
+            ):
+                valores.extend(nodo.args)
+    for valor in valores:
+        for nodo in ast.walk(valor):
+            if isinstance(nodo, ast.Tuple) and len(nodo.elts) == 2:
+                dominio, clave = nodo.elts
+                es_data = (isinstance(dominio, ast.Constant) and dominio.value == "data") or (
+                    isinstance(dominio, ast.Name) and dominio.id == "_DATA_DOMAIN"
+                )
+                if (
+                    es_data
+                    and isinstance(clave, ast.Constant)
+                    and clave.value in {"labels", "splits"}
+                ):
+                    return True
+    return False
+
+
+@pytest.mark.parametrize(
+    "codigo,esperado",
+    [
+        ('requires = (("data", "labels"),)', True),
+        ('requires: tuple = (("data", "splits"),)', True),
+        ('requires.append((_DATA_DOMAIN, "labels"))', True),
+        ('requires.extend([("data", "splits")])', True),
+        ('optional_requires = (("data", "labels"),)', False),
+        ('study.artifacts.get("data", "labels")', False),
+        ('# requires = (("data", "labels"),)', False),
+    ],
 )
+def test_censo_distingue_requisitos_de_lecturas_opcionales(codigo: str, esperado: bool) -> None:
+    assert _requiere_etiquetas(codigo) is esperado
 
 
 def test_la_lista_de_etapas_que_modelan_es_la_del_dag() -> None:
@@ -186,8 +231,7 @@ def test_la_lista_de_etapas_que_modelan_es_la_del_dag() -> None:
     declaran = {
         ruta.parent.name
         for ruta in (_RAIZ / "src" / "bayesrisk").glob("*/step.py")
-        if ruta.parent.name != "data"
-        and _REQUIRES_DE_ETIQUETAS.search(ruta.read_text(encoding="utf-8"))
+        if ruta.parent.name != "data" and _requiere_etiquetas(ruta.read_text(encoding="utf-8"))
     }
 
     assert declaran == set(SECCIONES_QUE_MODELAN_EL_INCUMPLIMIENTO)

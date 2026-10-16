@@ -67,6 +67,40 @@ def test_coercion_revisa_cada_columna_repetida() -> None:
         SchemaValidator(_cfg(ColumnSpec(name="x", dtype="int", coerce=True))).validate(frame)
 
 
+@pytest.mark.parametrize("dtype", ["object", "category"])
+@pytest.mark.parametrize("valor,logico", [(1.5, "int"), (2**53 + 1, "float")])
+def test_coercion_de_escalares_numericos_no_pierde_valores(
+    dtype: str, valor: int | float, logico: str
+) -> None:
+    frame = pd.DataFrame({"x": pd.Series([valor], dtype=dtype)})
+    original = frame.copy(deep=True)
+    with pytest.raises(DataValidationError, match="perdería valores"):
+        SchemaValidator(_cfg(ColumnSpec(name="x", dtype=logico, coerce=True))).validate(frame)
+    assert_frame_equal(frame, original)
+
+
+@pytest.mark.parametrize("dtype", ["object", "category"])
+@pytest.mark.parametrize(
+    "valores,logico,final",
+    [
+        ([1, 2], "int", "int64"),
+        ([1.25, 2.5], "float", "float64"),
+        (["1", "2"], "int", "int64"),
+        (["0.1", "2.5"], "float", "float64"),
+    ],
+)
+def test_coercion_exacta_de_objetos_y_parseo_de_texto_se_conservan(
+    dtype: str, valores: list[object], logico: str, final: str
+) -> None:
+    frame = pd.DataFrame({"x": pd.Series(valores, dtype=dtype)})
+    original = frame.copy(deep=True)
+    validado = SchemaValidator(_cfg(ColumnSpec(name="x", dtype=logico, coerce=True))).validate(
+        frame
+    )
+    assert_frame_equal(validado, frame.astype(final))
+    assert_frame_equal(frame, original)
+
+
 def test_from_config_y_config_default() -> None:
     cfg = SchemaConfig()
 

@@ -9,7 +9,8 @@ valida ``pandas.DataFrame`` con ``lazy=True`` para acumular todos los incumplimi
 
 from __future__ import annotations
 
-from numbers import Integral
+from decimal import Decimal
+from numbers import Integral, Real
 from typing import Any, Final
 
 import pandas as pd
@@ -171,15 +172,14 @@ def _validate_numeric_coercion(
         destino = validated.loc[:, [spec.name]]
         for position in range(len(origen.columns)):
             serie = origen.iloc[:, position]
-            if not (
-                pd.api.types.is_integer_dtype(serie.dtype)
-                or pd.api.types.is_float_dtype(serie.dtype)
-            ):
-                continue
             for antes, despues in zip(
                 serie.tolist(), destino.iloc[:, position].tolist(), strict=True
             ):
                 if pd.isna(antes) and pd.isna(despues):
+                    continue
+                # También hay escalares numéricos en object/categorías. Los textos conservan
+                # el parseo explícito de coerce; no son un valor numérico previo que comparar.
+                if not isinstance(antes, Real | Decimal):
                     continue
                 # Comparar escalares Python: numpy puede convertir uint64 a float durante == y
                 # declarar iguales dos enteros distintos por encima de 2**53.
