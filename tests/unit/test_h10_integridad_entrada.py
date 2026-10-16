@@ -33,14 +33,18 @@ def fuente(tmp_path: Path) -> pd.DataFrame:
 
 
 @pytest.mark.parametrize("personalizado", [False, True])
+@pytest.mark.parametrize("incluir_pantalla", [False, True])
 def test_target_y_dtypes_por_las_tres_puertas(
     fuente: pd.DataFrame,
     tmp_path: Path,
     fake_binning_process: object,
     monkeypatch: pytest.MonkeyPatch,
     personalizado: bool,
+    incluir_pantalla: bool,
 ) -> None:
     del fake_binning_process
+    if incluir_pantalla:
+        pytest.importorskip("fastapi", reason="la pantalla exige el extra ui")
     frame = fuente.rename(columns={"bad_flag": "target"})
     frame["target"] = frame["target"].astype("Int32")
     frame.loc[frame.index[:35], "target"] = pd.NA
@@ -82,6 +86,9 @@ def test_target_y_dtypes_por_las_tres_puertas(
     assert completa.run_context.status == "done", completa.run_context.error
     assert diferencias(proyeccion_canonica(sc.study), proyeccion_canonica(completa)) == []
     assert config_hash(completa.config) == sc.config_hash
+
+    if not incluir_pantalla:
+        return
 
     observados: list[Any] = []
     ejecutar = bayesrisk.run

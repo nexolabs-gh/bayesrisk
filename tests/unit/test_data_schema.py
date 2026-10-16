@@ -50,7 +50,11 @@ def test_columnas_repetidas_con_distintos_anchos_conservan_todas_las_reglas() ->
 def test_coercion_no_oculta_perdida_de_precision_extendida() -> None:
     if np.finfo(np.longdouble).eps == np.finfo(np.float64).eps:
         pytest.skip("longdouble no ofrece precisión adicional en esta plataforma")
-    frame = pd.DataFrame({"x": [np.nextafter(np.longdouble(1), np.longdouble(2))]})
+    valor = np.nextafter(np.longdouble(1), np.longdouble(2))
+    # La inferencia de una lista de escalares puede redondear antes del validador.
+    frame = pd.DataFrame({"x": np.array([valor], dtype=np.longdouble)})
+    assert frame["x"].iloc[0].as_integer_ratio() == valor.as_integer_ratio()
+    assert valor.as_integer_ratio() != float(valor).as_integer_ratio()
     with pytest.raises(DataValidationError, match="perdería valores"):
         SchemaValidator(_cfg(ColumnSpec(name="x", dtype="float", coerce=True))).validate(frame)
 
