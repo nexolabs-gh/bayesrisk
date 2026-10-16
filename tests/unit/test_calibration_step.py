@@ -173,6 +173,47 @@ def _run_step_snapshot() -> dict[str, Any]:
     }
 
 
+@pytest.mark.parametrize("procedencia", [None, "otra", "objetivo"])
+def test_target_derivado_solo_se_proyecta_con_procedencia(procedencia: str | None) -> None:
+    raw = _raw_pd_frame().rename(columns={"target": "objetivo"})
+    original = raw.copy(deep=True)
+    study = _study_with_artifacts(raw_pd_frame=raw)
+    if procedencia is not None:
+        study.artifacts.set("data", "labels", SimpleNamespace(target_col=procedencia))
+    step = CalibrationStep.from_config(study.config.calibration)
+    if procedencia == "objetivo":
+        result = step.execute(study, np.random.default_rng(ROOT_SEED))
+        assert result.calibrated_pd_frame["target"].tolist() == raw["objetivo"].iloc[:8].tolist()
+    else:
+        with pytest.raises(CalibrationFitError, match="target"):
+            step.execute(study, np.random.default_rng(ROOT_SEED))
+    assert_frame_equal(study.artifacts.get("model", "raw_pd_frame"), original)
+
+
+@pytest.mark.parametrize("salida", ["pd_calibrated", "target"])
+def test_target_personalizado_valido_no_recibe_alias(salida: str) -> None:
+    raw = _raw_pd_frame().rename(columns={"target": "objetivo"})
+    cfg = _config(target_column="objetivo", pd_calibrated_column=salida)
+    study = _study_with_artifacts(config=cfg, raw_pd_frame=raw)
+    study.artifacts.set("data", "labels", SimpleNamespace(target_col="objetivo"))
+    result = CalibrationStep.from_config(cfg).execute(study, np.random.default_rng(ROOT_SEED))
+    canonical = _study_with_artifacts()
+    expected = CalibrationStep.from_config(canonical.config.calibration).execute(
+        canonical, np.random.default_rng(ROOT_SEED)
+    )
+    assert_frame_equal(result.calibrated_pd_frame, expected.calibrated_pd_frame)
+    assert result.parameters == expected.parameters
+    assert "target" not in raw.columns
+
+
+def test_target_personalizado_ausente_no_se_adivina() -> None:
+    cfg = _config(target_column="inexistente")
+    study = _study_with_artifacts(config=cfg)
+    study.artifacts.set("data", "labels", SimpleNamespace(target_col="target"))
+    with pytest.raises(CalibrationFitError, match="inexistente"):
+        CalibrationStep.from_config(cfg).execute(study, np.random.default_rng(ROOT_SEED))
+
+
 def _bad_rule() -> Rule:
     """Regla canónica de default para el fixture de integración."""
     return Rule(all_of=(Predicate(col="bad_flag", op="==", value=1),))

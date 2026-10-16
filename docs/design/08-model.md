@@ -267,7 +267,7 @@ class ModelStep(AuditableMixin):
 | `"coefficients"` | `pandas.DataFrame` | `β`, SE, Wald/z, p-values, IC, signo, IV y contribución |
 | `"stepwise_trace"` | `tuple[StepwiseDecision, ...]` | decisiones de entrada/salida/flags |
 | `"fit_statistics"` | `ModelFitStatistics` | bondad de ajuste in-sample en Desarrollo |
-| `"raw_pd_frame"` | `pandas.DataFrame` | índice original + `partition` + `target` + `linear_predictor` + `pd_raw` |
+| `"raw_pd_frame"` | `pandas.DataFrame` | índice original + `partition` + target derivado (`target` por defecto) + `linear_predictor` + `pd_raw` |
 | `"result"` | `ModelResult` | contenedor agregado |
 | `"model_card"` | `ModelCardSection` | resumen para governance/report |
 
@@ -390,10 +390,17 @@ class ModelConfig(NikodymBaseConfig):
 
 **Output `raw_pd_frame`.** `pandas.DataFrame` con mismo índice que las filas modelables de `selected_woe_frame`:
 - `partition`
-- `target`
+- nombre derivado de `data.labels.target_col` (`target` por defecto)
 - `linear_predictor`
 - `pd_raw`
 - opcionalmente `score_input_complete` para marcar filas puntuadas sin missing/no finitos.
+
+**Precisión D-H10-3, aprobada el 2026-10-16:** se conserva el nombre derivado que el productor
+ya publicaba, también en `out_of_model_pd_frame`. Los consumidores scorecard/calibration adaptan
+una copia cuando necesitan el target canónico, con procedencia de `data.labels`, según
+[_ENMIENDA-H10-BENCHMARKS-Y-DEFAULTS.md §8.1](_ENMIENDA-H10-BENCHMARKS-Y-DEFAULTS.md#81-precision-de-d-h10-3-aprobada-por-cami-s53-2026-10-16).
+Model rechaza un nombre derivado que colisione con la partición o las columnas de predicción;
+nunca sobrescribe las etiquetas para publicar `linear_predictor` o `pd_raw`.
 
 **Invariantes.**
 - *No leakage:* cambiar Holdout/OOT no cambia `final_features`, coeficientes, p-values, stepwise ni fit statistics de Desarrollo.

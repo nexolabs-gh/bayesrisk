@@ -318,12 +318,38 @@ Dos defectos reproducidos en el paquete publicado, no introducidos por H10:
    con pérdida. Es un defecto de inferencia/validación, no evidencia para cambiar selección.
 2. **Target con nombre original `target`:** la guiada genera `target_bayesrisk`; el modelo emite
    PD con ese nombre mientras scorecard exige `target` canónico. También afecta target_col
-   personalizado en ruta completa. SDD-08/09 ya exigen el contrato canónico: corregir la frontera
-   productora/consumidora, no renombrar arbitrariamente el archivo del usuario. Controlar colisiones
+   personalizado en ruta completa. La precisión aprobada en §8.1 corrige la frontera de consumo
+   sin cambiar los artefactos válidos de model ni el archivo del usuario. Controlar colisiones
    con columna preexistente y coherencia de labels/índices, manteniendo el target de entrada.
 
 S52 pudo medir renombrando explícitamente target a `malo` y fijando int64 en sus scripts; es una
 adaptación documentada de investigación, no un arreglo distribuido. Se conservan logs fallidos.
+
+### 8.1 Precisión de D-H10-3 aprobada por Cami (S53, 2026-10-16)
+
+La medición encontró una discrepancia entre el nombre canónico descrito en SDD-08 y el contrato
+efectivo: model publica el nombre derivado de `data.labels.target_col`. Una calibración con
+`target_column=objetivo` ya funciona; renombrar su artefacto a `target` la rompe. Un alias tampoco
+preserva el caso válido que llama `target` a la salida calibrada. La precisión siguiente recibió
+revisión independiente sin materiales y aprobación interactiva antes de implementarse:
+
+- Model conserva sus artefactos, nombres, valores, índices y dtypes. No añade aliases ni claves.
+- Scorecard proyecta una copia a `target` sólo si falta el canónico y `data.labels.target_col`
+  identifica una columna presente. Sin esa procedencia no adivina y mantiene el error explícito.
+- Calibración conserva una entrada que ya trae su `target_column` declarado. Sólo proyecta con
+  la misma regla cuando pide el default literal `target` y éste falta. Una columna personalizada
+  inexistente sigue siendo un error. La regla también se aplica fuera del ajuste (TTD).
+- `data.labels` es una dependencia opcional de ambos consumidores: una entrada inyectada ya
+  canónica sigue funcionando sin ella. ML conserva su consumo del nombre derivado.
+- Se rechaza `target_col=label_status` antes de sobrescribir etiquetas con estados, y
+  `target_col=pd_raw` o `linear_predictor` antes de sobrescribirlas con predicciones. La colisión
+  con una columna preexistente del input sigue siendo un error. No se renombra la fuente.
+- Los tipos lógicos numéricos sin coerción conservan el dtype físico compatible; los controles
+  de nulos, rango, unicidad e índice siguen vigentes. Una coerción numérica declarada que desborda
+  o redondea valores se rechaza explícitamente.
+
+Los casos canónicos y personalizados válidos deben conservar su proyección canónica y
+`config_hash`. Esta precisión no cambia metodología, defaults ni perillas, ni autoriza B.
 
 Otros límites: una clase sola, ausencia de eventos, IDs duplicados, predicción no finita o
 no puntuada, solver no óptimo, esquema cambiado o licencia pendiente deben detener la receta

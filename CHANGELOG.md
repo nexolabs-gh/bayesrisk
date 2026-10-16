@@ -7,6 +7,18 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
+## [No publicado]
+
+### Corregido
+
+- La validación del esquema inferido acepta enteros y flotantes de distintos anchos, incluidos
+  `int32`, `float32`, `uint64` e `Int32`, conservando valores, nulos e índices. Las conversiones
+  numéricas declaradas que perderían valores se rechazan con un mensaje explícito.
+- Una entrada cuyo desenlace se llama `target`, o cuyo target derivado tiene un nombre
+  personalizado, llega correctamente a la tarjeta y a la calibración, también fuera del ajuste.
+  Los artefactos del modelo y las calibraciones personalizadas válidas se conservan; los nombres
+  que sobrescribirían etiquetas con estados o predicciones se rechazan.
+
 ## [2.16.0] — 2026-10-15
 
 ### Añadido

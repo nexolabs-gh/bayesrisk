@@ -105,6 +105,7 @@ class CalibrationStep(AuditableMixin):
     #: La cadena fuera del ajuste (D-TTD-2): la PD del modelo **y** el puntaje de la tarjeta. Si la
     #: tarjeta no pudo puntuar, la calibración no publica PD para filas sin puntaje.
     optional_requires: tuple[ArtifactKey, ...] = (
+        ("data", "labels"),  # Procedencia del target personalizado (D-H10-3).
         ("model", "out_of_model_pd_frame"),
         ("scorecard", "out_of_model_score"),
     )
@@ -151,6 +152,10 @@ class CalibrationStep(AuditableMixin):
         ).copy(deep=True)
 
         cfg = _calibration_config_from_study(study, fallback=self.config)
+        if cfg.target_column == "target":
+            from bayesrisk.model._frames import canonical_target_frame
+
+            raw_pd_frame = canonical_target_frame(raw_pd_frame, study)
         _validate_model_metadata(final_features, final_woe_columns)
         _validate_coefficients(
             coefficients,
@@ -202,6 +207,10 @@ class CalibrationStep(AuditableMixin):
                 raise CalibrationFitError(
                     "La PD y el puntaje fuera del ajuste no tienen el mismo índice."
                 )
+            if calibrator.target_column == "target":
+                from bayesrisk.model._frames import canonical_target_frame
+
+                pd_frame = canonical_target_frame(pd_frame, study)
             return _transformar_fuera_del_ajuste(calibrator, pd_frame.copy(deep=True))
         except Exception as exc:  # D-TTD-1 §1.6: fuera del ajuste nunca detiene la corrida
             self.log_decision(

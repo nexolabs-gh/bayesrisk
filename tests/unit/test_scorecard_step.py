@@ -185,6 +185,27 @@ def test_from_config_y_contrato_step_exacto() -> None:
     assert step.provides == tuple(("scorecard", key) for key in SCORECARD_ARTIFACTS)
 
 
+@pytest.mark.parametrize("procedencia", [None, "otra", "objetivo"])
+def test_target_derivado_solo_se_proyecta_con_procedencia(procedencia: str | None) -> None:
+    raw = _raw_pd_frame().rename(columns={"target": "objetivo"})
+    original = raw.copy(deep=True)
+    # El target crudo que quedó en el frame WoE no es la etiqueta derivada del modelo.
+    woe = _woe_frame()
+    woe["target"] = 1 - woe["target"]
+    study = _study_with_artifacts(raw_pd_frame=raw, woe_frame=woe)
+    if procedencia is not None:
+        study.artifacts.set("data", "labels", SimpleNamespace(target_col=procedencia))
+    step = ScorecardStep.from_config(study.config.scorecard)
+    if procedencia == "objetivo":
+        step.execute(study, object())
+        score = study.artifacts.get("scorecard", "score")
+        assert score["target"].tolist() == raw["objetivo"].tolist()
+    else:
+        with pytest.raises(ScorecardFitError, match="target"):
+            step.execute(study, object())
+    assert_frame_equal(study.artifacts.get("model", "raw_pd_frame"), original)
+
+
 def test_core_study_cablea_scorecard_en_orden_por_defecto() -> None:
     """``Study`` resuelve ``scorecard`` como dominio perezoso después de ``model``."""
     order = study_module._DEFAULT_DOMAIN_ORDER

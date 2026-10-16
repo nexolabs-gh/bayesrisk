@@ -165,6 +165,11 @@ class TargetDefinition:
 
 def _validate_output_columns(df: pd.DataFrame, target_col: str, status_col: str) -> None:
     """Evita sobrescribir columnas del cliente al agregar el target."""
+    if target_col == status_col:
+        raise DataValidationError(
+            f"El target derivado '{target_col}' colisiona con la columna de estado; "
+            "elija otro data.target.target_col para conservar las etiquetas."
+        )
     collisions = [column for column in (target_col, status_col) if column in df.columns]
     if collisions:
         joined = ", ".join(f"'{column}'" for column in collisions)

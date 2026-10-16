@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
@@ -14,6 +15,56 @@ from bayesrisk.data.schema import SchemaValidator
 
 def _cfg(*columns: ColumnSpec, **kwargs: object) -> SchemaConfig:
     return SchemaConfig(columns=columns, **kwargs)
+
+
+@pytest.mark.parametrize("coerce", [False, True])
+def test_columnas_repetidas_validas_conservan_contrato(coerce: bool) -> None:
+    frame = pd.DataFrame([[1, 2], [3, 4]], columns=["x", "x"], dtype="int64")
+    validador = SchemaValidator(_cfg(ColumnSpec(name="x", dtype="int", coerce=coerce)))
+    assert_frame_equal(validador.validate(frame), frame)
+
+
+@pytest.mark.parametrize("coerce", [False, True])
+def test_ultima_declaracion_del_schema_es_la_efectiva(coerce: bool) -> None:
+    frame = pd.DataFrame({"x": [1, 2]})
+    validador = SchemaValidator(
+        _cfg(ColumnSpec(name="x", dtype="int"), ColumnSpec(name="x", dtype="float", coerce=coerce))
+    )
+    if coerce:
+        assert_frame_equal(validador.validate(frame), frame.astype("float64"))
+    else:
+        with pytest.raises(DataValidationError):
+            validador.validate(frame)
+
+
+def test_columnas_repetidas_con_distintos_anchos_conservan_todas_las_reglas() -> None:
+    frame = pd.concat([pd.Series([1, 2], dtype="int32"), pd.Series([3, 4], dtype="uint64")], axis=1)
+    frame.columns = ["x", "x"]
+    cfg = _cfg(ColumnSpec(name="x", dtype="int", ge=0, le=4, nullable=False))
+    assert_frame_equal(SchemaValidator(cfg).validate(frame), frame)
+    frame.iloc[0, 1] = 5
+    with pytest.raises(DataValidationError, match="rango"):
+        SchemaValidator(cfg).validate(frame)
+
+
+def test_coercion_no_oculta_perdida_de_precision_extendida() -> None:
+    if np.finfo(np.longdouble).eps == np.finfo(np.float64).eps:
+        pytest.skip("longdouble no ofrece precisión adicional en esta plataforma")
+    frame = pd.DataFrame({"x": [np.nextafter(np.longdouble(1), np.longdouble(2))]})
+    with pytest.raises(DataValidationError, match="perdería valores"):
+        SchemaValidator(_cfg(ColumnSpec(name="x", dtype="float", coerce=True))).validate(frame)
+
+
+def test_coercion_exacta_con_filtro_de_columnas_extra() -> None:
+    frame = pd.DataFrame({"extra": [9, 8], "x": [1, 2]})
+    cfg = _cfg(ColumnSpec(name="x", dtype="float", coerce=True), strict="filter")
+    assert_frame_equal(SchemaValidator(cfg).validate(frame), frame[["x"]].astype("float64"))
+
+
+def test_coercion_revisa_cada_columna_repetida() -> None:
+    frame = pd.DataFrame([[1, 2**64 - 1]], columns=["x", "x"], dtype="uint64")
+    with pytest.raises(DataValidationError, match="perdería valores"):
+        SchemaValidator(_cfg(ColumnSpec(name="x", dtype="int", coerce=True))).validate(frame)
 
 
 def test_from_config_y_config_default() -> None:
@@ -311,3 +362,107 @@ def test_helpers_de_reporte_cubren_fallbacks_defensivos() -> None:
     )
     assert schema_module._format_value([1]) == "[1]"
     assert schema_module._is_missing(BadArray()) is False
+
+
+@pytest.mark.parametrize(
+    ("dtype", "valores", "logico"),
+    [
+        ("int32", [-(2**31), 0, 2**31 - 1], "int"),
+        ("float32", [-0.0, 0.1, float("nan")], "float"),
+        ("uint64", [0, 2**53 - 1, 2**53 + 1, 2**63 - 1, 2**63, 2**64 - 1], "int"),
+        ("Int32", [-(2**31), None, 2**31 - 1], "int"),
+        ("Int32", [None, None], "int"),
+        ("UInt64", [2**64 - 1, None], "int"),
+        ("Float32", [-0.0, 0.1, None], "float"),
+        ("int64", [-(2**63), 2**63 - 1], "int"),
+        ("Int64", [1, None], "int"),
+        ("float64", [0.1, float("nan")], "float"),
+    ],
+)
+def test_inferencia_numerica_estricta_conserva_tipo_valores_nulos_e_indice(
+    dtype: str, valores: list[object], logico: str
+) -> None:
+    """D-H10-3: el tipo lógico no obliga a perder el rango o el ancho físico."""
+    from bayesrisk.guided.inference import columnas_esquema
+
+    frame = pd.DataFrame({"x": pd.Series(valores, dtype=dtype)})
+    frame.index = pd.Index([f"fila-{i}" for i in reversed(range(len(frame)))], name="id")
+    original = frame.copy(deep=True)
+    columnas = columnas_esquema(frame)
+    assert columnas[0]["dtype"] == logico
+    assert columnas[0]["coerce"] is False
+    cfg = SchemaConfig(columns=columnas, index_col="id", strict=True)
+    assert_frame_equal(SchemaValidator(cfg).validate(frame), original)
+    assert_frame_equal(frame, original)
+
+
+@pytest.mark.parametrize(
+    ("dtype", "valores", "logico"),
+    [
+        ("float32", [1.5], "int"),
+        ("int32", [1], "float"),
+        ("bool", [True], "int"),
+        ("object", [1], "int"),
+        ("str", ["1"], "int"),
+    ],
+)
+def test_tipo_logico_estricto_no_convierte_otra_familia(
+    dtype: str, valores: list[object], logico: str
+) -> None:
+    frame = pd.DataFrame({"x": pd.Series(valores, dtype=dtype)})
+    original = frame.copy(deep=True)
+    with pytest.raises(DataValidationError, match="tipo de dato"):
+        SchemaValidator(_cfg(ColumnSpec(name="x", dtype=logico))).validate(frame)
+    assert_frame_equal(frame, original)
+
+
+@pytest.mark.parametrize(
+    ("valores", "dtype", "logico"),
+    [
+        ([2**63, 2**64 - 1], "uint64", "int"),
+        ([2**53 + 1], "uint64", "float"),
+        ([1.5], "float64", "int"),
+    ],
+)
+def test_coercion_numerica_con_perdida_se_rechaza_sin_mutar(
+    valores: list[object], dtype: str, logico: str
+) -> None:
+    frame = pd.DataFrame({"x": pd.Series(valores, dtype=dtype)})
+    original = frame.copy(deep=True)
+    with pytest.raises(DataValidationError, match="perdería valores"):
+        SchemaValidator(_cfg(ColumnSpec(name="x", dtype=logico, coerce=True))).validate(frame)
+    assert_frame_equal(frame, original)
+
+
+@pytest.mark.parametrize("dtype", ["int32", "Int32", "uint64", "float32"])
+def test_ancho_numerico_no_omite_las_restricciones(dtype: str) -> None:
+    frame = pd.DataFrame({"x": pd.Series([1, 1, 3], dtype=dtype)})
+    logico = "float" if dtype == "float32" else "int"
+    with pytest.raises(DataValidationError, match="fuera del rango"):
+        SchemaValidator(_cfg(ColumnSpec(name="x", dtype=logico, ge=0, le=2))).validate(frame)
+    with pytest.raises(DataValidationError, match="valores repetidos"):
+        SchemaValidator(_cfg(ColumnSpec(name="x", dtype=logico, unique=True))).validate(frame)
+    if dtype == "Int32":
+        frame.loc[0, "x"] = pd.NA
+        with pytest.raises(DataValidationError, match="valores vacíos"):
+            SchemaValidator(_cfg(ColumnSpec(name="x", dtype="int", nullable=False))).validate(frame)
+
+
+@pytest.mark.parametrize(
+    ("dtype", "valores", "logico", "esperado"),
+    [
+        ("int32", [0, 2**31 - 1], "int", "int64"),
+        ("uint64", [0, 2**63 - 1], "int", "int64"),
+        ("float32", [-0.0, 0.1], "float", "float64"),
+    ],
+)
+def test_coercion_numerica_exacta_sigue_disponible(
+    dtype: str, valores: list[object], logico: str, esperado: str
+) -> None:
+    frame = pd.DataFrame({"x": pd.Series(valores, dtype=dtype)})
+    original = frame.copy(deep=True)
+    validado = SchemaValidator(_cfg(ColumnSpec(name="x", dtype=logico, coerce=True))).validate(
+        frame
+    )
+    assert_frame_equal(validado, frame.astype({"x": esperado}))
+    assert_frame_equal(frame, original)

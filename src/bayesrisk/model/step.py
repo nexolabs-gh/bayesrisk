@@ -565,6 +565,11 @@ def _pd_frame_de(
     estimator: LogisticPDModel,
 ) -> DataFrame:
     """PD cruda de todas las filas de ``frame``: la de las modelables y la de fuera del ajuste."""
+    if target_col in {partition_col, "linear_predictor", "pd_raw"}:
+        raise ModelFitError(
+            f"El target derivado '{target_col}' colisiona con una columna de salida del modelo; "
+            "elija otro data.target.target_col para conservar las etiquetas."
+        )
     final_columns = list(estimator.final_woe_columns_)
     scoring_frame = frame.loc[:, final_columns].copy(deep=True)
     linear = estimator.decision_function(scoring_frame)

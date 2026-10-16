@@ -9,6 +9,7 @@ valida ``pandas.DataFrame`` con ``lazy=True`` para acumular todos los incumplimi
 
 from __future__ import annotations
 
+from numbers import Integral
 from typing import Any, Final
 
 import pandas as pd
@@ -54,9 +55,10 @@ class SchemaValidator:
         Returns
         -------
         pandera.pandas.DataFrameSchema
-            Esquema listo para validar un ``DataFrame`` con backend pandas. El mapeo de tipos
-            lógico→pandera es explícito: ``int``→``int64``, ``float``→``float64``, ``str``→``str``,
-            ``bool``→``bool``, ``category``→``category`` y ``datetime``→``datetime64[ns]``.
+            Esquema con representaciones canónicas: ``int``→``int64``, ``float``→``float64``,
+            ``str``→``str``, ``bool``→``bool``, ``category``→``category`` y
+            ``datetime``→``datetime64[ns]``. Al validar sin coerción, los tipos lógicos numéricos
+            conservan el ancho y la nulabilidad del dtype físico de entrada.
         """
         columns: dict[str, Any] = {}
         for spec in self.config.columns:
@@ -104,10 +106,26 @@ class SchemaValidator:
             de su volcado — los lee un usuario, no quien desarrolla la librería.
         """
         del audit
+        schema = self.build_schema()
+        # build_schema conserva la última declaración de cada nombre, también aquí.
+        specs = {spec.name: spec for spec in self.config.columns}
+        for spec in specs.values():
+            if spec.coerce or spec.name not in df.columns:
+                continue
+            dtypes = df.loc[:, [spec.name]].dtypes.tolist()
+            if all(_compatible_numeric_dtype(spec, dtype) for dtype in dtypes):
+                # SDD-02 declara tipos lógicos, no anchos. No convertir el frame: además de
+                # perder rango/nulos, cambiar el dtype alteraría su data_hash (D-H10-3).
+                # Pandera admite nombres repetidos: si sus anchos difieren, la comprobación
+                # lógica anterior valida todos los tipos y Pandera conserva los demás checks.
+                dtype = dtypes[0] if all(dtype == dtypes[0] for dtype in dtypes) else None
+                schema = schema.update_column(spec.name, dtype=dtype)
         try:
-            return self.build_schema().validate(df, lazy=True)
+            validated = schema.validate(df, lazy=True)
         except pa.errors.SchemaErrors as exc:
             raise DataValidationError(_format_schema_errors(exc)) from exc
+        _validate_numeric_coercion(df, validated, specs)
+        return validated
 
     def _build_index(self) -> Any | None:
         """Construye el índice pandera si ``index_col`` está declarado."""
@@ -119,6 +137,57 @@ class SchemaValidator:
 def _dtype_for(spec: ColumnSpec) -> str:
     """Devuelve el dtype pandera asociado al dtype lógico de una columna."""
     return _PANDERA_DTYPES[spec.dtype]
+
+
+def _compatible_numeric_dtype(spec: ColumnSpec, dtype: Any) -> bool:
+    return bool(
+        (
+            spec.dtype == "int"
+            and pd.api.types.is_integer_dtype(dtype)
+            and not pd.api.types.is_bool_dtype(dtype)
+        )
+        or (spec.dtype == "float" and pd.api.types.is_float_dtype(dtype))
+    )
+
+
+def _numeric_identity(value: Any) -> tuple[int, int] | float:
+    """Valor exacto incluso para uint64 y floats de precisión extendida."""
+    if isinstance(value, Integral):
+        return (int(value), 1)
+    try:
+        return value.as_integer_ratio()  # type: ignore[no-any-return]
+    except OverflowError:  # ±inf: el resto del contrato decide si se admite.
+        return float(value)
+
+
+def _validate_numeric_coercion(
+    original: pd.DataFrame, validated: pd.DataFrame, specs: dict[str, ColumnSpec]
+) -> None:
+    """Una coerción declarada puede cambiar el tipo, nunca desbordar ni redondear el dato."""
+    for spec in specs.values():
+        if not spec.coerce or spec.dtype not in {"int", "float"} or spec.name not in original:
+            continue
+        origen = original.loc[:, [spec.name]]
+        destino = validated.loc[:, [spec.name]]
+        for position in range(len(origen.columns)):
+            serie = origen.iloc[:, position]
+            if not (
+                pd.api.types.is_integer_dtype(serie.dtype)
+                or pd.api.types.is_float_dtype(serie.dtype)
+            ):
+                continue
+            for antes, despues in zip(
+                serie.tolist(), destino.iloc[:, position].tolist(), strict=True
+            ):
+                if pd.isna(antes) and pd.isna(despues):
+                    continue
+                # Comparar escalares Python: numpy puede convertir uint64 a float durante == y
+                # declarar iguales dos enteros distintos por encima de 2**53.
+                if _numeric_identity(antes) != _numeric_identity(despues):
+                    raise DataValidationError(
+                        f"La coerción de «{spec.name}» a {spec.dtype} perdería valores; "
+                        "conserve el tipo de origen y revise el esquema declarado."
+                    )
 
 
 def _checks_for(spec: ColumnSpec) -> list[Any]:

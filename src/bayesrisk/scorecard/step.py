@@ -113,6 +113,7 @@ class ScorecardStep(AuditableMixin):
     #: La cadena fuera del ajuste (D-TTD-2) va en ``optional_requires``: un trabajo con artefactos
     #: inyectados que no corre ``binning`` o ``model`` tiene que seguir funcionando.
     optional_requires: tuple[ArtifactKey, ...] = (
+        ("data", "labels"),  # Procedencia del target personalizado (D-H10-3).
         ("binning", "out_of_model_woe_frame"),
         ("model", "out_of_model_pd_frame"),
         # Los bordes efectivos (D-CPY-3): con ellos un ajuste manual casa también con el rótulo
@@ -168,6 +169,9 @@ class ScorecardStep(AuditableMixin):
             pd,
             "model.raw_pd_frame",
         ).copy(deep=True)
+        from bayesrisk.model._frames import canonical_target_frame
+
+        raw_pd_frame = canonical_target_frame(raw_pd_frame, study)
         summary = summary.copy(deep=True)
         del summary
 
@@ -259,9 +263,11 @@ class ScorecardStep(AuditableMixin):
         auditoria = scaler._audit
         scaler._audit = retenidas
         try:
+            from bayesrisk.model._frames import canonical_target_frame
+
             puntaje = _assemble_score_frame(
                 transformed=scaler.transform(woe_frame.copy(deep=True)),
-                raw_pd_frame=pd_frame,
+                raw_pd_frame=canonical_target_frame(pd_frame, study),
                 points_columns=tuple(scaler.points_columns_),
                 score_column=str(scaler.score_column),
             )
