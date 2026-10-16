@@ -33,7 +33,7 @@ contractual nuevo requiere un SDD nuevo o una revisión explícita.
 
 ## Cómo se produce (proceso)
 
-Diseño H10 en revisión S52 (sin aprobación ni implementación):
+Diseño H10 aprobado en S52 (D-H10-1…6; implementación pendiente, S53 sólo capa A):
 [`_ENMIENDA-H10-BENCHMARKS-Y-DEFAULTS.md`](_ENMIENDA-H10-BENCHMARKS-Y-DEFAULTS.md).
 El estado y las decisiones finales se registran en `DECISIONES-VIGENTES.md`.
 1. **Andamiaje** (hecho): esta plantilla + este índice + el roadmap.

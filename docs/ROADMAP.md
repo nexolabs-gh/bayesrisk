@@ -177,6 +177,13 @@ reproducibles sobre German credit y Lending Club contra scorecardpy y OptBinning
 tercero confíe en la librería sin conocernos) y **después el orden vigente: H3 → H9 → H6 → H7 →
 H8**. Descartadas: mantener H3 tras H2b; decidir al cerrar H2b.
 
+**H10 aprobado en S52 (2026-10-16):**
+[`enmienda de benchmarks y defaults`](design/_ENMIENDA-H10-BENCHMARKS-Y-DEFAULTS.md), D-H10-1…6.
+Se conservan los defaults; S53 implementa sólo A (dos defectos de entrada). Después, B entrega
+el primer benchmark autocontenido con German, Taiwan suplementario y dos sintéticos; C conserva
+Lending Club, Home Credit, PAKDD y el referente R pendientes de acceso/permisos verificados.
+Inglés sigue condicionado a la poda de 3.0. La aprobación del diseño no declara entregado H10.
+
 Un módulo a la vez, en ese orden; Cami puede reordenar. Nada arranca sin su enmienda
 medida, la revisión de Codex y el OK. Cada hito termina con el notebook mínimo en CI y sus cinco
 cifras ancladas; hasta H1, F1 no se declara «cumplido» en su forma de uso, sólo en su motor.

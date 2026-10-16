@@ -5,7 +5,7 @@
 | Identificador | D-H10-1…6 |
 | Módulo | Documentación, evidencia y CI; contratos existentes de `bayesrisk` |
 | Fase / tanda | H10, después de H2b; diseño S52 |
-| Estado | **En revisión; pendiente de aprobación de Cami. No autoriza implementación** |
+| Estado | **Aprobada por Cami el 2026-10-16 (S52), D-H10-1…6. S53 autorizada sólo para capa A** |
 | Depende de | SDD-06…10, SDD-22, SDD-31, comparación guiada publicada en 2.16.0 |
 | Lo consumen | Modelador, documentación pública, validación de cada release |
 | Autor / fecha | Codex, 2026-10-16 |
@@ -16,6 +16,12 @@ defaults globales. Se propone conservarlos, corregir primero dos defectos de ent
 contratos existentes y entregar H10 por capas verificables. German no completa las cuatro
 carteras de H10; Taiwan aporta contraste adicional. Lending Club, Home Credit y PAKDD conservan
 su lugar y sus impedimentos explícitos. Inglés sigue condicionado a la poda de 3.0.
+
+**Aprobación:** Cami aceptó interactivamente las tres recomendaciones de §12: diseño por capas
+(D-H10-1/4/5), conservar defaults (D-H10-2) y S53 sólo para A (D-H10-3/6).
+Revisión independiente: dos pasadas, un hallazgo material de entorno corregido → **approve**
+sin materiales sobre `7f37b413..d2f6b9fe`; verificación por inspección, sin recálculo Parquet
+del revisor. No se abrió tercera pasada. Aprobación del diseño no equivale a entrega de H10.
 
 ## 1. Propósito y responsabilidad
 
@@ -71,7 +77,7 @@ benchmark de terceros vive en el anexo técnico descargable, sin añadir botones
 | C — Cobertura restante | Revalidar permisos/acceso de Lending Club, Home Credit y PAKDD; sólo admitir cada cartera con protocolo de observación/target/split documentado. Adaptador específico revisado antes de ejecutarlo. Incorporar referente R con entorno separado/licencia documentada |
 | D — Documentación bilingüe | Sólo cuando esté podado 3.0, según decisión vigente. Esta enmienda no anticipa traducciones |
 
-La aprobación puede limitar la siguiente sesión a A. No autoriza releases, recapturas ni workloads
+La aprobación limita S53 a A. No autoriza releases, recapturas ni workloads
 H9R. B es entrega parcial explícita; C no tiene fecha prometida ni se satisface sustituyendo datos.
 
 ## 3. Conceptos y fundamentos
@@ -354,7 +360,8 @@ No se usa el tiempo S52 como gate de superioridad.
 
 ## 10. Dependencias
 
-Runtime del usuario: extras existentes `scoring,report,excel,docx`; sin nuevo extra obligatorio.
+Runtime por código: extras existentes `scoring,report,excel,docx`; pantalla: extra `ui`, que ya
+compone esos extras y su servidor. No se crea un extra nuevo.
 Entorno de benchmark separado con versiones exactas y artefactos resolubles; no contaminar
 dependencias core para acomodar un referente. R sólo en C, nunca dependencia core.
 Licencias de bibliotecas: bayesrisk/OptBinning Apache-2.0; scorecardpy/skorecard MIT;
@@ -394,18 +401,19 @@ con desglose, antes de declararlo suficiente. Si no cabe, se mide y revisa; no s
 Cada release reejecuta todas las recetas **admitidas**; no exige ejecutar fuentes todavía pendientes.
 Eso no cierra C6 hasta completar corpus/referentes acordados o aprobar explícitamente otro alcance.
 
-## 12. Decisiones abiertas y riesgos
+## 12. Decisiones aprobadas y riesgos
 
-Todas pendientes de Cami hasta registrar su respuesta interactiva:
+Las seis decisiones siguientes fueron aprobadas por Cami el 2026-10-16, mediante tres respuestas
+interactivas. Las recomendaciones quedan adoptadas con su alcance explícito:
 
-| Decisión | Recomendación concreta / coste y beneficio |
+| Decisión | Recomendación aprobada / coste y beneficio |
 |---|---|
 | D-H10-1 | Aprobar protocolo y capas A→B→C→D; primera entrega parcial explícita. Permite entregar evidencia útil sin fingir cobertura completa |
 | D-H10-2 | Conservar todos los defaults. German sin stepwise queda hipótesis de confirmación futura, no nuevo preset. Mantiene estabilidad; no captura todavía la mejora local observada |
 | D-H10-3 | Priorizar fixes de dtypes/target en A bajo contratos existentes, con preservación de valores y casos válidos. Elimina fallos alcanzables desde pip antes de documentarlos como experiencia normal |
 | D-H10-4 | Admitir Taiwan como suplemento; mantener LC/HC/PAKDD pendientes hasta permisos/datos verificables. No publicar la copia local LC. Menor cobertura inicial, trazabilidad honesta |
 | D-H10-5 | Aprobar entrega autocontenida/CI y cero perillas de §§4/11/13; R se conserva en C. Su implementación B requiere gates completos y revisión propia |
-| D-H10-6 | Siguiente sesión limitada a A si se aprueba; B después del cierre revisado de A. No autoriza release ni recaptura |
+| D-H10-6 | S53 autorizada únicamente para A; B después del cierre revisado de A. No autoriza release ni recaptura |
 
 Una propuesta posterior de defaults exige nueva evidencia y OK: cambio config_hash/goldens,
 impacto en SemVer, notebooks, pantalla, informes, equivalencia de tres puertas y eventual
