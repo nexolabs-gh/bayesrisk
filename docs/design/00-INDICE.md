@@ -32,6 +32,11 @@ RiskLib y los dos contratos transversales: **SDD-30 (aprobado)** y **SDD-31 (apr
 contractual nuevo requiere un SDD nuevo o una revisión explícita.
 
 ## Cómo se produce (proceso)
+
+Diseño H10 en revisión S52 (sin aprobación ni implementación):
+[`_ENMIENDA-H10-BENCHMARKS-Y-DEFAULTS.md`](_ENMIENDA-H10-BENCHMARKS-Y-DEFAULTS.md).
+El estado y las decisiones finales se registran en `DECISIONES-VIGENTES.md`.
+
 1. **Andamiaje** (hecho): esta plantilla + este índice + el roadmap.
 2. **Tanda 0 — Verificación**: antes de producir nada nuevo, se re-verifica que **todo lo ya hecho** (ESPECIFICACIONES, normativa CMF, índice, roadmap, plantilla) esté correcto, con **doble check** de cada dato/tabla/decisión contra su fuente oficial. Se corrige lo que falle. Recién entonces se avanza.
 3. **Producción por tandas**: cada tanda agrupa SDDs de una capa/fase y se produce con **fan-out de agentes** (un agente especificador por SDD, siguiendo la plantilla), **integrados y revisados por DanIA**.
