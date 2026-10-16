@@ -169,6 +169,28 @@ aporta ID de origen pero no una historia longitudinal. No se promete eliminar to
 latente desconocida. Se revisan columnas temporales y disponibilidad a fecha de decisión al
 incorporar cada corpus; especialmente recuperaciones/estado final de LC no pueden entrar como X.
 
+Auditoría adicional de perfiles: German y ambos sintéticos tienen cero duplicados exactos de X;
+Taiwan tiene 56 filas con X repetido (35 también con mismo target), con ID de origen único.
+De las 7.500 filas exteriores, 17 comparten X exacto con Desarrollo. No se deduce que sean la
+misma persona ni se afirma independencia completa. Sensibilidad sin refit, quitando esas 17
+filas en **todas** las recetas: AUC fábrica 0,766784; sin stepwise 0,768032; OptBinning MIP
+0,769121; scorecardpy 0,770945; skorecard MIP 0,769205. La conclusión no cambia.
+La tabla principal conserva el universo predeclarado, no se sustituye por el resultado favorable.
+Para B se predeclara una evaluación exterior sin solapamiento exacto de X. Agrupar predictores
+admisibles (sin target ni ID), aplicar `GroupShuffleSplit(test_size=0.25, random_state=20261016)`
+y conservar índices/orden originales: es 25% de **grupos**, no necesariamente filas. Sólo el
+complemento entra a `Scorecard(partition='random')`, que conserva su Holdout/semilla de fábrica.
+Así las tres puertas siguen usando el mismo config existente, sin parámetro nuevo. El Holdout
+interior conserva carácter diagnóstico; se censan sus repetidos y no se usa para ajustar/elegir.
+Antes de fit se requieren ≥30 malos y ≥1 bueno en Desarrollo, Holdout y test; si no, caso no
+evaluable, sin búsqueda de semillas. Entidades realmente identificables se agrupan también:
+grupos conexos por misma entidad o X exacto; en estas fuentes sólo se acredita el proxy X.
+Esto no prueba independencia por cliente. Se publican tamaños y ambas fracciones efectivas.
+Las estimaciones puntuales siguen por fila; la incertidumbre de B remuestrea grupos completos
+del test con reemplazo (tantos como grupos originales, 1.000 réplicas, seed20261016), pareados
+entre recetas; si alguna réplica carece de ambas clases, no se publica intervalo y se registra
+el número inválido. No se usa el bootstrap por filas histórico de S52 como confirmación de B.
+
 Salidas públicas: notebook mínimo y anexo ejecutable, config, manifest, lock, tabla de recetas,
 fallos/dependencias, CSV/JSON de métricas y resúmenes HTML/Word/Excel. Predicciones fila a fila sólo
 cuando la licencia lo permita. Los artefactos no contienen rutas personales ni datos institucionales.
@@ -245,6 +267,24 @@ bayesrisk. Tiempos de las 16 corridas bayesrisk con informes: 6,03–20,37 s; ba
 10,90/18,43/8,55/8,75 s. Referentes configurados: aproximadamente 1,02–8,58 s. Costes de
 informes/imports y concurrencia incidental distintos impiden inferir velocidad relativa.
 
+| Caso / referente configurado | X de entrada | Filas de tarjeta | Brier | Log-loss | PSI común | Segundos |
+|---|---:|---:|---:|---:|---:|---:|
+| German / OptBinning MIP | 20 | 108 | 0,187598 | 0,571467 | 0,051938 | 1,43 |
+| German / scorecardpy | 20 | 70 | 0,193441 | 0,605044 | 0,027336 | 7,53 |
+| German / skorecard MIP | 20 | 109 | 0,187652 | 0,572048 | 0,053506 | 2,40 |
+| Taiwan / OptBinning MIP | 23 | 142 | 0,136276 | 0,435233 | 0,001598 | 1,93 |
+| Taiwan / scorecardpy | 23 | 96 | 0,136224 | 0,434845 | 0,002579 | 8,58 |
+| Taiwan / skorecard MIP | 23 | 143 | 0,136279 | 0,435237 | 0,001846 | 7,73 |
+| Consumo / OptBinning MIP | 6 | 44 | 0,171168 | 0,522972 | 0,007418 | 1,31 |
+| Consumo / scorecardpy | 6 | 28 | 0,172492 | 0,528053 | 0,005967 | 3,20 |
+| Consumo / skorecard MIP | 6 | 45 | 0,171143 | 0,522880 | 0,005261 | 1,02 |
+| Drift / OptBinning MIP | 6 | 45 | 0,215998 | 0,620612 | 0,744542 | 1,35 |
+| Drift / scorecardpy | 6 | 26 | 0,219441 | 0,628087 | 0,741749 | 3,31 |
+| Drift / skorecard MIP | 6 | 46 | 0,216002 | 0,620629 | 0,743055 | 1,60 |
+
+Las filas de tarjeta incluyen las convenciones propias de cada biblioteca (missing/special y,
+según formato, intercepto); no son el mismo denominador que bins del resumen bayesrisk.
+
 ### 7.4 Comparison y artefactos
 
 Se ejecutaron dos Comparison (German/Taiwan, cuatro variantes cada uno), con resumen texto/HTML,
@@ -256,7 +296,10 @@ fronteras ni PSI nativo con el bootstrap y PSI común exterior.
 Verificación de contenido: 12/12 hashes, 651 celdas Excel, 593 celdas HTML y 593 Word contra
 Study, sin discrepancias; alterar AUC en memoria hizo fallar el cotejo. Los resúmenes TXT/HTML
 aislados no nombran Holdout: deben acompañarse de este rótulo de contexto. Los cuerpos de los
-informes, cards y Excel sí lo identifican. Esto no certifica todavía el layout renderizado.
+informes, cards y Excel sí lo identifican. Los gráficos y tablas de ambos HTML se inspeccionaron
+renderizados en navegador; capturas conservadas. Word se verificó por contenido/estructura e
+imágenes embebidas, sin certificación visual de paginación. Sus campos institucionales vacíos
+son intencionales: no inventar entidad, responsable ni aprobación para un experimento.
 
 ## 8. Casos borde y manejo de errores
 
@@ -293,6 +336,12 @@ No es todavía el paquete público de B ni debe enlazarse desde docs públicas a
 Python 3.12.10 Windows; bayesrisk 2.16.0, scorecardpy 0.1.9.7, skorecard 1.6.9,
 OptBinning 0.20.0, sklearn 1.7.2, pandas 2.3.3, NumPy 1.26.4, OR-Tools 9.14.6206;
 lock completo conservado. Primeras corridas sin PYTHONHASHSEED fijado: se declara la limitación.
+El entorno inicial heredaba paquetes globales: Word utilizó python-docx 1.2.0 y lxml 6.1.1,
+omitidos del primer freeze. Hallazgo de revisión 1 corregido en el lock. Un segundo entorno,
+sin paquetes heredados y fuera del checkout, instaló ese lock y regeneró Word de un scorecard
+y ambas comparaciones desde estudios guardados: XML del documento y 10 imágenes exactamente
+iguales a los originales, sin refit. La herencia inicial se conserva como limitación histórica,
+no se presenta retroactivamente como instalación limpia.
 Repetición German con PYTHONHASHSEED=0 y permutación exclusiva de etiquetas Holdout produjo
 exactamente mismas variables, bins, coeficientes, calibración y predicciones exteriores.
 No se extrapola ese resultado bit a bit a las otras tres carteras.
@@ -305,7 +354,7 @@ No se usa el tiempo S52 como gate de superioridad.
 
 ## 10. Dependencias
 
-Runtime del usuario: extras existentes `scoring,report,excel`; sin nuevo extra obligatorio.
+Runtime del usuario: extras existentes `scoring,report,excel,docx`; sin nuevo extra obligatorio.
 Entorno de benchmark separado con versiones exactas y artefactos resolubles; no contaminar
 dependencias core para acomodar un referente. R sólo en C, nunca dependencia core.
 Licencias de bibliotecas: bayesrisk/OptBinning Apache-2.0; scorecardpy/skorecard MIT;
@@ -322,6 +371,7 @@ Las recetas se verifican contra versiones instaladas; documentación upstream ac
 | Cobertura | Set de notebooks/datasets/recetas publicadas = set esperado, ambos sentidos; retirar una entrada y añadir otra inexistente debe fallar |
 | Fuente | SHA/columnas/target/licencia concuerdan con manifiesto aprobado; cambiar byte, orientación o permiso debe bloquear, no descargar un sustituto |
 | Particiones | Disjunción, unicidad, exhaustividad y mismo orden por receta; insertar ID del test en train debe fallar |
+| Dependencia de filas | Censar X duplicados y entidades; B mantiene cada grupo a un lado de la frontera exterior; separar un miembro entre input y test debe fallar |
 | Aislamiento | Permutar labels sólo HO no altera bins/selección/coeficientes/calibración; controles de instrumentación verifican fit sólo Desarrollo |
 | Métricas | Casos manuales AUC=1/0, Gini=1/−1, Brier=0, PSI=0; invertir PD o desalinear IDs debe detectar error; no gate «AUC supera al competidor» |
 | Fallos | Forzar solver no óptimo/timeout/import fallido deja fila fallida y cobertura incompleta; nunca omitir receta del denominador |
@@ -391,6 +441,9 @@ de cobertura/receta/error, con razón verificable de cada pendiente.
 
 Las 37 marcas esenciales y 36 controles atómicos usan denominadores distintos: el selector de
 partición representa ramas con varias marcas. La cifra temporal disponible es un proxy
-explícito, no una medición de latencia visible. B debe medirla sin confundirla con tiempo total.
+explícito, no una medición de latencia visible. El temporizador iniciado antes del constructor y
+terminado después de informes/predicciones da cotas conservadoras del primer resumen:
+German <10,903 s, consumo <8,555 s (los logs contienen el resumen), ambas inferiores a 30 s.
+B debe medir la latencia exacta sin confundirla con tiempo total.
 El anexo técnico no se disfraza de notebook mínimo para ocultar su complejidad: se miden ambos
 y se publica su diferencia. B cierra las cifras precisas de las tres puertas antes de afirmar entrega.
