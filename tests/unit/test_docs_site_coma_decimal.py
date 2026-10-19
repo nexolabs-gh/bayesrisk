@@ -6,9 +6,10 @@ las guías con coma. Todo el copy es es-CL: la coma es el separador decimal y el
 
 **Qué cuenta como texto visible.** Todo lo que no es código: se excluyen los bloques de código, el
 código en línea —``min_iv = 0.02`` es un parámetro y Python lo escribe con punto— y una lista
-corta y
-explícita de formas que no son decimales: versiones (``versión 1.0``, ``0.20.0``, ``Apache-2.0``,
-``1.x``, las versiones de Python), la notación científica y los miles es-CL (``6.000``, ``3.961``).
+corta y explícita de formas que no son decimales: versiones (``versión 1.0``, ``0.20.0``,
+``Apache-2.0``, ``CC BY 4.0``, ``1.x``, las versiones de Python), URLs —incluidos los DOI—,
+la notación científica y los miles es-CL (``6.000``, ``3.961``). Las etiquetas y los títulos
+de los enlaces sí se inspeccionan.
 
 ⚠️ **Qué NO puede ver.** Un decimal de tres cifras con parte entera distinta de cero (``1.002``) se
 lee igual que un miles es-CL y no se puede distinguir sin contexto: ese caso lo cubre la conversión
@@ -29,6 +30,8 @@ _DOCS = _RAIZ / "docs_site"
 _DECIMAL_CON_PUNTO = re.compile(r"(?<![\w.,])\d+\.\d+(?!\w|\.\d)")
 #: Formas que no son un decimal, y que el texto visible puede traer con punto.
 _NO_DECIMALES: tuple[re.Pattern[str], ...] = (
+    re.compile(r"https?://[^\s<>\]\)\"']+"),
+    re.compile(r"\bCC BY \d+\.\d+\b"),
     re.compile(r"versi[oó]n \d+(?:\.\d+)+"),
     re.compile(r"\d+\.\d+\.\d+"),
     re.compile(r"[A-Za-z]-\d+\.\d+"),
@@ -92,6 +95,13 @@ def test_ninguna_pagina_escribe_un_decimal_con_punto(pagina: Path) -> None:
         ("El tramo «≥ 50.450 y < 102.230,5».", []),
         ("PD de 0,2333 y otra de 0.2333.", ["0.2333"]),
         ("La tasa bajó de 0.4286 → 0.0832.", ["0.4286", "0.0832"]),
+        ("[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).", []),
+        ("[DOI](https://doi.org/10.24432/C5NC77), CC BY 4.0.", []),
+        ("<https://doi.org/10.24432/C5NC77>", []),
+        ("[fuente]: https://doi.org/10.24432/C5NC77", []),
+        ("[AUC 0.712](https://ejemplo.invalid/4.0/) y tasa 0.25.", ["0.712", "0.25"]),
+        ("CC BY 4.0; el valor observado es 4.0 y la tasa 0.25.", ["4.0", "0.25"]),
+        ('[fuente](https://ejemplo.invalid/4.0/ "Tasa 0.25")', ["0.25"]),
     ],
 )
 def test_el_extractor_ve_los_decimales_y_no_lo_demas(markdown: str, esperado: list[str]) -> None:

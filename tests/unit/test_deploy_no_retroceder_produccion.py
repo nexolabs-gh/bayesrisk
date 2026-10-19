@@ -193,7 +193,7 @@ def test_sin_remoto_detiene(historia: Historia) -> None:
 def entorno_del_workflow(
     historia: Historia, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[ModuleType, Path, Path, Path, Historia]:
-    """`DEPLOY_SHA`, las dos huellas por URL y `GITHUB_ENV`, sin reintentos ni esperas."""
+    """Deploy automático aislado del evento del runner, sin reintentos ni esperas."""
     repo, _base, a, _b = historia
     docs = tmp_path / "docs-build-sha.txt"
     demo = tmp_path / "demo-build-sha.txt"
@@ -203,6 +203,7 @@ def entorno_del_workflow(
     monkeypatch.setenv("SELLO_DOCS_URL", docs.resolve().as_uri())
     monkeypatch.setenv("SELLO_DEMO_URL", demo.resolve().as_uri())
     monkeypatch.setenv("GITHUB_ENV", str(env_file))
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "workflow_run")
     monkeypatch.delenv("FORZAR", raising=False)
     monkeypatch.chdir(repo)
     modulo = _cargar()
