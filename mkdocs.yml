@@ -57,6 +57,7 @@ nav:
   - Empezar: getting-started.md
   - Migrar desde nikodym: migrar-desde-nikodym.md
   - Tutorial: tutorial.md
+  - Benchmark parcial: benchmarks/h10/README.md
   - Conceptos: concepts.md
   - Guías:
       - Análisis exploratorio: guias/analisis-exploratorio.md

@@ -1,0 +1,7 @@
+bayesrisk[ui]==2.16.0
+scorecardpy==0.1.9.7
+skorecard==1.6.9
+xlrd==2.0.2
+setuptools==80.9.0
+pytest==8.3.5
+httpx2==2.5.0

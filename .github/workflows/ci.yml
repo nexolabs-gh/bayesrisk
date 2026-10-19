@@ -17,6 +17,91 @@ permissions:
   contents: read
 
 jobs:
+  h10:
+    name: H10 reproducible desde wheel
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONHASHSEED: "0"
+      PYTHONPATH: ""
+      PYTHONDONTWRITEBYTECODE: "1"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
+      BLIS_NUM_THREADS: "1"
+    outputs:
+      full_coverage: ${{ steps.full.outputs.coverage }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Descargar el candidato exacto de Build
+        uses: actions/download-artifact@v4
+        with:
+          name: candidate-distributions-with-evidence
+          path: ${{ runner.temp }}/h10-candidate
+      - name: Entorno aislado y candidato instalado al final
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv python install 3.12.10
+          uv venv --python 3.12.10 --seed "$RUNNER_TEMP/h10-venv"
+          python="$RUNNER_TEMP/h10-venv/bin/python"
+          uv pip sync --python "$python" --require-hashes docs_site/benchmarks/h10/notebook-lock.txt
+          cd "$RUNNER_TEMP/h10-candidate"
+          sha256sum -c SHA256SUMS
+          wheels=(*.whl)
+          test "${#wheels[@]}" -eq 1
+          uv pip install --python "$python" --no-deps --reinstall "${wheels[0]}"
+          uv pip check --python "$python"
+          "$python" -m ipykernel install --sys-prefix --name h10-ci
+          echo "H10_WHEEL=$PWD/${wheels[0]}" >> "$GITHUB_ENV"
+          echo "JUPYTER_PATH=$RUNNER_TEMP/h10-venv/share/jupyter" >> "$GITHUB_ENV"
+      - name: Inspeccionar y extraer entrega autocontenida
+        shell: bash
+        run: |
+          set -euo pipefail
+          python="$RUNNER_TEMP/h10-venv/bin/python"
+          "$python" scripts/check_h10_delivery.py docs_site/downloads/h10-benchmark.tar.gz docs_site/downloads/h10-benchmark.json
+          "$python" -c 'import sys; from pathlib import Path; sys.path.insert(0,"scripts"); from check_h10_delivery import load_file, PACKAGE; load_file("h10_benchmark",PACKAGE/"__init__.py"); from h10_benchmark.delivery import extract_archive; extract_archive(Path(sys.argv[1]),Path(sys.argv[2]),Path(sys.argv[3]))' docs_site/downloads/h10-benchmark.tar.gz docs_site/downloads/h10-benchmark.json "$RUNNER_TEMP/h10-delivery"
+          cp scripts/run_h10_ci.py "$RUNNER_TEMP/run_h10_ci.py"
+      - name: Mínimo censo e invariantes sin red externa
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          sudo --preserve-env=PYTHONHASHSEED,PYTHONPATH,PYTHONDONTWRITEBYTECODE,OMP_NUM_THREADS,OPENBLAS_NUM_THREADS,MKL_NUM_THREADS,NUMEXPR_NUM_THREADS,VECLIB_MAXIMUM_THREADS,BLIS_NUM_THREADS,JUPYTER_PATH unshare --net bash -c 'ip link set lo up; exec "$@"' -- "$RUNNER_TEMP/h10-venv/bin/python" "$RUNNER_TEMP/run_h10_ci.py" minimum "$RUNNER_TEMP/h10-delivery" "$RUNNER_TEMP/h10-minimum" "$H10_WHEEL"
+      - name: Todas las recetas admitidas secuenciales
+        id: full
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/h10-venv/bin/python" run_h10_ci.py full "$RUNNER_TEMP/h10-delivery" "$RUNNER_TEMP/h10-full" "$H10_WHEEL"
+      - name: Conservar evidencia y fallos H10
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: h10-candidate-evidence
+          path: |
+            ${{ runner.temp }}/h10-minimum/
+            ${{ runner.temp }}/h10-full/
+          if-no-files-found: warn
+
+  h10-release:
+    name: H10 cobertura completa acreditada
+    needs: h10
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Exigir cobertura completa verificada
+        env:
+          COVERAGE: ${{ needs.h10.outputs.full_coverage }}
+        run: test "$COVERAGE" = "28"
+
   quality:
     name: Quality
     runs-on: ubuntu-latest

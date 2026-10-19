@@ -1,0 +1,100 @@
+{
+  "sources": [
+    {
+      "case": "german",
+      "kind": "page",
+      "url": "https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data",
+      "utc": "2026-10-19T13:35:54.703986+00:00",
+      "status": 200,
+      "final_url": "https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data",
+      "sha256": "a07ad26cd601cf0e98185685af7b65adf5b7f06d35b7d0e877c160aca3d83ea6",
+      "bytes": 177812,
+      "verified": true
+    },
+    {
+      "case": "german",
+      "kind": "meta",
+      "url": "https://archive.ics.uci.edu/api/dataset?id=144",
+      "utc": "2026-10-19T13:35:56.638223+00:00",
+      "status": 200,
+      "final_url": "https://archive.ics.uci.edu/api/dataset?id=144",
+      "sha256": "d99e40b6b0a348840a03d8fd7a56dd25f4d0cd4b9262c2b3a1dc8e05bf1faef9",
+      "bytes": 8934,
+      "verified": true
+    },
+    {
+      "case": "german",
+      "kind": "data",
+      "url": "https://archive.ics.uci.edu/static/public/144/statlog+german+credit+data.zip",
+      "utc": "2026-10-19T13:35:57.271875+00:00",
+      "status": 200,
+      "final_url": "https://archive.ics.uci.edu/static/public/144/statlog+german+credit+data.zip",
+      "sha256": "e12d9d5def6845c0622634a1cd2ab87fa470668c4298f1ec52a4e403376a435b",
+      "bytes": 29607,
+      "verified": true
+    },
+    {
+      "case": "taiwan",
+      "kind": "page",
+      "url": "https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients",
+      "utc": "2026-10-19T13:35:58.083012+00:00",
+      "status": 200,
+      "final_url": "https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients",
+      "sha256": "d201b1670cbdd02cbd3bfd704b50846360e790e2f17fea2ffe3b94fa1c14c183",
+      "bytes": 172377,
+      "verified": true
+    },
+    {
+      "case": "taiwan",
+      "kind": "meta",
+      "url": "https://archive.ics.uci.edu/api/dataset?id=350",
+      "utc": "2026-10-19T13:35:59.395469+00:00",
+      "status": 200,
+      "final_url": "https://archive.ics.uci.edu/api/dataset?id=350",
+      "sha256": "b92ff7a69d5b65179f61f0b01c456dc6cf69e783fbd02eb2be0a014abce1ad2b",
+      "bytes": 7253,
+      "verified": true
+    },
+    {
+      "case": "taiwan",
+      "kind": "data",
+      "url": "https://archive.ics.uci.edu/static/public/350/default+of+credit+card+clients.zip",
+      "utc": "2026-10-19T13:36:00.045595+00:00",
+      "status": 200,
+      "final_url": "https://archive.ics.uci.edu/static/public/350/default+of+credit+card+clients.zip",
+      "sha256": "56c885f84457f6680f8438f02bfcdac9579323d8a94465ee5f26e32baa727602",
+      "bytes": 5539494,
+      "verified": true
+    }
+  ],
+  "license_terms": {
+    "url": "https://creativecommons.org/licenses/by/4.0/legalcode.en",
+    "plain_text_url": "https://creativecommons.org/licenses/by/4.0/legalcode.txt",
+    "date_utc": "2026-10-19",
+    "verification": "Texto oficial leído mediante web.open y enlace Plain Text; §§2(a),3(a),4 verificados.",
+    "facts": [
+      "La licencia autoriza compartir y adaptar el material al que la aplica su licenciante.",
+      "Exige conservar atribución, enlace a la licencia e indicar las modificaciones.",
+      "No permite atribuir aval del licenciante ni imponer restricciones adicionales sobre esos derechos."
+    ],
+    "local_capture": "urllib recibió HTTP403 en HTML y TXT. No se inventa huella de bytes ni HTTP200 para esta lectura; la evidencia de huellas de los datasets y fichas UCI se conserva separadamente.",
+    "sha256": null
+  },
+  "checks": [
+    "Ficha UCI: atribución y enlace CC BY 4.0.",
+    "API oficial UCI y archivo original: esquema, filas, target y orientación.",
+    "Texto legal oficial Creative Commons: licencia enlazada por cada ficha."
+  ],
+  "precision": "La API UCI observada no contiene un campo explícito de licencia.",
+  "attribution": {
+    "german": "Hans Hofmann. Statlog (German Credit Data). UCI. DOI 10.24432/C5NC77.",
+    "taiwan": "I-Cheng Yeh. Default of Credit Card Clients. UCI. DOI 10.24432/C55S3H."
+  },
+  "changes": {
+    "german": "german.data: nombres x1…x20; clase original 1 buena/2 mala a target 0/1; partición agrupada.",
+    "taiwan": "XLS: ID sólo procedencia; SEX/EDUCATION/MARRIAGE categóricas; target renombrado, orientación 0/1 conservada; partición agrupada."
+  },
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "endorsement": "Los autores y UCI no avalan los modelos ni esta comparación."
+}

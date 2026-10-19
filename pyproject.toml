@@ -207,6 +207,7 @@ exclude = [
   "/docs",
   "/.venv",
   "/tests/unit/test_readiness_h9r_*.py",
+  "/tests/unit/test_h10_*.py",  # benchmark de documentación: sus datos/runtime no viajan en sdist
   "*.parquet",
   "*.csv",
 ]   # nunca datos ni tooling H9R interno en el sdist

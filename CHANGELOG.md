@@ -9,6 +9,14 @@ entradas anteriores conservan el nombre con el que se publicaron.
 
 ## [No publicado]
 
+### Añadido
+
+- Benchmark parcial descargable de German Credit, Taiwan y dos carteras sintéticas: notebook
+  mínimo, anexo técnico, entorno fijado, 28 combinaciones con referentes Python, predicciones,
+  incertidumbre y artefactos HTML/Word/Excel verificables. Conserva defaults y separa evaluación
+  exterior de Holdout diagnóstico; no selecciona modelos automáticamente. Usa el candidato de
+  CI con las correcciones siguientes, todavía no el wheel 2.16.0 publicado en PyPI.
+
 ### Corregido
 
 - La validación del esquema inferido acepta enteros y flotantes de distintos anchos, incluidos

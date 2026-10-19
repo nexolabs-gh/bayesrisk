@@ -1,0 +1,44 @@
+{
+  "cases": [
+    "german",
+    "taiwan",
+    "consumo_comportamiento",
+    "consumo_drift"
+  ],
+  "recipes": [
+    "fabrica",
+    "sin_stepwise",
+    "cinco_bins",
+    "monotonia_auto",
+    "optbinning_mip",
+    "scorecardpy",
+    "skorecard_mip"
+  ],
+  "files": {
+    "anexo.ipynb": "37ecd92eb1ef3350b6a20adda3f33635a281bb04e855f60c0f95604a9902358a",
+    "constraints.txt": "2330ec5708bbd0b0af9c124a7654c65795061ec9623c7a28725a48da93877463",
+    "h10_benchmark/__init__.py": "ade6e7c04c4d1364e5b124eb3e8d65a5c2415a2a782da8088ae693b396927d71",
+    "h10_benchmark/__main__.py": "716d5f2ec213c4a5e6738a37db5499c64d4033f24c7aa52525233650375e8576",
+    "h10_benchmark/aggregate.py": "299d766aa78139e71a700be7aa510bd413057789528780287f21c9d9f3e0cf76",
+    "h10_benchmark/artifacts.py": "64fd6547b3ee2aeeb47907d75da377023e3fdf88aca6c24a4a46ac84ac8ef231",
+    "h10_benchmark/canonical.py": "7b6350728a2d359b879a292f263c7bd722a8a4fc90e85932e2079bfa3d7d4e24",
+    "h10_benchmark/contract.py": "a1b03b3d9b5310621d26c4eacf9831883efe43977df4e391fbdde926e04b575b",
+    "h10_benchmark/controls.py": "139077d9333bea589c8f72109047455295a7dd706ca0b638dd31e6801d60be7a",
+    "h10_benchmark/data.py": "48c2c98be78bcdf19f4a7dc330baabf84bb69fd7781d15a8f090c51f40d6aa88",
+    "h10_benchmark/delivery.py": "60ee13a8fb0aecfc07a4a0636f742791285a59556bf9e317b7b41498f31000cd",
+    "h10_benchmark/doors.py": "9a7b415f8280e6658f6910d34156e155c8d90a6ede33808d7c2f5e72cb57102e",
+    "h10_benchmark/isolation.py": "6c8fdfebbb57677d12ef8e5a407dc0b6a2cafd614c8e5fbfb438da9f61fb9692",
+    "h10_benchmark/metrics.py": "ec44f681e37c96693bd7e3e6a0437efc3268b0001b4e93391f576fe10d5b7ab8",
+    "h10_benchmark/presentation.py": "6e36bfd9304d2aae6da045a4d403a566fef32cc34f34e1b63648649a4d923754",
+    "h10_benchmark/recipes.py": "8fb8f5a5e302a454bc5dec1c30ebf8f15d3206b186b5f6117f8a9b686f9a683e",
+    "h10_benchmark/runner.py": "6e1cdc4e75a959bd03a0aee23c58deda3d9331dea02ef4b405e99b41d2b8e155",
+    "minimo.ipynb": "bc5e575425931a76cd5df44af65b26587adcba92a826fa903ce471e8a685eab6",
+    "notebook-lock.txt": "24987f0705c9a578ad4ddeffc4ef3cb894c709896b014bfc148ee1555a3141f0",
+    "notebook.in": "78ddf2460f55f8dc468c1f2e8485351ae623a7d6d88d74a0ef2d5eb17d702cde",
+    "README.md": "b3c76e3167c88b4aaee2ad820fadcf6cf728b068a8d8aa32b7e9228470510184",
+    "reproduce.py": "8db640794dc3f89a9e039a792e3ad1e0e941aef7acbb155589fcff7ac3673e73",
+    "requirements-lock.txt": "c7937619be9e8774aae3128aee5120162b3b12d9b4a6e1848726533b1509022c",
+    "requirements.in": "f6f5dc1a3852efd0fcbbe1ce0c3a20a0e7c67c22e83299f0fd182746256c97df",
+    "sources.json": "37ae7d51b788d08d10862efe4699bcece0697dadff34695acc4f746a87fbe453"
+  }
+}

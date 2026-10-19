@@ -713,8 +713,11 @@ No resumir “CI verde” desde la conclusión agregada: listar todos los jobs y
 quedó rojo, cancelado o saltado indebidamente.
 
 **La matriz depende del evento (Cami, 2026-10-14).** En un push o un PR, `Tests (os, python)` corre
-una sola versión por sistema (3.12): el run tiene **13 jobs**. En un tag, cada noche (07:00 UTC) y
-por `workflow_dispatch` corre la matriz completa, 3 × 3: **19 jobs**. Lo que se publica pasa siempre
+una sola versión por sistema (3.12): el run tiene **15 jobs** desde H10 B. En un tag, cada noche
+(07:00 UTC) y por `workflow_dispatch` corre la matriz completa, 3 × 3: **21 jobs**.
+`H10 cobertura completa acreditada` se salta deliberadamente en push/PR/schedule; sólo tag o
+dispatch ejecutan sus 28 recetas. El job mínimo H10 siempre corre desde el wheel de Build, con
+red externa bloqueada después de instalar. Lo que se publica pasa siempre
 por las nueve combinaciones (la Release espera el CI del tag). Un fallo propio de 3.11 o 3.13
 aparece a más tardar en la corrida nocturna. Hábito que acompaña: **un push por capa** —con el
 barrido local de censos antes, ver la memoria «capa-a-comparacion-trampas»— y nunca esperar al CI
@@ -762,7 +765,7 @@ $bayesriskCi = $bayesriskCiRows | Sort-Object databaseId -Descending | Select-Ob
 if ($LASTEXITCODE -ne 0) { throw 'el run CI candidato terminó rojo' }
 $bayesriskCiViewRaw = @(
     & $bayesriskGh run view $bayesriskCi.databaseId -R nexolabs-gh/bayesrisk `
-        --json headSha,status,conclusion,jobs,url
+        --json headSha,status,conclusion,jobs,url,event,headBranch
 )
 if ($LASTEXITCODE -ne 0) { throw 'no se pudo leer el run CI candidato' }
 $bayesriskCiView = ($bayesriskCiViewRaw -join [Environment]::NewLine) | ConvertFrom-Json
@@ -770,7 +773,13 @@ if ($bayesriskCiView.headSha -ne $bayesriskCandidateSha) { throw 'headSha CI no 
 if ($bayesriskCiView.status -ne 'completed' -or $bayesriskCiView.conclusion -ne 'success') {
     throw 'CI candidato no quedó completed/success'
 }
-$bayesriskBadJobs = @($bayesriskCiView.jobs | Where-Object { $_.conclusion -ne 'success' })
+$bayesriskBadJobs = @($bayesriskCiView.jobs | Where-Object {
+    $_.conclusion -ne 'success' -and -not (
+        $_.name -eq 'H10 cobertura completa acreditada' -and $_.conclusion -eq 'skipped'
+        -and $bayesriskCiView.event -in @('push','pull_request','schedule')
+        -and $bayesriskCiView.headBranch -eq 'main'
+    )
+})
 if ($bayesriskBadJobs.Count -ne 0) { throw 'hay jobs CI no exitosos' }
 ```
 
@@ -1164,7 +1173,11 @@ cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en un
 1. **Bump en un commit propio.** `__version__` en `src/bayesrisk/__init__.py` (pyproject lo lee),
    `CHANGELOG.md` (`## [No publicado]` → `## [X.Y.Z] — AAAA-MM-DD`), `docs_site/index.md`
    («Estado: X.Y.Z — release estable») y `docs_site/api.md` («código publicado (`X.Y.Z`)»). Suite
-   completa sobre ese árbol, push, CI 13/13 job a job (§8).
+   completa sobre ese árbol, push, CI job a job (§8). Antes de una Release manual desde rama,
+   despachar `ci.yml` sobre el mismo SHA/ref y verificar también H10 completo. Release conserva
+   el veto a cualquier CI rojo del SHA y elige el último run del ref con H10 completo: los bytes
+   promovidos salen del mismo Build que verificó ese benchmark; nunca reconstruye ni usa un
+   push mínimo posterior como sustituto.
 2. **Recaptura de la demo**, sólo si la release mueve el `config_hash` de un preset publicado o el
    copy del informe, y sólo con OK de Cami: rama temporal desde el bump
    (`git push -f origin HEAD:refs/heads/recaptura-X.Y.Z`),

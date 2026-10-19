@@ -13,6 +13,9 @@
 *.cfg text eol=lf
 *.lock text eol=lf
 
+# H10 firma todos sus auxiliares y notebooks: los bytes del checkout coinciden con la descarga.
+/docs_site/benchmarks/h10/** text eol=lf
+
 # Código del front: LF también. Los guardrails estáticos de vitest leen el fuente con `?raw` y
 # buscan saltos de línea LF: con core.autocrlf=true el checkout en Windows lo dejaba en CRLF y
 # leían vacío.

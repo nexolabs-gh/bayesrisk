@@ -481,3 +481,22 @@ German <10,903 s, consumo <8,555 s (los logs contienen el resumen), ambas inferi
 B debe medir la latencia exacta sin confundirla con tiempo total.
 El anexo técnico no se disfraza de notebook mínimo para ocultar su complejidad: se miden ambos
 y se publica su diferencia. B cierra las cifras precisas de las tres puertas antes de afirmar entrega.
+
+## 14. Implementación B — S54
+
+La implementación conserva el alcance aprobado: German, Taiwan suplementario y dos sintéticos,
+cuatro recetas bayesrisk y tres referentes, 28 combinaciones explícitas. La entrega descargable
+incluye fuentes autorizadas, auxiliares, locks, notebooks ejecutados, tablas completas, informes,
+predicciones, manifiestos y controles. La evidencia comparativa local usa el wheel candidato de
+S53, fuera del checkout, con calentamiento y tres repeticiones secuenciales; la cobertura de Linux
+se exige al candidato nuevo en CI antes de acreditar su promoción. No hay cambios al motor.
+
+Las cifras y límites medidos, incluida la latencia visible de cada puerta y sus fluctuaciones,
+están en la [página pública del benchmark](../../docs_site/benchmarks/h10/README.md). El mínimo
+tiene 15 líneas útiles y cinco conceptos; el anexo se cuenta aparte. Las tablas anchas de los Word
+del benchmark se presentan en páginas apaisadas mediante un auxiliar local, conservando sus
+textos y celdas; no se cambia el renderer del paquete.
+
+Estado de esta anotación: implementación y gates locales completos; revisión independiente,
+CI Linux y producción pendientes. La entrega parcial no completa H10 ni C6, no selecciona recetas
+automáticamente y no autoriza C/D, release ni recaptura.

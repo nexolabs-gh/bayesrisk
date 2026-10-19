@@ -164,17 +164,6 @@ jobs:
             exit 1
           fi
 
-          # Se promueve desde el run de ESTE ref, no desde el más nuevo del SHA: es el que la
-          # publicación de este tag debe poder citar como su origen.
-          run_id="$(
-            printf '%s\n' "$censo" \
-              | awk -v ref="$GITHUB_REF_NAME" '$3 == ref { if ($1 > max) max = $1 } END { printf "%d", max }'
-          )"
-          if [ -z "$run_id" ] || [ "$run_id" = "0" ]; then
-            echo "::error::no se pudo determinar el run de CI del que promover"
-            exit 1
-          fi
-
           # 🔴 El runbook §8 lo ordena para este mismo cotejo: «No resumir "CI verde" desde la
           # conclusión agregada: listar todos los jobs y confirmar que ninguno quedó rojo, cancelado
           # o saltado indebidamente». La conclusión del run no basta —un job con
@@ -188,9 +177,23 @@ jobs:
           # el run del push a rama —donde `test-all` sí corrió— y, si se tagea un commit que nunca
           # pasó por `main` ni por PR, la publicación se detiene en vez de fingir cobertura.
           resumen=""
+          run_id=0
           for rid in $(printf '%s\n' "$censo" | awk '{print $1}'); do
             fila="$(gh run view "$rid" --json jobs --jq '.jobs[] | "\(.conclusion)\t\(.name)"')"
             resumen="${resumen}${fila}"$'\n'
+            ref_run="$(printf '%s\n' "$censo" | awk -v rid="$rid" '$1 == rid { print $3 }')"
+            # El candidato promovido tiene que haber pasado H10 completo en ESTE run/ref.
+            # Un push mínimo posterior del mismo SHA no desplaza al dispatch completo.
+            if [ "$ref_run" = "$GITHUB_REF_NAME" ] &&
+              printf '%s\n' "$fila" | awk -F'\t' '
+                $2 == "H10 cobertura completa acreditada" {
+                  vistos++; verdes += ($1 == "success")
+                } END { exit !(vistos == 1 && verdes == 1) }
+              '; then
+              if [ "$rid" -gt "$run_id" ]; then
+                run_id="$rid"
+              fi
+            fi
           done
           printf '%s' "$resumen" | sort -u
           faltan="$(
@@ -201,6 +204,10 @@ jobs:
           if [ -n "$faltan" ]; then
             echo "::error::estos jobs de ci.yml nunca terminaron en success para $CANDIDATE_SHA:"
             printf '%s\n' "$faltan" | sed 's/^/  /'
+            exit 1
+          fi
+          if [ "$run_id" -eq 0 ]; then
+            echo "::error::falta CI completo H10 de este SHA y ref"
             exit 1
           fi
 
