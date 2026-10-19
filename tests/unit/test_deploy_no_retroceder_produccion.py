@@ -518,6 +518,6 @@ def test_el_workflow_aplica_la_regla_y_sella_los_dos_sitios() -> None:
     assert "> docs_site/build-sha.txt" in texto and "> web/dist/build-sha.txt" in texto
     assert "https://demo.bayesadvisory.cl/build-sha.txt" in texto
     # Pasada 12: el despacho manual consulta los runs de CI del commit por la API de Actions, y
-    # para eso el job necesita `actions: read` y el token en el entorno del script (dos veces).
+    # para eso el job necesita `actions: read` y el token; H10 consulta también en dos barreras.
     assert "actions: read" in texto
-    assert texto.count("GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}") == 2
+    assert texto.count("GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}") == 4

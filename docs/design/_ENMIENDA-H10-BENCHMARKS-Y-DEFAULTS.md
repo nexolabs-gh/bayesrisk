@@ -497,6 +497,7 @@ tiene 15 líneas útiles y cinco conceptos; el anexo se cuenta aparte. Las tabla
 del benchmark se presentan en páginas apaisadas mediante un auxiliar local, conservando sus
 textos y celdas; no se cambia el renderer del paquete.
 
-Estado de esta anotación: implementación y gates locales completos; revisión independiente,
-CI Linux y producción pendientes. La entrega parcial no completa H10 ni C6, no selecciona recetas
-automáticamente y no autoriza C/D, release ni recaptura.
+La primera publicación y los cambios de esta entrega frente a producción requieren CI completo
+del mismo SHA antes del deploy; main conserva el CI mínimo. Los recibos de revisión, ejecución
+Linux y publicación acreditan el cierre operativo, conforme al runbook. La entrega parcial no
+completa H10 ni C6, no selecciona recetas automáticamente y no autoriza C/D, release ni recaptura.

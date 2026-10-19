@@ -729,8 +729,15 @@ El workflow `Deploy` se dispara automáticamente sólo tras CI verde en `main` �
 exige, desde los metadatos del evento y antes de cualquier checkout, un run de `ci.yml` que sea un
 `push` a `main` del propio repositorio con `success`: el CI de un `pull_request` desde un fork con
 una rama llamada `main` ya no lo dispara (pasada 15 de la revisión adversarial de la serie
-posterior a la 1.14.0)—, publica docs y demo y verifica contenido en vivo. No hace falta un deploy
-manual adicional. Desplegar artefactos ya versionados no autoriza recapturar fixtures ni publicar
+posterior a la 1.14.0)—, publica docs y demo y verifica contenido en vivo. Para la primera entrega
+H10 o un cambio de sus fuentes/descarga frente al commit servido en docs, una barrera adicional
+exige un `workflow_dispatch` completo de CI del **mismo SHA en main**, con todos sus jobs verdes
+y el marcador `H10 cobertura completa acreditada`. Se comprueba antes de construir y de publicar.
+Despachar `gh workflow run ci.yml --ref main` después del push y verificar el SHA del run; si el
+Deploy automático se adelantó, quedará detenido antes de publicar: reejecutarlo tras el completo
+verde. Un commit intermedio de docs no elude esta comparación contra producción. El CI mínimo
+sigue siendo suficiente cuando la entrega H10 es idéntica a la ya publicada. Desplegar artefactos
+ya versionados no autoriza recapturar fixtures ni publicar
 PyPI. Un despacho manual
 (`gh workflow run deploy.yml`) sin `forzar` exige lo mismo que la vía automática: el script
 `scripts/deploy_no_retroceder_produccion.py` consulta por la API de Actions los runs de `ci.yml`
@@ -775,9 +782,9 @@ if ($bayesriskCiView.status -ne 'completed' -or $bayesriskCiView.conclusion -ne 
 }
 $bayesriskBadJobs = @($bayesriskCiView.jobs | Where-Object {
     $_.conclusion -ne 'success' -and -not (
-        $_.name -eq 'H10 cobertura completa acreditada' -and $_.conclusion -eq 'skipped'
-        -and $bayesriskCiView.event -in @('push','pull_request','schedule')
-        -and $bayesriskCiView.headBranch -eq 'main'
+        $_.name -eq 'H10 cobertura completa acreditada' -and $_.conclusion -eq 'skipped' -and
+        $bayesriskCiView.event -in @('push','pull_request','schedule') -and
+        $bayesriskCiView.headBranch -eq 'main'
     )
 })
 if ($bayesriskBadJobs.Count -ne 0) { throw 'hay jobs CI no exitosos' }
