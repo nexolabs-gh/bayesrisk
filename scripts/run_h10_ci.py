@@ -12,7 +12,38 @@ import shutil
 import socket
 import sys
 import time
+import zipfile
 from pathlib import Path
+
+
+def verify_installed_wheel(wheel: Path, distribution) -> int:
+    """Coteja el payload instalado; RECORD se reescribe y los metadatos de uv no dan hashes."""
+    expected_package = set()
+    count = 0
+    with zipfile.ZipFile(wheel) as archive:
+        for member in archive.infolist():
+            if member.is_dir():
+                continue
+            name = member.filename
+            if name.startswith("/") or ".." in Path(name).parts:
+                raise ValueError("ruta no admitida en el wheel")
+            if name.endswith(".dist-info/RECORD"):
+                continue  # El instalador añade direct_url, INSTALLER y sus propios scripts.
+            installed = Path(distribution.locate_file(name))
+            if not installed.is_file() or installed.read_bytes() != archive.read(member):
+                raise ValueError(f"archivo instalado distinto del candidato: {name}")
+            count += 1
+            if name.startswith("bayesrisk/"):
+                expected_package.add(name)
+    package = Path(distribution.locate_file("bayesrisk"))
+    actual_package = {
+        "bayesrisk/" + p.relative_to(package).as_posix()
+        for p in package.rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts
+    }
+    if not expected_package or actual_package != expected_package:
+        raise ValueError("censo instalado diferente del payload del candidato")
+    return count
 
 
 def main():
@@ -38,9 +69,9 @@ def main():
     if not origin.is_relative_to(Path(sys.prefix).resolve()):
         raise ValueError("bayesrisk no proviene del entorno instalado")
     digest = hashlib.sha256(args.wheel.read_bytes()).hexdigest()
-    direct = json.loads(importlib.metadata.distribution("bayesrisk").read_text("direct_url.json"))
-    if direct["archive_info"]["hashes"]["sha256"] != digest:
-        raise ValueError("el wheel instalado no coincide con el candidato")
+    installed_files = verify_installed_wheel(
+        args.wheel, importlib.metadata.distribution("bayesrisk")
+    )
     spec = importlib.util.spec_from_file_location(
         "h10_benchmark",
         root / "h10_benchmark/__init__.py",
@@ -60,6 +91,7 @@ def main():
     proof = {
         "wheel_sha256": digest,
         "installed_module": str(origin),
+        "installed_payload_files": installed_files,
         "mode": args.mode,
         "environment": environment,
     }
