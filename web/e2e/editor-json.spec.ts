@@ -304,14 +304,21 @@ test.describe("el editor JSON: lo que se ve es lo que corre", () => {
         await demora
         await ruta.continue()
       })
-      const respuesta = page.waitForResponse("**/api/config/from-yaml")
-      await page
-        .locator('input[type="file"][accept=".yaml,.yml"]')
-        .setInputFiles({ name: nombre, mimeType: "text/yaml", buffer: Buffer.from(texto) })
-      await escribir()
-      soltar()
-      await respuesta
-      await page.unroute("**/api/config/from-yaml")
+      try {
+        const respuesta = page.waitForResponse("**/api/config/from-yaml")
+        await page
+          .locator('input[type="file"][accept=".yaml,.yml"]')
+          .setInputFiles({ name: nombre, mimeType: "text/yaml", buffer: Buffer.from(texto) })
+        await escribir()
+        soltar()
+        expect((await respuesta).ok()).toBe(true)
+        // La conversión responde antes de loadJobs y de aplicar el config. No desmontar la
+        // interceptación mientras esa segunda petición y la operación de la UI siguen activas.
+        await expect(page.getByRole("button", { name: "Cargar YAML", exact: true })).toBeEnabled()
+      } finally {
+        soltar()
+        await page.unroute("**/api/config/from-yaml")
+      }
     }
 
     // Con el mismo valor: el editor muestra el del YAML, sin el texto ni su error.
