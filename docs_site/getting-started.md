@@ -145,11 +145,12 @@ sc.resume()                         # corrida nueva y completa con la decisión;
 !!! tip "El mismo flujo, como cuaderno"
     [Descarga `primer-scorecard.ipynb`](notebooks/primer-scorecard.ipynb): este mismo notebook
     mínimo con sus salidas **reales** —el resumen de cada etapa, la tabla de decisión de la
-    selección, el resumen final y los once libros de Excel—, listo para abrir en Jupyter o VS Code
-    y correr celda por celda. CI verifica su ejecución; las salidas guardadas conservan la
-    lectura histórica de HL. Al ejecutarlo con la implementación contextual, los nuevos
-    resúmenes distinguen esa lectura del diagnóstico descriptivo. Las PD no mejoran por
-    cambiar su interpretación.
+    selección, el resumen final y los doce libros de Excel—, listo para abrir en Jupyter o VS Code
+    y correr celda por celda. CI ejecuta todo y compara sus salidas guardadas. Éstas ya
+    distinguen el resultado histórico de HL de la evaluación contextual y sus límites;
+    requieren la implementación contextual de `main`, posterior a **PyPI 2.16.0**.
+    Esa versión publicada conserva la lectura anterior. Las PD no mejoran por cambiar
+    su interpretación.
 
 `run()` imprime el resumen de cada etapa mientras corre y, en un notebook, la última línea pinta
 el resumen final (también con `sc.summary()`; el de una etapa, con `sc.summary("binning")`, y su

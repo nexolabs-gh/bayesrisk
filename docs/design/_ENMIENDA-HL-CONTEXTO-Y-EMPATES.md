@@ -319,6 +319,12 @@ con el aviso de lectura histórica cuando se muestren desde el consumidor nuevo.
 No se recapturan en esta capa sin OK propio. No publicar producción parcialmente adaptada:
 las tres puertas y todas las superficies de la matriz deben cerrar juntas.
 
+**Excepción específica aprobada por Cami en S60:** actualizar sólo las salidas de
+`docs_site/notebooks/primer-scorecard.ipynb`, conservando el original íntegro como
+evidencia. El gate continúa exigiendo igualdad completa con la ejecución actual;
+el descargable y su guía distinguen esta implementación de PyPI 2.16.0. No autoriza
+recapturar la demo web, H10 ni otras fixtures.
+
 ## 10. Dependencias
 
 Se reutilizan numpy/pandas y las utilidades de validación, persistencia, rótulos y export.
