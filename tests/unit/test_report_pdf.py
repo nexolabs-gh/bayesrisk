@@ -96,7 +96,10 @@ def test_h3_pdf_final_muestra_procedencia_y_supuestos(tmp_path: Path) -> None:
     text = " ".join(" ".join(page.extract_text() for page in reader.pages).split()).casefold()
     assert "supuestos" in text and "pd externa" in text
     assert "prorratea" in text and "74" in text
-    assert "provisioning_internal_detail.csv" in text
+    # Los nombres largos se parten visualmente entre líneas; deben conservar todos sus
+    # caracteres y corresponder al adjunto realmente entregado.
+    detail = next((p.project_dir / "reports").glob("*provisioning_internal_detail.csv"))
+    assert detail.name.casefold() in "".join(text.split())
 
 
 def _lineage() -> LineageBundle:
