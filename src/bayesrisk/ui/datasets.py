@@ -738,9 +738,9 @@ def load_frame(dataset_id: str, *, workdir: Path, key_column: str | None = None)
     workdir : Path
         Directorio de trabajo donde vive el parquet.
     key_column : str | None
-        Columna que identifica cada fila; pasa a ser el índice. Con ``None`` el frame conserva su
-        índice posicional y la alineación queda por **orden de filas** (D-PUE-6), que es una
-        decisión del usuario y no un default silencioso: quien la toma recibe su aviso y su caveat.
+        Columna que identifica cada fila; pasa a ser el índice. Con ``None`` el frame conserva
+        el índice almacenado. La puerta de artefactos adopta después el índice de la cartera por
+        **orden de filas** (D-PUE-6), con su aviso y su caveat; esta lectura no alinea por sí sola.
 
     Raises
     ------

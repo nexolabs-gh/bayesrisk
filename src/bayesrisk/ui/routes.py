@@ -1010,10 +1010,10 @@ def _materializar_externos(
        corrida sin errores con la probabilidad de cada cliente asignada a otro. De ahí que el modo
        posicional lleve su caveat hasta el informe.
 
-    ⚠️ **En el modo posicional el índice se normaliza**, y no es cosmético: un parquet subido con
-    índice propio lo conservaba, así que el motor alineaba por *esas* etiquetas mientras la pantalla
-    prometía «la fila 1 con la fila 1». Con el conteo cuadrando e índices ``[1, 0]``, cruzaba sin
-    error. Alinear por orden significa por orden, y para eso el índice tiene que ser posicional.
+    ⚠️ **En el modo posicional se adopta el índice de la cartera**, conservando el orden del
+    archivo externo. Su índice original no decide la correspondencia. Tampoco se puede imponer
+    RangeIndex: la cartera Parquet puede tener etiquetas propias o numéricas invertidas. El motor
+    alinea por etiquetas, así que ambos objetos deben compartir las de cada posición de la cartera.
 
     El ``config`` no se usa para decidir la alineación —eso fue un intento anterior que la medición
     descartó (§8.2 de la enmienda)—: se conserva en la firma porque el preflight lo necesita para
@@ -1054,7 +1054,7 @@ def _materializar_externos(
                     f"{len(cartera)}. Sin una columna que identifique cada operación, las filas se "
                     "emparejan por su orden, y para eso tienen que ser las mismas."
                 )
-            frame = frame.reset_index(drop=True)
+            frame = frame.set_axis(cartera.index)
         else:
             frame = _emparejar_con_la_cartera(frame, cartera, key_column)
         materializados[clave] = frame

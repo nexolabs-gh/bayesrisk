@@ -345,6 +345,22 @@ def test_el_modo_posicional_normaliza_el_indice_del_archivo(tmp_path: Path, cart
     assert frame["probabilidad"].iloc[0] == 0.1, "la primera fila del archivo va con la primera"
 
 
+@pytest.mark.parametrize("index", [["op-a", "op-b"], [1, 0]])
+def test_posicional_adopta_el_indice_real_de_la_cartera(tmp_path: Path, index) -> None:
+    """La fila primera se conserva incluso si la cartera Parquet tiene otro índice."""
+    cartera = pd.DataFrame({"saldo": [100.0, 500.0]}, index=pd.Index(index, name="operacion"))
+    cartera_id = datasets_module.ingest_upload(
+        cartera.to_parquet(), "cartera.parquet", workdir=tmp_path
+    )["dataset_id"]
+    modelo_id = _subir(tmp_path, pd.DataFrame({"probabilidad": [0.1, 0.8]}), "pd.csv")
+    frame = routes._materializar_externos(
+        [{"artifact": _PD_CLAVE, "dataset_id": modelo_id}], cartera_id, workdir=tmp_path
+    )[("calibration", "calibrated_pd_frame")]
+    pd.testing.assert_index_equal(frame.index, cartera.index, exact=True)
+    assert frame.probabilidad.tolist() == [0.1, 0.8]
+    assert (cartera.saldo * frame.probabilidad).sum() == 410.0
+
+
 def test_quitar_la_llave_es_la_salida_y_no_exige_un_campo_nuevo(
     tmp_path: Path, cartera: str, modelo: str
 ) -> None:

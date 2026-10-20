@@ -580,3 +580,8 @@ B recibió APPROVE independiente en la segunda y última pasada sobre e7661d9..c
 NEEDS-ATTENTION, hallazgos corregidos sin APPROVE final ni tercera pasada. El estado de los
 gates de integración y artefactos finales se registra en el relevo interno; no se confunde con
 aprobación independiente. El alcance implementado es el A+B de §1, sin cambios IFRS 9.
+
+Corrección de aceptación en pantalla posterior a la revisión: al emparejar PD por orden, se
+conserva el índice real de la cartera, también en Parquet con etiquetas propias; antes se imponía
+RangeIndex. El mismo contrato posicional se mantiene. Tests nacidos rojos y verificación del
+writer; sin tercera revisión ni APPROVE independiente de este arreglo final o del copy posterior.

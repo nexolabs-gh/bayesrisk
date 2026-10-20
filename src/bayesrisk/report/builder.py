@@ -932,11 +932,11 @@ def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]
     if chapter_id == "limitations":
         return prose.limitations_body(bundle)
     if chapter_id == APPENDIX_TABLES_ID:
-        if "lgd_training" in bundle.cards:
+        if "lgd_training" in bundle.cards or "provisioning_internal" in bundle.cards:
             return (
-                "Este anexo completa las tablas agregadas del cuerpo. La tabla del predictor y las "
-                "predicciones por operación se identifican por separado como adjuntos; su emisión "
-                "depende de los formatos solicitados.",
+                "Este anexo completa las tablas agregadas del cuerpo. Las tablas por operación "
+                "y, cuando corresponde, la del predictor se identifican por separado como "
+                "adjuntos; su emisión depende de los formatos solicitados.",
             )
         return (
             "Este anexo reproduce íntegras todas las tablas que produjo la corrida, incluidas "
