@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from bayesrisk.core.exceptions import BayesRiskError
 from bayesrisk.core.markers import strip_declared_codes
 from bayesrisk.governance import GovernanceConfig, ModelCardBuilder
-from bayesrisk.methodology import build_ifrs9_methodology_card
+from bayesrisk.methodology import build_ifrs9_methodology_card, build_validation_context_view
 from bayesrisk.ui.exceptions import UiSerializationError
 from bayesrisk.ui.reliability import reliability_curve
 
@@ -304,19 +304,9 @@ def _augment_with_rich_artifacts(study: Study, payload: dict[str, Any]) -> None:
         payload["validation"]["hosmer_lemeshow_groups"] = _domain_records(
             study, "validation", "hosmer_lemeshow_groups"
         )
-        from bayesrisk.validation.interpretation import (
-            interpretation_details,
-            interpretation_lines,
-            study_interpretation,
-        )
-
-        raw, interpretation = study_interpretation(study)
-        payload["validation"]["interpretation"] = dump_dto(raw) if raw is not None else None
-        payload["validation"]["interpretation_lines"] = (
-            [*interpretation_lines(interpretation), *interpretation_details(interpretation)]
-            if interpretation is not None
-            else None
-        )
+        context_view = build_validation_context_view(study)
+        _ensure_json_safe(context_view, context="contexto de validación")
+        payload["validation"].update(context_view)
         payload["validation"]["calibration_tie_groups"] = _domain_records(
             study, "validation", "calibration_tie_groups"
         )

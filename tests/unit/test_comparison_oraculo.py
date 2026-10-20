@@ -224,7 +224,12 @@ def test_la_lectura_de_0_3(medido: dict[str, Any]) -> None:
     assert lectura[2] == "Todas son estables."
     assert lectura[3] == "Reparte mejor sus tramos: tramos_4 (índice 0,07 frente a 0,13)."
     assert "Ninguna otra supera a tramos_4 en discriminación y concentración" in lectura[4]
-    assert lectura[5].startswith("Pasan la validación técnica tramos_4 y sin_mejor; fallan base")
+    assert lectura[5].startswith(
+        "Validación histórica: Pasan la validación técnica tramos_4 y sin_mejor; fallan base"
+    )
+    assert lectura[5].endswith(
+        "El resumen guardado no permite aplicar la lectura contextual de HL."
+    )
     assert lectura[6] == (
         "Comparten dos variables; iv_005 quita antiguedad_meses y mora_max_12m; sin_mejor quita "
         "ingreso_mensual."

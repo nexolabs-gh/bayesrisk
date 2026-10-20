@@ -11,10 +11,14 @@ con las cards que prueban qué dominios corrieron. UI e informe consumen el mism
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from numbers import Integral, Real
-from typing import Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from bayesrisk.core.study import Study
 
 MethodologyStatus = Literal["active", "not_exercised"]
 
@@ -23,6 +27,7 @@ __all__ = [
     "MethodologyFact",
     "MethodologyStatus",
     "build_ifrs9_methodology_card",
+    "build_validation_context_view",
     "methodology_paragraphs",
 ]
 
@@ -68,6 +73,33 @@ class MethodologyCard(BaseModel):
     active: tuple[MethodologyFact, ...]
     not_exercised: tuple[MethodologyFact, ...]
     source_refs: tuple[str, ...] = Field(min_length=1)
+
+
+def build_validation_context_view(study: Study) -> dict[str, Any]:
+    """Proyecta el contexto y su explicación sin acoplar la UI al dominio de validación.
+
+    El dominio conserva la política, los cotejos de integridad y el vocabulario. Esta capa
+    común entrega una vista defensiva de lo ya calculado, igual que la ficha metodológica;
+    no deriva probabilidades, pruebas ni un segundo estado de validación.
+    """
+    from bayesrisk.validation.interpretation import (
+        interpretation_details,
+        interpretation_lines,
+        study_interpretation,
+    )
+
+    raw, interpretation = study_interpretation(study)
+    return {
+        "interpretation": raw.model_dump(mode="json")
+        if isinstance(raw, BaseModel)
+        else deepcopy(raw),
+        "interpretation_lines": [
+            *interpretation_lines(interpretation),
+            *interpretation_details(interpretation),
+        ]
+        if interpretation is not None
+        else None,
+    }
 
 
 def build_ifrs9_methodology_card(

@@ -421,9 +421,11 @@ def test_la_referencia_publica_no_define_no_evaluable_como_falta_de_potencia() -
     assert "alcanzó potencia" not in fila
     assert "una causa posible" in fila
     guia = (raiz / "docs_site" / "guias" / "validacion-formal.md").read_text(encoding="utf-8")
-    inicio = guia.index('!!! note "Una validación sin ninguna prueba evaluable no «Pasa»"')
+    inicio = guia.index('!!! note "Cómo se lee el nuevo estado"')
     nota = guia[inicio : guia.index("\n\n", inicio + 60)]
-    assert "veredicto de pasa o falla" in nota
+    assert "Sólo HL y Brier: **No evaluable: falta un contraste de calibración validado**" in nota
+    assert "Sin otra evidencia evaluable, **No evaluable**" in nota
+    assert "Los conteos contextuales excluyen HL y Brier" in nota
     assert "Si ninguna prueba alcanzó potencia" not in nota
 
 

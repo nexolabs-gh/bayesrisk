@@ -7,6 +7,51 @@ import pytest
 from bayesrisk.methodology import build_ifrs9_methodology_card, methodology_paragraphs
 
 
+def test_vista_contextual_delega_en_dominio_y_conserva_fallback_defensivo() -> None:
+    import numpy as np
+    from test_validation_step import _scorecard_study
+
+    from bayesrisk.methodology import build_validation_context_view
+    from bayesrisk.ui.exceptions import UiSerializationError
+    from bayesrisk.ui.serializers import serialize_study
+    from bayesrisk.validation.config import ValidationConfig
+    from bayesrisk.validation.exceptions import ValidationDataError
+    from bayesrisk.validation.interpretation import interpretation_details, interpretation_lines
+    from bayesrisk.validation.step import ValidationStep
+
+    cfg = ValidationConfig(families=("calibration",), calibration={"binomial_by_grade": False})
+    study = _scorecard_study(config=cfg)
+    assert build_validation_context_view(study) == {
+        "interpretation": None,
+        "interpretation_lines": None,
+    }
+    ValidationStep(cfg).execute(study, np.random.default_rng(0))
+    value = study.artifacts.get("validation", "interpretation")
+    view = build_validation_context_view(study)
+    assert view["interpretation"] == value.model_dump(mode="json")
+    assert view["interpretation_lines"] == [
+        *interpretation_lines(value),
+        *interpretation_details(value),
+    ]
+    frame = study.artifacts.get("validation", "calibration_tie_groups").copy()
+    frame.loc[0, "n"] += 1
+    study.artifacts.set("validation", "calibration_tie_groups", frame, overwrite=True)
+    with pytest.raises(ValidationDataError, match="grupos"):
+        build_validation_context_view(study)
+    future = {"policy_id": "future", "unrecognized": ["original"]}
+    study.artifacts.set("validation", "interpretation", future, overwrite=True)
+    view = build_validation_context_view(study)
+    assert view["interpretation_lines"] is None
+    view["interpretation"]["unrecognized"].append("mutación")
+    assert future["unrecognized"] == ["original"]
+    payload = serialize_study(study, governance=None)["validation"]
+    assert payload["interpretation"] == future
+    assert payload["interpretation_lines"] is None
+    future["unrecognized"].append(float("inf"))
+    with pytest.raises(UiSerializationError):
+        serialize_study(study, governance=None)
+
+
 def test_ficha_ifrs9_deriva_activos_y_capacidades_de_config_y_cards() -> None:
     """La ficha narra la corrida F4 sin números literales independientes de sus fuentes."""
     card = build_ifrs9_methodology_card(
