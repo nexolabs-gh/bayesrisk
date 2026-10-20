@@ -82,6 +82,7 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
 """Superficies que aún crecen: pueden cambiar de forma aditiva o romper dentro de 2.x."""
 
 EXPERIMENTAL_SYMBOLS: Final[dict[str, str]] = {
+    "bayesrisk.guided.provision.Provision": "H3 experimental: tres puertas y aceptación en curso.",
     # `bayesrisk.guided.ecl.Ecl` salió aquí como adelanto declarado (D-ECL-9, 2.4.0) y se retiró al
     # cerrar sus tres puertas (capa B de FLUJO-GUIADO-IFRS9, S31): la garantía cubre su firma, sus
     # métodos y la forma de sus resúmenes, y sus cifras siguen la marca experimental de `survival`

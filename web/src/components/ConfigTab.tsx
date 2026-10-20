@@ -854,9 +854,10 @@ function ConfigSectionForm(props: {
     return <GroupedFields schema={schema} inner={false} renderField={renderField} />
   }
 
-  const esenciales = essentialFields(schema, defs, null)
+  const sectionValue = getAtPath(config, [sectionKey]) as Record<string, unknown> | undefined
+  const esenciales = essentialFields(schema, defs, null, sectionValue)
   const grupos = essentialGroups(schema, defs)
-  const avanzado = advancedSchema(schema, defs)
+  const avanzado = advancedSchema(schema, defs, sectionValue)
   const hojas = advancedLeaves(avanzado, defs, [sectionKey])
   const cambiados = countChangedAdvanced(hojas, config, effectiveDefaults)
   const erroresDentro = errorsInsideAdvanced(hojas, errors)

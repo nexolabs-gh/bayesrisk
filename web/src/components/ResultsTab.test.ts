@@ -1732,6 +1732,18 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     error: null,
   }
 
+  it.each(["provision_interna", "pd_provision"])("H3 %s muestra supuestos sin veredicto de LGD", (family) => {
+    const html = render({ ...minima(null), summaries: {
+      ...deCartera,
+      final: { ...deCartera.final!, family, title: "Resumen de la provisión interna",
+        assumptions: ["PD externa declarada", "El detalle prorratea el total grupal", "Validación de PD: Revisar"] },
+    } })
+    expect(html).toContain("Supuestos")
+    expect(html).toContain("PD externa declarada")
+    expect(html).toContain("Validación de PD: Revisar")
+    expect(html).not.toContain("Validación técnica:")
+  })
+
   it("una provisión dice sus supuestos, sus tablas adicionales y su curva de PD por cartera", () => {
     const html = render({ ...(demoF4 as unknown as ResultsResponse), summaries: deCartera })
     expect(html).toContain("Supuestos")

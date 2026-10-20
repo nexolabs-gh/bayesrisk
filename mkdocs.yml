@@ -71,6 +71,7 @@ nav:
       - Reanudar con artefactos: guias/puerta-artefactos.md
       - La provisión IFRS 9 de punta a punta: guias/provision-ifrs9.md
       - Provisiones sin normativa local: guias/provision-sin-norma-local.md
+      - Provisión interna paso a paso: guias/provision-guiada.md
   - Aterrizar una norma local: norma-local.md
   - Glosario: glosario.md
   - Avisos declarados: avisos-declarados.md

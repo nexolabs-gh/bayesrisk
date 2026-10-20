@@ -40,6 +40,8 @@ import {
 import {
   type Defs,
   type JsonSchema,
+  discriminatedBranches,
+  discriminatorProperty,
   groupedFields,
   isHiddenField,
   resolveRef,
@@ -57,6 +59,14 @@ function isNullSchema(schema: JsonSchema): boolean {
  * `eda` declara sus esenciales y son cero: todo default, el resumen lo muestra.
  */
 export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
+  provisioning_internal: [
+    "provisioning_internal.as_of_date_col", "provisioning_internal.portfolio_col",
+    "provisioning_internal.exposure_col", "provisioning_internal.lgd.method",
+    "provisioning_internal.lgd.lgd_col", "provisioning_internal.lgd.recovery_col",
+    "provisioning_internal.lgd.covariate_cols", "provisioning_internal.lgd.workout_ead_col",
+    "provisioning_internal.lgd.workout_cost_col", "provisioning_internal.lgd.workout_time_col",
+    "provisioning_internal.lgd.workout_rate_col",
+  ],
   data: [
     "data.load.source",
     "data.schema.unique_keys",
@@ -271,6 +281,7 @@ export function pruneForView(
   vista: Vista,
   visited: readonly string[] = [],
   grupo?: string | null,
+  value?: unknown,
 ): JsonSchema | null {
   if (isHiddenField(schema)) return null
   if (schema.ui_essential === true) {
@@ -283,6 +294,11 @@ export function pruneForView(
   }
   const seen = ref === undefined ? visited : [...visited, ref]
   const target = resolveRef(base, defs)
+  if (target.discriminator && target.ui_split_essentials === true) {
+    // Se conservan las referencias originales: cambiar de rama sigue sembrando sus defaults
+    // completos, aunque sólo una parte se pinte abierta. El renderer poda la rama activa.
+    return { ...target, ui_essentials_view: vista, ui_active_value: value }
+  }
   if (target.ui_essential === true) {
     return vista === "essential" && enGrupo(base, grupo) ? schema : null
   }
@@ -296,7 +312,13 @@ export function pruneForView(
   let intact = true
   const props = target.properties ?? {}
   for (const [name, child] of Object.entries(props)) {
-    const part = pruneForView(child, defs, vista, seen, grupo)
+    const current = value != null && typeof value === "object"
+      ? value as Record<string, unknown> : {}
+    const condition = child.ui_essential_when
+    const visibleChild = condition
+      ? { ...child, ui_essential: (current[condition.field] == null) === condition.is_null }
+      : child
+    const part = pruneForView(visibleChild, defs, vista, seen, grupo, current[name])
     if (part === null) {
       // Un campo `hidden` no cuenta: la vista lo omite igual que el formulario entero.
       if (!isHiddenField(child)) intact = false
@@ -340,6 +362,7 @@ export function essentialFields(
   sectionSchema: JsonSchema,
   defs: Defs,
   grupo?: string | null,
+  value?: Record<string, unknown>,
 ): SectionField[] {
   const out: SectionField[] = []
   for (const group of groupedFields(sectionSchema)) {
@@ -350,6 +373,7 @@ export function essentialFields(
         "essential",
         [],
         grupo,
+        value?.[name],
       )
       if (part !== null) out.push([name, part])
     }
@@ -401,10 +425,12 @@ export function essentialGroups(sectionSchema: JsonSchema, defs: Defs): Essentia
  * La sección podada a lo que va a «Avanzado» (mismo objeto, sólo con esos campos), o `null` si
  * nada queda plegado. Se consume con `groupedFields` como la sección entera: los grupos no cambian.
  */
-export function advancedSchema(sectionSchema: JsonSchema, defs: Defs): JsonSchema | null {
+export function advancedSchema(
+  sectionSchema: JsonSchema, defs: Defs, value?: Record<string, unknown>,
+): JsonSchema | null {
   const kept: Record<string, JsonSchema> = {}
   for (const [name, schema] of Object.entries(sectionSchema.properties ?? {})) {
-    const part = pruneForView(campoDeSeccion(sectionSchema, name, schema), defs, "advanced")
+    const part = pruneForView(campoDeSeccion(sectionSchema, name, schema), defs, "advanced", [], undefined, value?.[name])
     if (part !== null) kept[name] = part
   }
   if (Object.keys(kept).length === 0) return null
@@ -442,6 +468,17 @@ export function advancedLeaves(
     const { schema: unwrapped } = unwrapNullable(node)
     const ref = refKey(unwrapped)
     const target = resolveRef(unwrapped, defs)
+    if (target.discriminator && target.ui_split_essentials === true) {
+      const current = target.ui_active_value as Record<string, unknown> | undefined
+      const active = discriminatedBranches(target, defs).find(
+        (branch) => branch.tag === current?.[discriminatorProperty(target)],
+      )
+      if (active) {
+        const part = pruneForView(active.schema, defs, "advanced", [], undefined, current)
+        if (part) walk(part, path, visited)
+      }
+      return
+    }
     if (isSubmodel(target) && !(ref !== undefined && visited.includes(ref))) {
       const seen = ref === undefined ? visited : [...visited, ref]
       for (const [name, child] of Object.entries(target.properties ?? {})) {

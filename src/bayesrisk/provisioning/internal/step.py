@@ -66,6 +66,7 @@ _INTERNAL_EXTRA_MESSAGE: Final = (
 )
 
 
+@register("full_population", domain="provisioning_internal")
 @register("standard", domain="provisioning_internal")
 class InternalProvisioningStep(AuditableMixin):
     """Orquesta el método interno del B-1 y publica ``domain='provisioning_internal'``."""
@@ -80,6 +81,14 @@ class InternalProvisioningStep(AuditableMixin):
         """Construye el paso desde ``InternalProvisioningConfig`` y arma sus ``requires``."""
         self.config = config
         self.requires = _requires_for(config)
+        self.optional_requires: tuple[ArtifactKey, ...] = ()
+        if config.type == "full_population":
+            self.optional_requires = (_pd_complementaria(config.pd_source),)
+            self.provides = (
+                *type(self).provides,
+                ("provisioning_internal", "pd_input"),
+                ("provisioning_internal", "pd_coverage"),
+            )
 
     @classmethod
     def from_config(cls, cfg: InternalProvisioningConfig) -> InternalProvisioningStep:
@@ -109,6 +118,8 @@ class InternalProvisioningStep(AuditableMixin):
             f"{pd_domain}.{pd_key}",
             pd_source=cfg.pd_source,
         ).copy(deep=True)
+        if cfg.type == "full_population":
+            pd_frame = _pd_poblacion_completa(study, cfg, frame, pd_frame, pandas)
 
         from bayesrisk.provisioning.internal.engine import InternalProvisioningEngine
 
@@ -119,6 +130,11 @@ class InternalProvisioningStep(AuditableMixin):
             as_of_date=as_of_date,
             audit=self,
         )
+        if (pd_domain, pd_key) in getattr(study, "_injected_artifacts", ()):
+            metrics = result.card.metric_sections
+            metrics["provisioning_internal"]["pd_external"] = True
+            card = result.card.model_copy(update={"metric_sections": metrics})
+            result = result.model_copy(update={"card": card})
         self._log_internal_decisions(config=cfg, result=result, pd_artifact=(pd_domain, pd_key))
         self._publish_artifacts(study, result)
         return result
@@ -240,6 +256,68 @@ def _procedencia_de_la_lgd(config: InternalProvisioningConfig) -> dict[str, Any]
 def _requires_for(config: InternalProvisioningConfig) -> tuple[ArtifactKey, ...]:
     """Arma las claves ``requires`` dinámicas según ``pd_source`` (CT-1, SDD-28 §4.1)."""
     return (("data", "frame"), _PD_ARTIFACT_BY_SOURCE[config.pd_source])
+
+
+def _pd_complementaria(source: str) -> ArtifactKey:
+    return (
+        ("calibration", "out_of_model_calibrated_pd_frame")
+        if source == "calibration"
+        else ("model", "out_of_model_pd_frame")
+    )
+
+
+def _pd_poblacion_completa(
+    study: Study,
+    cfg: InternalProvisioningConfig,
+    frame: DataFrame,
+    principal: DataFrame,
+    pandas: Any,
+) -> DataFrame:
+    """Unión aditiva sin reestimar PD ni recortar exposición; conserva los artefactos F1."""
+    domain, key = _pd_complementaria(cfg.pd_source)
+    complementaria = (
+        _as_dataframe(study.artifacts.get(domain, key), pandas, f"{domain}.{key}")
+        if study.artifacts.has(domain, key)
+        else principal.iloc[:0].copy()
+    )
+    if not principal.index.is_unique or not complementaria.index.is_unique:
+        raise InternalInputError(
+            "Las tablas de PD principal y fuera del ajuste exigen índices únicos."
+        )
+    overlap = principal.index.intersection(complementaria.index)
+    if len(overlap):
+        raise InternalInputError(f"Las tablas de PD se solapan en {len(overlap)} operaciones.")
+    for tabla in (principal, complementaria):
+        if len(tabla) and cfg.pd_column not in tabla:
+            raise InternalInputError(f"La tabla de PD no trae la columna {cfg.pd_column!r}.")
+    result = pandas.concat([principal, complementaria], axis=0)
+    missing = frame.index.difference(result.index)
+    coverage = pandas.DataFrame(
+        [
+            {
+                "portfolio_rows": len(frame),
+                "main_rows": len(principal),
+                "out_of_model_rows": len(complementaria),
+                "missing_rows": len(missing),
+                "extra_rows": len(result.index.difference(frame.index)),
+            }
+        ]
+    )
+    study.artifacts.set("provisioning_internal", "pd_coverage", coverage)
+    if len(missing):
+        exposure = pandas.to_numeric(frame.loc[missing, cfg.exposure_col], errors="coerce")
+        amount = (
+            str(exposure.sum())
+            if exposure.notna().all()
+            else "no cuantificable por datos faltantes"
+        )
+        raise InternalInputError(
+            f"Falta PD para {len(missing)} operaciones; exposición sin PD: {amount}. "
+            "Resuelve la puntuación fuera del ajuste o aporta una PD completa. "
+            "Se conservan los resultados del scorecard; no se elimina exposición."
+        )
+    study.artifacts.set("provisioning_internal", "pd_input", result.copy(deep=True))
+    return cast("DataFrame", result)
 
 
 def _require_artifact(study: Study, domain: str, key: str) -> object:

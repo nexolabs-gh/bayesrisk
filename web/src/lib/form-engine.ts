@@ -52,6 +52,12 @@ export interface JsonSchema {
    * config: el `config_hash` no lo mira. Se copia en `unwrapNullable` como los demás `ui_*`.
    */
   ui_essential?: boolean
+  /** H3: unión dividida por su rama activa; el selector sólo vive en esenciales. */
+  ui_split_essentials?: boolean
+  ui_essentials_view?: "essential" | "advanced"
+  ui_active_value?: unknown
+  /** Condición de presentación sobre un hermano; no es una hoja del config. */
+  ui_essential_when?: { field: string; is_null: boolean }
   /**
    * Subtítulo bajo el que la pantalla agrupa esenciales OPCIONALES que van juntos (CASO-REAL-IFRS9
    * §13: «Si tienes las fechas y la cuota del contrato»). El texto viene del schema, como el

@@ -32,6 +32,7 @@ from pydantic import ValidationError
 
 from bayesrisk.core.config import BayesRiskConfig, RunConfig, config_hash, dump_config
 from bayesrisk.core.exceptions import BayesRiskError, ConfigError
+from bayesrisk.core.steps import ArtifactKey
 from bayesrisk.guided.inference import AUTOR_PUERTA, Inferencia
 from bayesrisk.guided.summaries import (
     FinalSummary,
@@ -115,6 +116,7 @@ class _PuertaGuiada:
         # Huella de los bytes sobre los que se infirió: `run()` la vuelve a medir antes de correr
         # (pasadas 1 y 2 de Codex sobre la capa B: el motor relee el archivo en cada corrida).
         self._source_digest: tuple[Path, str] | None = None
+        self._artifacts: dict[ArtifactKey, Any] = {}
 
     # ── construcción ────────────────────────────────────────────────────────────────────
 
@@ -237,7 +239,9 @@ class _PuertaGuiada:
         )
 
     @classmethod
-    def _resolver_pipeline(cls, config: BayesRiskConfig) -> tuple[BayesRiskConfig, tuple[str, ...]]:
+    def _resolver_pipeline(
+        cls, config: BayesRiskConfig, *, artifacts: Mapping[ArtifactKey, Any] | None = None
+    ) -> tuple[BayesRiskConfig, tuple[str, ...]]:
         """El config con sus secciones coaccionadas y los pasos en orden, comprobados sin correr.
 
         Un ``BayesRiskConfig`` recién validado lleva las secciones de dominio **opacas** (``dict``)
@@ -246,10 +250,16 @@ class _PuertaGuiada:
         las decisiones humanas editan campo a campo (medido fuera de pytest, donde nadie importa
         los dominios de antemano).
         """
-        from bayesrisk.api import _audit_config, _governance_config, _tracking_config
+        from bayesrisk.api import (
+            _audit_config,
+            _governance_config,
+            _inject_artifacts,
+            _tracking_config,
+        )
         from bayesrisk.core.study import Study
 
         study = Study(config, apply_global_seed=False)
+        _inject_artifacts(study, artifacts or {})
         try:
             pasos = study.check_pipeline()
         except ValidationError as exc:
@@ -388,6 +398,7 @@ class _PuertaGuiada:
         try:
             self._study = bayesrisk.run(
                 config,
+                artifacts=self._artifacts,
                 run_dir=self._run_dir,
                 preamble=self._preamble(),
                 on_step=self._contar_etapa,

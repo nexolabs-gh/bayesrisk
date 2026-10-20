@@ -382,8 +382,13 @@ def build_document_view(
     nunca **qué bloques hay** ni en qué orden. ``chart_format`` es lo único que varía por destino:
     el HTML y el ``.qmd`` embeben SVG; Word no los admite y pide PNG.
     """
+    from bayesrisk.report.prose import internal_report_family
+
     section_views = _section_views(bundle, ai_blocks, config, chart_format)
     return {
+        "brand_subtitle": (
+            "Provisión interna" if internal_report_family(bundle) else "Validación de modelos"
+        ),
         "title": _report_title(bundle),
         "document_title": _document_title(bundle),
         "cover_kicker": _cover_kicker(bundle),
@@ -472,7 +477,11 @@ def _supuestos_de_la_pagina(payload: Mapping[str, Any]) -> list[str] | None:
     sin supuestos legibles igual reemplaza la validación técnica, que no tiene.
     """
     final = payload.get("final")
-    if payload.get("family") != "cartera" or not isinstance(final, Mapping):
+    if payload.get("family") not in {
+        "cartera",
+        "provision_interna",
+        "pd_provision",
+    } or not isinstance(final, Mapping):
         return None
     return [str(supuesto) for supuesto in final.get("assumptions") or ()]
 
@@ -580,6 +589,10 @@ def _is_comparison_run(bundle: ReportInputBundle) -> bool:
 
 def _report_title(bundle: ReportInputBundle) -> str:
     """El título del artefacto según lo que la corrida ES."""
+    from bayesrisk.report.prose import internal_report_family
+
+    if internal_report_family(bundle):
+        return _document_title(bundle)
     if _is_ifrs9_run(bundle):
         return "Reporte IFRS 9 / ECL"
     if _is_monitoring_run(bundle):
@@ -591,6 +604,10 @@ def _report_title(bundle: ReportInputBundle) -> str:
 
 def _cover_kicker(bundle: ReportInputBundle) -> str:
     """La línea sobre el título de la portada, según lo que la corrida ES."""
+    from bayesrisk.report.prose import internal_report_family
+
+    if internal_report_family(bundle):
+        return "Informe de provisión interna"
     if _is_ifrs9_run(bundle):
         return "Informe regulatorio — pérdida crediticia esperada"
     if _is_monitoring_run(bundle):
@@ -608,6 +625,15 @@ def _document_title(bundle: ReportInputBundle) -> str:
     **además** del scorecard tampoco es sólo una validación de scorecard: el usuario la corrió por
     la provisión, y el título debe nombrarla.
     """
+    from bayesrisk.report.prose import internal_report_family
+
+    internal_family = internal_report_family(bundle)
+    if internal_family:
+        return (
+            "Informe de PD y Provisión Interna"
+            if internal_family == "pd_provision"
+            else "Informe de Provisión Interna"
+        )
     if _is_ifrs9_run(bundle):
         return IFRS9_DOCUMENT_TITLE
     if _is_monitoring_run(bundle):
@@ -625,6 +651,10 @@ def _exec_scope_note(bundle: ReportInputBundle) -> str:
     El texto histórico decía «la integración con IFRS 9 corresponde a fases posteriores»: falso
     —y en la primera página— cuando el capítulo central del informe ES la ECL IFRS 9.
     """
+    from bayesrisk.report.prose import internal_report_family, internal_scope
+
+    if internal_report_family(bundle):
+        return "Alcance: " + internal_scope(bundle)
     validation = bundle.cards.get("validation") if "validation" in bundle.results else None
     families = set(validation.get("families_run", ())) if isinstance(validation, Mapping) else set()
     if _is_ifrs9_run(bundle) and validation is not None:

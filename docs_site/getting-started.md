@@ -362,9 +362,10 @@ Los trabajos del catálogo, en el orden en que aparecen:
 | **Validar un modelo existente** | Tu scorecard y tu PD, medidos y documentados: discriminación, calibración y estabilidad, sin volver a modelar. |
 | **Severidad modelada o calculada** | La LGD modelada con las variables de tu archivo, o calculada descontando lo que ya recuperaste. |
 | **Stress testing** | Escenarios adversos y shocks macro sobre la cartera. Hoy sólo por código: el motor corre desde Python y todavía no tiene pantalla. |
+| **PD + provisión de toda la cartera** | Scorecard y provisión interna con cobertura explícita de operaciones fuera del ajuste. Si falta PD para alguna operación, la provisión se detiene y conserva los resultados de PD. Experimental. |
 <!-- catalogo-trabajos:end -->
 
-Los dos trabajos del scorecard abren con la sección **Análisis exploratorio**, que describe la
+Los tres trabajos del scorecard abren con la sección **Análisis exploratorio**, que describe la
 cartera antes de modelarla —la tasa de incumplimiento en el tiempo, un perfil por variable y las
 marcas de calidad del archivo— y la pinta primero en Resultados; viene encendida con sus valores de
 fábrica y, si tu archivo no trae fecha, agrupa la tasa por la cohorte con la que particionas. Qué

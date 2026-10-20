@@ -169,6 +169,10 @@ _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     ("provisioning", "comparison"),
     ("provisioning_cmf", "summary"),
     ("provisioning_internal", "groups"),
+    # H3: detalle completo en adjuntos; PER_OBSERVATION_TABLES lo excluye del cuerpo/anexo.
+    ("provisioning_internal", "detail"),
+    ("provisioning_internal", "pd_input"),
+    ("provisioning_internal", "pd_coverage"),
     # IFRS 9: solo el ``summary`` agregado por stage (3 filas). NUNCA ``detail``/``staging``
     # (una fila por operación): mismo criterio que provisiones.
     ("provisioning_ifrs9", "summary"),
@@ -387,7 +391,11 @@ class ReportBuilder:
             payload = dict(bundle.summary or {})
         return ReportSection(
             id=spec.id,
-            title=spec.title,
+            title=(
+                "Provisión interna"
+                if spec.id == "provisions" and prose.internal_report_family(bundle)
+                else spec.title
+            ),
             status="included",
             source_domain="report",
             source_key=spec.id,
@@ -819,6 +827,8 @@ def _hay_pagina_ejecutiva(bundle: ReportInputBundle) -> bool:
     if any(domain in bundle.cards for domain in RESULT_DOMAINS):
         return True
     return bundle.summary.get("family") in {
+        "provision_interna",
+        "pd_provision",
         _FAMILIA_CARTERA,
         _FAMILIA_MONITOREO,
         _FAMILIA_COMPARACION,
@@ -836,9 +846,11 @@ _FAMILIA_COMPARACION: Final = "comparacion"
 
 def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]:
     """Prosa determinista del capítulo; los capítulos sin prosa propia devuelven vacío."""
-    if chapter_id == EXECUTIVE_SUMMARY_ID and (bundle.summary or {}).get("family") == (
-        _FAMILIA_CARTERA
-    ):
+    if chapter_id == EXECUTIVE_SUMMARY_ID and (bundle.summary or {}).get("family") in {
+        _FAMILIA_CARTERA,
+        "provision_interna",
+        "pd_provision",
+    }:
         return (
             "Lo que cuenta la corrida al terminar, con la misma fuente que la puerta guiada y la "
             "pestaña Resultados: el estado de la ejecución, los supuestos de los que depende la "
@@ -955,12 +967,12 @@ def _run_summary(study: Study, config: ReportConfig) -> dict[str, Any]:
         "sin_decisiones": SIN_DECISIONES,
         "error": None,
     }
-    if family_of(study.config) == _FAMILIA_CARTERA:
+    if family_of(study.config) in {_FAMILIA_CARTERA, "provision_interna", "pd_provision"}:
         # Una provisión (D-ECL-12): la página dice sus «Supuestos» en lugar de la validación
         # técnica, que no tiene. Se declara aunque el resumen no se arme, para que el capítulo
         # diga por qué no hay resumen en vez de omitirse. El payload del scorecard no gana
         # claves: su informe queda byte a byte.
-        payload["family"] = _FAMILIA_CARTERA
+        payload["family"] = family_of(study.config)
         payload["labels"]["assumptions"] = ROTULO_SUPUESTOS
     elif family_of(study.config) == _FAMILIA_MONITOREO:
         # Un monitoreo (SDD-33, capa B): la página dice su «Veredicto» donde el scorecard dice

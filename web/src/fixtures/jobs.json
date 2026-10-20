@@ -9642,6 +9642,1968 @@
       "status": "unavailable",
       "toggle_overrides": {},
       "unavailable_reason": "El motor de escenarios corre desde Python, pero todavía no tiene pantalla ni se ha probado de punta a punta desde la interfaz."
+    },
+    {
+      "config_match": {
+        "equals": "full_population",
+        "path": "provisioning_internal.type"
+      },
+      "description": "Scorecard y provisión interna con cobertura explícita de operaciones fuera del ajuste. Experimental.",
+      "external_artifacts": [],
+      "external_input": null,
+      "id": "pd_y_lgd_h3",
+      "jurisdiction_code": null,
+      "jurisdiction_label": null,
+      "label": "PD + provisión de toda la cartera",
+      "latent_sections": [
+        "governance"
+      ],
+      "methodology_choices": [
+        {
+          "help": "La descripción se calcula sobre una sola muestra, y de fábrica es la de desarrollo, que es donde se ajusta el modelo. Las operaciones fuera del modelo se cuentan, pero no entran en la tasa de incumplimiento.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La población sobre la que se ajusta el modelo: es la que conviene conocer antes de modelar, y por eso viene de fábrica.",
+              "label": "La muestra de desarrollo",
+              "motivo": null,
+              "value": "desarrollo"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Clientes del mismo período que el modelo no usó para ajustarse: sirve para comprobar que se parecen a los de desarrollo.",
+              "label": "La muestra de validación",
+              "motivo": null,
+              "value": "holdout"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Un período posterior: describe la cartera sobre la que el modelo se va a usar, no aquella con la que se construyó.",
+              "label": "La muestra fuera de tiempo",
+              "motivo": null,
+              "value": "oot"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Todas las operaciones juntas, sin distinguir muestras. Útil para una primera mirada; para leer el modelo conviene la de desarrollo.",
+              "label": "Todo el archivo",
+              "motivo": null,
+              "value": "todas"
+            }
+          ],
+          "path": "eda.analysis_partition",
+          "question": "¿Sobre qué parte de tu archivo quieres describir la cartera?",
+          "when": null
+        },
+        {
+          "help": "Por la fecha en que se observó cada operación, en períodos, o por la cohorte o añada a la que pertenece. Con cohortes la señal de deterioro en el tiempo no se evalúa: no tienen un orden cronológico que el motor pueda inferir.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Agrupa por la fecha en que se observó cada operación, por mes, trimestre o año, y permite evaluar si la tasa se deteriora en el tiempo. Es la opción de fábrica. Si no indicas la columna, el motor usa la única columna de fecha que haya; si tu archivo no trae ninguna y particionas por cohorte, agrupa por esa cohorte y lo deja registrado. Sin fecha ni cohorte, la tasa en el tiempo queda sin evaluar: la corrida sigue y el resto del análisis se hace igual.",
+              "label": "Por la fecha de observación",
+              "motivo": null,
+              "value": "period"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Agrupa por la cohorte o añada de cada operación, que es la vista por camada que interesa cuando se compara la calidad de lo que se fue colocando. La señal de deterioro en el tiempo queda sin evaluar. Necesita que indiques la columna de cohorte o añada —suele ser la misma con la que particionas tus datos—: sin ella, la tasa en el tiempo no se puede calcular y la corrida sigue.",
+              "label": "Por cohorte o añada",
+              "motivo": null,
+              "value": "cohort"
+            }
+          ],
+          "path": "eda.default_rate.axis",
+          "question": "¿Cómo quieres agrupar la tasa de incumplimiento en el tiempo?",
+          "when": null
+        },
+        {
+          "help": "Sólo se aplica si agrupas por la fecha de observación. Es la unidad con que se parte el tiempo para leer la tasa de incumplimiento y su deterioro.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El detalle más fino; útil con volúmenes altos por mes.",
+              "label": "Por mes",
+              "motivo": null,
+              "value": "M"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Suaviza el ruido mensual y conserva la estacionalidad del año.",
+              "label": "Por trimestre",
+              "motivo": null,
+              "value": "Q"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Una tasa por año: pocos puntos, útil sólo con historia larga.",
+              "label": "Por año",
+              "motivo": null,
+              "value": "Y"
+            }
+          ],
+          "path": "eda.default_rate.period_freq",
+          "question": "¿Cada cuánto quieres agrupar la fecha de observación?",
+          "when": null
+        },
+        {
+          "help": "Los tres resumen cuánto cambia la tasa de incumplimiento de un período a otro y se comparan con el umbral para avisar un posible redesarrollo. Es un aviso de exploración: la corrida sigue.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Cuánto se dispersan las tasas de los períodos alrededor de su media, en proporción a esa media. Es la opción de fábrica.",
+              "label": "La variación relativa",
+              "motivo": null,
+              "value": "cv"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El período que más se aleja de la media, en proporción a esa media: detecta un salto aislado que la dispersión promedio diluye.",
+              "label": "El peor desvío",
+              "motivo": null,
+              "value": "max_relative_drift"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La pendiente de la tasa a lo largo de los períodos: detecta un deterioro sostenido aunque cada paso sea pequeño.",
+              "label": "La tendencia",
+              "motivo": null,
+              "value": "trend_slope"
+            }
+          ],
+          "path": "eda.stability.metric",
+          "question": "¿Con qué indicador quieres medir si la tasa se mueve en el tiempo?",
+          "when": null
+        },
+        {
+          "help": "Cambia la velocidad de lectura, nunca el resultado: el contenido que llega al cálculo es el mismo y las cifras del informe no se mueven.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Viene incluido y sirve para cualquier tamaño de archivo habitual.",
+              "label": "El lector estándar",
+              "motivo": null,
+              "value": "pandas"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Acelera la lectura de archivos muy grandes. Se instala aparte: si no está en tu entorno, la corrida se detiene al abrir el archivo.",
+              "label": "El lector rápido, para archivos grandes",
+              "motivo": null,
+              "value": "polars"
+            }
+          ],
+          "path": "data.load.backend",
+          "question": "¿Con qué motor quieres leer tu archivo?",
+          "when": null
+        },
+        {
+          "help": "Puedes dejar que se reconozca por la extensión, o decirlo tú si el archivo no la trae o la trae equivocada.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Mira cómo termina el nombre del archivo y elige el lector que toca.",
+              "label": "Reconocerlo por la extensión",
+              "motivo": null,
+              "value": "auto"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El formato más portable; no transporta el índice de las filas.",
+              "label": "Texto separado por comas",
+              "motivo": null,
+              "value": "csv"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Formato columnar comprimido: conserva los tipos y el índice, y es el más rápido de leer.",
+              "label": "Parquet",
+              "motivo": null,
+              "value": "parquet"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Lee la primera hoja del libro. Se instala aparte: si no está en tu entorno, la corrida se detiene al abrir el archivo.",
+              "label": "Planilla de Excel",
+              "motivo": null,
+              "value": "excel"
+            }
+          ],
+          "path": "data.load.file_format",
+          "question": "¿En qué formato viene tu archivo?",
+          "when": null
+        },
+        {
+          "help": "La estabilidad se mide comparando cada muestra contra Desarrollo, que hace de población esperada. Puedes pedir una comparación o las dos.",
+          "multiple": true,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Responde si el modelo se comporta igual sobre clientes del mismo período que no usó para ajustarse.",
+              "label": "Contra la muestra de validación",
+              "motivo": null,
+              "value": "dev_vs_holdout"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Responde si el modelo aguanta en un período posterior, que es la pregunta que interesa a quien lo va a poner en producción.",
+              "label": "Contra la muestra fuera de tiempo",
+              "motivo": null,
+              "value": "dev_vs_oot"
+            }
+          ],
+          "path": "stability.comparisons",
+          "question": "¿Contra qué muestras quieres comparar la de Desarrollo?",
+          "when": null
+        },
+        {
+          "help": "El indicador compara cómo se reparten los clientes entre tramos en una muestra y en otra. Lo que cambia aquí es qué tramos se usan para ese reparto.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Usa el puntaje que cada variable suma en la tarjeta, que es lo que el modelo realmente aplica a cada cliente.",
+              "label": "Los puntos que aporta cada característica",
+              "motivo": null,
+              "value": "score_points"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Compararía el reparto sobre los tramos originales en vez de sobre los puntos de la tarjeta.",
+              "label": "Los tramos con que se discretizó cada variable",
+              "motivo": null,
+              "value": "woe_bins"
+            }
+          ],
+          "path": "stability.csi_source",
+          "question": "¿Sobre qué se mide el desplazamiento de las características?",
+          "when": null
+        },
+        {
+          "help": "Describe el puntaje que se está midiendo, y queda escrito en la ficha del informe. Los indicadores de estabilidad no cambian con la respuesta —comparan cómo se reparte la población, y eso no depende de hacia dónde crece el puntaje—, pero tiene que decir lo mismo que la escala con que se construyó la tarjeta: si se contradicen, la corrida se detiene antes de publicar dos respuestas distintas.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La convención más habitual: a mayor puntaje, menor probabilidad de incumplir.",
+              "label": "Más alto es mejor cliente",
+              "motivo": null,
+              "value": "higher_is_lower_risk"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Para escalas donde el puntaje mide riesgo y no calidad crediticia.",
+              "label": "Más alto es peor cliente",
+              "motivo": null,
+              "value": "higher_is_higher_risk"
+            }
+          ],
+          "path": "stability.score_direction",
+          "question": "En tu escala, ¿un puntaje más alto significa mejor o peor cliente?",
+          "when": null
+        },
+        {
+          "help": "Decide si Resultados y el informe muestran el PSI del puntaje período a período contra Desarrollo —por período de observación o por camada de originación— o si no muestran evolución temporal.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La opción correcta si tu archivo no trae ninguna columna de fecha o de período: el resto del análisis se calcula igual.",
+              "label": "No seguirlo en el tiempo",
+              "motivo": null,
+              "value": "none"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Agrupa por la fecha en que se observó cada operación. Necesita que tu archivo traiga una columna de fecha o de período.",
+              "label": "Por período de observación",
+              "motivo": null,
+              "value": "period"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Agrupa por el momento en que se originó cada operación, que es lo que interesa cuando se compara la calidad de lo que se fue colocando.",
+              "label": "Por camada de originación",
+              "motivo": null,
+              "value": "cohort"
+            }
+          ],
+          "path": "stability.temporal_axis",
+          "question": "¿Cómo quieres seguir el comportamiento del modelo en el tiempo?",
+          "when": null
+        },
+        {
+          "help": "Sólo se aplica si eliges seguir el comportamiento en el tiempo, y sólo si la columna que lo marca es una fecha: sobre un período ya escrito como texto, el motor respeta la agrupación que traiga tu archivo.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El detalle más fino; útil con volúmenes altos por mes.",
+              "label": "Mensual",
+              "motivo": null,
+              "value": "M"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Suaviza el ruido de meses con pocas operaciones.",
+              "label": "Trimestral",
+              "motivo": null,
+              "value": "Q"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Para carteras de rotación lenta o historias largas.",
+              "label": "Anual",
+              "motivo": null,
+              "value": "Y"
+            }
+          ],
+          "path": "stability.temporal_freq",
+          "question": "¿Cada cuánto quieres agrupar el seguimiento en el tiempo?",
+          "when": null
+        },
+        {
+          "help": "Sólo interviene si además fijaste un p-valor máximo entre tramos: si lo dejaste sin fijar, el motor no aplica esa prueba y esta elección no cambia tu resultado.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Exige que cada tramo se distinga del que tiene al lado. Es la lectura habitual: basta con que la escalera de riesgo no tenga peldaños repetidos.",
+              "label": "Sólo entre tramos vecinos",
+              "motivo": null,
+              "value": "consecutive"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Exige que cualquier par de tramos, vecinos o no, se distinga entre sí. Es más estricto y suele terminar en menos tramos y mejor separados.",
+              "label": "Entre todos los pares de tramos",
+              "motivo": null,
+              "value": "all"
+            }
+          ],
+          "path": "binning.max_pvalue_policy",
+          "question": "¿Entre qué tramos exiges que la diferencia de riesgo sea significativa?",
+          "when": null
+        },
+        {
+          "help": "Cambia la implementación que busca los cortes, no el criterio con que se eligen: los dos resuelven el mismo problema y llegan al mismo conjunto de tramos.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Es el que viene puesto y el que se usa en los ejemplos; funciona para cualquier cartera de tamaño habitual.",
+              "label": "El motor de optimización binaria",
+              "motivo": null,
+              "value": "bop"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Alternativa equivalente, ya incluida en tu entorno. Cámbiala sólo por un motivo técnico puntual: entrega los mismos tramos.",
+              "label": "El motor de optimización mixta",
+              "motivo": null,
+              "value": "cbc"
+            }
+          ],
+          "path": "binning.mip_solver",
+          "question": "¿Con qué motor de optimización quieres resolver el corte de los tramos?",
+          "when": null
+        },
+        {
+          "help": "Es la regla que ordena los tramos y evita que la tarjeta contradiga el criterio experto. Sobre una variable de texto no se aplica: ahí el motor siempre ordena los tramos de menor a mayor riesgo, elijas la forma que elijas.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Prueba las formas disponibles variable por variable y se queda con la que más poder predictivo conserva. Es la más lenta de las automáticas.",
+              "label": "Que el motor la deduzca, explorando todas las formas",
+              "motivo": null,
+              "value": "auto"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Igual que la anterior, pero ubica el punto de quiebre con una regla aproximada. Notoriamente más rápida cuando exploras muchos cortes.",
+              "label": "Que el motor la deduzca, por la vía rápida",
+              "motivo": null,
+              "value": "auto_heuristic"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Deja que el motor decida el sentido, pero le prohíbe formas con quiebre. Es la opción por defecto y la más defendible ante un validador.",
+              "label": "Que el motor elija entre creciente y decreciente",
+              "motivo": null,
+              "value": "auto_asc_desc"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Fuerza el sentido. Úsala cuando conoces de antemano el comportamiento esperado, por ejemplo en días de mora o en nivel de endeudamiento.",
+              "label": "Creciente: a mayor valor, mayor riesgo",
+              "motivo": null,
+              "value": "ascending"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El sentido inverso, para variables donde más es mejor: antigüedad del cliente, renta o puntaje de un buró externo.",
+              "label": "Decreciente: a mayor valor, menor riesgo",
+              "motivo": null,
+              "value": "descending"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El riesgo se mueve en un sentido con efecto que se va agotando, sin quiebres bruscos. Sirve cuando el efecto se satura en el tramo alto.",
+              "label": "Cambia cada vez menos",
+              "motivo": null,
+              "value": "concave"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El riesgo se mueve en un sentido con efecto que se acelera. Sirve cuando el deterioro se dispara recién en los valores extremos.",
+              "label": "Cambia cada vez más",
+              "motivo": null,
+              "value": "convex"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Admite un máximo de riesgo en la mitad del rango. El punto de quiebre se busca de forma exacta, lo que cuesta más tiempo.",
+              "label": "Sube y después baja",
+              "motivo": null,
+              "value": "peak"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La misma forma, ubicando el máximo con una regla aproximada. La alternativa razonable si la búsqueda exacta se demora demasiado.",
+              "label": "Sube y después baja, con el quiebre aproximado",
+              "motivo": null,
+              "value": "peak_heuristic"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Admite un mínimo de riesgo en la mitad del rango, la forma típica de la edad o del monto. El punto de quiebre se busca de forma exacta.",
+              "label": "Baja y después sube",
+              "motivo": null,
+              "value": "valley"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La misma forma, ubicando el mínimo con una regla aproximada, para cuando la búsqueda exacta se hace cara.",
+              "label": "Baja y después sube, con el quiebre aproximado",
+              "motivo": null,
+              "value": "valley_heuristic"
+            }
+          ],
+          "path": "binning.monotonic_trend",
+          "question": "¿Qué forma debe tener la relación entre cada variable y el riesgo?",
+          "when": null
+        },
+        {
+          "help": "Es la familia de optimización que arma los tramos. Hoy sólo una de las dos está operativa, y es la que viene puesta.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "no_implementada",
+              "exige": [],
+              "help": "Resolvería el mismo problema con otra familia de técnicas, pensada para restricciones combinatorias.",
+              "label": "Programación por restricciones",
+              "motivo": "Hoy no se puede usar: sobre variables continuas se queda pegada sin término y sin respetar el límite de tiempo, que es la peor forma de fallar. Por eso elegirla detiene la corrida al llegar al agrupamiento en tramos, después de haber cargado tus datos.",
+              "value": "cp"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La técnica en uso: encuentra el corte óptimo y respeta el límite de tiempo que le fijes por variable.",
+              "label": "Programación entera mixta",
+              "motivo": null,
+              "value": "mip"
+            }
+          ],
+          "path": "binning.solver",
+          "question": "¿Con qué técnica quieres que se busquen los cortes de los tramos?",
+          "when": null
+        },
+        {
+          "help": "Son los códigos centinela del tipo «sin información» o «no aplica». Si no declaraste ninguno al describir tus datos, esta elección no cambia tu resultado.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Los deja aparte, con su propio nivel de riesgo medido. Es lo indicado cuando «sin información» dice algo del cliente, que suele ser el caso.",
+              "label": "Darles un tramo propio",
+              "motivo": null,
+              "value": "separate"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Los fusiona con los datos ausentes en un solo tramo. Elígelo si el centinela significa exactamente lo mismo que un dato que no llegó.",
+              "label": "Juntarlos con los faltantes",
+              "motivo": null,
+              "value": "as_missing"
+            }
+          ],
+          "path": "binning.special_handling",
+          "question": "¿Qué hacemos con los valores especiales que declaraste en tus datos?",
+          "when": null
+        },
+        {
+          "help": "Sirve para corregir a mano el tipo de una variable puntual cuando la lectura automática se equivoca; el resto de las variables no se ve afectado.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Corta la variable en rangos ordenados. Necesita que la columna sea numérica de verdad: sobre texto, la corrida se detiene al agrupar.",
+              "label": "Como una cantidad, en rangos",
+              "motivo": null,
+              "value": "numerical"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Agrupa por valores distintos en vez de por rangos. Es lo correcto para un código guardado como número: región, sucursal o tipo de producto.",
+              "label": "Como una categoría, nivel por nivel",
+              "motivo": null,
+              "value": "categorical"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Deja que el tipo del dato mande: los textos se agrupan por categoría y los números se cortan en rangos. Es lo que ocurre si no intervienes.",
+              "label": "Como venga en el archivo",
+              "motivo": null,
+              "value": "auto"
+            }
+          ],
+          "path": "binning.variable_overrides.dtype",
+          "question": "Para una variable en particular, ¿cómo debe leerse su contenido?",
+          "when": null
+        },
+        {
+          "help": "Anula la regla general sólo para esa variable, cuando sabes que se comporta distinto al resto. Déjala en blanco para que siga la regla general.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Prueba las formas disponibles y se queda con la que más poder predictivo conserva en esta variable. Es la más lenta de las automáticas.",
+              "label": "Que el motor la deduzca, explorando todas las formas",
+              "motivo": null,
+              "value": "auto"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Igual que la anterior, pero ubica el punto de quiebre con una regla aproximada. Notoriamente más rápida cuando exploras muchos cortes.",
+              "label": "Que el motor la deduzca, por la vía rápida",
+              "motivo": null,
+              "value": "auto_heuristic"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Deja que el motor decida el sentido para esta variable, pero le prohíbe formas con quiebre.",
+              "label": "Que el motor elija entre creciente y decreciente",
+              "motivo": null,
+              "value": "auto_asc_desc"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Fuerza el sentido sólo en esta variable, por ejemplo en días de mora o en nivel de endeudamiento.",
+              "label": "Creciente: a mayor valor, mayor riesgo",
+              "motivo": null,
+              "value": "ascending"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El sentido inverso, para variables donde más es mejor: antigüedad del cliente, renta o puntaje de un buró externo.",
+              "label": "Decreciente: a mayor valor, menor riesgo",
+              "motivo": null,
+              "value": "descending"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El riesgo se mueve en un sentido con efecto que se va agotando, sin quiebres bruscos, sólo en esta variable.",
+              "label": "Cambia cada vez menos",
+              "motivo": null,
+              "value": "concave"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El riesgo se mueve en un sentido con efecto que se acelera, sólo en esta variable; el deterioro se dispara en los valores extremos.",
+              "label": "Cambia cada vez más",
+              "motivo": null,
+              "value": "convex"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Admite un máximo de riesgo en la mitad del rango de esta variable. El punto de quiebre se busca de forma exacta.",
+              "label": "Sube y después baja",
+              "motivo": null,
+              "value": "peak"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La misma forma, ubicando el máximo con una regla aproximada, para cuando la búsqueda exacta se hace cara.",
+              "label": "Sube y después baja, con el quiebre aproximado",
+              "motivo": null,
+              "value": "peak_heuristic"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Admite un mínimo de riesgo en la mitad del rango, la forma típica de la edad o del monto. El punto de quiebre se busca de forma exacta.",
+              "label": "Baja y después sube",
+              "motivo": null,
+              "value": "valley"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La misma forma, ubicando el mínimo con una regla aproximada, para cuando la búsqueda exacta se hace cara.",
+              "label": "Baja y después sube, con el quiebre aproximado",
+              "motivo": null,
+              "value": "valley_heuristic"
+            }
+          ],
+          "path": "binning.variable_overrides.monotonic_trend",
+          "question": "Para una variable en particular, ¿qué forma tiene su relación con el riesgo?",
+          "when": null
+        },
+        {
+          "help": "La validación formal agrupa sus pruebas en familias, y cada una responde una pregunta distinta sobre el mismo modelo. Puedes pedir las que necesites; al menos una.",
+          "multiple": true,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Reporta el AUC, el Gini y el KS por muestra. Reutiliza lo que ya calculó la etapa de desempeño, así que no cuesta cómputo extra.",
+              "label": "Si separa a quien incumple de quien no",
+              "motivo": null,
+              "value": "discrimination"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Compara la PD estimada con el incumplimiento observado: por grupos de PD, con Brier y, si tienes grados de rating, grado por grado. HL conserva su resultado convencional; por sí solo no certifica calibración.",
+              "label": "Diagnóstico de calibración",
+              "motivo": null,
+              "value": "calibration"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Trae el PSI que ya calculó la etapa de estabilidad y lo publica con sus bandas dentro del informe de validación.",
+              "label": "Si la población se movió",
+              "motivo": null,
+              "value": "stability"
+            },
+            {
+              "estado": "exige_otro_campo",
+              "exige": [
+                "validation.backtesting.enabled"
+              ],
+              "help": "Contrasta la PD, la severidad y la exposición estimadas por IFRS 9 contra las realizadas. Elegirla sola no basta: hay que activarla y traer las columnas con el resultado realizado.",
+              "label": "Si lo estimado coincidió con lo que pasó",
+              "motivo": "Pedir la familia no enciende el backtesting: mientras «Ejecutar backtesting IFRS 9» siga apagado, la corrida se detiene ahí — o registra el aviso y sigue, si apagas la parada por brechas de dato.",
+              "value": "backtesting"
+            }
+          ],
+          "path": "validation.families",
+          "question": "¿Qué familias de pruebas quieres correr?",
+          "when": null
+        },
+        {
+          "help": "Cada muestra responde una pregunta distinta, y el informe las publica en una fila cada una. Una muestra que tu partición no produzca sale sin evaluar.",
+          "multiple": true,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Sobre la que se ajustó el modelo: es la cota optimista, no el veredicto.",
+              "label": "La muestra de desarrollo",
+              "motivo": null,
+              "value": "desarrollo"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Clientes del mismo período que el modelo no usó para ajustarse: mide si lo aprendido generaliza.",
+              "label": "La muestra de validación",
+              "motivo": null,
+              "value": "holdout"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Un período posterior: es la que interesa a quien va a poner el modelo en producción.",
+              "label": "La muestra fuera de tiempo",
+              "motivo": null,
+              "value": "oot"
+            }
+          ],
+          "path": "validation.discrimination.partitions",
+          "question": "¿Sobre qué muestras quieres reportar la discriminación?",
+          "when": null
+        },
+        {
+          "help": "Las dos comparan los incumplimientos observados de un grado con su PD estimada, y se diferencian en cómo se comportan cuando un grado tiene muy pocos o ningún incumplimiento.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Sigue dando un resultado utilizable cuando un grado no registró ningún incumplimiento, que es lo habitual en los grados buenos de una cartera minorista. Es la que viene de fábrica.",
+              "label": "La que aguanta un grado sin incumplimientos",
+              "motivo": null,
+              "value": "jeffreys"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La prueba de siempre. Es la que muchas políticas de validación citan por su nombre; con grados sin incumplimientos se vuelve poco informativa.",
+              "label": "La binomial clásica",
+              "motivo": null,
+              "value": "binomial"
+            }
+          ],
+          "path": "validation.calibration.pd_test",
+          "question": "¿Con qué prueba quieres contrastar la PD de cada grado?",
+          "when": null
+        },
+        {
+          "help": "Cada parámetro se contrasta por separado y exige su propia columna con lo que de verdad ocurrió. Elegir sólo los que tienes evita pedir columnas que no tengas.",
+          "multiple": true,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Compara la PD estimada con la proporción de operaciones que de verdad incumplieron. Necesita que tu archivo diga, operación por operación, si incumplió en el período de desempeño.",
+              "label": "La probabilidad de incumplimiento",
+              "motivo": null,
+              "value": "pd"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Compara la severidad estimada con la observada. Necesita que tu archivo traiga la severidad que de verdad se observó en las operaciones que incumplieron.",
+              "label": "La severidad de la pérdida",
+              "motivo": null,
+              "value": "lgd"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Compara la exposición estimada con la que de verdad había al incumplir. Necesita que tu archivo traiga esa exposición realizada.",
+              "label": "La exposición al incumplir",
+              "motivo": null,
+              "value": "ead"
+            }
+          ],
+          "path": "validation.backtesting.parameters",
+          "question": "¿Qué parámetros quieres contrastar contra lo realizado?",
+          "when": null
+        },
+        {
+          "help": "Las mismas dos del contraste por grado, aplicadas aquí al contraste contra el incumplimiento que de verdad ocurrió, segmento por segmento.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Sigue dando un resultado utilizable cuando un segmento no registró ningún incumplimiento. Es la que viene de fábrica.",
+              "label": "La que aguanta un segmento sin incumplimientos",
+              "motivo": null,
+              "value": "jeffreys"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La prueba de siempre, la que muchas políticas de validación citan por su nombre.",
+              "label": "La binomial clásica",
+              "motivo": null,
+              "value": "binomial"
+            }
+          ],
+          "path": "validation.backtesting.pd_test",
+          "question": "¿Con qué prueba quieres contrastar la PD contra lo realizado?",
+          "when": null
+        },
+        {
+          "help": "Las dos rutas son metodológicamente válidas y este motor admite ambas. La diferencia es si descompones la pérdida en sus dos factores o si la traes ya estimada. Si una norma local te obliga a una de las dos, ésa es la que eliges.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Necesita que tu archivo traiga la severidad observada de cada operación, y no admite que además declares una tasa de pérdida.",
+              "label": "Descomponerla en probabilidad y severidad",
+              "motivo": null,
+              "value": "pd_lgd"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Usa la pérdida esperada por unidad de exposición que tú ya calculaste, sin descomponerla; la severidad deja de leerse. Necesita esa columna en tu archivo, y ojo: la probabilidad de incumplir se sigue exigiendo y se publica en el detalle, aunque no entre en el monto.",
+              "label": "Traer la tasa de pérdida ya estimada",
+              "motivo": null,
+              "value": "direct_loss_rate"
+            }
+          ],
+          "path": "provisioning_internal.method",
+          "question": "¿Cómo quieres calcular la pérdida esperada de cada grupo?",
+          "when": null
+        },
+        {
+          "help": "El monto de la provisión se apoya en esta probabilidad, así que su procedencia queda declarada en el informe y en el rastro de auditoría.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La probabilidad ajustada a tu tasa central, que es la que sostiene un análisis histórico fundamentado. Exige que corra el paso que la calibra o que subas esa tabla; si falta, se te avisa antes de ejecutar.",
+              "label": "De la probabilidad ya calibrada",
+              "motivo": null,
+              "value": "calibration"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La probabilidad cruda del modelo, sin ajustar a ninguna tasa central. Exige que corra el paso que la estima o que subas esa tabla, y que le digas qué columna la trae: el nombre esperado por omisión es el de la tabla calibrada, así que sin cambiarlo la corrida se detiene.",
+              "label": "De la probabilidad sin calibrar",
+              "motivo": null,
+              "value": "model"
+            }
+          ],
+          "path": "provisioning_internal.pd_source",
+          "question": "¿De dónde sale la probabilidad de incumplir de cada operación?",
+          "when": null
+        },
+        {
+          "help": "Este método provisiona por grupo, no por operación: la provisión es una cifra del grupo, que después se reparte entre sus operaciones a prorrata de la exposición.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Ordena las operaciones por su probabilidad y las corta en bandas de igual tamaño dentro de cada cartera. No necesita ninguna columna extra de tu archivo. Si hay muchas probabilidades repetidas quedan menos bandas de las pedidas, y el resultado lo avisa.",
+              "label": "Por bandas de riesgo, formadas en la corrida",
+              "motivo": null,
+              "value": "score_band"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Los grupos los define una columna tuya —banca personas, pyme, consumo—. Necesita esa columna en el archivo, y sin ella la corrida no arranca.",
+              "label": "Por el segmento de negocio que traiga tu archivo",
+              "motivo": null,
+              "value": "segment"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El cálculo es idéntico al anterior y también necesita una columna tuya. Lo que cambia es la procedencia que queda declarada en el informe y en el rastro de auditoría: un grupo que tú ya formaste, no un segmento de negocio. Es lo que lee un validador.",
+              "label": "Por un grupo ya formado que traiga tu archivo",
+              "motivo": null,
+              "value": "provided"
+            }
+          ],
+          "path": "provisioning_internal.grouping",
+          "question": "¿Cómo quieres formar los grupos homogéneos de deudores?",
+          "when": null
+        },
+        {
+          "help": "Las dos primeras leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación prescinde de ella: la calcula desde tus flujos.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La severidad del grupo es el promedio ponderado por el monto colocado, y en el detalle cada operación conserva la suya. Es lo que corresponde cuando la severidad la estimaste operación por operación.",
+              "label": "Ponderada por monto, conservando la de cada operación",
+              "motivo": null,
+              "value": "provided"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Promedio sin ponderar de la severidad observada del grupo, que después se aplica igual a cada una de sus operaciones. Es lo que corresponde cuando la severidad viene de una experiencia histórica: esa experiencia no se pondera por los montos de hoy.",
+              "label": "Promedio simple del grupo, aplicado a todas sus operaciones",
+              "motivo": null,
+              "value": "group_historical"
+            },
+            {
+              "estado": "exige_otro_campo",
+              "exige": [
+                "provisioning_internal.lgd.covariate_cols"
+              ],
+              "help": "Ajusta un modelo de la severidad sobre las variables que elijas de tu archivo y usa el valor ajustado de cada operación. Admite operaciones que se recuperaron por completo y otras que se perdieron por completo, que es lo normal en una cartera real. El ajuste se hace sobre la MISMA cartera que se provisiona, así que mide el desempeño dentro de la muestra: el informe lo dice.",
+              "label": "Modelarla admitiendo recuperos totales y pérdidas totales",
+              "motivo": "Elegirla sola no basta: hay que decirle con qué variables de tu archivo modelar la severidad, y hasta entonces la configuración no se puede ejecutar.",
+              "value": "fractional_response"
+            },
+            {
+              "estado": "exige_otro_campo",
+              "exige": [
+                "provisioning_internal.lgd.covariate_cols"
+              ],
+              "help": "Como la anterior, pero exige que la severidad observada esté ESTRICTAMENTE entre 0 y 1: basta una operación recuperada por completo o perdida por completo para que la corrida se detenga, y esas dos son frecuentes en una cartera real. También puede detenerse si el ajuste no converge. Si no sabes cuál de las dos elegir, la anterior es la que corresponde a este dato.",
+              "label": "Modelarla acotada estrictamente entre cero y uno",
+              "motivo": "Elegirla sola no basta: hay que decirle con qué variables de tu archivo modelar la severidad, y hasta entonces la configuración no se puede ejecutar.",
+              "value": "beta_regression"
+            },
+            {
+              "estado": "exige_otro_campo",
+              "exige": [
+                "provisioning_internal.lgd.recovery_col"
+              ],
+              "help": "No ajusta ningún modelo: toma lo recuperado de cada operación, le resta los costos de recuperarlo, lo trae a valor presente con tu tasa, lo divide por la exposición y se queda con LO QUE NO SE RECUPERÓ. Exige cinco columnas de tu archivo —lo recuperado, los costos, la exposición, los años que tardó y la tasa a la que descuentas— y los tres montos van en la misma moneda, no en fracciones.",
+              "label": "Calcularla desde el proceso de recuperación real",
+              "motivo": "Elegirla sola no basta: hay que decirle qué columna de tu archivo trae lo recuperado, y hasta entonces la configuración no se puede ejecutar.",
+              "value": "workout"
+            }
+          ],
+          "path": "provisioning_internal.lgd.method",
+          "question": "¿De dónde sale la severidad de cada operación?",
+          "when": {
+            "equals": "pd_lgd",
+            "path": "provisioning_internal.method"
+          }
+        },
+        {
+          "help": "Se aplica al monto de cada grupo y a su reparto entre operaciones, que siempre cuadra exacto con el total. Ojo: aquí se parte redondeando al centavo, y los otros motores de provisión parten sin redondear, así que compararlos exige igualar esta elección.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Publica el valor económico exacto, con todos sus decimales. Es lo que traen de fábrica los demás motores de provisión, y por tanto lo que hay que elegir aquí para compararlos sin ajustes.",
+              "label": "Sin redondear",
+              "motivo": null,
+              "value": "none"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Redondea a dos decimales, que es la precisión contable habitual de una moneda con fracción.",
+              "label": "Al centavo",
+              "motivo": null,
+              "value": "currency_2dp"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Redondea a moneda entera, que es lo que corresponde en monedas sin fracción decimal.",
+              "label": "A la unidad de moneda",
+              "motivo": null,
+              "value": "integer_currency"
+            }
+          ],
+          "path": "provisioning_internal.rounding",
+          "question": "¿Con qué precisión quieres publicar el monto de la provisión?",
+          "when": null
+        },
+        {
+          "help": "El modelo ordena bien a los clientes, pero su nivel promedio no tiene por qué coincidir con la tasa de incumplimiento que tu institución reconoce. Esto decide con qué transformación se corrige ese nivel.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Desplaza todas las probabilidades por igual hasta que su promedio calce con la tasa de anclaje. No toca el orden de los clientes: quien era más riesgoso lo sigue siendo, y la capacidad de discriminación no se mueve.",
+              "label": "Sólo corregir el nivel",
+              "motivo": null,
+              "value": "intercept_offset"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Vuelve a estimar pendiente e intercepto usando el resultado observado en la muestra de Desarrollo, y recién después ancla el nivel. Corrige también la forma de la curva y no sólo su altura; conserva el orden mientras la pendiente salga positiva, y si sale negativa se detiene.",
+              "label": "Reestimar la curva con los incumplimientos observados",
+              "motivo": null,
+              "value": "platt_scaling"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El más flexible y el que mejor calza tramo a tramo, pero aplana escalones enteros: crea empates entre clientes que el modelo sí distinguía, y cuando eso pasa el informe declara que el ordenamiento por riesgo no se conservó. Elígelo si el nivel importa más que la discriminación.",
+              "label": "Ajustar la curva libremente, sin forma predefinida",
+              "motivo": null,
+              "value": "isotonic"
+            }
+          ],
+          "path": "calibration.method",
+          "question": "¿Cómo quieres llevar la probabilidad del modelo al nivel de tu cartera?",
+          "when": null
+        },
+        {
+          "help": "Es una etiqueta de gobierno que no mueve ni una cifra: viaja con el resultado y queda escrita en el informe, para que quien lo lea sepa qué representa el nivel al que se ancló. Tiene que ser coherente con el origen que elijas para la tasa, o la corrida no arranca.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La lectura habitual para provisiones y capital: el nivel representa un promedio de varios años, y no la coyuntura de la que vienen tus datos. Es compatible con los cuatro orígenes de la tasa.",
+              "label": "Un promedio de largo plazo, a través del ciclo",
+              "motivo": null,
+              "value": "through_the_cycle"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Declara que el nivel refleja la coyuntura del período observado. Sólo puede acompañar a una tasa que fijes tú a mano —la del negocio o la de tu histórico—: combinarla con la que se lee de la muestra, o con una referencia normativa, detiene la corrida porque sería una etiqueta falsa.",
+              "label": "El nivel del momento actual",
+              "motivo": null,
+              "value": "point_in_time"
+            }
+          ],
+          "path": "calibration.anchor_kind",
+          "question": "¿Ese nivel representa el promedio del ciclo o el momento actual?",
+          "when": null
+        },
+        {
+          "help": "Es el dato institucional del que cuelga todo el nivel de la probabilidad que se publica, y el informe declara su origen. Tres de las cuatro respuestas exigen que escribas el número; la cuarta lo calcula sola.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Ancla al número que tú escribes, respaldado por una decisión de negocio. Informarlo es obligatorio: sin ese número la corrida no arranca, porque el motor se niega a inventar un ancla.",
+              "label": "La fija el negocio",
+              "motivo": null,
+              "value": "business_input"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Ancla al número que tú escribes, calculado fuera del motor sobre tu serie histórica de largo plazo. También es obligatorio informarlo: el motor no lee tu histórico por su cuenta.",
+              "label": "Sale de tu histórico de incumplimientos",
+              "motivo": null,
+              "value": "historical_default_rate"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Calcula la tasa sola, como el promedio observado en la muestra con que se ajustó el modelo, y es la respuesta de fábrica. Por eso la tasa objetivo se deja vacía: si además escribes un número a mano, la configuración se rechaza en vez de descartarlo, porque la corrida anclaría a otro valor.",
+              "label": "Se lee de la muestra de Desarrollo",
+              "motivo": null,
+              "value": "development_observed"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Ancla al número que tú escribes, tomado de una tasa regulatoria. Informarlo es obligatorio, y no se puede combinar con la etiqueta que declara el nivel del momento actual.",
+              "label": "La fija una referencia normativa externa",
+              "motivo": null,
+              "value": "external_regulatory"
+            }
+          ],
+          "path": "calibration.anchor_source",
+          "question": "¿De dónde sale la tasa de incumplimiento a la que se ancla?",
+          "when": null
+        },
+        {
+          "help": "Las dos resuelven exactamente la misma regresión logística y llegan al mismo resultado. Lo único que las separa es que una admite ponderar cada operación con un peso propio, y este proceso no entrega esos pesos.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La ruta de fábrica: máxima verosimilitud directa, resuelta con el método numérico que elijas a continuación. Es la que queda declarada en la ficha del modelo del informe.",
+              "label": "La regresión logística clásica",
+              "motivo": null,
+              "value": "logit"
+            }
+          ],
+          "path": "model.engine",
+          "question": "¿Con qué rutina estadística quieres resolver la regresión?",
+          "when": null
+        },
+        {
+          "help": "No cambia el modelo, sólo el camino para llegar a él: los tres terminan en el mismo ajuste, y esto se toca únicamente cuando la corrida no converge. Se aplica sólo a la regresión logística clásica; la otra rutina usa siempre la suya y descarta lo que elijas aquí.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El estándar y el más rápido cuando el problema está bien planteado: resuelve en pocas rondas y es el único que respeta la tolerancia de convergencia que hayas fijado. Es la opción de fábrica.",
+              "label": "Newton-Raphson",
+              "motivo": null,
+              "value": "newton"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Alternativa robusta para cuando el estándar no converge, por ejemplo con variables muy correlacionadas entre sí. Ojo: la tolerancia de convergencia que fijes no se le aplica —usa la suya— y la librería estadística de fondo emite un aviso en cada corrida.",
+              "label": "BFGS",
+              "motivo": null,
+              "value": "bfgs"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La variante de memoria acotada de la anterior, pensada para modelos con muchas variables. Comparte su límite: tampoco respeta la tolerancia de convergencia que fijes, y arrastra el mismo aviso de la librería estadística.",
+              "label": "L-BFGS",
+              "motivo": null,
+              "value": "lbfgs"
+            }
+          ],
+          "path": "model.optimizer",
+          "question": "¿Qué método numérico quieres que use el ajuste para converger?",
+          "when": null
+        },
+        {
+          "help": "Decide si el proceso construye el modelo incorporando variables de a una, retirándolas de a una, haciendo las dos cosas en cada ronda, o si no selecciona nada y se queda con todas las que le llegaron.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Ajusta con todas las variables que sobrevivieron a los pasos anteriores, salvo las que hayas vetado a mano. Los controles de signo y de concentración siguen actuando: lo que se apaga es la selección estadística paso a paso.",
+              "label": "No seleccionar: usar todas las que llegaron",
+              "motivo": null,
+              "value": "none"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Parte sin variables —salvo las que hayas forzado a entrar— e incorpora en cada ronda la más significativa, hasta que ninguna de las que quedan afuera alcanza el umbral de entrada.",
+              "label": "Incorporar de a una, empezando de cero",
+              "motivo": null,
+              "value": "forward"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Parte con todas las candidatas y retira en cada ronda la menos significativa, hasta que todas las que siguen dentro superan el umbral de permanencia.",
+              "label": "Partir con todas y retirar de a una",
+              "motivo": null,
+              "value": "backward"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Revisa entradas y salidas en cada iteración, así que una variable que entró temprano puede salir cuando entran otras que explican lo mismo. Es lo habitual en la industria y la opción de fábrica.",
+              "label": "Incorporar y retirar en cada ronda",
+              "motivo": null,
+              "value": "bidirectional"
+            }
+          ],
+          "path": "model.stepwise.direction",
+          "question": "¿Cómo quieres que se arme la lista final de variables?",
+          "when": null
+        },
+        {
+          "help": "Sólo se aplica si dejaste que el proceso seleccione las variables: si le pediste usar todas las que le llegaron, lo que elijas aquí no cambia una sola cifra del resultado. Cuando sí selecciona, esto gobierna cada entrada y cada salida.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Mira la significancia del coeficiente de cada variable dentro del modelo vigente. Es lo más rápido, porque no obliga a reajustar el modelo sin ella, y es la opción de fábrica.",
+              "label": "La significancia individual del coeficiente",
+              "motivo": null,
+              "value": "wald_pvalue"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Ajusta el modelo con y sin la variable y compara cuánto mejora el ajuste global. Cuesta bastante más —duplica los ajustes de cada ronda— y es más fiel cuando la variable se solapa con las que ya están dentro.",
+              "label": "La comparación entre el modelo con y sin la variable",
+              "motivo": null,
+              "value": "lr_test"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La más estricta: una variable entra sólo si supera los dos contrastes, y sale si falla cualquiera de ellos. Deja modelos más chicos y más fáciles de defender ante un validador.",
+              "label": "Exigir que pase las dos pruebas",
+              "motivo": null,
+              "value": "both"
+            }
+          ],
+          "path": "model.stepwise.criterion",
+          "question": "¿Con qué prueba estadística se decide si una variable entra o sale?",
+          "when": null
+        },
+        {
+          "help": "Un coeficiente con el signo contrario dice que, según el ajuste, más riesgo en esa variable significa menos incumplimiento. Casi siempre es solape entre variables y no un hallazgo, y publicarlo así es indefendible ante un validador.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La retira y vuelve a ajustar sin ella, dejando el motivo escrito en la traza de decisiones del informe. Es la opción de fábrica y la que deja un modelo económicamente coherente.",
+              "label": "Sacarla del modelo",
+              "motivo": null,
+              "value": "exclude"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La conserva en el modelo y la deja señalada en la tabla de coeficientes, para que quien valide la vea y decida. Sirve cuando quieres medir el efecto antes de descartar nada.",
+              "label": "Dejarla, pero marcarla",
+              "motivo": null,
+              "value": "flag"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Aborta el ajuste nombrando la variable y su coeficiente, en vez de entregar un modelo con una relación que no se sostiene. Es lo más estricto y obliga a revisar los tramos antes de seguir.",
+              "label": "Detener la corrida",
+              "motivo": null,
+              "value": "fail"
+            }
+          ],
+          "path": "model.sign_policy.action",
+          "question": "¿Qué hacer si una variable queda apuntando al revés de lo esperado?",
+          "when": null
+        },
+        {
+          "help": "Un modelo que descansa en una única variable es frágil: si esa fuente se degrada o deja de llegar, se cae entero. El umbral que fijes define desde qué proporción del total se considera excesiva esa concentración.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Retira la que se pasa del umbral y reajusta, dejando constancia en la traza. Ojo: al sacarla el reparto se recalcula sobre las que quedan, así que puede caer más de una en cadena. Es la opción de fábrica.",
+              "label": "Sacar la variable dominante",
+              "motivo": null,
+              "value": "exclude"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Conserva el modelo tal cual y deja la concentración señalada en el informe, para que quien valide juzgue si es aceptable en esta cartera.",
+              "label": "Dejarla, pero marcar la concentración",
+              "motivo": null,
+              "value": "flag"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Aborta el ajuste nombrando la variable y la proporción que concentra, en vez de publicar un modelo que descansa en un solo factor.",
+              "label": "Detener la corrida",
+              "motivo": null,
+              "value": "fail"
+            }
+          ],
+          "path": "model.iv_contribution.action",
+          "question": "¿Qué hacer si una sola variable concentra casi todo el poder predictivo?",
+          "when": null
+        },
+        {
+          "help": "Cuando dos variables miden casi lo mismo, sólo sobrevive una. Aquí eliges con qué se comparan y en qué orden: el primero manda y los siguientes sólo resuelven los empates. Los que no marques no desaparecen — quedan al final de la fila.",
+          "multiple": true,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Conserva la que más separa buenos de malos según su Information Value, que es el criterio habitual en una tarjeta de scoring.",
+              "label": "El poder predictivo de la variable",
+              "motivo": null,
+              "value": "iv"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Conserva la que mejor ordena el riesgo medida sola sobre la muestra de Desarrollo, sin la ayuda de las demás.",
+              "label": "El AUC de la variable por sí sola",
+              "motivo": null,
+              "value": "auc"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Conserva la que logra la mayor distancia entre las curvas de buenos y malos, medida sola sobre la muestra de Desarrollo.",
+              "label": "El KS de la variable por sí sola",
+              "motivo": null,
+              "value": "ks"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "No mide nada: existe para que dos variables empatadas en todo lo anterior se resuelvan siempre igual y la corrida sea reproducible.",
+              "label": "El nombre de la variable, en orden alfabético",
+              "motivo": null,
+              "value": "name"
+            }
+          ],
+          "path": "selection.priority_order",
+          "question": "¿Con qué criterios se decide cuál de dos variables parecidas se queda?",
+          "when": null
+        },
+        {
+          "help": "El motor descarta variables que miden casi lo mismo. Éste es el estadístico con que se calcula ese parecido sobre la muestra de Desarrollo, y cambiarlo cambia qué variables llegan al modelo.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Mide si dos variables se mueven juntas en línea recta. Es la opción habitual y la que traen los ejemplos.",
+              "label": "Parecido lineal",
+              "motivo": null,
+              "value": "pearson"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Compara el orden y no la magnitud, así que reconoce relaciones que suben juntas sin ser una línea recta.",
+              "label": "Parecido en el orden de los valores",
+              "motivo": null,
+              "value": "spearman"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "También compara órdenes, pero entrega cifras más bajas que las otras dos sobre el mismo par: con el mismo umbral descarta menos variables.",
+              "label": "Concordancia de pares",
+              "motivo": null,
+              "value": "kendall"
+            }
+          ],
+          "path": "selection.correlation.method",
+          "question": "¿Cómo quieres medir el parecido entre dos variables?",
+          "when": null
+        },
+        {
+          "help": "Las dos formas descartan, y ninguna de las dos apaga el filtro: eso se hace con su propio interruptor. Lo que cambia es el alcance cuando el parecido forma una cadena, donde la primera y la última ya casi no se parecen.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Recorre las variables por prioridad y descarta sólo la que se parece demasiado a alguna ya conservada. Sobre una cadena de tres, conserva la primera y la última.",
+              "label": "De a pares, en orden de prioridad",
+              "motivo": null,
+              "value": "none"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Arma un grupo con todas las variables encadenadas por parecido y conserva una sola de cada grupo. Sobre esa misma cadena de tres, conserva una.",
+              "label": "Por grupos completos de variables encadenadas",
+              "motivo": null,
+              "value": "connected_components"
+            }
+          ],
+          "path": "selection.correlation.clustering_method",
+          "question": "¿Hasta dónde llega el descarte cuando varias variables se parecen entre sí?",
+          "when": null
+        },
+        {
+          "help": "Un poder predictivo altísimo suele delatar que la variable ya contiene la respuesta —por ejemplo, la mora que define al moroso—. El umbral que lo dispara se fija aparte; aquí decides qué pasa cuando se supera.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La variable sigue en el modelo y queda señalada en la tabla de selección, con el valor observado, para que alguien decida.",
+              "label": "Dejarla y marcarla para revisión",
+              "motivo": null,
+              "value": "flag"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La variable sale del modelo sin intervención, y la tabla de selección registra el motivo y el valor que lo gatilló.",
+              "label": "Descartarla automáticamente",
+              "motivo": null,
+              "value": "exclude"
+            }
+          ],
+          "path": "selection.max_iv_action",
+          "question": "¿Qué hacer con una variable cuyo poder predictivo es sospechosamente alto?",
+          "when": null
+        },
+        {
+          "help": "Antes de modelar, el motor compara variable a variable cómo se reparten los clientes en Desarrollo y en cada muestra de validación. Aquí decides si ese diagnóstico sólo se informa o además saca variables del modelo.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El diagnóstico se publica y ninguna variable se descarta por él: la decisión queda en manos de quien lee el informe.",
+              "label": "Sólo informarlo",
+              "motivo": null,
+              "value": "report_only"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Saca del modelo toda variable que alcance el umbral de revisión en alguna muestra comparada, salvo las que hayas exigido conservar.",
+              "label": "Descartar las variables inestables",
+              "motivo": null,
+              "value": "exclude"
+            }
+          ],
+          "path": "selection.stability.action",
+          "question": "¿Qué hacer con una variable que se reparte distinto en las muestras de validación?",
+          "when": null
+        },
+        {
+          "help": "Los puntos salen de la fórmula con decimales y hay que publicarlos de alguna forma. No es presentación: el puntaje que recibe cada cliente es el publicado.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Publica el puntaje exacto de la fórmula. Es lo más preciso, pero una tarjeta con decimales es incómoda de aplicar y de explicar.",
+              "label": "Sin redondear, con decimales",
+              "motivo": null,
+              "value": "none"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La opción habitual. Un valor justo en la mitad se lleva al entero par más próximo: 12,5 baja a 12 y 13,5 sube a 14.",
+              "label": "Al entero más cercano",
+              "motivo": null,
+              "value": "nearest_integer"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Trunca cada tramo al entero inferior, así que el puntaje total queda algo por debajo del calculado. Con puntos negativos, baja aún más.",
+              "label": "Siempre hacia abajo",
+              "motivo": null,
+              "value": "floor_integer"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Sube cada tramo al entero superior, así que el puntaje total queda algo por encima del calculado. Con puntos negativos, los acerca a cero.",
+              "label": "Siempre hacia arriba",
+              "motivo": null,
+              "value": "ceil_integer"
+            }
+          ],
+          "path": "scorecard.rounding_method",
+          "question": "¿Cómo quieres redondear los puntos de la tarjeta?",
+          "when": null
+        },
+        {
+          "help": "No hay una convención universal y el motor no la adivina. Define el signo con que se arman los puntos de cada tramo, así que invierte la tarjeta completa. Es la respuesta que manda: los indicadores de desempeño y de estabilidad la vuelven a preguntar para el caso en que traigas un puntaje ya construido, y si contestan distinto que aquí, se avisa antes de correr y la corrida se detiene.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La convención más habitual: a mayor puntaje, menor probabilidad de incumplir. Los tramos de más riesgo suman menos puntos.",
+              "label": "Más alto es mejor cliente",
+              "motivo": null,
+              "value": "higher_is_lower_risk"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Para escalas donde el puntaje mide riesgo y no calidad crediticia: los tramos de más riesgo suman más puntos.",
+              "label": "Más alto es peor cliente",
+              "motivo": null,
+              "value": "higher_is_higher_risk"
+            }
+          ],
+          "path": "scorecard.score_direction",
+          "question": "En la tarjeta que vas a construir, ¿un puntaje más alto es mejor o peor cliente?",
+          "when": null
+        },
+        {
+          "help": "Cada muestra que marques recibe su fila de indicadores y su tabla por deciles en el informe. Si marcas una que tu archivo no trae, se publica como no evaluable en vez de detener la corrida.",
+          "multiple": true,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La muestra con que se ajustó el modelo. Sus cifras son el techo optimista: sirven de referencia, no de prueba de que el modelo sirva.",
+              "label": "Desarrollo",
+              "motivo": null,
+              "value": "desarrollo"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Clientes del mismo período que no se usaron para ajustar. Responde si el modelo generaliza dentro de la ventana con que se construyó.",
+              "label": "Validación",
+              "motivo": null,
+              "value": "holdout"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Clientes de un período posterior. Es la cifra que mira quien va a poner el modelo en producción y la que exige la validación formal.",
+              "label": "Fuera de tiempo",
+              "motivo": null,
+              "value": "oot"
+            }
+          ],
+          "path": "performance.partitions",
+          "question": "¿Sobre qué muestras quieres medir el desempeño del modelo?",
+          "when": null
+        },
+        {
+          "help": "Los indicadores de discriminación y la tabla por deciles necesitan ordenar la cartera. Las dos formas exigen que la calibración se haya ejecutado: el motor pide la probabilidad calibrada aunque elijas la otra.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Ordena por la probabilidad calibrada, que es una escala continua y sin empates. Es la opción recomendada y la que traen los ejemplos.",
+              "label": "La probabilidad de incumplir ya calibrada",
+              "motivo": null,
+              "value": "pd_calibrated"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Ordena por los puntos que recibe el cliente. Si los publicas redondeados aparecen empates y las cifras se mueven un poco; a cambio, el corte del KS se informa en puntos de la tarjeta.",
+              "label": "El puntaje de la tarjeta",
+              "motivo": null,
+              "value": "score"
+            }
+          ],
+          "path": "performance.evaluation_source",
+          "question": "¿Con qué cifra se ordena a los clientes de más a menos riesgo al medir?",
+          "when": null
+        },
+        {
+          "help": "Sólo se aplica si ordenas la cartera por el puntaje de la tarjeta; ordenando por la probabilidad calibrada no cambia ninguna cifra. Tiene que decir lo mismo que la escala con que construiste la tarjeta: si se contradicen, se avisa antes de correr y la corrida se detiene, porque medir al revés invierte el signo de los indicadores de discriminación sin que el número parezca raro.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "La convención habitual: los clientes con menos puntos encabezan el ordenamiento como los de mayor riesgo.",
+              "label": "Más alto es mejor cliente",
+              "motivo": null,
+              "value": "higher_is_lower_risk"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Para escalas donde el puntaje mide riesgo: los clientes con más puntos encabezan el ordenamiento como los de mayor riesgo.",
+              "label": "Más alto es peor cliente",
+              "motivo": null,
+              "value": "higher_is_higher_risk"
+            }
+          ],
+          "path": "performance.score_direction",
+          "question": "Al medir el desempeño, ¿un puntaje más alto es mejor o peor cliente?",
+          "when": null
+        },
+        {
+          "help": "Puedes pedir varios a la vez. Unos son el documento del informe y otros son las tablas por operación completas, que salen como archivos aparte.",
+          "multiple": true,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El mismo informe paginado, listo para el comité. Se instala aparte y además necesita librerías del sistema: si faltan, el informe sale en los demás formatos y queda un aviso.",
+              "label": "Documento para imprimir y firmar",
+              "motivo": null,
+              "value": "pdf"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Con títulos y tablas nativas, para que Validación comente y firme sobre el archivo. Se instala aparte: si falta, el informe sale en los demás formatos y queda un aviso.",
+              "label": "Informe en Word",
+              "motivo": null,
+              "value": "docx"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El informe como texto con sus figuras al lado, para recompilarlo con las plantillas de tu institución. No hay que instalar nada.",
+              "label": "Fuente editable en texto plano",
+              "motivo": null,
+              "value": "md"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Las tablas con una fila por operación, completas y sin recortar, fuera del documento. No hay que instalar nada, y sólo hay archivo si tu corrida produce esas tablas.",
+              "label": "Tablas por operación, un archivo por tabla",
+              "motivo": null,
+              "value": "csv"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Las mismas tablas completas, una hoja por tabla. Se instala aparte; si falta, el informe sale igual con un aviso y sin el libro, salvo que pidas lo contrario en «Opciones de la planilla». La opción «csv» entrega lo mismo sin instalar nada.",
+              "label": "Tablas por operación en un libro de Excel",
+              "motivo": null,
+              "value": "xlsx"
+            }
+          ],
+          "path": "report.formats",
+          "question": "¿En qué formatos quieres el entregable?",
+          "when": null
+        },
+        {
+          "help": "Un capítulo falta cuando el paso que lo produce no dejó su resultado en la corrida. La decisión se toma al armar el informe, con todo lo demás ya calculado.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Lo correcto cuando el informe va a un comité y un capítulo ausente lo invalida: prefieres no tener documento antes que tener uno incompleto.",
+              "label": "Detener la corrida y nombrar el capítulo que falta",
+              "motivo": null,
+              "value": "error"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El informe sale con ese capítulo declarado ausente y anotado entre las limitaciones. Ningún número se inventa para rellenarlo.",
+              "label": "Publicarlo marcado como no disponible",
+              "motivo": null,
+              "value": "warn"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El capítulo desaparece del documento como si no lo hubieras exigido: el informe sale más corto y sin rastro de la ausencia.",
+              "label": "Omitirlo en silencio",
+              "motivo": null,
+              "value": "skip"
+            }
+          ],
+          "path": "report.sections.missing_policy",
+          "question": "¿Qué hacer si al informe le falta uno de los capítulos que exigiste?",
+          "when": null
+        },
+        {
+          "help": "Cambia sólo el aspecto de ese documento y del que sale paginado a partir de él; los números, las tablas y el texto son exactamente los mismos.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Con índice lateral navegable y el estilo de marca; es la que se ve en los informes de ejemplo.",
+              "label": "La presentación editorial de la casa",
+              "motivo": null,
+              "value": "bayesrisk"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Pensada para imprimir o para pegar el contenido dentro de la plantilla corporativa de tu institución.",
+              "label": "Una hoja sobria, sin índice lateral",
+              "motivo": null,
+              "value": "plain"
+            }
+          ],
+          "path": "report.html.theme",
+          "question": "¿Con qué presentación quieres el informe que se abre en el navegador?",
+          "when": null
+        },
+        {
+          "help": "Son los espacios en blanco con su guía de redacción —opinión de Validación, conclusiones, visto bueno— que el motor no llena porque los escribe una persona.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Quien valide ve qué se espera en cada bloque. Es lo útil mientras el informe está en revisión y todavía se está escribiendo.",
+              "label": "Publicarlos con su guía de redacción",
+              "motivo": null,
+              "value": "show"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Lo que corresponde en la versión final del entregable, donde un espacio en blanco se lee como un descuido y no como una tarea pendiente.",
+              "label": "Ocultarlos",
+              "motivo": null,
+              "value": "hide"
+            }
+          ],
+          "path": "report.document.placeholders",
+          "question": "¿El informe debe traer los bloques que firma quien valida?",
+          "when": null
+        },
+        {
+          "help": "Elijas lo que elijas, los números, las tablas y la prosa técnica los escribe el motor y son reproducibles. Esto sólo aplica si además activas esa ayuda.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El texto de acompañamiento se redacta con reglas fijas dentro de tu máquina. Es lo que corre de fábrica y no manda nada a ningún servicio.",
+              "label": "El propio motor, sin salir a la red",
+              "motivo": null,
+              "value": "none"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Redacta el acompañamiento a partir de un resumen ya depurado: nunca recibe tus datos ni recalcula una cifra. Se instala aparte y pide la credencial en una variable de entorno; sin ella el informe sale con el texto del motor y un aviso.",
+              "label": "Un modelo de lenguaje externo",
+              "motivo": null,
+              "value": "anthropic"
+            }
+          ],
+          "path": "report.ai.provider",
+          "question": "¿Quién redacta el texto de acompañamiento del informe?",
+          "when": null
+        }
+      ],
+      "missing_sections": [],
+      "offered": true,
+      "overrides": [
+        [
+          "validation.calibration.binomial_by_grade",
+          false
+        ],
+        [
+          "provisioning_internal.type",
+          "full_population"
+        ]
+      ],
+      "required_decisions": [
+        {
+          "answer_forms": [
+            {
+              "help": "Para la política clásica: «más de 90 días de mora», sola o junto con otra condición. Eliges la columna, la comparación y el corte.",
+              "id": "condiciones",
+              "label": "La escribo como condiciones sobre mis columnas",
+              "precargas": [],
+              "slots": [
+                "all_of.0.col",
+                "all_of.0.op",
+                {
+                  "path": "all_of.0.value",
+                  "salvo_si": {
+                    "path": "all_of.0.op",
+                    "vale": [
+                      "isna",
+                      "notna"
+                    ]
+                  }
+                }
+              ],
+              "template": {
+                "all_of": [
+                  {
+                    "col": "",
+                    "op": "",
+                    "value": null
+                  }
+                ],
+                "any_of": []
+              }
+            },
+            {
+              "help": "Tu archivo trae la marca de incumplimiento ya calculada por tu área. Dices qué columna la lleva y qué valor marca al malo; el motor no supone que sea un 1.",
+              "id": "columna_marcada",
+              "label": "Ya viene marcada en una columna de mi archivo",
+              "precargas": [
+                {
+                  "desde": "performance.target_column",
+                  "insumo": [
+                    "calibration",
+                    "calibrated_pd_frame"
+                  ],
+                  "nota": "es la columna que ya dijiste que marca si la operación terminó incumpliendo",
+                  "slot": "all_of.0.col"
+                }
+              ],
+              "slots": [
+                "all_of.0.col",
+                {
+                  "path": "all_of.0.value",
+                  "salvo_si": {
+                    "path": "all_of.0.op",
+                    "vale": [
+                      "isna",
+                      "notna"
+                    ]
+                  }
+                }
+              ],
+              "template": {
+                "all_of": [
+                  {
+                    "col": "",
+                    "op": "==",
+                    "value": ""
+                  }
+                ],
+                "any_of": []
+              }
+            }
+          ],
+          "help": "La condición con la que tu área marca el incumplimiento. Suele ser un corte de mora —«más de 90 días»—, a veces junto con otra condición. No hay un valor estándar: depende de tu política, y por eso lo eliges tú.",
+          "path": "data.target.bad_rule",
+          "question": "¿Qué define a un cliente malo en tu cartera?"
+        },
+        {
+          "answer_forms": [
+            {
+              "help": "La opción que mejor anticipa producción, porque valida contra un período que el modelo no vio. Necesita una columna de fecha y desde cuándo empieza el período reservado.",
+              "id": "temporal",
+              "label": "Por fecha: lo más reciente queda fuera de tiempo",
+              "precargas": [],
+              "slots": [
+                "date_col",
+                "oot_from"
+              ],
+              "template": {
+                "date_col": "",
+                "holdout_fraction": 0.2,
+                "oot_from": "",
+                "type": "temporal"
+              }
+            },
+            {
+              "help": "Cuando tu cartera se agrupa en camadas —trimestres de originación, campañas— y quieres reservar camadas completas en vez de cortar por una fecha.",
+              "id": "cohort",
+              "label": "Por cohortes, reservando algunas enteras",
+              "precargas": [],
+              "slots": [
+                "cohort_col",
+                "oot_cohorts"
+              ],
+              "template": {
+                "cohort_col": "",
+                "holdout_fraction": 0.2,
+                "oot_cohorts": [],
+                "type": "cohort"
+              }
+            },
+            {
+              "help": "Tu archivo ya trae la división que usa tu área. Dices qué columna la lleva y qué valores corresponden a cada muestra; nada se adivina por parecido de nombre ni por orden.",
+              "id": "columna",
+              "label": "Ya viene marcada en una columna de mi archivo",
+              "precargas": [
+                {
+                  "desde": "performance.partition_column",
+                  "insumo": [
+                    "calibration",
+                    "calibrated_pd_frame"
+                  ],
+                  "nota": "es la columna que ya dijiste que marca a qué muestra pertenece cada operación",
+                  "slot": "partition_col"
+                }
+              ],
+              "slots": [
+                "partition_col",
+                {
+                  "alguno_de": [
+                    "desarrollo",
+                    "holdout",
+                    "oot"
+                  ]
+                }
+              ],
+              "template": {
+                "desarrollo": [],
+                "holdout": [],
+                "oot": [],
+                "partition_col": "",
+                "type": "columna"
+              }
+            },
+            {
+              "help": "Reparte las filas al azar. ⚠️ El trozo «fuera de tiempo» que produce NO es posterior en el tiempo: sale del mismo período que el resto, así que mide menos de lo que su nombre promete. Úsala sólo si tus datos no tienen ninguna columna de fecha ni de camada.",
+              "id": "random",
+              "label": "Al azar, en tres trozos",
+              "precargas": [],
+              "slots": [],
+              "template": {
+                "dev_fraction": 0.7,
+                "holdout_fraction": 0.15,
+                "oot_fraction": 0.15,
+                "stratify_by": null,
+                "type": "random"
+              }
+            }
+          ],
+          "help": "Al azar, por fecha, por cohortes, o leyendo una separación que tu archivo ya trae marcada en una columna. Si tus datos tienen eje de tiempo, separar por fecha mide mejor lo que pasará en producción, porque valida contra un período que el modelo no vio.",
+          "path": "data.partition.strategy",
+          "question": "¿Cómo separas la muestra para validar?"
+        },
+        {
+          "answer_forms": [],
+          "help": "Lo escribe tu institución: el motor no puede inventarlo, y sin esto la ficha del modelo no se emite.",
+          "path": "governance.purpose",
+          "question": "¿Para qué se va a usar este modelo y sobre qué cartera decide?"
+        }
+      ],
+      "sections": [
+        "data",
+        "eda",
+        "binning",
+        "selection",
+        "model",
+        "scorecard",
+        "calibration",
+        "performance",
+        "stability",
+        "validation",
+        "master_scale",
+        "provisioning_internal",
+        "report",
+        "governance"
+      ],
+      "status": "available",
+      "toggle_overrides": {},
+      "unavailable_reason": null
     }
   ]
 }

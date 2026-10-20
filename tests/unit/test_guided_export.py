@@ -172,7 +172,13 @@ def test_el_excel_reproduce_celda_a_celda_las_tablas_de_los_exports_del_informe(
     hojas_informe = _hojas(del_informe)
     comparadas = 0
     omitidas = 0
-    for clave in sorted(PER_OBSERVATION_TABLES):
+    f1_tables = {key for key in PER_OBSERVATION_TABLES if key.split(".", 1)[0] in STAGE_BOOKS}
+    # H3 tiene su propio censo celda a celda: una corrida F1 no produce provisión interna.
+    assert PER_OBSERVATION_TABLES - f1_tables == {
+        "provisioning_internal.detail",
+        "provisioning_internal.pd_input",
+    }
+    for clave in sorted(f1_tables):
         dominio = clave.split(".", 1)[0]
         libro = rutas[STAGE_BOOKS[dominio]]
         # D-TTD-2: la puntuación fuera del ajuste se publica vacía cuando no hay esas filas, y una
@@ -198,7 +204,7 @@ def test_el_excel_reproduce_celda_a_celda_las_tablas_de_los_exports_del_informe(
         hoja_informe = next(h for h in hojas_informe if h == clave.replace(".", "_")[:31])
         assert _filas(libro, hoja) == _filas(del_informe, hoja_informe), clave
         comparadas += 1
-    assert comparadas + omitidas == len(PER_OBSERVATION_TABLES)
+    assert comparadas + omitidas == len(f1_tables)
     assert comparadas >= 4
     # Y las tablas del anexo salen ENTERAS: la tabla de deciles trae todas sus filas, no el tope
     # de filas visibles del documento.

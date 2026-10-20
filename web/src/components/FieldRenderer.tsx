@@ -80,6 +80,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useAvisoDeDescarteJson } from "@/state/appStore"
 import { marca } from "@/lib/cifras"
+import { pruneForView } from "@/lib/essentials"
 
 export interface FieldRendererProps {
   name: string
@@ -813,14 +814,17 @@ function DiscriminatedField(props: FieldRendererProps) {
     onChange(path, semilla)
   }
 
-  const subFields = active
-    ? orderedFields(active.schema).filter(([n]) => n !== propName)
+  const shown = active && schema.ui_essentials_view
+    ? pruneForView(active.schema, defs, schema.ui_essentials_view, [], undefined, current)
+    : active?.schema
+  const subFields = shown
+    ? orderedFields(shown).filter(([n]) => n !== propName)
     : []
   const required = new Set(active?.schema.required ?? [])
 
   return (
     <div className="space-y-3">
-      <Select value={selectValue} onValueChange={handleTagChange}>
+      {schema.ui_essentials_view !== "advanced" && <Select value={selectValue} onValueChange={handleTagChange}>
         <SelectTrigger id={path.join(".")} className="w-full">
           <SelectValue placeholder="Elige variante…" />
         </SelectTrigger>
@@ -831,7 +835,7 @@ function DiscriminatedField(props: FieldRendererProps) {
             </SelectItem>
           ))}
         </SelectContent>
-      </Select>
+      </Select>}
       {active && subFields.length > 0 ? (
         <fieldset
           className={cn(

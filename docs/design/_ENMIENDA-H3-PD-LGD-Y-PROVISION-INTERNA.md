@@ -8,7 +8,7 @@ mejor ni resuelve recuperaciones incompletas.
 
 | Campo | Valor |
 |---|---|
-| Estado | **Propuesta para revisión de Cami; no aprobada; no autoriza implementación** |
+| Estado | **APROBADA por Cami el 2026-10-20: implementación A+B por capas, incluidas ambas excepciones; implementación en curso** |
 | Autor / fecha | Codex, 2026-10-20 (S61) |
 | Base medida | `bce872f8b15d45fb676cc0d1388366b7221062de` |
 | Hito | H3 del plan vigente; no amplía H10, H9R ni las campañas de calibración |
@@ -426,6 +426,20 @@ Imports perezosos y error que indique el extra requerido. Licencias y compatibil
 con el inventario/gate vigente; no se presupone equivalencia numérica entre todas las versiones.
 
 ## 11. Estrategia de aceptación y censo bidireccional
+
+**Precisión de aceptación aprobada por Cami, 2026-10-20.** El corpus real de Freddie Mac puede
+cerrar **funcionalmente** H3, demostrando ejecución, congelación, transporte y aplicación,
+con entidad técnica préstamo (sin identificador de deudor), objetivo proxy de pérdida publicada
+dividida por saldo al retiro y `resolved` como disponibilidad del proxy al corte. Para este corpus
+sustituye la exigencia de evaluar transportabilidad: no acredita adecuación semántica para LGD
+económica, validación, representatividad, temporalidad ni independencia por deudor. Sus métricas
+describen sólo el subconjunto seleccionado por resultado y disponibilidad. Los tres límites se
+declaran en propósito/supuestos/limitaciones y viajan a card, tabla del predictor, resúmenes,
+informes y exports. Se mantiene intacto el rechazo general de entidad solapada de D-H3-7, probado
+con deudores repetidos en el sintético. Receta y split quedan congelados en evidencia privada
+antes del ajuste; no imputar, truncar ni mover filtros según resultados. Revisión independiente
+del delta: needs-attention; dos precisiones incorporadas antes del OK humano, sin APPROVE final
+de esa versión corregida. No es aprobación de implementación.
 
 **D-H3-9 — una capacidad termina cuando se consume.** Por cada artefacto/decisión, enumerar
 productor y consumidores: puerta completa, guiada, UI, resumen text/HTML/JSON, panel, informe

@@ -48,6 +48,13 @@ escenarios de la institución y las dos PD del modelo (`history=`, `scenarios=`,
 
 ::: bayesrisk.guided.ecl.Ecl
 
+`bayesrisk.Provision` calcula provisión interna con PD y LGD declaradas, o compone un proyecto
+nuevo desde `Scorecard`. Es **experimental**: conserva la fórmula por grupos y no certifica
+la calidad de sus entradas. El [recorrido guiado](guias/provision-guiada.md) incluye el cuaderno,
+el informe y las tablas completas.
+
+::: bayesrisk.guided.provision.Provision
+
 `bayesrisk.Monitor` monitorea una tarjeta en uso con la misma mecánica: la tarjeta guardada, la
 cartera nueva con su columna de periodo y, si la hay, la de desenlace; por periodo dice si cambió
 la población, si el modelo sigue ordenando y si cada tramo acierta su PD, con un veredicto y su

@@ -71,7 +71,7 @@ describe("golden espejo: las marcas del schema son exactamente las del golden (D
     expect(new Set(declaradas)).toEqual(new Set(Object.keys(ESSENTIALS_BY_SECTION)))
     // Quince desde la capa C de IFRS9-FIRMABLE (`forward`, con sus tres esenciales) y dieciséis
     // desde la capa B del SDD-32 (`master_scale`, con sus dos).
-    expect(declaradas).toHaveLength(18)
+    expect(declaradas).toHaveLength(19)
   })
 
   it.each(Object.keys(ESSENTIALS_BY_SECTION))(
@@ -83,16 +83,17 @@ describe("golden espejo: las marcas del schema son exactamente las del golden (D
   )
 
   it("una sección que no pasó por su enmienda de simplicidad no declara esenciales y no se divide", () => {
-    const interna = configSectionSchema(PAYLOAD, "provisioning_internal")
+    const interna = configSectionSchema(PAYLOAD, "provisioning_cmf")
     expect(interna).not.toBeNull()
     const schema = resolveRef(interna!.schema, DEFS)
     expect(declaresEssentials(schema)).toBe(false)
-    expect(essentialPaths(schema, DEFS, "provisioning_internal").size).toBe(0)
+    expect(essentialPaths(schema, DEFS, "provisioning_cmf").size).toBe(0)
   })
 })
 
 describe("la división de una sección es exacta y no pierde ni duplica campos", () => {
-  it.each(Object.keys(ESSENTIALS_BY_SECTION))("%s", (clave) => {
+  // H3 divide la unión LGD por rama activa: su censo exhaustivo está en h3-essentials.test.ts.
+  it.each(Object.keys(ESSENTIALS_BY_SECTION).filter((key) => key !== "provisioning_internal"))("%s", (clave) => {
     const schema = seccion(clave)
     const esenciales = essentialFields(schema, DEFS)
     const avanzado = advancedSchema(schema, DEFS)
@@ -133,6 +134,8 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
     let deIfrs9 = 0
     let delMonitoreo = 0
     for (const clave of Object.keys(ESSENTIALS_BY_SECTION)) {
+      // La excepción workout (9) y las demás ramas (≤6) se miden sobre hojas activas en H3.
+      if (clave === "provisioning_internal") continue
       const marcas = essentialPaths(seccion(clave), DEFS, clave)
       const porRama =
         clave === "data"

@@ -203,10 +203,10 @@ describe("guardrail estático: esenciales abiertos y «Avanzado» plegado (D-FLU
     expect(cuerpo).toMatch(/<GroupedFields schema=\{schema\} inner=\{false\}/)
     // Los esenciales sin subtítulo y, aparte, los que van juntos bajo el suyo (CASO-REAL-IFRS9
     // §13: «Si tienes las fechas y la cuota del contrato»).
-    expect(cuerpo).toMatch(/essentialFields\(schema, defs, null\)/)
+    expect(cuerpo).toMatch(/essentialFields\(schema, defs, null, sectionValue\)/)
     expect(cuerpo).toMatch(/essentialGroups\(schema, defs\)/)
     expect(cuerpo).toMatch(/data-essential-group=\{etiqueta\}/)
-    expect(cuerpo).toMatch(/advancedSchema\(schema, defs\)/)
+    expect(cuerpo).toMatch(/advancedSchema\(schema, defs, sectionValue\)/)
   })
 
   it("el bloque nace CERRADO, es controlado y dice cuántos campos difieren de fábrica", () => {

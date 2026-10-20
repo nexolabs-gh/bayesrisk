@@ -247,7 +247,16 @@ jobs:
         run: uv sync --locked --python 3.12 --extra pdf --group test
 
       - name: PDF tests reales (WeasyPrint)
+          env:
+            BAYESRISK_H3_PDF_EVIDENCE: ${{ runner.temp }}/h3-pdf
         run: uv run --no-sync python -m pytest tests/unit/test_report_pdf.py -q
+
+        - name: Evidencia final de provisión interna H3
+          uses: actions/upload-artifact@v4
+          with:
+            name: h3-pdf-evidence
+            path: ${{ runner.temp }}/h3-pdf/provision/reports/
+            if-no-files-found: error
 
   coverage-regulatory:
     name: Regulatory coverage

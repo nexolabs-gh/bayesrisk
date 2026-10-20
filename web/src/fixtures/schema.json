@@ -9434,6 +9434,7 @@
             },
             "title": "Variables explicativas de la severidad",
             "type": "array",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 6,
             "ui_widget": "multiselect"
@@ -9455,6 +9456,11 @@
             "description": "Columna con la pérdida dado el incumplimiento observada por operación.",
             "title": "Columna LGD",
             "type": "string",
+            "ui_essential": true,
+            "ui_essential_when": {
+              "field": "recovery_col",
+              "is_null": true
+            },
             "ui_group": "LGD",
             "ui_order": 2,
             "ui_widget": "text_input"
@@ -9476,6 +9482,7 @@
             "description": "Ajusta una regresión BETA de la severidad sobre tus variables. Exige que la severidad observada esté ESTRICTAMENTE entre 0 y 1: una sola operación con recupero total o pérdida total detiene la corrida.",
             "title": "Método LGD",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 1,
             "ui_widget": "selectbox"
@@ -9491,10 +9498,15 @@
             ],
             "column_role": "input",
             "default": null,
-            "description": "Columna con el MONTO recuperado de cada operación, en la moneda de la exposición.",
+            "description": "Columna con la TASA recuperada, fracción entre 0 y 1; la LGD es uno menos esa tasa.",
             "title": "Columna de tasa recuperada",
+            "ui_essential": true,
+            "ui_essential_when": {
+              "field": "recovery_col",
+              "is_null": false
+            },
             "ui_group": "LGD",
-            "ui_help": "Columna con el MONTO recuperado de cada operación, en la misma moneda que la exposición. No es una fracción: entra al valor presente que se divide por la exposición.",
+            "ui_help": "Tasa recuperada entre 0 y 1, no monto monetario. Si se declara, la LGD observada es uno menos esta tasa y no se lee la columna LGD.",
             "ui_order": 5,
             "ui_widget": "text_input"
           }
@@ -9515,6 +9527,7 @@
             },
             "title": "Variables explicativas de la severidad",
             "type": "array",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 6,
             "ui_widget": "multiselect"
@@ -9536,6 +9549,11 @@
             "description": "Columna con la pérdida dado el incumplimiento observada por operación.",
             "title": "Columna LGD",
             "type": "string",
+            "ui_essential": true,
+            "ui_essential_when": {
+              "field": "recovery_col",
+              "is_null": true
+            },
             "ui_group": "LGD",
             "ui_order": 2,
             "ui_widget": "text_input"
@@ -9557,6 +9575,7 @@
             "description": "Ajusta una regresión FRACCIONAL de la severidad sobre tus variables. Admite operaciones con recupero total (0) y con pérdida total (1), que es lo normal en una cartera real.",
             "title": "Método LGD",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 1,
             "ui_widget": "selectbox"
@@ -9572,10 +9591,15 @@
             ],
             "column_role": "input",
             "default": null,
-            "description": "Columna con el MONTO recuperado de cada operación, en la moneda de la exposición.",
+            "description": "Columna con la TASA recuperada, fracción entre 0 y 1; la LGD es uno menos esa tasa.",
             "title": "Columna de tasa recuperada",
+            "ui_essential": true,
+            "ui_essential_when": {
+              "field": "recovery_col",
+              "is_null": false
+            },
             "ui_group": "LGD",
-            "ui_help": "Columna con el MONTO recuperado de cada operación, en la misma moneda que la exposición. No es una fracción: entra al valor presente que se divide por la exposición.",
+            "ui_help": "Tasa recuperada entre 0 y 1, no monto monetario. Si se declara, la LGD observada es uno menos esta tasa y no se lee la columna LGD.",
             "ui_order": 5,
             "ui_widget": "text_input"
           }
@@ -9604,6 +9628,7 @@
             "description": "Columna con la pérdida dado el incumplimiento observada por operación.",
             "title": "Columna LGD",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 2,
             "ui_widget": "text_input"
@@ -9625,6 +9650,7 @@
             "description": "La LGD del grupo es la media SIMPLE (histórica) de la columna, y después se aplica igual a todas las operaciones del grupo.",
             "title": "Método LGD",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 1,
             "ui_widget": "selectbox"
@@ -9654,6 +9680,7 @@
             "description": "Columna con la pérdida dado el incumplimiento observada por operación.",
             "title": "Columna LGD",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 2,
             "ui_widget": "text_input"
@@ -9675,6 +9702,7 @@
             "description": "La LGD del grupo es la media de la columna PONDERADA POR EXPOSICIÓN, y en el detalle cada operación conserva la suya.",
             "title": "Método LGD",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 1,
             "ui_widget": "selectbox"
@@ -9725,6 +9753,7 @@
             "description": "Calcula la severidad como 1 menos el valor presente de lo recuperado neto de costos, dividido por la exposición. No ajusta ningún modelo: descuenta flujos observados.",
             "title": "Método LGD",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 1,
             "ui_widget": "selectbox"
@@ -9742,6 +9771,7 @@
             "default": null,
             "description": "Columna con el MONTO recuperado de cada operación, en la moneda de la exposición.",
             "title": "Columna de monto recuperado",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_help": "Columna con el MONTO recuperado de cada operación, en la misma moneda que la exposición. No es una fracción: entra al valor presente que se divide por la exposición.",
             "ui_order": 5,
@@ -9753,6 +9783,7 @@
             "description": "Columna con lo que costó recuperar. Si falta, la corrida se detiene: no se asume cero.",
             "title": "Columna de costos de recuperación",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 7,
             "ui_widget": "text_input"
@@ -9763,6 +9794,7 @@
             "description": "Columna por la que se divide el valor presente de lo recuperado.",
             "title": "Columna de exposición al incumplimiento",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 6,
             "ui_widget": "text_input"
@@ -9773,6 +9805,7 @@
             "description": "Columna con la tasa contractual a la que se descuentan los recuperos.",
             "title": "Columna de tasa de descuento",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 9,
             "ui_widget": "text_input"
@@ -9783,6 +9816,7 @@
             "description": "Columna con los años que tardó el recupero; es el exponente del descuento.",
             "title": "Columna de tiempo de recupero (años)",
             "type": "string",
+            "ui_essential": true,
             "ui_group": "LGD",
             "ui_order": 8,
             "ui_widget": "text_input"
@@ -14900,6 +14934,7 @@
                 "description": "Columna con la fecha de cierre contable; debe traer un valor único.",
                 "title": "Fecha de cálculo",
                 "type": "string",
+                "ui_essential": true,
                 "ui_group": "Columnas",
                 "ui_order": 1,
                 "ui_widget": "text_input"
@@ -14910,6 +14945,7 @@
                 "description": "Columna con el monto de colocaciones; la misma exposición que ve el estándar.",
                 "title": "Exposición",
                 "type": "string",
+                "ui_essential": true,
                 "ui_group": "Columnas",
                 "ui_order": 3,
                 "ui_widget": "text_input"
@@ -14986,7 +15022,8 @@
                 "title": "Cómo se obtiene la LGD",
                 "ui_group": "LGD",
                 "ui_help": "Cómo se obtiene la severidad de cada grupo homogéneo: resumiendo la que trae tu archivo, o modelándola.",
-                "ui_order": 1
+                "ui_order": 1,
+                "ui_split_essentials": true
               },
               "loss_rate_col": {
                 "anyOf": [
@@ -15057,6 +15094,7 @@
                 "description": "Columna con la cartera de cada exposición, en la taxonomía que use su institución. Debe ser la misma que consuma el método estándar con el que se compare.",
                 "title": "Cartera",
                 "type": "string",
+                "ui_essential": true,
                 "ui_group": "Columnas",
                 "ui_order": 2,
                 "ui_widget": "text_input"
@@ -15102,9 +15140,12 @@
                 "ui_widget": "hidden"
               },
               "type": {
-                "const": "standard",
                 "default": "standard",
-                "description": "Variante de la sección del método interno; hoy solo existe la estándar.",
+                "description": "Variante estándar o composición con toda la población del scorecard.",
+                "enum": [
+                  "standard",
+                  "full_population"
+                ],
                 "title": "Tipo de sección provisioning_internal",
                 "type": "string",
                 "ui_group": "General",
@@ -15113,7 +15154,8 @@
               }
             },
             "title": "InternalProvisioningConfig",
-            "type": "object"
+            "type": "object",
+            "ui_essentials_declared": true
           },
           {
             "type": "null"

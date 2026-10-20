@@ -18,11 +18,12 @@ global cuando está activa.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from bayesrisk.core.config import BayesRiskBaseConfig
+from bayesrisk.core.config.schema import declara_esenciales
 from bayesrisk.core.dataset_check import Requisito
 from bayesrisk.provisioning.internal.exceptions import InternalConfigError
 from bayesrisk.provisioning.lgd import (
@@ -91,6 +92,34 @@ _ROOT_COLUMN_FIELDS: tuple[str, ...] = (
 )
 
 
+def _esenciales_lgd(schema: dict[str, Any]) -> None:
+    """Presentación por rama; nunca modifica el config ni sus identidades (H3 §13)."""
+    props = schema["properties"]
+    assert isinstance(props, dict)
+    method = props.get("method", {}).get("const")
+    if method is None:
+        return
+    names = {"method"}
+    if method == "workout":
+        names.update(
+            {
+                "recovery_col",
+                "workout_ead_col",
+                "workout_cost_col",
+                "workout_time_col",
+                "workout_rate_col",
+            }
+        )
+    elif method in {"provided", "group_historical"}:
+        names.add("lgd_col")
+    elif method in {"beta_regression", "fractional_response"}:
+        names.update({"lgd_col", "recovery_col", "covariate_cols"})
+        props["lgd_col"]["ui_essential_when"] = {"field": "recovery_col", "is_null": True}
+        props["recovery_col"]["ui_essential_when"] = {"field": "recovery_col", "is_null": False}
+    for name in names:
+        props[name]["ui_essential"] = True
+
+
 class _InternalLgdComun(BayesRiskBaseConfig):
     """Lo que toda forma de resolver la LGD comparte: objetivo, piso y techo.
 
@@ -100,6 +129,8 @@ class _InternalLgdComun(BayesRiskBaseConfig):
     una unión si **todas** sus ramas los declaran. No es una concesión al type checker: toda forma
     de obtener una severidad tiene objetivo, piso y techo.
     """
+
+    model_config = ConfigDict(json_schema_extra=_esenciales_lgd)
 
     lgd_col: str = Field(
         default="lgd",
@@ -239,13 +270,12 @@ class _InternalLgdRegresion(_InternalLgdComun):
         default=None,
         title="Columna de tasa recuperada",
         description=(
-            "Columna con el MONTO recuperado de cada operación, en la moneda de la exposición."
+            "Columna con la TASA recuperada, fracción entre 0 y 1; la LGD es uno menos esa tasa."
         ),
         json_schema_extra={
             "ui_help": (
-                "Columna con el MONTO recuperado de cada operación, en la misma moneda que "
-                "la exposición. No es una fracción: entra al valor presente que se divide "
-                "por la exposición."
+                "Tasa recuperada entre 0 y 1, no monto monetario. Si se declara, la LGD "
+                "observada es uno menos esta tasa y no se lee la columna LGD."
             ),
             "column_role": "input",
             "ui_widget": "text_input",
@@ -544,16 +574,18 @@ class InternalProvisioningConfig(BayesRiskBaseConfig):
     Motor experimental: fuera de la garantía SemVer 2.x.
     """
 
+    model_config = ConfigDict(json_schema_extra=declara_esenciales)
+
     schema_version: str = Field(
         default="1.0.0",
         title="Versión del sub-schema provisioning_internal",
         description="Versión local del schema del método interno para migraciones futuras.",
         json_schema_extra={"ui_widget": "hidden", "ui_group": "General", "ui_order": 0},
     )
-    type: Literal["standard"] = Field(
+    type: Literal["standard", "full_population"] = Field(
         default="standard",
         title="Tipo de sección provisioning_internal",
-        description="Variante de la sección del método interno; hoy solo existe la estándar.",
+        description="Variante estándar o composición con toda la población del scorecard.",
         json_schema_extra={"ui_widget": "hidden", "ui_group": "General", "ui_order": 1},
     )
     as_of_date_col: str = Field(
@@ -561,6 +593,7 @@ class InternalProvisioningConfig(BayesRiskBaseConfig):
         title="Fecha de cálculo",
         description="Columna con la fecha de cierre contable; debe traer un valor único.",
         json_schema_extra={
+            "ui_essential": True,
             "column_role": "input",
             "ui_widget": "text_input",
             "ui_group": "Columnas",
@@ -586,6 +619,7 @@ class InternalProvisioningConfig(BayesRiskBaseConfig):
             "Debe ser la misma que consuma el método estándar con el que se compare."
         ),
         json_schema_extra={
+            "ui_essential": True,
             "column_role": "input",
             "ui_widget": "text_input",
             "ui_group": "Columnas",
@@ -613,6 +647,7 @@ class InternalProvisioningConfig(BayesRiskBaseConfig):
         title="Exposición",
         description="Columna con el monto de colocaciones; la misma exposición que ve el estándar.",
         json_schema_extra={
+            "ui_essential": True,
             "column_role": "input",
             "ui_widget": "text_input",
             "ui_group": "Columnas",
@@ -681,6 +716,7 @@ class InternalProvisioningConfig(BayesRiskBaseConfig):
         # precedente vivo de una unión en el formulario, `PartitionConfig.strategy`, declara
         # `ui_help` y ningún widget.
         json_schema_extra={
+            "ui_split_essentials": True,
             "ui_help": (
                 "Cómo se obtiene la severidad de cada grupo homogéneo: resumiendo la que trae tu "
                 "archivo, o modelándola."

@@ -11,6 +11,12 @@ entradas anteriores conservan el nombre con el que se publicaron.
 
 ### Añadido
 
+- Puerta experimental `Provision` para provisión interna con PD/LGD declaradas, composición
+  con `Scorecard` sobre toda la cartera y entregables HTML, Word, PDF, Excel, CSV y ZIP.
+  Conserva la fórmula grupal y el prorrateo por exposición. Incluye esenciales condicionales,
+  recorrido de pantalla y notebook mínimo; no acredita calidad de las entradas.
+  El entrenamiento LGD con historia separada es la capa siguiente de H3 y aún no está entregado.
+
 - Evaluación contextual de validación (`hl_context_v1`) y diagnóstico de calibración que
   conserva juntas las PD iguales, disponibles por API, guiada, pantalla, informes y exports.
   El HL convencional, sus tablas y su estado histórico se conservan; HL deja de decidir la

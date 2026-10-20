@@ -60,6 +60,43 @@ _HAS_WEASYPRINT = _weasyprint_utilizable()
 _MARCA = "marcaunicaxyzbayesrisk"
 
 
+@pytest.mark.skipif(not _HAS_WEASYPRINT, reason="WeasyPrint nativo se verifica en CI PDF")
+def test_h3_pdf_final_muestra_procedencia_y_supuestos(tmp_path: Path) -> None:
+    """La evidencia final H3 se publica por el job PDF para inspección visual del writer."""
+    import os
+
+    from bayesrisk import Provision
+
+    pypdf = pytest.importorskip("pypdf")
+    directory = Path(os.environ.get("BAYESRISK_H3_PDF_EVIDENCE", str(tmp_path)))
+    frame = pd.DataFrame(
+        {
+            "fecha": ["2026-01-01"] * 2,
+            "cartera": ["A"] * 2,
+            "exposicion": [100.0] * 2,
+            "pd": [0.1, 0.9],
+            "lgd": [0.2, 0.8],
+        }
+    )
+    p = Provision(
+        frame,
+        as_of="fecha",
+        portfolio="cartera",
+        exposure="exposicion",
+        pd="pd",
+        lgd="lgd",
+        run_dir=directory,
+        formats=["pdf", "csv"],
+    )
+    p.run(raise_on_error=True)
+    path = next((p.project_dir / "reports").glob("*.pdf"))
+    reader = pypdf.PdfReader(path)
+    text = "\n".join(page.extract_text() for page in reader.pages)
+    assert "Supuestos" in text and "PD externa" in text
+    assert "prorratea" in text and "74" in text
+    assert "provisioning_internal_detail.csv" in text
+
+
 def _lineage() -> LineageBundle:
     """Lineage fijo mínimo para el bundle sintético."""
     return LineageBundle(

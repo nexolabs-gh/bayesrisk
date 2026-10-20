@@ -32,6 +32,7 @@ se publicó como adelanto en la 2.15.0.
 from bayesrisk.guided.comparison import Comparison, ComparisonInputError, ComparisonRunError
 from bayesrisk.guided.ecl import Ecl, EclInputError, EclRunError
 from bayesrisk.guided.monitor import Monitor, MonitorInputError, MonitorRunError
+from bayesrisk.guided.provision import Provision, ProvisionInputError, ProvisionRunError
 from bayesrisk.guided.scorecard import Scorecard, ScorecardInputError, ScorecardRunError
 from bayesrisk.guided.summaries import (
     STAGE_LABELS,
@@ -57,6 +58,9 @@ __all__ = [
     "Monitor",
     "MonitorInputError",
     "MonitorRunError",
+    "Provision",
+    "ProvisionInputError",
+    "ProvisionRunError",
     "Scorecard",
     "ScorecardInputError",
     "ScorecardRunError",

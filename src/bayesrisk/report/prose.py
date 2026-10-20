@@ -2603,6 +2603,10 @@ def _results_provisioning_internal(bundle: ReportInputBundle) -> tuple[str, ...]
         "número reportado—",
         "model": "la PD del modelo",
     }.get(pd_source, "la PD configurada")
+    if _mapping(_mapping(card.get("metric_sections")).get("provisioning_internal")).get(
+        "pd_external"
+    ):
+        fuente_pd = "una tabla externa declarada; esta corrida no la ajustó ni calibró"
     if method == "direct_loss_rate":
         pd_label = {
             "calibration": "La PD calibrada",
@@ -3391,6 +3395,31 @@ def _decisiones_humanas_de_la_ficha(bundle: ReportInputBundle) -> tuple[str, ...
     return (sin_decisiones,) if sin_decisiones else ()
 
 
+def internal_report_family(bundle: ReportInputBundle) -> str | None:
+    """Recorrido H3 efectivo; no reetiqueta un informe con otro motor de provisión."""
+    family = (bundle.summary or {}).get("family")
+    if (
+        family in {"provision_interna", "pd_provision"}
+        and "provisioning_internal" in bundle.cards
+        and not {"provisioning_cmf", "provisioning_ifrs9", "provisioning"} & bundle.cards.keys()
+    ):
+        return str(family)
+    return None
+
+
+def internal_scope(bundle: ReportInputBundle) -> str:
+    """Alcance común a los renderizadores y al capítulo de limitaciones H3."""
+    pd = (
+        " Incluye las etapas de PD ejecutadas, cuya validación no se extiende a la LGD."
+        if internal_report_family(bundle) == "pd_provision"
+        else " La PD es una entrada declarada; no se ajustó ni calibró en esta corrida."
+    )
+    return (
+        "Cálculo experimental de provisión interna por grupos, con detalle prorrateado por "
+        "exposición. No certifica la calidad de PD o LGD ni el cumplimiento normativo." + pd
+    )
+
+
 def limitations_body(bundle: ReportInputBundle) -> tuple[str, ...]:
     """Limitaciones: alcance de la fase, caveats de determinismo y secciones ausentes."""
     tiene_provisiones = _card(bundle, "provisioning") is not None
@@ -3398,7 +3427,9 @@ def limitations_body(bundle: ReportInputBundle) -> tuple[str, ...]:
     tiene_monitoreo = _card(bundle, "monitoring") is not None and _card(bundle, "scorecard") is None
     validation = _card(bundle, "validation") if "validation" in bundle.results else None
     validation_families = set(_sequence(validation.get("families_run"))) if validation else set()
-    if tiene_monitoreo:
+    if internal_report_family(bundle):
+        alcance = internal_scope(bundle)
+    elif tiene_monitoreo:
         # SDD-33 capa B (pasada 1 de Codex): un monitoreo no construye ni valida un modelo; decirlo
         # contradiría su capítulo.
         alcance = (

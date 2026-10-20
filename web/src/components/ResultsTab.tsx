@@ -2099,6 +2099,7 @@ export function ContextualValidationPanel({ validation, showTables = true }: { v
 
 function RunSummarySection({ summaries, validation }: { summaries: RunSummaries; validation: ValidationResult | null }) {
   const { final, stages, error } = summaries
+  const isPortfolio = ["cartera", "provision_interna", "pd_provision"].includes(final?.family ?? "")
   const historicalNotice = validation
     ? validation.interpretation?.policy_id === "hl_context_v1" ? null
       : validation.interpretation ? UNSUPPORTED_POLICY_TEXT : HISTORICAL_READING_TEXT
@@ -2123,7 +2124,7 @@ function RunSummarySection({ summaries, validation }: { summaries: RunSummaries;
             </div>
             {/* Una provisión no tiene veredicto técnico: en su lugar, lo que la cifra supone
                 (FLUJO-GUIADO-IFRS9 D-ECL-7), leído del config y los artefactos de ESTA corrida. */}
-            {final.family === "cartera" ? null : (
+            {isPortfolio ? null : (
               <div className="flex flex-wrap gap-x-2">
                 {/* Un monitoreo dice su «Veredicto» (SDD-33 §3.5), no una validación técnica. */}
                 <dt className="font-medium text-foreground">
@@ -2133,7 +2134,7 @@ function RunSummarySection({ summaries, validation }: { summaries: RunSummaries;
               </div>
             )}
           </dl>
-          {final.family === "cartera" ? (
+          {isPortfolio ? (
             <Subchart title="Supuestos">
               <ul className="space-y-1 text-sm text-foreground/90">
                 {(final.assumptions ?? []).map((supuesto) => (

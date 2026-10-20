@@ -33,7 +33,7 @@ contractual nuevo requiere un SDD nuevo o una revisión explícita.
 
 ## Cómo se produce (proceso)
 
-Enmienda H3 **propuesta para revisión; no aprobada ni implementada** (S61):
+Enmienda H3 **aprobada por Cami para implementar A+B; implementación en curso** (S61):
 [`_ENMIENDA-H3-PD-LGD-Y-PROVISION-INTERNA.md`](_ENMIENDA-H3-PD-LGD-Y-PROVISION-INTERNA.md).
 Mide las brechas de las tres puertas y propone historia LGD separada de su aplicación, conservando
 la provisión grupal y las rutas actuales. No convierte el roadmap en autorización de implementar.

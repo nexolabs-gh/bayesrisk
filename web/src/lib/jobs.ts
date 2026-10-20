@@ -122,6 +122,8 @@ export interface ExternalArtifact {
 
 /** Un trabajo del catálogo, tal como lo publica `GET /api/jobs`. */
 export interface Job {
+  /** Recorrido explícito dentro de las mismas secciones; lo declara el catálogo. */
+  config_match?: { path: string; equals: string }
   id: string
   /** Nombre de negocio (D-JOB-14): como lo llaman los equipos dentro de un banco. */
   label: string
@@ -1017,10 +1019,13 @@ export function jobForConfig(
   if (activas.length === 0) return null
   const candidatos = jobs.filter((job) => {
     const suyas = new Set(job.sections)
-    return activas.every((key) => suyas.has(key))
+    return activas.every((key) => suyas.has(key)) && (
+      !job.config_match || valueAtPath(config, job.config_match.path) === job.config_match.equals
+    )
   })
   if (candidatos.length === 0) return null
-  return candidatos.reduce((mejor, job) =>
+  const especificos = candidatos.filter((job) => job.config_match)
+  return (especificos.length ? especificos : candidatos).reduce((mejor, job) =>
     job.sections.length < mejor.sections.length ? job : mejor,
   )
 }

@@ -24,7 +24,7 @@ from bayesrisk.ui.routes import schema_payload
 TOPE_ESENCIALES_POR_SECCION: Final = 6
 #: La única excepción al tope, sólo para esta sección (FLUJO-GUIADO-IFRS9 §8-4; 7 → 10 por
 #: CASO-REAL-IFRS9 §8-3; 10 → 12 por IFRS9-FIRMABLE §8-5).
-EXCEPCION_AL_TOPE: Final[dict[str, int]] = {"provisioning_ifrs9": 12}
+EXCEPCION_AL_TOPE: Final[dict[str, int]] = {"provisioning_ifrs9": 12, "provisioning_internal": 9}
 
 #: Los caminos marcados, por sección, tal como los pinta la tabla §3.8 de la enmienda del
 #: scorecard (39 marcas en sus 12 secciones; ``eda`` no tiene ninguna: todo default, el resumen lo
@@ -34,6 +34,19 @@ EXCEPCION_AL_TOPE: Final[dict[str, int]] = {"provisioning_ifrs9": 12}
 #: Un mismo camino puede vivir en varias ramas de una unión (``holdout_fraction``) y se lista una
 #: vez.
 ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
+    "provisioning_internal": (
+        "provisioning_internal.as_of_date_col",
+        "provisioning_internal.portfolio_col",
+        "provisioning_internal.exposure_col",
+        "provisioning_internal.lgd.method",
+        "provisioning_internal.lgd.lgd_col",
+        "provisioning_internal.lgd.recovery_col",
+        "provisioning_internal.lgd.covariate_cols",
+        "provisioning_internal.lgd.workout_ead_col",
+        "provisioning_internal.lgd.workout_cost_col",
+        "provisioning_internal.lgd.workout_time_col",
+        "provisioning_internal.lgd.workout_rate_col",
+    ),
     "data": (
         "data.load.source",
         "data.schema.unique_keys",
@@ -122,6 +135,7 @@ ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
 #: Lo que la pantalla muestra a la vez por sección (la rama más cargada de la partición: fecha o
 #: cohorte con su frontera y su holdout). Es la cifra 2 de SDD-31 §5 para el scorecard.
 ESENCIALES_VISIBLES_A_LA_VEZ: Final[dict[str, int]] = {
+    "provisioning_internal": 9,
     "data": 6,
     "eda": 0,
     "binning": 5,
@@ -220,13 +234,13 @@ def _secciones() -> dict[str, dict[str, Any]]:
 def test_el_golden_cubre_las_dieciseis_secciones() -> None:
     """Las trece del scorecard, las tres de cálculo de IFRS 9 —survival, forward y la provisión— y,
     desde la capa B del SDD-33, el monitoreo: diecisiete (el nombre conserva su historia)."""
-    assert len(ESENCIALES_POR_SECCION) == 18
+    assert len(ESENCIALES_POR_SECCION) == 19
     assert set(_secciones()) == set(ESENCIALES_POR_SECCION)
     # 39 caminos del scorecard (37 hasta la capa B del SDD-32, que suma los dos de la escala;
     # 41 marcas: un camino de la partición vive en varias ramas) y 20 de IFRS 9 (12 hasta
     # CASO-REAL-IFRS9 §8-3; 15 hasta IFRS9-FIRMABLE §8-5; 17 hasta su capa C) y 3 del monitoreo
     # (SDD-33 capa B).
-    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 63
+    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 74
 
 
 def test_cada_marca_del_schema_esta_en_el_golden_y_cada_entrada_del_golden_esta_marcada() -> None:
@@ -249,7 +263,7 @@ def test_ninguna_seccion_muestra_mas_de_seis_esenciales_a_la_vez() -> None:
         assert visibles == ESENCIALES_VISIBLES_A_LA_VEZ[seccion], (seccion, visibles)
         tope = EXCEPCION_AL_TOPE.get(seccion, TOPE_ESENCIALES_POR_SECCION)
         assert visibles <= tope, (seccion, visibles)
-    assert set(EXCEPCION_AL_TOPE) == {"provisioning_ifrs9"}
+    assert set(EXCEPCION_AL_TOPE) == {"provisioning_ifrs9", "provisioning_internal"}
 
 
 def test_la_marca_no_es_una_hoja_del_config() -> None:

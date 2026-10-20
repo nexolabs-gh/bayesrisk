@@ -159,7 +159,19 @@ STAGE_LABELS_COMPARACION: Final[dict[str, str]] = {
     "comparison": "Comparación",
     "report": "Informe y ficha",
 }
+STAGE_LABELS_INTERNA: Final[dict[str, str]] = {
+    "data": "Cartera",
+    "provisioning_internal": "Provisión interna",
+    "report": "Informe y ficha",
+}
+STAGE_LABELS_PD_INTERNA: Final[dict[str, str]] = {
+    **{key: value for key, value in STAGE_LABELS.items() if key != "report"},
+    "provisioning_internal": "Provisión interna",
+    "report": "Informe y ficha",
+}
 _FAMILIAS: Final[dict[str, dict[str, str]]] = {
+    "provision_interna": STAGE_LABELS_INTERNA,
+    "pd_provision": STAGE_LABELS_PD_INTERNA,
     "scorecard": STAGE_LABELS,
     "cartera": STAGE_LABELS_CARTERA,
     "monitoreo": STAGE_LABELS_MONITOREO,
@@ -167,6 +179,8 @@ _FAMILIAS: Final[dict[str, dict[str, str]]] = {
 }
 #: El título del resumen final de cada familia (deja de estar fijo en «Resumen del scorecard»).
 _TITULOS: Final[dict[str, str]] = {
+    "provision_interna": "Resumen de la provisión interna",
+    "pd_provision": "Resumen de PD y provisión interna",
     "scorecard": "Resumen del scorecard",
     "cartera": "Resumen de la provisión IFRS 9",
     "monitoreo": "Resumen del monitoreo",
@@ -211,6 +225,12 @@ def family_of(config: Any) -> str:
     """
     if config is None:
         return "scorecard"
+    if getattr(config, "provisioning_internal", None) is not None:
+        return (
+            "pd_provision"
+            if any(getattr(config, d, None) is not None for d in RESULT_DOMAINS)
+            else "provision_interna"
+        )
     if any(getattr(config, dominio, None) is not None for dominio in RESULT_DOMAINS):
         return "scorecard"
     if getattr(config, "provisioning_ifrs9", None) is not None:
@@ -484,7 +504,7 @@ class FinalSummary:
 
     @property
     def _de_cartera(self) -> bool:
-        return self.family == "cartera"
+        return self.family in {"cartera", "provision_interna", "pd_provision"}
 
     @property
     def _rotulo_validacion(self) -> str:
@@ -509,7 +529,9 @@ class FinalSummary:
             )
         cifras = dict(self.figures)
         segunda = tuple(
-            f"{rotulo}: {cifras[rotulo]}" for rotulo in (_ROTULO_ECL_TOTAL,) if rotulo in cifras
+            f"{rotulo}: {cifras[rotulo]}"
+            for rotulo in (_ROTULO_ECL_TOTAL, "Provisión interna total")
+            if rotulo in cifras
         )
         return (f"{r['execution']}: {self.execution}", *segunda)
 
@@ -766,6 +788,10 @@ def build_stage_summaries(study: Study, context: SummaryContext) -> tuple[StageS
 def build_stage_summary(stage: str, study: Study, context: SummaryContext) -> StageSummary:
     """Arma el resumen de ``stage`` con lo que el ``Study`` ya publicó, en la voz de su familia."""
     familia = family_of(getattr(study, "config", None))
+    if stage == "provisioning_internal":
+        return _resumen_interna(study, context)
+    if stage == "data" and familia == "provision_interna":
+        return replace(_resumen_data(study, context), label="Cartera")
     builder = {
         "cartera": _BUILDERS_CARTERA,
         "monitoreo": _BUILDERS_MONITOREO,
@@ -775,6 +801,86 @@ def build_stage_summary(stage: str, study: Study, context: SummaryContext) -> St
     if builder is None:
         return StageSummary(stage=stage, label=label, lines=("Etapa sin resumen propio.",))
     return builder(study, context)
+
+
+def _resumen_interna(study: Study, context: SummaryContext) -> StageSummary:
+    """Cuenta las tablas del motor; no calcula una segunda provisión."""
+    from bayesrisk.report.document import internal_grouping_label
+    from bayesrisk.report.prose import _internal_lgd_paragraphs
+
+    card = _card(study, "provisioning_internal", "card")
+    if card is None:
+        return StageSummary(
+            stage="provisioning_internal",
+            label="Provisión interna",
+            lines=("La provisión no dejó un resultado terminado.",),
+        )
+    groups = _artifact(study, "provisioning_internal", "groups")
+    table = None
+    if isinstance(groups, pd.DataFrame):
+        table = groups.drop(columns=["warning_codes"], errors="ignore").rename(
+            columns={
+                "group_id": "Grupo",
+                "portfolio": "Cartera",
+                "n_operations": "Operaciones",
+                "total_exposure": "Exposición",
+                "pd_group": "PD del grupo",
+                "lgd_group": "LGD del grupo",
+                "expected_loss_rate": "Tasa de pérdida",
+                "provision_amount": "Provisión",
+            }
+        )
+    external = ("calibration", "calibrated_pd_frame") in study._injected_artifacts or (
+        "model",
+        "raw_pd_frame",
+    ) in study._injected_artifacts
+    lines: tuple[str, ...] = (
+        f"{_miles(card['n_rows'])} operaciones · {_miles(card['n_groups'])} grupos",
+        f"Exposición: {_monto(card['total_exposure'])} · "
+        f"Provisión: {_monto(card['total_internal_provision'])}",
+        f"Agrupación: {internal_grouping_label(str(card['grouping']))}",
+        "PD externa declarada: no se ajustó ni calibró en esta corrida"
+        if external
+        else "PD del pipeline de esta corrida",
+        "El detalle prorratea el total grupal por exposición; no suma productos individuales",
+    )
+    alerts = [str(a) for a in card.get("avisos", ())]
+    schema = study.config.data.schema_ if study.config.data is not None else None
+    if schema is None or (not schema.index_col and not schema.unique_keys):
+        alerts.append("Sin identificador de operación declarado: unicidad económica no verificada")
+    lgd_description = _internal_lgd_paragraphs(card)
+    if lgd_description:
+        lines = (*lines, lgd_description[0])
+        alerts.extend(lgd_description[1:])
+    coverage = _artifact(study, "provisioning_internal", "pd_coverage")
+    extra_tables: tuple[tuple[str, pd.DataFrame, Mapping[str, _Kind]], ...] = ()
+    if isinstance(coverage, pd.DataFrame):
+        readable = coverage.rename(
+            columns={
+                "portfolio_rows": "Operaciones de cartera",
+                "main_rows": "PD principal",
+                "out_of_model_rows": "PD fuera del ajuste",
+                "missing_rows": "Operaciones sin PD",
+                "extra_rows": "PD ajena a cartera",
+            }
+        )
+        extra_tables = (("Cobertura de PD", readable, {}),)
+    return StageSummary(
+        stage="provisioning_internal",
+        label="Provisión interna",
+        lines=lines,
+        alerts=tuple(alerts),
+        table=table,
+        extra_tables=extra_tables,
+        formats={
+            "Operaciones": "int",
+            "Exposición": "num2",
+            "Provisión": "num2",
+            "PD del grupo": "pct",
+            "LGD del grupo": "pct",
+            "Tasa de pérdida": "pct",
+        },
+    )
 
 
 def _resumen_data(study: Study, context: SummaryContext) -> StageSummary:
@@ -5095,6 +5201,8 @@ def build_final_summary(
     «Supuestos», y sus cinco cifras son las de la provisión (:func:`_resumen_final_cartera`).
     """
     familia = family_of(getattr(study, "config", None)) if study is not None else context.family
+    if familia in {"provision_interna", "pd_provision"}:
+        return _resumen_final_interna(study, stages, context, familia)
     if familia == "cartera":
         return _resumen_final_cartera(study, stages, context)
     if familia == "monitoreo":
@@ -5117,6 +5225,54 @@ def build_final_summary(
         decisions=tuple(context.decision_lines),
         files=files,
         stages=tuple(stages),
+    )
+
+
+def _resumen_final_interna(
+    study: Study | None,
+    stages: Sequence[StageSummary],
+    context: SummaryContext,
+    family: str,
+) -> FinalSummary:
+    card = _card(study, "provisioning_internal", "card") if study is not None else None
+    figures: tuple[tuple[str, str], ...] = ()
+    assumptions = [
+        "La provisión se calcula por grupos; el detalle prorratea ese total por exposición",
+        "La calidad de PD y LGD no queda certificada por terminar el cálculo",
+    ]
+    if card is not None:
+        figures = (
+            ("Provisión interna total", _monto(card["total_internal_provision"])),
+            ("Exposición total", _monto(card["total_exposure"])),
+            ("Operaciones", _miles(card["n_rows"])),
+            ("Grupos", _miles(card["n_groups"])),
+            (
+                "Cobertura",
+                _pct(
+                    float(card["total_internal_provision"]) / float(card["total_exposure"])
+                    if card["total_exposure"]
+                    else None
+                ),
+            ),
+        )
+    if family == "pd_provision" and study is not None:
+        assumptions.append(f"Validación de la PD: {_estado_de_validacion(study, context)}")
+    if study is not None and any(
+        key in study._injected_artifacts
+        for key in (("calibration", "calibrated_pd_frame"), ("model", "raw_pd_frame"))
+    ):
+        assumptions.append("PD externa declarada: esta corrida no la ajustó ni calibró")
+    return FinalSummary(
+        execution=_estado_de_ejecucion(study, stages, context, stage_labels(family)),
+        validation=SIN_VEREDICTO_TECNICO,
+        figures=figures,
+        review=tuple(f"{s.label}: {a}" for s in stages for a in s.alerts),
+        decisions=tuple(context.decision_lines),
+        files=_archivos(study, context),
+        stages=tuple(stages),
+        title=_TITULOS[family],
+        assumptions=tuple(assumptions),
+        family=family,
     )
 
 

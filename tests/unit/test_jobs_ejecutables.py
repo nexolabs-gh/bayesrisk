@@ -268,7 +268,8 @@ def test_el_barrido_no_es_vacuo(trabajos: list[dict[str, Any]]) -> None:
     """Un gate que recorre cero da verde y no prueba nada: pasó ya dos veces en este repo."""
     disponibles = [j for j in trabajos if j["status"] == "available"]
     # 10 → 11 con la capa B del SDD-33: «Monitorear un modelo en uso».
-    assert len(trabajos) == 12, f"el catálogo tiene {len(trabajos)} trabajos, no 12"
+    # H3 agrega el recorrido explícito que consume la PD de toda la población.
+    assert len(trabajos) == 13, f"el catálogo tiene {len(trabajos)} trabajos, no 13"
     assert len(disponibles) >= 7, f"sólo {len(disponibles)} disponibles: el gate mediría casi nada"
     for ancla in ("scorecard_pd", "pd_lifetime", "comparar_provisiones", "provisiones_ifrs9"):
         assert ancla in {j["id"] for j in disponibles}, f"«{ancla}» debería estar disponible"

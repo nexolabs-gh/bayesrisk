@@ -409,6 +409,8 @@ def max_visible_rows(table_key: str, max_table_rows: int) -> int:
 # filas: un umbral expulsaría del informe justo la evidencia que lo sostiene.
 PER_OBSERVATION_TABLES: Final[frozenset[str]] = frozenset(
     {
+        "provisioning_internal.detail",
+        "provisioning_internal.pd_input",
         "binning.woe_frame",
         "calibration.calibrated_pd_frame",
         "calibration.out_of_model_calibrated_pd_frame",
@@ -422,6 +424,11 @@ PER_OBSERVATION_TABLES: Final[frozenset[str]] = frozenset(
 # Títulos legibles por artefacto tabular: el informe habla de "Coeficientes del modelo PD", no de
 # `model.coefficients`. Las claves dinámicas (una tabla por variable) se resuelven en `table_title`.
 _TABLE_TITLES: Final[dict[str, str]] = {
+    "provisioning_internal.detail": (
+        "Detalle de provisión interna por operación (prorrateo del grupo)"
+    ),
+    "provisioning_internal.pd_input": "PD consumida para toda la cartera",
+    "provisioning_internal.pd_coverage": "Cobertura de PD de la cartera",
     "data.states": "Estados de la población",
     "data.partitions": "Particiones de modelamiento",
     "data.exclusions": "Exclusiones aplicadas",
@@ -565,7 +572,13 @@ CHAPTER_SPECS: Final[tuple[ChapterSpec, ...]] = (
         title="Resumen de la corrida",
         kind="summary",
         numbered=False,
-        requires_any_domain=(*RESULT_DOMAINS, "provisioning_ifrs9", "monitoring", "comparison"),
+        requires_any_domain=(
+            *RESULT_DOMAINS,
+            "provisioning_ifrs9",
+            "provisioning_internal",
+            "monitoring",
+            "comparison",
+        ),
     ),
     ChapterSpec(id="toc", title="Índice", kind="toc", numbered=False),
     ChapterSpec(

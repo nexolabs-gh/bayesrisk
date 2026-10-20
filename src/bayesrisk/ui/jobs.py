@@ -757,6 +757,24 @@ JOB_IDS: tuple[str, ...] = tuple(job["id"] for job in _JOBS)
 # ⚠️ Una decisión que se contesta con UN dato —una columna— declara `answer_forms: ()`. No es un
 # olvido: no hay nada que elegir, y fabricarle una forma única sería una pantalla de más para
 # preguntar lo mismo.
+# H3 es un recorrido adicional: la siembra histórica y F5 conservan su variante estándar.
+_h3_pd_base = next(job for job in _JOBS if job["id"] == "pd_y_lgd")
+_JOBS = (
+    *_JOBS,
+    {
+        **_h3_pd_base,
+        "id": "pd_y_lgd_h3",
+        "label": "PD + provisión de toda la cartera",
+        "description": (
+            "Scorecard y provisión interna con cobertura explícita de operaciones "
+            "fuera del ajuste. Experimental."
+        ),
+        "config_match": {"path": "provisioning_internal.type", "equals": "full_population"},
+        "overrides": (*_h3_pd_base["overrides"], ("provisioning_internal.type", "full_population")),
+    },
+)
+
+
 _DECISIONES_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
     "data": (
         {
