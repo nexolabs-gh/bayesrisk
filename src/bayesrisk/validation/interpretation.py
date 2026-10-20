@@ -517,8 +517,22 @@ def study_interpretation(study: Any) -> tuple[Any, ValidationInterpretation | No
     raw = study.artifacts.get("validation", "interpretation")
     value = read_interpretation(raw)
     if value is not None:
-        card = study.artifacts.get("validation", "card")
-        card = card if isinstance(card, Mapping) else card.model_dump()
+        card = None
+        if study.artifacts.has("validation", "card"):
+            standalone = study.artifacts.get("validation", "card")
+            card = standalone if isinstance(standalone, Mapping) else standalone.model_dump()
+        if study.artifacts.has("validation", "result"):
+            result = study.artifacts.get("validation", "result")
+            if not isinstance(result, ValidationResult):
+                raise ValidationDataError("validation.result debe ser un ValidationResult.")
+            atomic_card = result.card.model_dump()
+            if card is not None and card != atomic_card:
+                raise ValidationDataError(
+                    "La card independiente contradice validation.result.card."
+                )
+            card = atomic_card
+        if card is None:
+            raise ValidationDataError("La interpretación requiere su card histórica de origen.")
         if (
             value.legacy_status != card["overall_status"]
             or value.legacy_n_tests != card["n_tests"]

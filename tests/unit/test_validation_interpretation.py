@@ -422,6 +422,44 @@ def test_contexto_conserva_avisos_de_backtesting_omitido_en_etapa_y_final(tmp_pa
     assert all(any(alert in item for item in final.review) for alert in stage.alerts)
 
 
+@pytest.mark.parametrize("standalone", ["absent", "dto", "mapping", "contradictory"])
+def test_informe_contextual_desde_resultado_atomico_sin_card_duplicada(standalone: str) -> None:
+    from test_report_builder import _study_completo
+
+    from bayesrisk.report.builder import ReportBuilder
+    from bayesrisk.report.config import ReportConfig
+    from bayesrisk.report.exceptions import ReportInputError
+    from bayesrisk.validation.interpretation import study_interpretation
+
+    frame = _frame()
+    result = ValidationEvaluator(_config()).validate(calibrated_pd=frame)
+    interpretation = _interpret(frame)
+    study = _study_completo()
+    study.artifacts.set("validation", "result", result)
+    study.artifacts.set("validation", "interpretation", interpretation)
+    if standalone != "absent":
+        card = result.card.model_dump()
+        if standalone == "contradictory":
+            # Difiere un campo ajeno a los conteos: no basta cotejar el estado.
+            card["falta_dato"] = ("DATO-INSTITUCIONAL-VAL-BACKTEST-1",)
+        study.artifacts.set("validation", "card", result.card if standalone == "dto" else card)
+    builder = ReportBuilder(ReportConfig())
+    if standalone == "contradictory":
+        with pytest.raises(ValidationDataError, match="card"):
+            study_interpretation(study)
+        with pytest.raises(ReportInputError, match="no coincide"):
+            builder.collect(study)
+        return
+    assert study_interpretation(study)[1] == interpretation
+    bundle = builder.collect(study)
+    assert bundle.cards["validation"] == result.card.model_dump()
+    assert bundle.validation_interpretation == interpretation.model_dump(mode="json")
+    table = bundle.tables["validation.calibration_tie_groups.desarrollo"]
+    assert table["Observaciones"].tolist() == [3, 1, 4, 2]
+    body = " ".join(paragraph for section in bundle.sections for paragraph in section.body)
+    assert "contextual" in body.casefold()
+
+
 @pytest.mark.parametrize(
     ("defaults", "light", "status"),
     [
