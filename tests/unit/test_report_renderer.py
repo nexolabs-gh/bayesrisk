@@ -258,16 +258,14 @@ def test_document_view_renderiza_validacion_formal_y_control_negativo() -> None:
 
     view = renderer_module.build_document_view(bundle, config=ReportConfig())
     metric = next(
-        item
-        for item in view["executive"]["metrics"]
-        if item["label"] == "Estado técnico de validación formal"
+        item for item in view["executive"]["metrics"] if item["label"] == "Validación histórica"
     )
     # D-SC-9: la banda sale de la fuente única de las tres palabras del estado técnico, y el
     # semáforo del HTML se deriva de esa misma fuente. Escribirla aquí como literal —y no leerla
     # de `VALIDATION_STATUS_LABELS`— es deliberado: es el golden de que la palabra publicada es
     # ésa, y un cambio de copy tiene que verse aquí.
     assert metric == {
-        "label": "Estado técnico de validación formal",
+        "label": "Validación histórica",
         "scope": "scorecard@oracle",
         # «pruebas», no «tests», y con la concordancia que faltaba: el informe decía «1
         # quedaron fallidos». Mismo rótulo que el panel de Resultados publica arriba.
@@ -286,11 +284,38 @@ def test_document_view_renderiza_validacion_formal_y_control_negativo() -> None:
 
     negative = renderer_module.build_document_view(base, config=ReportConfig())
     assert not any(
-        item["label"] == "Estado técnico de validación formal"
+        item["label"] in {"Validación histórica", "Evaluación contextual"}
         for item in negative["executive"]["metrics"]
     )
     assert not any(item["id"].startswith("validation") for item in negative["sections"])
     assert "no ejecutó la capa de validación formal" in negative["exec_scope_note"]
+
+
+def test_bundle_joblib_anterior_sin_interpretacion_renderiza_directamente(tmp_path: Path) -> None:
+    """La carga pickle no rellena defaults nuevos: render directo, sin reconstruir el bundle."""
+    import joblib
+    from test_report_builder import _study_completo, _validation_result
+
+    from bayesrisk.report.builder import ReportBuilder
+
+    study = _study_completo()
+    result = _validation_result()
+    study.artifacts.set("validation", "result", result)
+    study.artifacts.set("validation", "card", result.card)
+    bundle = ReportBuilder(ReportConfig()).collect(study)
+    state = bundle.__getstate__()
+    state["__dict__"].pop("validation_interpretation")
+    state["__pydantic_fields_set__"].discard("validation_interpretation")
+    bundle.__setstate__(state)
+    path = tmp_path / "input_bundle.joblib"
+    joblib.dump(bundle, path)
+    original = path.read_bytes()
+    loaded = joblib.load(path)
+    assert "validation_interpretation" not in loaded.__dict__
+    rendered = HtmlReportRenderer().render(loaded)
+    assert "Lectura histórica; contexto no disponible" in rendered
+    assert "Diagnóstico descriptivo de calibración" not in rendered
+    assert path.read_bytes() == original
 
 
 def test_documento_tiene_indice_metricas_ejecutivas_y_titulos_legibles() -> None:

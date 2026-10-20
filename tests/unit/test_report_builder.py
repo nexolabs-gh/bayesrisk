@@ -872,9 +872,9 @@ def test_sin_validation_omite_capitulo_tablas_metrica_y_frases_positivas() -> No
     assert not any(section_id.startswith("validation.") for section_id in ids)
     assert not any(key.startswith("validation.") for key in bundle.tables)
     assert "validation" not in bundle.results
-    assert "Estado técnico de validación formal" not in " ".join(
-        paragraph for section in bundle.sections for paragraph in section.body
-    )
+    body = " ".join(paragraph for section in bundle.sections for paragraph in section.body)
+    assert "Validación histórica" not in body
+    assert "Evaluación contextual" not in body
 
     # Una card aislada se conserva para auditoría en Anexo C, pero no sustituye el DTO atómico.
     card_only_study = _study_completo()
@@ -884,7 +884,7 @@ def test_sin_validation_omite_capitulo_tablas_metrica_y_frases_positivas() -> No
     assert "validation" not in card_only.results
     assert "validation" not in {section.id for section in card_only.sections}
     assert not any(
-        metric.label == "Estado técnico de validación formal"
+        metric.label in {"Validación histórica", "Evaluación contextual"}
         for metric in executive_view(card_only).metrics
     )
     assert "no ejecutó la capa de validación formal" in " ".join(limitations_body(card_only))

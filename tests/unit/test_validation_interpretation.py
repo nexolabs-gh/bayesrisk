@@ -394,6 +394,34 @@ def test_politica_futura_persistida_degrada_a_historico(tmp_path: Path, as_mappi
     assert bundle.validation_interpretation["policy_id"] == "hl_context_v2"
 
 
+def test_contexto_conserva_avisos_de_backtesting_omitido_en_etapa_y_final(tmp_path: Path) -> None:
+    from test_validation_step import _scorecard_study
+
+    from bayesrisk.guided.summaries import (
+        SummaryContext,
+        build_final_summary,
+        build_stage_summary,
+    )
+    from bayesrisk.validation.step import ValidationStep
+
+    cfg = ValidationConfig(
+        families=("stability", "backtesting"),
+        backtesting={"enabled": False},
+        fail_on_falta_dato=False,
+    )
+    study = _scorecard_study(config=cfg)
+    result = ValidationStep(cfg).execute(study, np.random.default_rng(4))
+    assert result.card.overall_status == "pass"
+    assert result.card.falta_dato
+    context = SummaryContext(tmp_path, tmp_path / "run", "Datos de prueba", "Muestras declaradas")
+    stage = build_stage_summary("validation", study, context)
+    assert any("backtesting" in alert.casefold() for alert in stage.alerts)
+    assert not any("DATO-INSTITUCIONAL" in alert for alert in stage.alerts)
+    final = build_final_summary(study, [stage], context)
+    assert any("backtesting" in item.casefold() for item in final.review)
+    assert all(any(alert in item for item in final.review) for alert in stage.alerts)
+
+
 @pytest.mark.parametrize(
     ("defaults", "light", "status"),
     [

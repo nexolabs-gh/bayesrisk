@@ -117,6 +117,8 @@ def test_report_input_bundle_golden_copias_frozen_y_extra() -> None:
         "cards",
         "results",
         "tables",
+        # D-HLC: artefacto contextual separado, sin sobrescribir validation histórica.
+        "validation_interpretation",
         "figures",
         "sections",
         "missing_sections",
@@ -158,6 +160,7 @@ def test_report_input_bundle_golden_copias_frozen_y_extra() -> None:
         "summary",
     )
     assert bundle.summary is None, "sin corrida el bundle no afirma ningún resumen"
+    assert bundle.validation_interpretation is None, "sin artefacto no se infiere contexto"
     assert bundle.ifrs9_extras == {}, "sin corrida el bundle no afirma escenarios ni PD"
     assert bundle.master_scale_body == (), "sin corrida el bundle no afirma ninguna escala"
     assert bundle.monitoring_body == (), "sin corrida el bundle no afirma ningún monitoreo"

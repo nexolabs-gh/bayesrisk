@@ -282,7 +282,7 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
             read_interpretation,
         )
 
-        interpretation = read_interpretation(bundle.validation_interpretation)
+        interpretation = read_interpretation(_interpretation_payload(bundle))
         current = interpretation.model_dump() if interpretation is not None else validation
         n_tests = _int(current.get("n_tests"))
         n_failed = _int(current.get("n_failed"))
@@ -292,7 +292,7 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
             if interpretation is not None
             else (
                 HISTORICAL_READING_TEXT
-                if bundle.validation_interpretation is None
+                if _interpretation_payload(bundle) is None
                 else UNSUPPORTED_POLICY_TEXT,
             )
         )
@@ -1290,6 +1290,11 @@ def _declared_warning_descriptions(entries: Sequence[str]) -> tuple[str, ...]:
 # ────────────────────────────── validación formal ──────────────────────────────
 
 
+def _interpretation_payload(bundle: ReportInputBundle) -> Any:
+    """La deserialización de bundles históricos no aplica defaults de campos nuevos."""
+    return getattr(bundle, "validation_interpretation", None)
+
+
 def validation_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
     """Resume objetivamente la card del ``ValidationResult`` sin emitir veredicto humano."""
     if "validation" not in bundle.results:
@@ -1311,14 +1316,14 @@ def validation_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
         read_interpretation,
     )
 
-    interpretation = read_interpretation(bundle.validation_interpretation)
+    interpretation = read_interpretation(_interpretation_payload(bundle))
     paragraphs = [
         *(
             interpretation_lines(interpretation)
             if interpretation is not None
             else (
                 HISTORICAL_READING_TEXT
-                if bundle.validation_interpretation is None
+                if _interpretation_payload(bundle) is None
                 else UNSUPPORTED_POLICY_TEXT,
             )
         ),
@@ -1420,7 +1425,7 @@ def validation_family_body(bundle: ReportInputBundle, family: str) -> tuple[str,
             read_interpretation,
         )
 
-        interpretation = read_interpretation(bundle.validation_interpretation)
+        interpretation = read_interpretation(_interpretation_payload(bundle))
         if interpretation is not None:
             description = (
                 "El diagnóstico descriptivo conserva juntas las PD iguales; sus grupos no tienen "
@@ -3447,7 +3452,7 @@ def limitations_body(bundle: ReportInputBundle) -> tuple[str, ...]:
             read_interpretation,
         )
 
-        interpretation = read_interpretation(bundle.validation_interpretation)
+        interpretation = read_interpretation(_interpretation_payload(bundle))
         alcance += " " + CALIBRATION_COVERAGE_TEXT + "."
         if interpretation is not None and interpretation.coverage_gap:
             alcance += " " + CONTEXT_GAP_TEXT + ". La procedencia sólo describe la calibración."

@@ -2260,6 +2260,12 @@ def _resumen_validation(study: Study, context: SummaryContext) -> StageSummary:
                 (interpretation_lines(interpretation)[0],)
                 if interpretation.overall_status != "pass"
                 else ()
+            )
+            + tuple(
+                _capitalizar(a)
+                for a in _declared_warning_descriptions(
+                    tuple(str(a) for a in _sequence((card or {}).get("falta_dato")))
+                )
             ),
             table=historical,
             formats={"Valor": "num", "p-valor": "pvalor"},
