@@ -2692,9 +2692,10 @@ _ABANICO_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
                     "label": "Descomponerla en probabilidad y severidad",
                     "help": (
                         "Multiplica el monto colocado del grupo por su probabilidad de incumplir "
-                        "y por su severidad. Necesita que tu archivo traiga la severidad "
-                        "observada de cada operación, y no admite que además declares una tasa de "
-                        "pérdida."
+                        "y por su severidad. Usa la fuente LGD que elijas: una columna, "
+                        "el cálculo de recuperaciones o un modelo. El predictor de historia "
+                        "separada no requiere LGD observada en la cartera. No admite que "
+                        "además declares una tasa de pérdida."
                     ),
                     "estado": _DISPONIBLE,
                     "motivo": None,

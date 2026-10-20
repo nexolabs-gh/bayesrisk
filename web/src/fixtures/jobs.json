@@ -4472,7 +4472,7 @@
             {
               "estado": "disponible",
               "exige": [],
-              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Necesita que tu archivo traiga la severidad observada de cada operación, y no admite que además declares una tasa de pérdida.",
+              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Usa la fuente LGD que elijas: una columna, el cálculo de recuperaciones o un modelo. El predictor de historia separada no requiere LGD observada en la cartera. No admite que además declares una tasa de pérdida.",
               "label": "Descomponerla en probabilidad y severidad",
               "motivo": null,
               "value": "pd_lgd"
@@ -5847,7 +5847,7 @@
             {
               "estado": "disponible",
               "exige": [],
-              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Necesita que tu archivo traiga la severidad observada de cada operación, y no admite que además declares una tasa de pérdida.",
+              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Usa la fuente LGD que elijas: una columna, el cálculo de recuperaciones o un modelo. El predictor de historia separada no requiere LGD observada en la cartera. No admite que además declares una tasa de pérdida.",
               "label": "Descomponerla en probabilidad y severidad",
               "motivo": null,
               "value": "pd_lgd"
@@ -7105,7 +7105,7 @@
             {
               "estado": "disponible",
               "exige": [],
-              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Necesita que tu archivo traiga la severidad observada de cada operación, y no admite que además declares una tasa de pérdida.",
+              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Usa la fuente LGD que elijas: una columna, el cálculo de recuperaciones o un modelo. El predictor de historia separada no requiere LGD observada en la cartera. No admite que además declares una tasa de pérdida.",
               "label": "Descomponerla en probabilidad y severidad",
               "motivo": null,
               "value": "pd_lgd"
@@ -8796,7 +8796,7 @@
             {
               "estado": "disponible",
               "exige": [],
-              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Necesita que tu archivo traiga la severidad observada de cada operación, y no admite que además declares una tasa de pérdida.",
+              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Usa la fuente LGD que elijas: una columna, el cálculo de recuperaciones o un modelo. El predictor de historia separada no requiere LGD observada en la cartera. No admite que además declares una tasa de pérdida.",
               "label": "Descomponerla en probabilidad y severidad",
               "motivo": null,
               "value": "pd_lgd"
@@ -10596,7 +10596,7 @@
             {
               "estado": "disponible",
               "exige": [],
-              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Necesita que tu archivo traiga la severidad observada de cada operación, y no admite que además declares una tasa de pérdida.",
+              "help": "Multiplica el monto colocado del grupo por su probabilidad de incumplir y por su severidad. Usa la fuente LGD que elijas: una columna, el cálculo de recuperaciones o un modelo. El predictor de historia separada no requiere LGD observada en la cartera. No admite que además declares una tasa de pérdida.",
               "label": "Descomponerla en probabilidad y severidad",
               "motivo": null,
               "value": "pd_lgd"

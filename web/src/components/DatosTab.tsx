@@ -431,8 +431,8 @@ function WelcomeCard({ sembrado, onRun, onDismiss }: WelcomeCardProps) {
               Cómo funciona
             </p>
             <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              El pipeline va del dataset al scorecard en un paso: binning, selección de
-              variables, modelo, escalado a puntaje y calibración de PD.{" "}
+              El recorrido ejecuta las etapas del trabajo elegido, desde los datos hasta
+              sus resultados e informe.{" "}
               {sembrado
                 ? "Eliges un dataset, ejecutas la corrida y revisas los resultados y el reporte. La configuración de este ejemplo ya viene cargada y validada, así que puedes ejecutarlo tal cual, sin configurar nada. Ajustar la configuración es opcional."
                 : "Empieza trayendo tu archivo —CSV, Excel o Parquet—: el backend lee sus columnas y la configuración te va diciendo qué falta ajustar antes de correr. Si prefieres ver el motor funcionando primero, más abajo hay datasets de ejemplo."}
