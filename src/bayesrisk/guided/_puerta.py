@@ -398,7 +398,7 @@ class _PuertaGuiada:
         try:
             self._study = bayesrisk.run(
                 config,
-                artifacts=self._artifacts,
+                artifacts=deepcopy(self._artifacts),
                 run_dir=self._run_dir,
                 preamble=self._preamble(),
                 on_step=self._contar_etapa,

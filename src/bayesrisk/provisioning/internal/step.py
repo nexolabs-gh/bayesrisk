@@ -290,8 +290,14 @@ def _pd_poblacion_completa(
     for tabla in (principal, complementaria):
         if len(tabla) and cfg.pd_column not in tabla:
             raise InternalInputError(f"La tabla de PD no trae la columna {cfg.pd_column!r}.")
-    result = pandas.concat([principal, complementaria], axis=0)
-    missing = frame.index.difference(result.index)
+    indices = principal.index.append(complementaria.index)
+    disponibles = principal.index[:0]
+    for tabla in (principal, complementaria):
+        if len(tabla):
+            disponibles = disponibles.append(tabla.index[tabla[cfg.pd_column].notna()])
+    # La cobertura exige una PD presente, no sólo una fila. El flag histórico que tolera
+    # FALTA-DATO en standard no puede convertir una PD ausente en cero en este consumidor.
+    missing = frame.index.difference(disponibles)
     coverage = pandas.DataFrame(
         [
             {
@@ -299,7 +305,7 @@ def _pd_poblacion_completa(
                 "main_rows": len(principal),
                 "out_of_model_rows": len(complementaria),
                 "missing_rows": len(missing),
-                "extra_rows": len(result.index.difference(frame.index)),
+                "extra_rows": len(indices.difference(frame.index)),
             }
         ]
     )
@@ -316,6 +322,7 @@ def _pd_poblacion_completa(
             "Resuelve la puntuación fuera del ajuste o aporta una PD completa. "
             "Se conservan los resultados del scorecard; no se elimina exposición."
         )
+    result = pandas.concat([principal, complementaria], axis=0)
     study.artifacts.set("provisioning_internal", "pd_input", result.copy(deep=True))
     return cast("DataFrame", result)
 

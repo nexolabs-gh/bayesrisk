@@ -688,8 +688,6 @@ _SECCIONES_LATENTES: dict[str, str] = {
     ),
 }
 
-JOB_IDS: tuple[str, ...] = tuple(job["id"] for job in _JOBS)
-
 
 # Las DECISIONES OBLIGATORIAS que impone cada sección (D-OBL-6): lo que el motor no puede rellenar
 # por nadie porque es criterio de la institución, no un default.
@@ -773,6 +771,8 @@ _JOBS = (
         "overrides": (*_h3_pd_base["overrides"], ("provisioning_internal.type", "full_population")),
     },
 )
+
+JOB_IDS: tuple[str, ...] = tuple(job["id"] for job in _JOBS)
 
 
 _DECISIONES_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {

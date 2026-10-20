@@ -75,6 +75,36 @@ def test_variante_estandar_conserva_contrato_de_artefactos() -> None:
     assert len(step.provides) == 5
 
 
+@pytest.mark.parametrize("pd_ausente", [None, np.nan, pd.NA])
+def test_cobertura_rechaza_pd_nula_aunque_se_tolere_falta_dato(pd_ausente) -> None:
+    cfg = InternalProvisioningConfig(type="full_population", fail_on_falta_dato=False)
+    study = Study(BayesRiskConfig(provisioning_internal=cfg), apply_global_seed=False)
+    study.artifacts.set(
+        "data",
+        "frame",
+        pd.DataFrame(
+            {
+                "as_of_date": ["2026-01-01"] * 2,
+                "portfolio": ["A"] * 2,
+                "exposure_amount": [100.0] * 2,
+                "lgd": [0.2, 0.8],
+            }
+        ),
+    )
+    study.artifacts.set(
+        "calibration", "calibrated_pd_frame", pd.DataFrame({"pd_calibrated": [0.1]}, index=[0])
+    )
+    study.artifacts.set(
+        "calibration",
+        "out_of_model_calibrated_pd_frame",
+        pd.DataFrame({"pd_calibrated": [pd_ausente]}, index=[1]),
+    )
+    with pytest.raises(InternalInputError, match="Falta PD para 1 operaciones"):
+        InternalProvisioningStep(cfg).execute(study, np.random.default_rng(0))
+    assert study.artifacts.get("provisioning_internal", "pd_coverage").iloc[0].missing_rows == 1
+    assert not study.artifacts.has("provisioning_internal", "detail")
+
+
 def test_copy_tasa_regresion_monto_workout() -> None:
     from bayesrisk.provisioning.internal.config import (
         InternalLgdBetaRegression,

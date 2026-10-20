@@ -116,6 +116,19 @@ def test_fuente_mutada_no_se_reutiliza(tmp_path: Path) -> None:
         p.run()
 
 
+def test_resume_aisla_las_entradas_del_artefacto_publico(tmp_path: Path) -> None:
+    p = puerta(tmp_path)
+    p.run(raise_on_error=True)
+    before = p.study.artifacts.get("provisioning_internal", "detail").copy(deep=True)
+    p.study.artifacts.get("calibration", "calibrated_pd_frame").iloc[0, 0] = 0.9
+    p.resume()
+    pd.testing.assert_frame_equal(
+        p.study.artifacts.get("provisioning_internal", "detail"),
+        before,
+        check_exact=True,
+    )
+
+
 def test_identificador_duplicado_rechaza_y_no_imputa(tmp_path: Path) -> None:
     from bayesrisk import Provision
 
