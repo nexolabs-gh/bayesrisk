@@ -274,6 +274,8 @@ def _pd_poblacion_completa(
     pandas: Any,
 ) -> DataFrame:
     """Unión aditiva sin reestimar PD ni recortar exposición; conserva los artefactos F1."""
+    from bayesrisk.provisioning.internal.engine import _decimal_or_none
+
     domain, key = _pd_complementaria(cfg.pd_source)
     complementaria = (
         _as_dataframe(study.artifacts.get(domain, key), pandas, f"{domain}.{key}")
@@ -294,7 +296,12 @@ def _pd_poblacion_completa(
     disponibles = principal.index[:0]
     for tabla in (principal, complementaria):
         if len(tabla):
-            disponibles = disponibles.append(tabla.index[tabla[cfg.pd_column].notna()])
+            presente = [
+                _decimal_or_none(value, column=cfg.pd_column, row_id=str(idx), pandas=pandas)
+                is not None
+                for idx, value in tabla[cfg.pd_column].items()
+            ]
+            disponibles = disponibles.append(tabla.index[presente])
     # La cobertura exige una PD presente, no sólo una fila. El flag histórico que tolera
     # FALTA-DATO en standard no puede convertir una PD ausente en cero en este consumidor.
     missing = frame.index.difference(disponibles)

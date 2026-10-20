@@ -75,7 +75,7 @@ def test_variante_estandar_conserva_contrato_de_artefactos() -> None:
     assert len(step.provides) == 5
 
 
-@pytest.mark.parametrize("pd_ausente", [None, np.nan, pd.NA])
+@pytest.mark.parametrize("pd_ausente", [None, np.nan, pd.NA, "", "   ", "\t"])
 def test_cobertura_rechaza_pd_nula_aunque_se_tolere_falta_dato(pd_ausente) -> None:
     cfg = InternalProvisioningConfig(type="full_population", fail_on_falta_dato=False)
     study = Study(BayesRiskConfig(provisioning_internal=cfg), apply_global_seed=False)
