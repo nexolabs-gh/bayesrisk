@@ -31,6 +31,8 @@ def model() -> LgdModel:
 
 @pytest.mark.parametrize("suffix", ["csv", "parquet", "xlsx"])
 def test_modelo_global_no_se_empareja_y_preserva_coeficientes(tmp_path: Path, suffix: str):
+    if suffix == "xlsx":
+        pytest.importorskip("openpyxl")
     table = model().to_frame()
     if suffix == "csv":
         content = table.to_csv(index=False).encode()
@@ -99,6 +101,8 @@ def test_pd_no_elude_conteo_y_cache_generico_no_se_recicla(tmp_path: Path):
 
 @pytest.mark.parametrize("suffix", ["csv", "xlsx"])
 def test_lector_no_trunca_posiciones_ni_version(tmp_path: Path, suffix: str):
+    if suffix == "xlsx":
+        pytest.importorskip("openpyxl")
     for field in ["position", "format_version"]:
         table = model().to_frame()
         table[field] = table[field].astype(float) + 0.5
@@ -110,6 +114,8 @@ def test_lector_no_trunca_posiciones_ni_version(tmp_path: Path, suffix: str):
 
 @pytest.mark.parametrize("suffix", ["csv", "parquet", "xlsx"])
 def test_codec_transporta_nombres_nominales_y_rechaza_pickle(tmp_path: Path, suffix: str):
+    if suffix == "xlsx":
+        pytest.importorskip("openpyxl")
     from dataclasses import replace
 
     import numpy as np

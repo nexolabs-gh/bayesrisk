@@ -104,28 +104,30 @@ def test_historia_invalida_no_entrega_modelo(tmp_path: Path, defect: str):
         _ = p.model_
 
 
-def test_modelo_cerrado_transporte_y_prediccion_defensiva(tmp_path: Path):
+@pytest.mark.parametrize("suffix", ["csv", "parquet", "xlsx"])
+def test_modelo_cerrado_transporte_y_prediccion_defensiva(tmp_path: Path, suffix: str):
+    if suffix == "xlsx":
+        pytest.importorskip("openpyxl")
     from bayesrisk.lgd_training.model import read_model_table
 
     p = puerta(tmp_path).run(until="lgd_training", raise_on_error=True)
     table = p.model_.to_frame()
     for name in ["feature", "source_run_id", "fit_environment", "declaration_text"]:
         assert table[name].str.startswith("text:").all()
-    for suffix in ["csv", "parquet", "xlsx"]:
-        path = tmp_path / f"modelo.{suffix}"
-        if suffix == "csv":
-            table.to_csv(path, index=False)
-        elif suffix == "parquet":
-            table.to_parquet(path, index=False)
-        else:
-            table.to_excel(path, index=False)
-        model = LgdModel.from_frame(read_model_table(path))
-        np.testing.assert_allclose(
-            model.predict(historia().iloc[:48]),
-            p.model_.predict(historia().iloc[:48]),
-            atol=1e-12 if suffix == "xlsx" else 0,
-            rtol=1e-10 if suffix == "xlsx" else 0,
-        )
+    path = tmp_path / f"modelo.{suffix}"
+    if suffix == "csv":
+        table.to_csv(path, index=False)
+    elif suffix == "parquet":
+        table.to_parquet(path, index=False)
+    else:
+        table.to_excel(path, index=False)
+    model = LgdModel.from_frame(read_model_table(path))
+    np.testing.assert_allclose(
+        model.predict(historia().iloc[:48]),
+        p.model_.predict(historia().iloc[:48]),
+        atol=1e-12 if suffix == "xlsx" else 0,
+        rtol=1e-10 if suffix == "xlsx" else 0,
+    )
     for change in [
         lambda f: f.assign(extra=1),
         lambda f: f.assign(format_version=2),

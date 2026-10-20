@@ -8,7 +8,7 @@ mejor ni resuelve recuperaciones incompletas.
 
 | Campo | Valor |
 |---|---|
-| Estado | **APROBADA por Cami el 2026-10-20: implementación A+B por capas, incluidas ambas excepciones; implementación en curso** |
+| Estado | **APROBADA por Cami el 2026-10-20: implementación A+B por capas, incluidas ambas excepciones; A+B implementadas en S61, sin release** |
 | Autor / fecha | Codex, 2026-10-20 (S61) |
 | Base medida | `bce872f8b15d45fb676cc0d1388366b7221062de` |
 | Hito | H3 del plan vigente; no amplía H10, H9R ni las campañas de calibración |
@@ -263,7 +263,7 @@ llave o modo de emparejamiento para esa tabla es error. El formulario no ofrece 
 el aviso de alineación posicional; informa que es un modelo aplicable a toda la cartera.
 Las tablas PD y restantes entradas por operación conservan íntegro D-PUE-6-bis: llave, conteo,
 alineación y caveat. No puede eludirse el control enviando una marca «global» para otra clave.
-Esta excepción contractual acotada requiere el mismo OK de Cami a H3; no está implementada.
+Esta excepción contractual acotada fue aprobada por Cami e implementada en S61. Study/joblib por HTTP siguen prohibidos.
 
 **Declaraciones institucionales.** Reutilizar `governance.purpose`, `assumptions` y `limitations`;
 la puerta `Lgd` expone esos mismos campos, y la pantalla los conserva en gobernanza. Si se aportan
@@ -575,4 +575,8 @@ Versión y tipo técnicos están ocultos. PD+LGD pasa de 458 a 461; interno/mode
 249 a 252. El trabajo de entrenamiento tiene 212 nodos incluyendo data, informe y gobernanza.
 No cambian las hojas de los trabajos scorecard e IFRS 9. Los seis esenciales y los nueve
 workout se prueban por rama, con unión completa y sin duplicados entre básico y avanzado.
-La revisión de implementación y el CI final siguen pendientes al registrar esta medición.
+B recibió APPROVE independiente en la segunda y última pasada sobre e7661d9..c20143c;
+76 tests focales del revisor pasan, con gpt-6-astra/xhigh acreditados. A tuvo dos pasadas
+NEEDS-ATTENTION, hallazgos corregidos sin APPROVE final ni tercera pasada. El estado de los
+gates de integración y artefactos finales se registra en el relevo interno; no se confunde con
+aprobación independiente. El alcance implementado es el A+B de §1, sin cambios IFRS 9.

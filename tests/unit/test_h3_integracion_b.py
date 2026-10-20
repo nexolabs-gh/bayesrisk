@@ -236,6 +236,8 @@ def extraer_proyecto(content: bytes, target: Path) -> Path:
 
 
 def test_pantalla_entrena_y_descarga_predictor_reutilizable(tmp_path: Path):
+    pytest.importorskip("fastapi")
+    pytest.importorskip("httpx2")
     import io
 
     from _ui_client import ui_client
