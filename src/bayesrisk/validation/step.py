@@ -92,6 +92,8 @@ VALIDATION_ARTIFACTS: Final[tuple[str, ...]] = (
     "card",
     # D-HLG-1: los grupos del Hosmer-Lemeshow (muestra por grupo), aditiva; vacía si no corrió.
     "hosmer_lemeshow_groups",
+    "interpretation",
+    "calibration_tie_groups",
 )
 _SCORING_EXTRA_MESSAGE: Final = (
     "ValidationStep requiere pandas/numpy/scipy; instale bayesrisk[scoring]."
@@ -139,6 +141,8 @@ class ValidationStep(AuditableMixin):
         self.optional_requires = (
             _RECOMPUTE_OPTIONAL_REQUIRES if _recalcula_estabilidad(config) else ()
         )
+        if "calibration" in config.families and config.calibration.hosmer_lemeshow:
+            self.optional_requires += (("calibration", "parameters"), ("calibration", "card"))
 
     @classmethod
     def from_config(cls, cfg: ValidationConfig) -> ValidationStep:
@@ -195,6 +199,7 @@ class ValidationStep(AuditableMixin):
         del rng  # El evaluador v1 es determinista (SDD-22 §9): se descarta el azar.
         pd = _import_pandas()
         from bayesrisk.validation.evaluator import ValidationEvaluator
+        from bayesrisk.validation.interpretation import interpret_validation
 
         cfg = _validation_config_from_study(study, fallback=self.config)
         # El recálculo del PSI lee la sección `stability` en ejecución —la misma lectura de una
@@ -230,6 +235,29 @@ class ValidationStep(AuditableMixin):
             realised=realised,
             model_ref=_model_ref(study),
         )
+
+        def metadata(key: str) -> Any:
+            if ("calibration", key) in self.optional_requires and study.artifacts.has(
+                "calibration", key
+            ):
+                return study.artifacts.get("calibration", key)
+            return None
+
+        interpretation = interpret_validation(
+            result,
+            calibrated_pd=analytic,
+            calibration_config=cfg.calibration,
+            calibration_parameters=metadata("parameters"),
+            calibration_card=metadata("card"),
+        )
+        from bayesrisk.core.markers import governable_warnings
+        from bayesrisk.validation.exceptions import ValidationConfigError
+        from bayesrisk.validation.interpretation import HL_STRUCTURAL_WARNINGS
+
+        if cfg.fail_on_falta_dato and governable_warnings(
+            interpretation.warning_codes, structural=HL_STRUCTURAL_WARNINGS
+        ):
+            raise ValidationConfigError("La interpretación contiene un aviso declarado gobernable.")
         self._emit_decisions(result)
         self._publish_artifacts(study, result)
         # D-HLG-1: clave aditiva fuera del DTO atómico, para que `validation.result` no cambie.
@@ -238,6 +266,30 @@ class ValidationStep(AuditableMixin):
             "hosmer_lemeshow_groups",
             evaluator.hosmer_lemeshow_groups(analytic, result.calibration_records),
         )
+        study.artifacts.set("validation", "interpretation", interpretation)
+        study.artifacts.set("validation", "calibration_tie_groups", interpretation.groups_frame())
+        for entry in interpretation.hl:
+            self.log_decision(
+                regla="calibration_hl_context",
+                umbral={"policy_id": interpretation.policy_id},
+                valor={
+                    **entry.model_dump(),
+                    "input_keys": [
+                        ["calibration", "calibrated_pd_frame"],
+                        ["data", "labels"],
+                        ["calibration", "parameters"],
+                        ["calibration", "card"],
+                    ],
+                    "pd_cuts": [
+                        g.pd_max
+                        for g in interpretation.calibration_tie_groups
+                        if g.partition == entry.partition
+                    ],
+                    "overall_status": interpretation.overall_status,
+                    "warning_codes": interpretation.warning_codes,
+                },
+                accion="publicar_diagnostico_sin_inferencia_formal",
+            )
         return result
 
     # --- lectura de artefactos por familia -----------------------------------------------------

@@ -69,6 +69,7 @@ from bayesrisk.stability.results import (
     StabilityMetricName,
 )
 from bayesrisk.validation.config import BacktestParameter, ValidationFamily
+from bayesrisk.validation.interpretation import HL_CONTEXT_LABELS, OE_RATIO_REASON_LABELS
 from bayesrisk.validation.results import (
     BACKTEST_PARAMETER_LABELS,
     BACKTEST_TEST_LABELS,
@@ -287,6 +288,8 @@ def test_el_front_espeja_lo_que_mide_cada_fila_de_estabilidad() -> None:
         ("BACKTEST_PARAMETER_LABELS", BACKTEST_PARAMETER_LABELS),
         ("BACKTEST_TEST_LABELS", BACKTEST_TEST_LABELS),
         ("PD_TEST_LABELS", PD_TEST_LABELS),
+        ("HL_CONTEXT_LABELS", HL_CONTEXT_LABELS),
+        ("OE_RATIO_REASON_LABELS", OE_RATIO_REASON_LABELS),
     ],
 )
 def test_el_front_espeja_el_vocabulario_de_la_validacion(

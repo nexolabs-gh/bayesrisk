@@ -135,7 +135,15 @@ class ReportInputBundle(_ReportBaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True, extra="forbid")
 
     _COPY_ON_ACCESS_FIELDS: ClassVar[frozenset[str]] = frozenset(
-        {"cards", "results", "tables", "figures", "pipeline_params", "summary"}
+        {
+            "cards",
+            "results",
+            "tables",
+            "figures",
+            "pipeline_params",
+            "summary",
+            "validation_interpretation",
+        }
     )
 
     lineage: LineageBundleLike
@@ -148,6 +156,8 @@ class ReportInputBundle(_ReportBaseModel):
     de artefactos independientes de momentos distintos.
     """
     tables: dict[str, DataFrameLike]
+    validation_interpretation: dict[str, Any] | None = None
+    """Lectura contextual aditiva; nunca sustituye results['validation'] histórico."""
     figures: dict[str, Any]
     sections: tuple[ReportSection, ...]
     missing_sections: tuple[str, ...] = Field(default=())
@@ -245,7 +255,14 @@ class ReportInputBundle(_ReportBaseModel):
     """
 
     @field_validator(
-        "cards", "results", "tables", "figures", "pipeline_params", "summary", mode="before"
+        "cards",
+        "results",
+        "tables",
+        "figures",
+        "pipeline_params",
+        "summary",
+        "validation_interpretation",
+        mode="before",
     )
     @classmethod
     def _copia_contenedores_mutables(cls, value: Any) -> Any:

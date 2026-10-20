@@ -33,6 +33,11 @@ contractual nuevo requiere un SDD nuevo o una revisión explícita.
 
 ## Cómo se produce (proceso)
 
+Enmienda HL aprobada en S60 (D-HLC-1…8):
+[`_ENMIENDA-HL-CONTEXTO-Y-EMPATES.md`](_ENMIENDA-HL-CONTEXTO-Y-EMPATES.md).
+Conserva el resultado convencional y añade interpretación contextual y grupos descriptivos;
+el estado de implementación vive en `DECISIONES-VIGENTES.md`.
+
 Diseño H10 aprobado en S52 (D-H10-1…6; implementación pendiente, S53 sólo capa A):
 [`_ENMIENDA-H10-BENCHMARKS-Y-DEFAULTS.md`](_ENMIENDA-H10-BENCHMARKS-Y-DEFAULTS.md).
 El estado y las decisiones finales se registran en `DECISIONES-VIGENTES.md`.

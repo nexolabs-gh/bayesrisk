@@ -52,6 +52,7 @@ import {
 
 /** Placeholder uniforme para valores ausentes/no finitos en toda la pestaña. */
 export const EMPTY = VACIO
+export const COMPARISON_HISTORICAL_TEXT = "El resumen guardado no permite aplicar la lectura contextual de HL"
 
 // Los formateadores de la pantalla son envoltorios del espejo de `bayesrisk.report.cifras`
 // (`@/lib/cifras`, enmienda CIFRAS-EN-PANTALLA, D-PAN-1): la pantalla escribe cada número como el
@@ -2456,3 +2457,15 @@ export function edaProfiles(eda: EdaResult | null | undefined): EdaProfileView[]
   }
   return [...byColumn.values()]
 }
+/** D-HLC: espejos de validation.interpretation; sólo presentación, no consolidación. */
+export const HL_CONTEXT_LABELS: Record<string, string> = {
+  same_calibration_sample: "Misma muestra que declara el ajuste de calibración",
+  other_calibration_sample: "Muestra distinta de la declarada para calibrar; independencia y ausencia de reutilización no certificadas",
+  unknown: "Procedencia de ajuste no acreditada",
+}
+export const OE_RATIO_REASON_LABELS: Record<string, string> = {
+  non_representable_ratio: "No representable: razón observado/esperado demasiado grande",
+  zero_expected: "No definido: cero incumplimientos esperados",
+}
+export const HISTORICAL_READING_TEXT = "Lectura histórica; contexto no disponible"
+export const UNSUPPORTED_POLICY_TEXT = "Política de interpretación no soportada; se muestra la lectura histórica"

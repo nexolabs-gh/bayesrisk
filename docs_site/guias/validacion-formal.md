@@ -6,16 +6,18 @@ informe— y no vuelve a calcular nada que las etapas anteriores ya hayan calcul
 discriminación de desempeño y el PSI de estabilidad, y **añade** lo que ninguna otra etapa hace,
 que es contrastar la probabilidad estimada contra el incumplimiento observado.
 
-!!! warning "El estado técnico no es el veredicto"
+!!! warning "La evaluación contextual no es una aprobación institucional"
     bayesrisk publica evidencia: cuántas pruebas corrieron, cuáles fallaron y sobre qué población.
     Aprobar el modelo, aprobarlo con observaciones o rechazarlo es una decisión de quien valida, y
-    el informe lo dice explícitamente en su capítulo. Un «Falla» aquí es una prueba que rechazó,
-    no una sentencia sobre el modelo.
+    el informe lo dice explícitamente en su capítulo. La lectura contextual excluye HL como
+    evidencia decisoria y muestra la ausencia de un contraste de calibración validado.
+    El resultado convencional y sus conteos históricos se conservan por separado.
 
 !!! note "Los números de esta guía"
     Salen de una **corrida real** del trabajo «Scorecard de comportamiento (PD)» sobre el dataset
     sintético de consumo (6.000 operaciones, partición por cohorte). No son benchmarks: ilustran la
-    forma y las magnitudes que produce el pipeline.
+    forma y las magnitudes que produjo ese pipeline. Son evidencia histórica; no se han
+    recalculado para la nueva política de interpretación.
 
 ---
 
@@ -62,23 +64,29 @@ probabilidad.
 
 ### Por muestra: Hosmer-Lemeshow y el puntaje de Brier
 
-**Hosmer-Lemeshow** parte la cartera en grupos de PD —diez, por convención— y compara, grupo a
-grupo, los incumplimientos esperados con los observados. Un p-valor bajo significa que la PD
-predicha y la observada no cuadran.
+**Hosmer-Lemeshow convencional** parte la cartera en grupos de PD —diez, por convención— y
+compara los incumplimientos esperados con los observados. Se conservan su estadístico, la
+referencia chi-cuadrado con G−2 grados de libertad, su p-valor y el rechazo cuando p < alfa.
+Su cálculo puede ser correcto sin que esa referencia controle las falsas alarmas en el
+contexto de la corrida. Un rechazo tampoco demuestra por sí solo la causa del desajuste.
 
-El p-valor dice **si** la calibración falla, no **cuánto** ni **dónde**: con muestras grandes la
-prueba rechaza diferencias chicas. Por eso, cuando falla, la frase del resumen suma la **mayor
-diferencia** —el grupo cuya tasa observada más se aleja de su PD media, con las dos tasas—, y la
-**tabla por grupo** queda en el informe, junto a la de calibración, y en la pantalla, en el
-desplegable de «Calibración por muestra». Por grupo trae las operaciones, los malos observados y
-esperados, la tasa observada, la PD media, la diferencia en puntos porcentuales, la razón entre
-malos observados y esperados (O/E) y lo que cada grupo suma al estadístico. La razón O/E muestra
-una diferencia relativa grande que en puntos se ve chica, típica de los grupos de PD baja. Son
-los mismos grupos de la prueba, y el veredicto no cambia: lo decide el p-valor.
+La **evaluación contextual** usa la política `hl_context_v1`: HL se presenta como diagnóstico,
+sin decidir por sí solo si el modelo pasa o falla. El contexto indica si los metadatos declaran
+la misma muestra que se usó para calibrar, otra muestra, o procedencia desconocida. Es
+procedencia de **calibración solamente**: no certifica independencia, ausencia de reutilización
+del target ni validez inferencial del pipeline completo.
+
+El **diagnóstico descriptivo de calibración** conserva juntas las PD exactamente iguales.
+Puede formar menos grupos que los solicitados. Publica sus límites, n, incumplimientos
+observados y esperados, tasas, diferencia en puntos porcentuales y O/E. No tiene p-valor, grados
+de libertad ni decisión. Los grupos pequeños se conservan identificados, sin garantía de precisión.
+Si O/E no es representable, sólo esa razón queda sin número con su causa; los conteos permanecen.
+La tabla histórica de HL, con sus contribuciones al estadístico, sigue disponible y separada.
 
 El **mínimo de operaciones para evaluar** —30 de fábrica— protege la muestra entera **y cada grupo
 de PD**: si el grupo más chico queda bajo el mínimo, esa muestra no recibe veredicto. Sin esa
-población, un p-valor sería ruido. Con diez grupos y el mínimo de fábrica, una muestra necesita al
+población no se calcula el contraste convencional. Este mínimo no garantiza un nivel de falsas
+alarmas apropiado. Con diez grupos y el mínimo de fábrica, una muestra necesita al
 menos 300 operaciones. La fila sale **Sin veredicto**, sin estadístico, y dice **por qué**: la
 muestra quedó bajo el mínimo, un grupo de PD quedó bajo el mínimo, un grupo quedó sin variabilidad
 (vacío o con una PD media de 0 o 1) o el estadístico desbordó con PD extremas. El panel enumera
@@ -98,20 +106,21 @@ es mejor. No es una prueba de pasa o falla: es un puntaje, y por eso su fila sal
 | Fuera de tiempo | Hosmer-Lemeshow | 1.008 | 18,2021 | 0,0198 | **Falla** |
 | Fuera de tiempo | Puntaje de Brier | 1.008 | 0,1725 | — | Sin veredicto |
 
-Esa corrida termina con **Estado técnico: Falla** y «1 de 3 pruebas fallidas». No es un defecto de
-la configuración: el rechazo está en la muestra fuera de tiempo y es deriva temporal de la cartera
-—lo que la validación existe para detectar—. La pantalla y el informe lo publican tal cual; no se
-maquilla ni se esconde.
+El **estado histórico** de esa corrida es Falla, con «1 de 3 pruebas fallidas». Esos agregados
+no demuestran que la causa sea deriva temporal, un defecto del modelo o una falsa alarma.
+Una corrida guardada sin el artefacto nuevo dice «Lectura histórica; contexto no disponible».
+No se reinterpreta automáticamente ni se fabrican grupos nuevos con sus agregados.
 
-!!! note "Una validación sin ninguna prueba evaluable no «Pasa»"
-    Si ninguna prueba dejó un veredicto de pasa o falla y la estabilidad tampoco dejó una
-    decisión, el estado técnico es **No evaluable**: la misma palabra que usan las bandas del PSI.
-    Pasa cuando las pruebas no alcanzaron potencia —todos los Hosmer-Lemeshow sin veredicto, los
-    backtests sin dispersión—, pero también cuando sólo corrió el puntaje de Brier, sólo la
-    discriminación, o las pruebas de pasa o falla estaban apagadas: el estado dice qué no hay, y
-    la causa, cuando existe, la publica cada fila. Antes ese caso decía «Pasa», que era cierto sólo
-    porque no había nada que fallar. Si alguna familia sí produjo evidencia, el estado se consolida
-    sobre ella y la cobertura lo dice al lado.
+!!! note "Cómo se lee el nuevo estado"
+    Sólo HL y Brier: **No evaluable: falta un contraste de calibración validado**, pase o falle HL.
+    Otra evidencia favorable, como PSI estable, y HL solicitado: **Revisar: calibración pendiente**.
+    Un rechazo de otra prueba, grado rojo o PSI en rojo conserva **Falla**; un grado ámbar o PSI
+    en revisión conserva **Revisar**. Sin otra evidencia evaluable, **No evaluable**.
+    Los conteos contextuales excluyen HL y Brier. «Pasa» se limita a las familias ejecutadas;
+    apagar HL no es una recomendación para obtenerlo. No hay un contraste sustituto validado,
+    ni las PD mejoraron por cambiar su interpretación. Esta limitación estructural se publica
+    incluso con «Fallar ante brechas críticas de dato» encendido; no es un dato que deba aportar
+    la institución.
 
 ### Por grado de rating
 
@@ -197,8 +206,8 @@ Dos detalles que el copy del formulario declara y conviene tener presentes:
   ejecutada y no traer ninguna prueba: le faltó un insumo —el backtesting sin el cálculo IFRS 9, por
   ejemplo— o sus pruebas quedaron apagadas. El panel lo dice con todas sus letras, y el estado
   técnico no la cuenta porque no hay nada que contar.
-- **Separa la deriva del defecto.** Un rechazo que aparece sólo fuera de tiempo suele ser la
-  cartera moviéndose, no el modelo mal construido; un rechazo en desarrollo casi nunca lo es.
+- **Investiga la causa.** El nombre de la muestra y un p-valor no separan deriva, error del
+  modelo y limitación del contraste. Mira magnitudes, procedencia, cobertura y condiciones de uso.
 - **Trata los avisos declarados como preguntas abiertas.** Cada uno señala algo que le corresponde
   decidir a tu institución o una brecha que el motor prefiere declarar antes que resolver sola. Qué
   significa cada uno está en [Avisos declarados](../avisos-declarados.md).
@@ -210,6 +219,7 @@ La sección se configura igual desde YAML o desde Python; la interfaz es un edit
 ```python
 from bayesrisk.validation.config import ValidationConfig
 from bayesrisk.validation.evaluator import ValidationEvaluator
+from bayesrisk.validation import interpret_validation
 
 config = ValidationConfig(
     families=("discrimination", "calibration", "stability"),
@@ -220,8 +230,21 @@ resultado = ValidationEvaluator.from_config(config).validate(
     stability_metrics=metricas_de_estabilidad,
     model_ref="scorecard-consumo",
 )
-print(resultado.card.overall_status, resultado.card.n_failed, "de", resultado.card.n_tests)
+# La card y las tablas del resultado conservan la lectura convencional histórica.
+lectura = interpret_validation(
+    resultado,
+    calibrated_pd=frame_pd_calibrada,  # Los mismos pares analíticos que se evaluaron.
+    calibration_config=config.calibration,
+)
+print(lectura.overall_status, lectura.n_failed, "de", lectura.n_tests)
 ```
+
+El Step publica `("validation", "interpretation")` y `("validation", "calibration_tie_groups")`.
+La puerta guiada y la pantalla consumen esas claves sin cambiar el notebook mínimo.
+La API acepta opcionalmente `calibration_parameters` y `calibration_card`; sin ambos metadatos
+coherentes declara procedencia desconocida. No recalcula HL ni persiste sobre una corrida anterior.
+Los resúmenes de comparación de formato 1 siguen mostrando **Validación histórica**:
+el resumen guardado no permite aplicar la lectura contextual de HL.
 
 !!! note "Validar un modelo que no ajustaste aquí"
     El trabajo «Validar un modelo existente» mide y documenta tu scorecard con desempeño y

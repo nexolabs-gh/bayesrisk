@@ -12008,7 +12008,7 @@
           },
           "hosmer_lemeshow": {
             "default": true,
-            "description": "Comprueba con la prueba de Hosmer-Lemeshow que la PD predicha coincide con la observada, por grupos de PD.",
+            "description": "Publica el resultado convencional de Hosmer-Lemeshow y un diagnóstico descriptivo que conserva juntas las PD iguales. HL no decide la evaluación contextual ni certifica por sí solo la calibración.",
             "title": "Ejecutar Hosmer-Lemeshow",
             "type": "boolean",
             "ui_group": "Calibración",
@@ -16289,7 +16289,7 @@
               },
               "calibration": {
                 "$ref": "#/$defs/validation__CalibrationValidationConfig",
-                "description": "Comprueba si la probabilidad que el modelo estima coincide con lo que ocurrió: por grupos de PD, con un puntaje de error medio y, si tienes grados de rating, grado a grado.",
+                "description": "Describe la relación entre las PD y los incumplimientos mediante grupos y Brier; si tienes grados de rating, contrasta cada grado. HL conserva su resultado convencional y una lectura contextual; por sí solo no certifica calibración.",
                 "title": "Calibración",
                 "ui_group": "Calibración",
                 "ui_order": 1,

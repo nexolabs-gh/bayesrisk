@@ -2222,7 +2222,49 @@ def _linea_representatividad(study: Study) -> tuple[str, str | None] | None:
 
 def _resumen_validation(study: Study, context: SummaryContext) -> StageSummary:
     del context
+    from bayesrisk.validation.interpretation import (
+        HISTORICAL_READING_TEXT,
+        UNSUPPORTED_POLICY_TEXT,
+        diagnostic_tables,
+        interpretation_details,
+        interpretation_lines,
+        study_interpretation,
+    )
+
     card = _card(study, "validation", "card")
+    raw, interpretation = study_interpretation(study)
+    if interpretation is not None:
+        extras: tuple[tuple[str, pd.DataFrame, Mapping[str, _Kind]], ...] = tuple(
+            (
+                f"Diagnóstico descriptivo de calibración · {_partition_label(partition)}",
+                frame,
+                {},
+            )
+            for partition, frame in diagnostic_tables(interpretation).items()
+        )
+        historical = _tabla_de_pruebas(study)
+        return StageSummary(
+            stage="validation",
+            label=STAGE_LABELS["validation"],
+            lines=(
+                *interpretation_lines(interpretation),
+                *interpretation_details(interpretation),
+                "Estado histórico: "
+                + VALIDATION_STATUS_LABELS[interpretation.legacy_status]
+                + f"; {interpretation.legacy_n_tests} pruebas, "
+                f"{interpretation.legacy_n_failed} fallidas. "
+                "La tabla de pruebas siguiente conserva el resultado convencional "
+                "y el estado histórico.",
+            ),
+            alerts=(
+                (interpretation_lines(interpretation)[0],)
+                if interpretation.overall_status != "pass"
+                else ()
+            ),
+            table=historical,
+            formats={"Valor": "num", "p-valor": "pvalor"},
+            extra_tables=extras,
+        )
     lines: list[str] = []
     alerts: list[str] = []
     table: pd.DataFrame | None = None
@@ -2231,7 +2273,8 @@ def _resumen_validation(study: Study, context: SummaryContext) -> StageSummary:
         rotulo = VALIDATION_STATUS_LABELS.get(estado, estado)
         decisivas = _pruebas_decisivas(study)
         detalle = f" — lo decide {_enumerar(decisivas)}" if decisivas else ""
-        lines.append(f"Estado técnico: {rotulo}{detalle}")
+        lines.append(HISTORICAL_READING_TEXT if raw is None else UNSUPPORTED_POLICY_TEXT)
+        lines.append(f"Estado técnico histórico: {rotulo}{detalle}")
         n_tests = _int(card.get("n_tests")) or 0
         n_failed = _int(card.get("n_failed")) or 0
         familias = tuple(
@@ -4533,7 +4576,9 @@ def _tabla_de_modelos(modelos: pd.DataFrame) -> pd.DataFrame:
                 "Índice BCE": _float(fila["concentration_index"]),
                 "Tramos": _int(fila["k"]),
                 "Variables": _int(fila["n_variables"]),
-                "Validación": VALIDATION_STATUS_LABELS.get(str(fila["validation_status"]), "—")
+                "Validación histórica": VALIDATION_STATUS_LABELS.get(
+                    str(fila["validation_status"]), "—"
+                )
                 if fila["validation_status"] is not None
                 else "—",
                 "Frontera: AUC y PSI": _frontera_legible(fila, "stability"),
@@ -4785,11 +4830,13 @@ def _resumen_comparison(study: Study, context: SummaryContext) -> StageSummary:
             )
         )
     extra.extend(_corridas_comparadas(study))
+    from bayesrisk.validation.interpretation import COMPARISON_HISTORICAL_TEXT
+
     return StageSummary(
         stage="comparison",
         label=rotulo,
         lines=lineas[:8],
-        alerts=tuple(_alertas_de_la_comparacion(card, modelos)),
+        alerts=(*_alertas_de_la_comparacion(card, modelos), COMPARISON_HISTORICAL_TEXT),
         table=_tabla_de_modelos(modelos),
         formats=_FORMATOS_MODELOS,
         extra_tables=tuple(extra),
@@ -4809,7 +4856,7 @@ _COLUMNAS_DISCRIMINACION: Final[tuple[str, ...]] = (
     "Banda",
     "PSI propio",
     "Variables",
-    "Validación",
+    "Validación histórica",
     "Frontera: AUC y PSI",
 )
 _COLUMNAS_CONCENTRACION: Final[tuple[str, ...]] = (
@@ -5187,10 +5234,23 @@ def _estado_de_validacion(study: Study | None, context: SummaryContext) -> str:
         if study.run_context.status == "failed":
             return "no corrió: la corrida falló antes"
         return "no corrió: la validación formal no está en el config"
+    from bayesrisk.validation.interpretation import (
+        HISTORICAL_READING_TEXT,
+        UNSUPPORTED_POLICY_TEXT,
+        interpretation_lines,
+        study_interpretation,
+    )
+
+    raw, interpretation = study_interpretation(study)
+    if interpretation is not None:
+        return interpretation_lines(interpretation)[0].removesuffix(".")
     estado = str(card.get("overall_status", ""))
     rotulo = VALIDATION_STATUS_LABELS.get(estado, estado)
     decisivas = _pruebas_decisivas(study)
-    return f"{rotulo}" + (f" — lo decide {_enumerar(decisivas)}" if decisivas else "")
+    aviso = HISTORICAL_READING_TEXT if raw is None else UNSUPPORTED_POLICY_TEXT
+    return f"{aviso}. Estado histórico: {rotulo}" + (
+        f" — lo decide {_enumerar(decisivas)}" if decisivas else ""
+    )
 
 
 def _cinco_cifras(study: Study) -> tuple[tuple[str, str], ...]:

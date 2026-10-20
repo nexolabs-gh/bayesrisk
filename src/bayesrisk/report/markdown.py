@@ -459,11 +459,22 @@ def _table(table: Mapping[str, Any]) -> str:
 
 def _data_exports(exports: Mapping[str, Any]) -> str:
     """Declara dónde quedó el detalle por observación (los adjuntos de datos)."""
-    lines = ["#### Detalle por observación", ""]
+    diagnostics = exports.get("has_diagnostics", False)
+    lines = [
+        "#### Datos y diagnóstico de calibración"
+        if diagnostics
+        else "#### Detalle por observación",
+        "",
+    ]
     if exports["requested"]:
         lines.extend(
             [
-                "Las tablas con una fila por operación no se reproducen en el informe: se entregan "
+                "Las tablas de datos y del diagnóstico descriptivo de calibración se entregan "
+                "completas como adjuntos. Los grupos descriptivos permanecen también en el "
+                "cuerpo del informe."
+                if diagnostics
+                else "Las tablas con una fila por operación no se reproducen en el informe: "
+                "se entregan "
                 "**completas** como archivos adjuntos a este documento.",
                 "",
                 _pipe_table(
@@ -482,7 +493,11 @@ def _data_exports(exports: Mapping[str, Any]) -> str:
         )
         return "\n".join(lines)
     lines.append(
-        "Esta corrida produjo tablas con una fila por operación que no se reproducen en el informe "
+        "Las tablas enumeradas no se exportaron como adjuntos: añada `csv` o `xlsx` a "
+        "`report.formats` para obtenerlas completas."
+        if diagnostics
+        else "Esta corrida produjo tablas con una fila por operación que no se reproducen "
+        "en el informe "
         "(son datos, no evidencia de validación) y que **no se exportaron**: añada `csv` o `xlsx` "
         "a `report.formats` para obtenerlas completas."
     )

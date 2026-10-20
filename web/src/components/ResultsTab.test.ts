@@ -15,7 +15,7 @@ import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { ResultsPanel, type ResultsPanelProps } from "@/components/ResultsTab"
+import { ContextualValidationPanel, ResultsPanel, type ResultsPanelProps } from "@/components/ResultsTab"
 import resultsTabSource from "@/components/ResultsTab.tsx?raw"
 import demoF1 from "@/fixtures/demo/results-f1.json"
 import demoF4 from "@/fixtures/demo/results-ifrs9.json"
@@ -31,12 +31,79 @@ import type {
   ValidationNotEvaluableGrade,
   ValidationNotEvaluablePartition,
   ValidationResult,
+  ValidationInterpretation,
   ValidationStabilityRecompute,
   ValidationStabilityRow,
 } from "@/lib/results-types"
 import { VALIDATION_F1 } from "@/lib/validation.fixture"
 
 const TITULO = "Ficha del modelo"
+
+describe("D-HLC: interpretación aditiva y lectura histórica", () => {
+  const interpretation: ValidationInterpretation = {
+    schema_version: 1, policy_id: "hl_context_v1", overall_status: "not_evaluable",
+    n_tests: 0, n_failed: 0, legacy_status: "fail", legacy_n_tests: 1, legacy_n_failed: 1,
+    families_run: ["calibration"], coverage_gap: true, warning_codes: ["FALTA-DATO-VAL-HL-CONTEXTO"],
+    hl: [{
+      partition: "desarrollo", context: "unknown", context_source: "none",
+      context_scope: "calibration_only", full_pipeline_independence_verified: false,
+      context_reason: "Faltan metadatos", legacy_statistic: 40, legacy_p_value: 0.001,
+      legacy_alpha: 0.05, legacy_decision: "fail", legacy_not_evaluable_reason: null,
+      n: 1, requested_groups: 5, k_groups: 1, legacy_boundary_splits_tie: false,
+      diagnostic_status: "available", formal_inference: "not_established",
+    }],
+    calibration_tie_groups: [{
+      partition: "desarrollo", group: 1, pd_min: 5e-324, pd_max: 5e-324, n: 1,
+      observed_defaults: 1, expected_defaults: 5e-324, observed_dr: 1, mean_pd: 5e-324,
+      gap_pp: 100, oe_ratio: null, oe_ratio_reason: "non_representable_ratio",
+      expected_non_defaults: 1, below_legacy_min_rows: true,
+    }],
+  }
+  const block = (value?: ValidationInterpretation) => renderToStaticMarkup(
+    createElement(ContextualValidationPanel, {
+      validation: { ...VALIDATION_F1, interpretation: value },
+    }),
+  )
+  it("consume el estado nuevo sin cambiar ni pintar el histórico como contextual", () => {
+    const html = block(interpretation)
+    expect(html).toContain("Evaluación contextual: No evaluable")
+    expect(html).toContain("Diagnóstico descriptivo de calibración")
+    expect(html).toContain("No representable: razón observado/esperado demasiado grande")
+    expect(html).toContain("Ausencia de O/E")
+    expect(html.match(/scope="col"/g)).toHaveLength(13)
+    expect(html).not.toContain("Contribución")
+    expect(html).not.toContain("FALTA-DATO")
+    expect(html).not.toContain("Evaluación contextual: Falla")
+  })
+  it("una política desconocida nunca cae a Pasa", () => {
+    const html = block({ ...interpretation, policy_id: "futura", overall_status: "pass" })
+    expect(html).toContain("Política de interpretación no soportada")
+    expect(html).not.toContain("Evaluación contextual")
+    expect(html).not.toContain("Diagnóstico descriptivo")
+  })
+  it("la demo anterior se identifica como histórica en el panel y en el resumen", () => {
+    const html = render(demoF1 as unknown as ResultsResponse)
+    expect(html.split("Lectura histórica; contexto no disponible").length).toBeGreaterThanOrEqual(3)
+    expect(html).toContain("Los estados de validación de este resumen son históricos")
+    expect(html).not.toContain("Diagnóstico descriptivo de calibración")
+    expect(block()).toContain("Lectura histórica; contexto no disponible")
+  })
+  it("conserva magnitudes pequeñas en el diagnóstico de pantalla", () => {
+    const html = block({ ...interpretation, calibration_tie_groups: [{
+      ...interpretation.calibration_tie_groups[0], mean_pd: 0.0001, observed_dr: 0.0002,
+    }] })
+    expect(html).toContain(">0,0100<")
+    expect(html).toContain(">0,0200<")
+  })
+  it("rotula histórico el dominio validation de una ficha antigua", () => {
+    const html = render({ ...demoF1 as unknown as ResultsResponse, model_card: {
+      ...MODEL_CARD_F1,
+      metric_sections: { ...MODEL_CARD_F1.metric_sections, validation: { overall_status: "fail" } },
+    } })
+    expect(html).toContain("Validación histórica")
+    expect(html).toContain("Las métricas y decisiones de validación conservadas en esta ficha son históricas")
+  })
+})
 /** Rótulos que sólo la sección de la ficha escribe: ninguno debe sobrevivir sin card. */
 const ROTULOS_DE_LA_FICHA = [
   TITULO,
@@ -313,7 +380,7 @@ describe("avisos declarados en la ficha (revisión adversarial de S4)", () => {
 describe("guardrails del cableado (fuente)", () => {
   it("el guard es por presencia y nunca `!`", () => {
     expect(resultsTabSource).toContain(
-      "{results.model_card ? <ModelCardSection card={results.model_card} /> : null}",
+      "{results.model_card ? <ModelCardSection card={results.model_card} validation={val} /> : null}",
     )
     expect(resultsTabSource).not.toMatch(/model_card!/)
   })
@@ -611,7 +678,7 @@ describe("«Validación formal» (D-SC-9) sobre una corrida real", () => {
   it("una sección por familia corrida, con su tabla y sin las que no corrieron", () => {
     const html = render(conValidacion(VALIDATION_F1))
     expect(html).toContain("Discriminación")
-    expect(html).toContain("Calibración por muestra")
+    expect(html).toContain("Resultado convencional de HL y Brier por muestra")
     expect(html).toContain("Hosmer-Lemeshow")
     expect(html).toContain("Puntaje de Brier")
     expect(html).toContain("Reusada de la etapa de desempeño")
@@ -1006,7 +1073,7 @@ describe("un Hosmer-Lemeshow sin veredicto (D-VAL-17): la causa se traduce junto
 
   it("un fixture capturado antes de la clave —la demo publicada— sigue renderizando", () => {
     const html = render({ ...(demoF1 as unknown as ResultsResponse), validation: VALIDATION_F1 })
-    expect(html).toContain("Calibración por muestra")
+    expect(html).toContain("Resultado convencional de HL y Brier por muestra")
     expect(html).not.toContain("Hosmer-Lemeshow sin veredicto")
   })
 })

@@ -135,8 +135,9 @@ class CalibrationValidationConfig(BayesRiskBaseConfig):
         default=True,
         title="Ejecutar Hosmer-Lemeshow",
         description=(
-            "Comprueba con la prueba de Hosmer-Lemeshow que la PD predicha coincide con la "
-            "observada, por grupos de PD."
+            "Publica el resultado convencional de Hosmer-Lemeshow y un diagnóstico descriptivo "
+            "que conserva juntas las PD iguales. HL no decide la evaluación contextual ni "
+            "certifica por sí solo la calibración."
         ),
         json_schema_extra={"ui_widget": "checkbox", "ui_group": "Calibración", "ui_order": 1},
     )
@@ -572,9 +573,9 @@ class ValidationConfig(BayesRiskBaseConfig):
         default_factory=CalibrationValidationConfig,
         title="Calibración",
         description=(
-            "Comprueba si la probabilidad que el modelo estima coincide con lo que ocurrió: por "
-            "grupos de PD, con un puntaje de error medio y, si tienes grados de rating, grado a "
-            "grado."
+            "Describe la relación entre las PD y los incumplimientos mediante grupos y Brier; "
+            "si tienes grados de rating, contrasta cada grado. HL conserva su resultado "
+            "convencional y una lectura contextual; por sí solo no certifica calibración."
         ),
         json_schema_extra={"ui_widget": "section", "ui_group": "Calibración", "ui_order": 1},
     )

@@ -68,7 +68,7 @@ una corrida —la del proyecto guiado, el `run_dir` de `bayesrisk.run` o la de l
 resumen se copia a la carpeta de la comparación con su huella en el nombre, así que la comparación
 se reproduce desde ella.
 
-Con la corrida de estos bloques, el resumen dice:
+Las salidas guardadas de esta corrida conservan el siguiente resumen histórico:
 
 ```text
 ── Comparación ──
@@ -83,8 +83,11 @@ Comparten cinco variables.
 
 Las dos versiones discriminan igual: la diferencia de AUC en la OOT, 0,002, es ruido (la prueba
 pareada da p = 0,66). Con la misma discriminación, `consumo_v02` reparte mucho mejor sus tramos y
-pasa la validación técnica que la de fábrica falla, así que es la única que ninguna otra supera en
-discriminación y concentración. Si la alternativa hubiera dado exactamente el mismo modelo con otro
+su estado de validación histórico difiere del de fábrica. Ese veredicto de HL no certifica la
+calibración. Es la única que ninguna otra supera en discriminación y concentración.
+El formato de comparación guardado no contiene la procedencia necesaria para aplicar la
+lectura contextual de HL: los consumidores lo rotulan **Validación histórica** y avisan de
+esa limitación. Si la alternativa hubiera dado exactamente el mismo modelo con otro
 config, la primera línea lo diría.
 
 ## Qué se compara

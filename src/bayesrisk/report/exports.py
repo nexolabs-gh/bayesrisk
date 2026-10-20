@@ -103,6 +103,13 @@ def per_observation_tables(tables: Mapping[str, DataFrameLike]) -> tuple[str, ..
     return tuple(sorted(key for key in tables if key in PER_OBSERVATION_TABLES))
 
 
+def _diagnostic_tables(tables: Mapping[str, DataFrameLike]) -> tuple[str, ...]:
+    """Tablas agregadas aditivas; siguen en el cuerpo y no son datos por operación."""
+    return tuple(
+        sorted(key for key in tables if key.startswith("validation.calibration_tie_groups."))
+    )
+
+
 def data_export_refs(
     tables: Mapping[str, DataFrameLike],
     *,
@@ -127,7 +134,8 @@ def data_export_refs(
     if "xlsx" in formats and not _openpyxl_disponible():
         formats.discard("xlsx")
     refs: list[DataExportRef] = []
-    for key in per_observation_tables(tables):
+    diagnostic = _diagnostic_tables(tables)
+    for key in (*per_observation_tables(tables), *diagnostic):
         rows = len(tables[key].index)
         if "csv" in formats:
             refs.append(
@@ -144,8 +152,14 @@ def data_export_refs(
                     table_key=key,
                     title=table_title(key),
                     rows=rows,
-                    filename=f"{config.basename}{_WORKBOOK_SUFFIX}",
-                    sheet=_sheet_name(key),
+                    filename=f"{config.basename}"
+                    + ("__diagnostico_calibracion.xlsx" if key in diagnostic else _WORKBOOK_SUFFIX),
+                    sheet=(
+                        f"{diagnostic.index(key) + 1:02d} "
+                        + _sheet_name(key.rsplit(".", 1)[-1])[:28]
+                        if key in diagnostic
+                        else _sheet_name(key)
+                    ),
                 )
             )
     return tuple(refs)
@@ -181,8 +195,9 @@ def write_data_exports(
         if not ref.sheet:
             path = _write_csv(tables[ref.table_key], directory / ref.filename)
             exports[ref.filename] = str(path)
-    workbook = tuple(ref for ref in refs if ref.sheet)
-    if workbook:
+    filenames = dict.fromkeys(ref.filename for ref in refs if ref.sheet)
+    for filename in filenames:
+        workbook = tuple(ref for ref in refs if ref.sheet and ref.filename == filename)
         sheets = {ref.sheet: tables[ref.table_key] for ref in workbook}
         try:
             path = _write_xlsx(sheets, directory / workbook[0].filename)
@@ -208,7 +223,7 @@ def _avisa_xlsx_omitido(faltante: bool, *, tables: Mapping[str, DataFrameLike]) 
     no salió entero—. Lo que **no** se avisa es la corrida sin tablas por observación: ahí no había
     nada que exportar y el ``xlsx`` no habría cambiado nada, así que el aviso sería ruido.
     """
-    if faltante and per_observation_tables(tables):
+    if faltante and (per_observation_tables(tables) or _diagnostic_tables(tables)):
         warnings.warn(
             f"{_XLSX_MISSING_MSG} — El reporte se generó sin el export .xlsx.",
             RuntimeWarning,

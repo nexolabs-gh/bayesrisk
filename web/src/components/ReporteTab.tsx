@@ -29,6 +29,7 @@ import {
   reportDownloadErrorMessage,
 } from "@/lib/report"
 import { useAppState } from "@/state/appStore"
+import { COMPARISON_HISTORICAL_TEXT, HISTORICAL_READING_TEXT, UNSUPPORTED_POLICY_TEXT } from "@/lib/results-format"
 
 interface ReporteTabProps {
   /** Navega a otra sección del shell (la navegación vive en App, no en el store). */
@@ -132,8 +133,16 @@ function downloadBlob(blob: Blob, filename: string) {
  * local; el front solo lo transporta, embebe y descarga. Se re-pide cuando cambia el `run_id`.
  */
 export function ReporteTab({ onNavigate }: ReporteTabProps) {
-  const { lastRun } = useAppState()
+  const { lastRun, results } = useAppState()
   const runId = lastRun?.runId ?? null
+  const currentResults = results?.run_id === runId ? results : null
+  const validation = currentResults?.validation
+  const historicalNotice = !currentResults
+    ? "No se dispone de resultados para acreditar la lectura contextual de este informe"
+    : validation
+      ? validation.interpretation?.policy_id === "hl_context_v1" ? null
+        : validation.interpretation ? UNSUPPORTED_POLICY_TEXT : HISTORICAL_READING_TEXT
+      : currentResults.summaries?.final?.family === "comparacion" ? COMPARISON_HISTORICAL_TEXT : null
   const [state, setState] = useState<ReportState>({ kind: "loading" })
   // Se incrementa para reintentar tras un error: re-dispara el efecto sin cambiar el run_id.
   const [reloadKey, setReloadKey] = useState(0)
@@ -318,6 +327,9 @@ export function ReporteTab({ onNavigate }: ReporteTabProps) {
             padre, así que sin esto cualquier script dentro del informe podría leer el token de
             sesión del `<meta>` y llamar a /api/run con Origin y token válidos (enmienda B2.2, L7).
             El informe es HTML+CSS determinista y no ejecuta JS, así que no pierde nada. */}
+        {historicalNotice ? <p role="status" className="text-sm text-amber-200/90">
+          {historicalNotice}. Este informe y sus descargables conservan el resultado de la corrida original.
+        </p> : null}
         <iframe
           srcDoc={state.html}
           sandbox=""

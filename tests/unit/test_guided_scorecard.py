@@ -483,7 +483,9 @@ def test_run_completo_cuenta_cada_etapa_y_declara_su_procedencia_al_trail(
     assert declaradas[0]["payload"]["valor"]["puerta"] == "guiada"
     final = sc.summary()
     assert final.execution == "completada"
-    assert final.validation.split(" — ")[0] in {"Pasa", "Revisar", "Falla", "No evaluable"}
+    assert final.validation.startswith("Evaluación contextual: ")
+    estado = final.validation.removeprefix("Evaluación contextual: ").split(":")[0]
+    assert estado in {"Pasa", "Revisar", "Falla", "No evaluable"}
     assert [rotulo for rotulo, _ in final.figures][:3] == [
         "AUC en Fuera de tiempo (OOT)",
         "Gini en Fuera de tiempo (OOT)",

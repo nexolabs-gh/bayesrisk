@@ -168,6 +168,16 @@ test.describe("interfaz servida por el wheel instalado", () => {
     await expect(page.locator("main")).toContainText("run_id")
     await expect(page.locator("main")).toContainText("config_hash")
     await expect(page.locator("main")).toContainText("data_hash")
+    // D-HLC: el bundle instalado consume la interpretación calculada por este mismo run.
+    await expect(page.locator("main")).toContainText("Evaluación contextual:")
+    await expect(page.locator("main")).toContainText("contraste de calibración validado")
+    const groups = page.getByRole("region", { name: "Grupos descriptivos de Desarrollo" }).first()
+    await expect(groups.getByRole("columnheader")).toHaveCount(13)
+    await expect(groups.getByRole("columnheader", { name: "Ausencia de O/E" })).toBeVisible()
+    if (process.env.BAYESRISK_EVIDENCE_DIR) {
+      await groups.screenshot({ path: `${process.env.BAYESRISK_EVIDENCE_DIR}/hlc-grupos.png` })
+      await page.screenshot({ path: `${process.env.BAYESRISK_EVIDENCE_DIR}/hlc-resultados.png`, fullPage: true })
+    }
 
     // Y el entregable: el informe de esa corrida, servido y RENDERIZADO por el mismo wheel. El
     // visor es un iframe; que exista el botón de descarga no prueba que el informe se produzca.
@@ -177,6 +187,8 @@ test.describe("interfaz servida por el wheel instalado", () => {
 
     const visor = page.frameLocator("main iframe")
     await expect(visor.locator("body")).toContainText(/Informe/i, { timeout: 2 * 60 * 1000 })
+    await expect(visor.locator("body")).toContainText("Evaluación contextual:")
+    await expect(visor.locator("body")).toContainText("Diagnóstico descriptivo de calibración")
 
     expect(erroresDeConsola, "el recorrido no debe ensuciar la consola").toEqual([])
     expect(respuestasFallidas, "ninguna llamada del recorrido puede fallar").toEqual([])

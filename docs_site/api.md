@@ -465,7 +465,33 @@ Backtesting y pruebas regulatorias de discriminación, calibración y estabilida
 Cómo se lee el resultado —y qué hace un validador con él— está en la guía
 [Validación formal](guias/validacion-formal.md).
 
+La API histórica `ValidationEvaluator.validate()` y `ValidationResult` conserva sus cifras y
+su consolidación convencional. La lectura visible nueva se obtiene con
+`bayesrisk.validation.interpret_validation(resultado, calibrated_pd=pares_originales,
+calibration_config=config.calibration)`: devuelve `ValidationInterpretation`, política
+`hl_context_v1`, sin recalcular HL. El Step publica ese DTO en `("validation", "interpretation")`
+y sus grupos descriptivos en `("validation", "calibration_tie_groups")`.
+
+Los conteos contextuales excluyen HL y Brier; los campos `legacy_*` conservan los históricos.
+Los metadatos opcionales `calibration_parameters` y `calibration_card` sólo acreditan una
+declaración sobre calibración, nunca independencia del pipeline. La falta de un contraste
+contextual validado se muestra explícitamente. Sin artefacto nuevo se identifica la lectura
+histórica; una política desconocida no se aplica por defecto.
+
+::: bayesrisk.validation.interpretation.interpret_validation
+    options:
+      heading_level: 3
+
+::: bayesrisk.validation.interpretation.ValidationInterpretation
+    options:
+      heading_level: 3
+
 ### Estado técnico y veredictos
+
+Este apartado describe el **`ValidationResult` histórico** y sus tablas conservadas.
+`ValidationInterpretation` comparte el vocabulario, pero excluye HL de sus conteos y declara
+la falta de un contraste contextual: sólo HL/Brier deja «No evaluable»; otras pruebas favorables
+con HL solicitado dejan «Revisar: calibración pendiente».
 
 En los resultados —JSON, tablas tidy, model card— cada estado viaja como su **identificador**; en la
 pantalla y en el informe se lee como su **palabra**. Son el mismo dato, y su correspondencia tiene
@@ -473,7 +499,7 @@ una sola fuente: `bayesrisk.validation.results`.
 
 | Identificador | Palabra | Dónde aparece |
 |---|---|---|
-| `pass` | Pasa | Estado técnico agregado de la corrida |
+| `pass` | Pasa | Estado técnico histórico agregado |
 | `warn` | Revisar | Ídem |
 | `fail` | Falla | Ídem |
 | `not_evaluable` | No evaluable | Ídem: ninguna prueba dejó un veredicto de pasa o falla y la estabilidad no dejó una decisión. La falta de potencia es una causa posible, no la única: también sale con sólo el puntaje de Brier, con sólo discriminación o con las pruebas de pasa o falla apagadas |
@@ -506,7 +532,8 @@ Los grados sin potencia estadística **no** entran en la tabla de calibración n
 pruebas: viajan aparte, en `card.metric_sections.validation.not_evaluable_grades`, con sus conteos
 y el mínimo técnico que los dejó fuera. Un Hosmer-Lemeshow sin veredicto **sí** está en la tabla
 —con `statistic` nulo y su causa— pero tampoco cuenta: `n_tests` y `n_failed` cuentan sólo las
-decisiones evaluables de las cuatro familias.
+decisiones evaluables históricas. Los campos homónimos de `ValidationInterpretation`
+excluyen HL; PSI participa en la conclusión pero no en esos conteos.
 
 ::: bayesrisk.validation.config.ValidationConfig
     options:

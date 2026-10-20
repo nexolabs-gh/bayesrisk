@@ -108,7 +108,8 @@ institución sabe: los datos, qué es «malo», el identificador, el eje tempora
 de tiempo. Todo lo demás lo infiere, lo declara en el registro de auditoría y lo corre con
 valores de fábrica que funcionan. Cada etapa cuenta lo que hizo en español, con su tabla de
 decisión (`sc.results["selection"]`, `sc.summary("binning")`), y el resumen final separa si la
-corrida **terminó** de si el modelo **pasa** la validación técnica.
+corrida **terminó** de su **evaluación contextual**, con la cobertura y las limitaciones de
+calibración. El resultado convencional de HL sigue disponible como evidencia histórica.
 
 !!! note "Tres puertas, un motor"
     La puerta guiada por código, el config completo y la pantalla producen el mismo config, la
@@ -145,8 +146,10 @@ sc.resume()                         # corrida nueva y completa con la decisión;
     [Descarga `primer-scorecard.ipynb`](notebooks/primer-scorecard.ipynb): este mismo notebook
     mínimo con sus salidas **reales** —el resumen de cada etapa, la tabla de decisión de la
     selección, el resumen final y los once libros de Excel—, listo para abrir en Jupyter o VS Code
-    y correr celda por celda. Se ejecuta entero en cada integración continua, así que sus salidas
-    no pueden quedar viejas.
+    y correr celda por celda. CI verifica su ejecución; las salidas guardadas conservan la
+    lectura histórica de HL. Al ejecutarlo con la implementación contextual, los nuevos
+    resúmenes distinguen esa lectura del diagnóstico descriptivo. Las PD no mejoran por
+    cambiar su interpretación.
 
 `run()` imprime el resumen de cada etapa mientras corre y, en un notebook, la última línea pinta
 el resumen final (también con `sc.summary()`; el de una etapa, con `sc.summary("binning")`, y su

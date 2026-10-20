@@ -203,7 +203,7 @@ class ModelCardBuilder:
             limitations=limitations,
             data_description=data_description,
             metrics=_metrics(study.results),
-            metric_sections=_metric_sections(study.results),
+            metric_sections=_contextual_metric_sections(study),
             decisions=decisions,
             determinism_caveats=list(bundle.determinism_caveats),
             review_date=review_date,
@@ -279,6 +279,33 @@ def _metric_sections(results: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise GovernanceError("study.results['metric_sections'] debe ser un dict.")
     return cast("dict[str, Any]", deepcopy(raw))
+
+
+def _contextual_metric_sections(study: Study) -> dict[str, Any]:
+    """Añade lectura legible separada; conserva las métricas y decisiones históricas."""
+    from bayesrisk.validation.interpretation import (
+        HISTORICAL_READING_TEXT,
+        UNSUPPORTED_POLICY_TEXT,
+        interpretation_details,
+        interpretation_lines,
+        study_interpretation,
+    )
+
+    sections = _metric_sections(study.results)
+    raw, value = study_interpretation(study)
+    if value is not None:
+        from bayesrisk.validation.results import VALIDATION_STATUS_LABELS
+
+        sections["Evaluación contextual"] = {
+            "Lectura": list(interpretation_lines(value)),
+            "Contexto de calibración": list(interpretation_details(value)),
+            "Estado histórico": VALIDATION_STATUS_LABELS[value.legacy_status],
+        }
+    elif study.artifacts.has("validation", "card"):
+        sections["Validación histórica"] = {
+            "Lectura": HISTORICAL_READING_TEXT if raw is None else UNSUPPORTED_POLICY_TEXT,
+        }
+    return sections
 
 
 def _data_description(study: Study) -> DataCardSectionLike | None:

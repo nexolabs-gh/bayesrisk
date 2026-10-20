@@ -275,9 +275,27 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
 
     validation = _card(bundle, "validation") if "validation" in bundle.results else None
     if validation is not None:
-        n_tests = _int(validation.get("n_tests"))
-        n_failed = _int(validation.get("n_failed"))
-        status = _text(validation.get("overall_status"))
+        from bayesrisk.validation.interpretation import (
+            HISTORICAL_READING_TEXT,
+            UNSUPPORTED_POLICY_TEXT,
+            interpretation_lines,
+            read_interpretation,
+        )
+
+        interpretation = read_interpretation(bundle.validation_interpretation)
+        current = interpretation.model_dump() if interpretation is not None else validation
+        n_tests = _int(current.get("n_tests"))
+        n_failed = _int(current.get("n_failed"))
+        status = _text(current.get("overall_status"))
+        notes.extend(
+            interpretation_lines(interpretation)
+            if interpretation is not None
+            else (
+                HISTORICAL_READING_TEXT
+                if bundle.validation_interpretation is None
+                else UNSUPPORTED_POLICY_TEXT,
+            )
+        )
         model_ref = _text(validation.get("model_ref")) or "Modelo evaluado"
         if n_tests is not None and n_failed is not None:
             # «0 de 0 pruebas fallidas» sería cierto y engañoso a la vez (D-VAL-17): sin ninguna
@@ -286,7 +304,9 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
             # el estado (pasada 1 de Codex sobre la capa B); la banda es la que dice el estado.
             metrics.append(
                 ExecutiveMetric(
-                    label="Estado técnico de validación formal",
+                    label="Evaluación contextual"
+                    if interpretation is not None
+                    else "Validación histórica",
                     scope=model_ref,
                     value=(
                         "Sin pruebas de pasa o falla"
@@ -1284,9 +1304,27 @@ def validation_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
     n_tests = _int(card.get("n_tests"))
     n_failed = _int(card.get("n_failed"))
     families = tuple(_familia_en_frase(item) for item in _sequence(card.get("families_run")))
+    from bayesrisk.validation.interpretation import (
+        HISTORICAL_READING_TEXT,
+        UNSUPPORTED_POLICY_TEXT,
+        interpretation_lines,
+        read_interpretation,
+    )
+
+    interpretation = read_interpretation(bundle.validation_interpretation)
     paragraphs = [
+        *(
+            interpretation_lines(interpretation)
+            if interpretation is not None
+            else (
+                HISTORICAL_READING_TEXT
+                if bundle.validation_interpretation is None
+                else UNSUPPORTED_POLICY_TEXT,
+            )
+        ),
+        "Resultado convencional de HL y estado histórico:",
         f"La validación formal del modelo «{model_ref}» ejecutó {_enumerar(families)}. "
-        f"El estado técnico agregado publicado por el motor es «{status}».",
+        f"El estado técnico histórico publicado por el motor es «{status}».",
     ]
     if n_tests is not None and n_failed is not None:
         if n_tests == 0 and _text(card.get("overall_status")) == "not_evaluable":
@@ -1360,7 +1398,8 @@ def validation_family_body(bundle: ReportInputBundle, family: str) -> tuple[str,
             "estado de evaluabilidad."
         ),
         "calibration": (
-            "La tabla reúne Hosmer-Lemeshow, Brier y, cuando fue configurado, el contraste por "
+            "La tabla histórica reúne el resultado convencional de Hosmer-Lemeshow, el puntaje "
+            "informativo de Brier y, cuando fue configurado, el contraste por "
             "grado con sus decisiones y semáforo publicados."
         ),
         "stability": (
@@ -1375,6 +1414,21 @@ def validation_family_body(bundle: ReportInputBundle, family: str) -> tuple[str,
     description = descriptions.get(family)
     if description is None:
         return ()
+    if family == "calibration":
+        from bayesrisk.validation.interpretation import (
+            interpretation_details,
+            read_interpretation,
+        )
+
+        interpretation = read_interpretation(bundle.validation_interpretation)
+        if interpretation is not None:
+            description = (
+                "El diagnóstico descriptivo conserva juntas las PD iguales; sus grupos no tienen "
+                "p-valor, grados de libertad ni decisión. Un grupo pequeño no acredita precisión. "
+                + " ".join(interpretation_details(interpretation))
+                + " "
+                + description
+            )
     cortes = _traffic_light_cuts_prose(bundle) if family == "calibration" else ()
     sin_veredicto = _hl_not_evaluable_prose(bundle) if family == "calibration" else ()
     recalculo = _stability_recompute_prose(bundle) if family == "stability" else ()
@@ -3385,6 +3439,18 @@ def limitations_body(bundle: ReportInputBundle) -> tuple[str, ...]:
             )
     else:
         alcance = "El alcance de este informe es la construcción y evaluación del scorecard."
+
+    if validation is not None:
+        from bayesrisk.validation.interpretation import (
+            CALIBRATION_COVERAGE_TEXT,
+            CONTEXT_GAP_TEXT,
+            read_interpretation,
+        )
+
+        interpretation = read_interpretation(bundle.validation_interpretation)
+        alcance += " " + CALIBRATION_COVERAGE_TEXT + "."
+        if interpretation is not None and interpretation.coverage_gap:
+            alcance += " " + CONTEXT_GAP_TEXT + ". La procedencia sólo describe la calibración."
 
     if validation is None and not tiene_monitoreo:
         alcance += (

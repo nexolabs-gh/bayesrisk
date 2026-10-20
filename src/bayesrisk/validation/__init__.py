@@ -35,6 +35,8 @@ from bayesrisk.validation.config import (
 _schema._VALIDATION_CONFIG_CLS = ValidationConfig
 
 _LAZY_EXPORTS: Final[dict[str, tuple[str, str]]] = {
+    "interpret_validation": ("bayesrisk.validation.interpretation", "interpret_validation"),
+    "ValidationInterpretation": ("bayesrisk.validation.interpretation", "ValidationInterpretation"),
     "BacktestError": ("bayesrisk.validation.exceptions", "BacktestError"),
     "CalibrationTestError": ("bayesrisk.validation.exceptions", "CalibrationTestError"),
     "ValidationConfigError": ("bayesrisk.validation.exceptions", "ValidationConfigError"),
@@ -74,8 +76,10 @@ __all__ = [
     "ValidationError",
     "ValidationEvaluator",
     "ValidationFamily",
+    "ValidationInterpretation",
     "ValidationResult",
     "ValidationStep",
+    "interpret_validation",
 ]
 
 # Import perezoso a nivel paquete para ejecutar @register("standard", domain="validation") al

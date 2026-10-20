@@ -446,3 +446,31 @@ def test_import_report_no_arrastra_weasyprint_por_subprocess() -> None:
         "assert not blocked, blocked"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+@pytest.mark.skipif(not _HAS_WEASYPRINT, reason="requiere WeasyPrint y nativas")
+def test_hlc_pdf_real_conserva_contexto_y_tablas_descriptivas() -> None:
+    """La puerta PDF de CI ejerce el HTML de producto, no una tabla rearmada en el test."""
+    from pypdf import PdfReader
+    from test_validation_step import _scorecard_study
+
+    from bayesrisk.report.builder import ReportBuilder
+    from bayesrisk.validation.config import ValidationConfig
+    from bayesrisk.validation.step import ValidationStep
+
+    cfg = ValidationConfig(families=("calibration",), calibration={"binomial_by_grade": False})
+    study = _scorecard_study(config=cfg)
+    study.run_context.lineage = _lineage()
+    ValidationStep(cfg).execute(study, np.random.default_rng(0))
+    report_cfg = ReportConfig(sections={"missing_policy": "skip"})
+    bundle = ReportBuilder(report_cfg).collect(study)
+    html = HtmlReportRenderer(report_cfg).render(bundle)
+    reader = PdfReader(BytesIO(render_pdf(html)))
+    text = "\n".join(page.extract_text() for page in reader.pages)
+    assert "Evaluación contextual: No evaluable" in text
+    assert "contraste de calibración validado para este contexto" in text
+    assert "diagnóstico descriptivo de calibración" in text.casefold()
+    assert "Resultado convencional de HL y estado histórico" in text
+    assert "PD mínima" in text
+    assert "Bajo mínimo histórico" in text
+    assert "FALTA-DATO-VAL-HL-CONTEXTO" not in text

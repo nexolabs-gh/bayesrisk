@@ -403,13 +403,36 @@ def _section(
     for chart in section["charts"]:
         word.add_picture(io.BytesIO(chart["png"]), width=inches(_FIGURE_WIDTH_INCHES))
         _caption(word, chart["title"], points=points)
+    # D-HLC: conservar las 13 columnas sin partir las cifras en A4 vertical.
+    # Sólo las nuevas tablas cambian de disposición; al terminar se restaura la hoja.
+    from docx.enum.section import WD_ORIENT, WD_SECTION_START
+
+    original_page = (
+        word.sections[-1].orientation,
+        word.sections[-1].page_width,
+        word.sections[-1].page_height,
+    )
+    landscape = False
     for table in section["tables"]:
+        diagnostic = str(table["key"]).startswith("validation.calibration_tie_groups.")
+        if diagnostic and landscape:
+            word.add_page_break()
+        if diagnostic != landscape:
+            page = word.add_section(WD_SECTION_START.NEW_PAGE)
+            if diagnostic:
+                page.orientation = WD_ORIENT.LANDSCAPE
+                page.page_width = max(original_page[1:])
+                page.page_height = min(original_page[1:])
+            else:
+                page.orientation, page.page_width, page.page_height = original_page
+            landscape = diagnostic
         _caption(word, table["title"], points=points, bold=True)
         escritas = _table(
             word,
             tuple(table["columns"]),
             [tuple(row) for row in table["rows"]],
             numeric=tuple(table.get("numeric") or ()),
+            compact=diagnostic,
         )
         # La leyenda dice lo que el Word trae DE VERDAD: su cinturón puede cortar por debajo de
         # lo que la vista canónica permitió, y decir «mostrando 1000» con 500 filas ocultaba
@@ -420,6 +443,9 @@ def _section(
                 f"… (mostrando {conteo(escritas)} de {table['total_rows_label']} filas)",
                 points=points,
             )
+    if landscape:
+        page = word.add_section(WD_SECTION_START.NEW_PAGE)
+        page.orientation, page.page_width, page.page_height = original_page
     if section["data_exports"]:
         _data_exports(word, section["data_exports"])
     _payload_blocks(word, section)
@@ -438,10 +464,18 @@ def _heading(section: Mapping[str, Any]) -> str:
 
 def _data_exports(word: Any, exports: Mapping[str, Any]) -> None:
     """Declara dónde quedó el detalle por observación (los adjuntos de datos)."""
-    word.add_heading("Detalle por observación", level=3)
+    diagnostics = exports.get("has_diagnostics", False)
+    word.add_heading(
+        "Datos y diagnóstico de calibración" if diagnostics else "Detalle por observación", level=3
+    )
     if exports["requested"]:
         word.add_paragraph(
-            "Las tablas con una fila por operación no se reproducen en el informe: se entregan "
+            "Las tablas de datos y del diagnóstico descriptivo de calibración se entregan "
+            "completas como adjuntos. Los grupos descriptivos permanecen también en el cuerpo "
+            "del informe."
+            if diagnostics
+            else "Las tablas con una fila por operación no se reproducen en el informe: "
+            "se entregan "
             "completas como archivos adjuntos a este documento."
         )
         _table(
@@ -458,7 +492,11 @@ def _data_exports(word: Any, exports: Mapping[str, Any]) -> None:
         )
         return
     word.add_paragraph(
-        "Esta corrida produjo tablas con una fila por operación que no se reproducen en el informe "
+        "Las tablas enumeradas no se exportaron como adjuntos: añada 'csv' o 'xlsx' a "
+        "report.formats para obtenerlas completas."
+        if diagnostics
+        else "Esta corrida produjo tablas con una fila por operación que no se reproducen "
+        "en el informe "
         "(son datos, no evidencia de validación) y que no se exportaron: añada 'csv' o 'xlsx' a "
         "report.formats para obtenerlas completas."
     )
@@ -501,6 +539,7 @@ def _table(
     rows: Sequence[Sequence[str]],
     *,
     numeric: Sequence[bool] = (),
+    compact: bool = False,
 ) -> int:
     """Tabla NATIVA de Word (no una imagen): editable, copiable y con encabezado en negrita.
 
@@ -511,6 +550,7 @@ def _table(
     HTML (D-INF-2).
     """
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
 
     derecha = {indice for indice, es in enumerate(numeric) if es}
     visible = list(rows)[:_MAX_DOCX_TABLE_ROWS]
@@ -530,6 +570,16 @@ def _table(
             cells[index].text = str(value)
             if index in derecha:
                 cells[index].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    if compact:
+        from docx.oxml.parser import OxmlElement
+
+        table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    paragraph.paragraph_format.space_after = Pt(3)
+                    for run in paragraph.runs:
+                        run.font.size = Pt(9)
     return len(visible)
 
 

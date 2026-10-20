@@ -384,7 +384,7 @@ def test_el_informe_word_trae_las_mismas_tablas(corrida: Any) -> None:
     documento = docx.Document(io.BytesIO(DocxReportRenderer(cfg).render(bundle)))
     texto = "\n".join(p.text for p in documento.paragraphs)
     for muestra in _muestras_con_veredicto(corrida.study):
-        assert f"Hosmer-Lemeshow por grupo · {_PARTITION_LABELS[muestra]}" in texto
+        assert f"Hosmer-Lemeshow convencional por grupo · {_PARTITION_LABELS[muestra]}" in texto
     encabezados = {
         tuple(c.text for c in tabla.rows[0].cells) for tabla in documento.tables if tabla.rows
     }
@@ -399,6 +399,87 @@ def test_la_pantalla_recibe_los_grupos(corrida: Any) -> None:
     assert filas, "el payload de Resultados debe traer los grupos"
     assert set(filas[0]) == set(_COLUMNAS)
     assert {f["partition"] for f in filas} == set(_muestras_con_veredicto(corrida.study))
+
+
+@pytest.mark.skipif(importlib.util.find_spec("openpyxl") is None, reason="requiere extra excel")
+def test_hlc_api_resumen_documento_y_adjuntos_comparten_artefactos(
+    corrida: Any, tmp_path: Path
+) -> None:
+    """D-HLC: paridad efectiva, tablas completas y estado histórico preservado."""
+    from bayesrisk.report.exports import data_export_refs, write_data_exports
+    from bayesrisk.ui.serializers import serialize_study
+    from bayesrisk.validation.interpretation import diagnostic_tables, interpretation_lines
+
+    study = corrida.study
+    value = study.artifacts.get("validation", "interpretation")
+    payload = serialize_study(study, governance=None)["validation"]
+    assert payload["interpretation"] == value.model_dump(mode="json")
+    assert payload["overall_status"] == value.legacy_status
+    assert payload["n_tests"] == value.legacy_n_tests
+    assert payload["calibration_tie_groups"] == [
+        g.model_dump() for g in value.calibration_tie_groups
+    ]
+    cfg = ReportConfig(formats=("csv", "xlsx"), sections={"missing_policy": "skip"})
+    bundle = ReportBuilder(cfg).collect(study)
+    assert bundle.results["validation"].card == study.artifacts.get("validation", "card")
+    assert bundle.validation_interpretation == value.model_dump(mode="json")
+    html = HtmlReportRenderer(cfg).render(bundle)
+    summary = corrida.summary("validation")
+    for line in interpretation_lines(value):
+        assert line in summary.lines
+        assert line in html
+    for partition, frame in diagnostic_tables(value).items():
+        key = f"validation.calibration_tie_groups.{partition}"
+        pd.testing.assert_frame_equal(bundle.tables[key], frame)
+        assert html.count(f'data-table-key="{key}"') == 1
+        assert "Contribución" not in (_tabla_html(html, key) or "")
+    exports = write_data_exports(bundle.tables, config=cfg, output_dir=str(tmp_path))
+    refs = [
+        r
+        for r in data_export_refs(bundle.tables, config=cfg)
+        if r.table_key.startswith("validation.calibration_tie_groups.")
+    ]
+    assert len(refs) == 2 * len(value.hl)
+    assert all(Path(exports[r.filename]).is_file() for r in refs)
+    import openpyxl
+
+    workbook_ref = next(r for r in refs if r.sheet)
+    workbook = openpyxl.load_workbook(exports[workbook_ref.filename], data_only=True)
+    for ref in refs:
+        if ref.sheet:
+            sheet = workbook[ref.sheet]
+            assert sheet.max_row == ref.rows + 1
+            assert "PD mínima" in [c.value for c in sheet[1]]
+        else:
+            csv = pd.read_csv(exports[ref.filename], encoding="utf-8-sig", index_col=0)
+            assert len(csv) == ref.rows
+            assert list(csv.columns) == list(bundle.tables[ref.table_key].columns)
+    workbook.close()
+
+
+@pytest.mark.skipif(not _HAS_DOCX, reason="requiere extra docx")
+def test_hlc_word_conserva_columnas_en_hoja_horizontal_y_restaura_formato(corrida: Any) -> None:
+    from docx import Document
+
+    from bayesrisk.report.docx import DocxReportRenderer
+
+    cfg = ReportConfig(sections={"missing_policy": "skip"})
+    bundle = ReportBuilder(cfg).collect(corrida.study)
+    document = Document(io.BytesIO(DocxReportRenderer(cfg).render(bundle)))
+    assert any(s.page_width > s.page_height for s in document.sections)
+    assert document.sections[-1].page_width == document.sections[0].page_width
+    assert document.sections[-1].page_height == document.sections[0].page_height
+    tables = [t for t in document.tables if "PD mínima" in [c.text for c in t.rows[0].cells]]
+    assert len(tables) == len(corrida.study.artifacts.get("validation", "interpretation").hl)
+    for table in tables:
+        assert len(table.columns) == 13
+        assert all(
+            run.font.size.pt == 9
+            for row in table.rows
+            for cell in row.cells
+            for paragraph in cell.paragraphs
+            for run in paragraph.runs
+        )
 
 
 def test_sdd22_ya_no_dice_bilateral_para_hosmer_lemeshow() -> None:

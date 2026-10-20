@@ -574,8 +574,63 @@ export interface ValidationHlGroupRow {
   contribution: number
 }
 
-/** Sección de validación formal (`ValidationCardSection` + sus cuatro tablas tidy). */
+export interface CalibrationTieGroupRow {
+  partition: string
+  group: number
+  pd_min: number
+  pd_max: number
+  n: number
+  observed_defaults: number
+  expected_defaults: number
+  observed_dr: number
+  mean_pd: number
+  gap_pp: number
+  oe_ratio: number | null
+  oe_ratio_reason: "non_representable_ratio" | "zero_expected" | null
+  expected_non_defaults: number
+  below_legacy_min_rows: boolean
+}
+
+export interface ValidationInterpretation {
+  schema_version: 1
+  /** String permite detectar una política futura en un archivo guardado sin aplicarla. */
+  policy_id: string
+  overall_status: ValidationOverallStatus
+  n_tests: number
+  n_failed: number
+  legacy_status: ValidationOverallStatus
+  legacy_n_tests: number
+  legacy_n_failed: number
+  families_run: ValidationFamily[]
+  coverage_gap: boolean
+  warning_codes: string[]
+  hl: {
+    partition: string
+    context: "same_calibration_sample" | "other_calibration_sample" | "unknown"
+    context_source: "artifact_metadata" | "none"
+    context_scope: "calibration_only"
+    full_pipeline_independence_verified: false
+    context_reason: string | null
+    legacy_statistic: number | null
+    legacy_p_value: number | null
+    legacy_alpha: number | null
+    legacy_decision: "pass" | "fail" | "not_evaluable"
+    legacy_not_evaluable_reason: string | null
+    n: number
+    requested_groups: number
+    k_groups: number
+    legacy_boundary_splits_tie: boolean
+    diagnostic_status: "available"
+    formal_inference: "not_established"
+  }[]
+  calibration_tie_groups: CalibrationTieGroupRow[]
+}
+
+/** Sección de validación formal: campos originales históricos más lectura aditiva. */
 export interface ValidationResult {
+  interpretation?: ValidationInterpretation | null
+  interpretation_lines?: string[] | null
+  calibration_tie_groups?: CalibrationTieGroupRow[] | null
   model_ref: string
   families_run: ValidationFamily[]
   overall_status: ValidationOverallStatus

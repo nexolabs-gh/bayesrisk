@@ -693,8 +693,8 @@
             {
               "estado": "disponible",
               "exige": [],
-              "help": "Compara la PD estimada con el incumplimiento observado: por grupos de PD, con un puntaje de error medio y, si tienes grados de rating, grado por grado. Es la familia que esta etapa aporta de nuevo.",
-              "label": "Si la probabilidad que da es la que ocurre",
+              "help": "Compara la PD estimada con el incumplimiento observado: por grupos de PD, con Brier y, si tienes grados de rating, grado por grado. HL conserva su resultado convencional; por sí solo no certifica calibración.",
+              "label": "Diagnóstico de calibración",
               "motivo": null,
               "value": "calibration"
             },
@@ -5659,8 +5659,8 @@
             {
               "estado": "disponible",
               "exige": [],
-              "help": "Compara la PD estimada con el incumplimiento observado: por grupos de PD, con un puntaje de error medio y, si tienes grados de rating, grado por grado. Es la familia que esta etapa aporta de nuevo.",
-              "label": "Si la probabilidad que da es la que ocurre",
+              "help": "Compara la PD estimada con el incumplimiento observado: por grupos de PD, con Brier y, si tienes grados de rating, grado por grado. HL conserva su resultado convencional; por sí solo no certifica calibración.",
+              "label": "Diagnóstico de calibración",
               "motivo": null,
               "value": "calibration"
             },

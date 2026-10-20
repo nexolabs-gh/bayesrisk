@@ -132,7 +132,11 @@ _RESULT_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (("validation", "result"
 #: ``_FIGURE_ARTIFACTS`` también se adoptan si existen y **siguen declarándose inertes** al
 #: inyectarlas. Es el alcance que fija D-FX-3, que habla de cards; ampliarlo movería el veredicto de
 #: la puerta de artefactos y es decisión de producto, no un olvido de esta línea.
-OPTIONAL_REPORT_INPUTS: Final[tuple[tuple[str, str], ...]] = _CARD_ARTIFACTS + _RESULT_ARTIFACTS
+OPTIONAL_REPORT_INPUTS: Final[tuple[tuple[str, str], ...]] = (
+    _CARD_ARTIFACTS
+    + _RESULT_ARTIFACTS
+    + (("validation", "interpretation"), ("validation", "calibration_tie_groups"))
+)
 _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     ("eda", "default_rate"),
     ("eda", "stability"),
@@ -254,6 +258,16 @@ class ReportBuilder:
         tables.update(_data_card_tables(cards))
         tables.update(_atomic_result_tables(results))
         tables.update(_hl_group_tables(study, results))
+        from bayesrisk.validation.interpretation import diagnostic_tables, study_interpretation
+
+        raw_interpretation, interpretation = study_interpretation(study)
+        if interpretation is not None:
+            tables.update(
+                {
+                    f"validation.calibration_tie_groups.{partition}": frame
+                    for partition, frame in diagnostic_tables(interpretation).items()
+                }
+            )
         tables.update(_curva_de_pd_por_cartera(study))
         ifrs9_extras, tablas_ifrs9 = _escenarios_y_pd_del_modelo(study)
         tables.update(tablas_ifrs9)
@@ -272,6 +286,11 @@ class ReportBuilder:
             lineage=lineage,
             cards=cards,
             results=results,
+            validation_interpretation=(
+                raw_interpretation.model_dump(mode="json")
+                if hasattr(raw_interpretation, "model_dump")
+                else raw_interpretation
+            ),
             tables=tables,
             figures=figures,
             sections=(),

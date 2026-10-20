@@ -304,6 +304,22 @@ def _augment_with_rich_artifacts(study: Study, payload: dict[str, Any]) -> None:
         payload["validation"]["hosmer_lemeshow_groups"] = _domain_records(
             study, "validation", "hosmer_lemeshow_groups"
         )
+        from bayesrisk.validation.interpretation import (
+            interpretation_details,
+            interpretation_lines,
+            study_interpretation,
+        )
+
+        raw, interpretation = study_interpretation(study)
+        payload["validation"]["interpretation"] = dump_dto(raw) if raw is not None else None
+        payload["validation"]["interpretation_lines"] = (
+            [*interpretation_lines(interpretation), *interpretation_details(interpretation)]
+            if interpretation is not None
+            else None
+        )
+        payload["validation"]["calibration_tie_groups"] = _domain_records(
+            study, "validation", "calibration_tie_groups"
+        )
     # Provisiones (SDD-28): solo frames AGREGADOS (graficables), nunca los ``detail`` por operación.
     if isinstance(payload["provisioning_cmf"], dict):
         # Desglose del método estándar por categoría CMF (~20 filas): dónde vive la provisión.

@@ -242,6 +242,8 @@ def _linea_de_frontera(modelos: Sequence[Mapping[str, Any]]) -> str:
 
 
 def _linea_de_validacion(modelos: Sequence[Mapping[str, Any]]) -> str:
+    from bayesrisk.validation.interpretation import COMPARISON_HISTORICAL_TEXT
+
     propios = [m for m in modelos if m.get("same_as") is None]
     partes: list[str] = []
     for estado, (singular, plural) in _ESTADOS_VALIDACION.items():
@@ -260,7 +262,12 @@ def _linea_de_validacion(modelos: Sequence[Mapping[str, Any]]) -> str:
     sin = [m["name"] for m in propios if m.get("validation_status") is None]
     if sin:
         partes.append(f"sin validación formal: {_enumerar(sin)}")
-    return _oracion(partes, [m["name"] for m in modelos])
+    return (
+        "Validación histórica: "
+        + _oracion(partes, [m["name"] for m in modelos])
+        + " "
+        + COMPARISON_HISTORICAL_TEXT
+    )
 
 
 def _linea_de_variables(

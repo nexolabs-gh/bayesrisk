@@ -2070,11 +2070,12 @@ _ABANICO_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
                 },
                 {
                     "value": "calibration",
-                    "label": "Si la probabilidad que da es la que ocurre",
+                    "label": "Diagnóstico de calibración",
                     "help": (
                         "Compara la PD estimada con el incumplimiento observado: por grupos de "
-                        "PD, con un puntaje de error medio y, si tienes grados de rating, grado "
-                        "por grado. Es la familia que esta etapa aporta de nuevo."
+                        "PD, con Brier y, si tienes grados de rating, grado por grado. "
+                        "HL conserva su resultado convencional; por sí solo no certifica "
+                        "calibración."
                     ),
                     "estado": _DISPONIBLE,
                     "motivo": None,

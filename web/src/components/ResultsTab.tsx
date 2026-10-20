@@ -41,6 +41,10 @@ import {
   DISCRIMINATION_SOURCE_LABELS,
   DISCRIMINATION_STATUS_LABELS,
   EMPTY,
+  COMPARISON_HISTORICAL_TEXT,
+  HISTORICAL_READING_TEXT,
+  UNSUPPORTED_POLICY_TEXT,
+  OE_RATIO_REASON_LABELS,
   STABILITY_SOURCE_LABELS,
   TRAFFIC_LIGHT_LABELS,
   VALIDATION_DECISION_LABELS,
@@ -137,7 +141,7 @@ import {
   modelCardDomains,
   modelCardTieneAvisosDeclarados,
 } from "@/lib/model-card"
-import type { Coefficient, ModelCard, ResultsResponse, RunSummaries } from "@/lib/results-types"
+import type { Coefficient, ModelCard, ResultsResponse, RunSummaries, ValidationResult } from "@/lib/results-types"
 import type {
   Ifrs9MethodologyCard,
   MethodologyFact,
@@ -470,13 +474,13 @@ export function ResultsPanel({
           corrida sin `governance` —los tres fixtures de la demo entre ellos— y cuando la corrida
           quedó demasiado parcial para una ficha válida; entonces no hay bloque, ni vacío ni
           fabricado, porque un bloque vacío aparentaría un control que no corrió. */}
-      {results.model_card ? <ModelCardSection card={results.model_card} /> : null}
+      {results.model_card ? <ModelCardSection card={results.model_card} validation={val} /> : null}
 
       {/* RESUMEN DE LA CORRIDA (D-FLU-8): lo mismo que cuenta la puerta guiada —cada etapa en
           palabras con su tabla de decisión y el resumen final con sus dos estados—, leído de
           `summaries`, la misma fuente que `Scorecard.summary()`. Guard por presencia: los
           payloads anteriores a la capa B no lo traen y el panel no fabrica un resumen. */}
-      {results.summaries ? <RunSummarySection summaries={results.summaries} /> : null}
+      {results.summaries ? <RunSummarySection summaries={results.summaries} validation={val} /> : null}
 
       {/* COMPARACIÓN DE PROVISIONES (SDD-28): sólo cuando corrió el orquestador del máximo. */}
       {headline ? (
@@ -1101,10 +1105,12 @@ export function ResultsPanel({
           title="Validación formal"
           description="Las pruebas que documentan el modelo: discriminación, calibración, estabilidad y backtesting. El motor publica su evidencia; el veredicto sobre el modelo lo firma quien valida."
         >
+          <ContextualValidationPanel validation={val} />
+          <h3 className="text-sm font-medium">Resultado convencional de HL y estado histórico</h3>
           <dl className="grid gap-2 sm:grid-cols-3">
             <div className="space-y-0.5">
               <dt className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">
-                Estado técnico
+                Estado técnico histórico
               </dt>
               <dd>
                 <span
@@ -1226,7 +1232,7 @@ export function ResultsPanel({
               su cobertura. Las dos formas viven en la MISMA tabla del motor y aquí se separan
               para leerlas; ninguna se recalcula. */}
           {valCalibration.porParticion.length > 0 ? (
-            <Subchart title="Calibración por muestra">
+            <Subchart title="Resultado convencional de HL y Brier por muestra">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -2034,13 +2040,75 @@ function DefItem({
  * `_repr_html_`), así que la pantalla no puede decir una cifra distinta de la del notebook. Con
  * `error` se dice por qué no hay resumen, en vez de esconder el hueco.
  */
-function RunSummarySection({ summaries }: { summaries: RunSummaries }) {
+export function ContextualValidationPanel({ validation, showTables = true }: { validation: ValidationResult; showTables?: boolean }) {
+  const interpretation = validation.interpretation
+  if (!interpretation || interpretation.policy_id !== "hl_context_v1") {
+    return <p role="status" className="text-sm text-amber-200/90">
+      {interpretation ? UNSUPPORTED_POLICY_TEXT : HISTORICAL_READING_TEXT}
+    </p>
+  }
+  return <div className="space-y-3">
+    <h3 className="font-medium">Evaluación contextual: {validationStatusLabel(interpretation.overall_status)}</h3>
+    <ul className="space-y-1 text-sm">
+      {(validation.interpretation_lines ?? []).map((line) => <li key={line}>{line}</li>)}
+    </ul>
+    <p className="text-xs text-muted-foreground">
+      {formatCount(interpretation.n_tests)} pruebas evaluables sin HL; {formatCount(interpretation.n_failed)} rechazos.
+      {" "}La evaluación se limita a las familias ejecutadas; no certifica la calibración global ni la aprobación institucional del modelo.
+    </p>
+    {interpretation.coverage_gap ? <p className="text-sm text-amber-200/90">
+      La librería aún no dispone de un contraste de calibración validado para este contexto
+    </p> : null}
+    {showTables ? interpretation.hl.map((entry) => (
+      <Subchart key={entry.partition} title={`Diagnóstico descriptivo de calibración · ${partitionLabel(entry.partition)}`}>
+        <p className="text-xs text-muted-foreground">Las PD iguales permanecen juntas. Sin p-valor, grados de libertad ni decisión; los grupos pequeños no acreditan precisión.</p>
+        <div className="overflow-x-auto" role="region" aria-label={`Grupos descriptivos de ${partitionLabel(entry.partition)}`} tabIndex={0}>
+          <table className="w-full text-xs">
+            <caption className="sr-only">Diagnóstico descriptivo de calibración · {partitionLabel(entry.partition)}</caption>
+            <thead><tr className="border-b border-border">
+              {["Grupo", "PD mínima", "PD máxima", "Observaciones", "Malos observados", "Malos esperados",
+                "Tasa observada (%)", "PD media (%)", "Diferencia (pp)", "O/E", "Ausencia de O/E", "No incumplimientos esperados",
+                "Bajo mínimo histórico"].map((label) => <th key={label} scope="col" className="px-2 py-2 text-left">{label}</th>)}
+            </tr></thead>
+            <tbody>
+              {(validation.calibration_tie_groups ?? interpretation.calibration_tie_groups)
+                .filter((g) => g.partition === entry.partition).map((g) => (
+                  <tr key={g.group} className="border-b border-border">
+                    <td className="px-2 py-2">{g.group}</td>
+                    <td className="px-2">{formatMetric(g.pd_min)}</td>
+                    <td className="px-2">{formatMetric(g.pd_max)}</td>
+                    <td className="px-2">{formatCount(g.n)}</td>
+                    <td className="px-2">{formatCount(g.observed_defaults)}</td>
+                    <td className="px-2">{formatMetric(g.expected_defaults)}</td>
+                    <td className="px-2">{formatMetric(100 * g.observed_dr)}</td>
+                    <td className="px-2">{formatMetric(100 * g.mean_pd)}</td>
+                    <td className="px-2">{formatMetric(g.gap_pp)}</td>
+                    <td className="px-2">{formatMetric(g.oe_ratio)}</td>
+                    <td className="px-2">{OE_RATIO_REASON_LABELS[g.oe_ratio_reason ?? ""] ?? EMPTY}</td>
+                    <td className="px-2">{formatMetric(g.expected_non_defaults)}</td>
+                    <td className="px-2">{g.below_legacy_min_rows ? "Sí" : "No"}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </Subchart>
+    )) : null}
+  </div>
+}
+
+function RunSummarySection({ summaries, validation }: { summaries: RunSummaries; validation: ValidationResult | null }) {
   const { final, stages, error } = summaries
+  const historicalNotice = validation
+    ? validation.interpretation?.policy_id === "hl_context_v1" ? null
+      : validation.interpretation ? UNSUPPORTED_POLICY_TEXT : HISTORICAL_READING_TEXT
+    : final?.family === "comparacion" ? COMPARISON_HISTORICAL_TEXT : null
   return (
     <ResultsSection
       title="Resumen de la corrida"
       description="Lo que cuenta cada etapa, en palabras y con su tabla de decisión: la misma fuente que el resumen de la puerta guiada."
     >
+      {historicalNotice ? <p role="status" className="text-sm text-amber-200/90">{historicalNotice}. Los estados de validación de este resumen son históricos.</p> : null}
       {error ? (
         <p role="status" className="text-xs text-amber-200/90">
           {error}
@@ -2220,7 +2288,7 @@ function SummaryTableView({
   )
 }
 
-function ModelCardSection({ card }: { card: ModelCard }) {
+function ModelCardSection({ card, validation }: { card: ModelCard; validation: ValidationResult | null }) {
   const domains = modelCardDomains(card)
   const decisions = modelCardDecisionRows(card)
   const hayAvisos = modelCardTieneAvisosDeclarados(domains, decisions)
@@ -2229,6 +2297,12 @@ function ModelCardSection({ card }: { card: ModelCard }) {
       title="Ficha del modelo"
       description="Lo que tu institución declaró al encender la gobernanza y lo que la corrida registró: propósito, supuestos y límites de uso, las fechas de emisión y de próxima revisión, las métricas por dominio y las decisiones que el motor dejó en el registro de auditoría."
     >
+      {domains.some((d) => d.domain === "validation") ? (
+        <div className="space-y-2">
+          {validation ? <ContextualValidationPanel validation={validation} showTables={false} /> : <p role="status">{HISTORICAL_READING_TEXT}</p>}
+          <p className="text-xs text-muted-foreground">Las métricas y decisiones de validación conservadas en esta ficha son históricas.</p>
+        </div>
+      ) : null}
       <div className="space-y-1">
         <p className="text-[0.68rem] uppercase tracking-wide text-muted-foreground">
           Propósito
@@ -2265,7 +2339,7 @@ function ModelCardSection({ card }: { card: ModelCard }) {
           <div className="space-y-3">
             {domains.map((d) => (
               <div key={d.domain} className="space-y-1.5">
-                <p className="text-xs font-medium text-foreground">{d.label}</p>
+                <p className="text-xs font-medium text-foreground">{d.domain === "validation" ? "Validación histórica" : d.label}</p>
                 {d.metrics.length > 0 ? (
                   <dl className="flex flex-wrap gap-1.5">
                     {d.metrics.map((m) => (

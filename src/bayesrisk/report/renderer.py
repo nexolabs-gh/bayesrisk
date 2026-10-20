@@ -663,7 +663,8 @@ def _exec_scope_note(bundle: ReportInputBundle) -> str:
     if validation is not None:
         return (
             "Alcance: scorecard y validación formal de las familias configuradas. El capítulo "
-            "«Validación formal» reproduce el resultado que publicó el motor; el veredicto "
+            "«Validación formal» distingue la evaluación contextual disponible del resultado "
+            "convencional histórico; el veredicto "
             "permanece bajo responsabilidad humana. Todos los valores provienen de la corrida "
             "trazada en la portada: no se completan con supuestos."
         )
@@ -789,6 +790,11 @@ def _tables_for_section(
             # D-HLG-2: los grupos del Hosmer-Lemeshow de cada muestra, junto a la tabla que da el
             # veredicto y no en el anexo.
             keys = (
+                *(
+                    key
+                    for key in bundle.tables
+                    if str(key).startswith("validation.calibration_tie_groups.")
+                ),
                 *keys,
                 *(key for key in bundle.tables if str(key).startswith(HL_GROUP_TABLE_PREFIX)),
             )
@@ -836,11 +842,18 @@ def _data_exports_view(
     """
     if section.id != APPENDIX_TABLES_ID:
         return {}
-    keys = tuple(key for key in sorted(bundle.tables, key=str) if key in PER_OBSERVATION_TABLES)
+    keys = tuple(
+        key
+        for key in sorted(bundle.tables, key=str)
+        if key in PER_OBSERVATION_TABLES or key.startswith("validation.calibration_tie_groups.")
+    )
     if not keys:
         return {}
     refs = data_export_refs(bundle.tables, config=config)
     return {
+        "has_diagnostics": any(
+            key.startswith("validation.calibration_tie_groups.") for key in keys
+        ),
         "requested": bool(refs),
         "attachments": [
             {

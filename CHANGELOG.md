@@ -11,6 +11,14 @@ entradas anteriores conservan el nombre con el que se publicaron.
 
 ### Añadido
 
+- Evaluación contextual de validación (`hl_context_v1`) y diagnóstico de calibración que
+  conserva juntas las PD iguales, disponibles por API, guiada, pantalla, informes y exports.
+  El HL convencional, sus tablas y su estado histórico se conservan; HL deja de decidir la
+  lectura contextual. Sólo HL/Brier deja «No evaluable»; con otra evidencia favorable,
+  «Revisar: calibración pendiente». No cambia PD, defaults ni hashes. Sigue pendiente un
+  contraste de calibración contextual validado; la comparación formato 1 permanece histórica.
+  Las corridas y los informes antiguos de la demo no se han recapturado.
+
 - Benchmark parcial descargable de German Credit, Taiwan y dos carteras sintéticas: notebook
   mínimo, anexo técnico, entorno fijado, 28 combinaciones con referentes Python, predicciones,
   incertidumbre y artefactos HTML/Word/Excel verificables. Conserva defaults y separa evaluación

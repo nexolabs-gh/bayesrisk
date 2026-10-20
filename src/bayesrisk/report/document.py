@@ -782,10 +782,15 @@ def table_title(key: str, *, internal_grouping: str | None = None) -> str:
     if key.startswith(_EDA_PROFILE_PREFIX):
         variable = key[len(_EDA_PROFILE_PREFIX) :]
         return f"Perfil frente al incumplimiento — variable «{variable}»"
+    if key.startswith("validation.calibration_tie_groups."):
+        from bayesrisk.report.prose import _PARTITION_LABELS
+
+        muestra = key.removeprefix("validation.calibration_tie_groups.")
+        return f"Diagnóstico descriptivo de calibración · {_PARTITION_LABELS.get(muestra, muestra)}"
     if key.startswith(HL_GROUP_TABLE_PREFIX):
         # Perezoso: la prosa importa este módulo.
         from bayesrisk.report.prose import _PARTITION_LABELS
 
         muestra = key[len(HL_GROUP_TABLE_PREFIX) :]
-        return f"Hosmer-Lemeshow por grupo · {_PARTITION_LABELS.get(muestra, muestra)}"
+        return f"Hosmer-Lemeshow convencional por grupo · {_PARTITION_LABELS.get(muestra, muestra)}"
     return f"Tabla «{key}»"
