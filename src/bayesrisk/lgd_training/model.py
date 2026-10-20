@@ -128,7 +128,15 @@ class LgdModel:
         """Aplica por nombres de covariable; conserva índice y omite columnas adicionales."""
         import numpy as np
         import pandas as pd
-        from scipy.special import expit
+
+        try:
+            from scipy.special import expit
+        except ImportError as exc:
+            from bayesrisk.core.exceptions import MissingDependencyError
+
+            raise MissingDependencyError(
+                'Aplicar LGD requiere scipy: instala `pip install "bayesrisk[scoring]"`.'
+            ) from exc
 
         model = self.validated()
         x = numeric_matrix(frame, model.features)

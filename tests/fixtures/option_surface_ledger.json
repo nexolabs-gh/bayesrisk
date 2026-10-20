@@ -1589,6 +1589,20 @@
       "value": "scoring"
     },
     {
+      "authority": "SDD-30 D-RDY-ABA-6",
+      "classification": "internal_discriminator",
+      "path": "lgd_training.schema_version",
+      "reason": "Discriminador estructural fijo; no representa una elección de producto.",
+      "value": "1.0.0"
+    },
+    {
+      "authority": "SDD-30 D-RDY-ABA-6",
+      "classification": "internal_discriminator",
+      "path": "lgd_training.type",
+      "reason": "Discriminador estructural fijo; no representa una elección de producto.",
+      "value": "standard"
+    },
+    {
       "authority": "SDD-30 D-RDY-ABA-6 / D-JOB-15",
       "classification": "outside_job_form",
       "path": "markov.dynamics.embedding_policy",
@@ -2451,6 +2465,13 @@
     },
     {
       "authority": "SDD-30 D-RDY-ABA-1…4",
+      "classification": "methodology_selectable",
+      "path": "provisioning_internal.lgd.method",
+      "reason": "Par metodológico declarado en el catálogo D-JOB y sujeto a su gate de efecto.",
+      "value": "fitted"
+    },
+    {
+      "authority": "SDD-30 D-RDY-ABA-1…4",
       "classification": "methodology_selectable_conditioned",
       "path": "provisioning_internal.lgd.method",
       "reason": "Par metodológico declarado en el catálogo D-JOB y sujeto a su gate de efecto.",
@@ -2525,6 +2546,13 @@
       "path": "provisioning_internal.rounding",
       "reason": "Par metodológico declarado en el catálogo D-JOB y sujeto a su gate de efecto.",
       "value": "none"
+    },
+    {
+      "authority": "SDD-30 D-RDY-ABA-6",
+      "classification": "internal_discriminator",
+      "path": "provisioning_internal.type",
+      "reason": "Discriminador estructural fijo; no representa una elección de producto.",
+      "value": "full_population"
     },
     {
       "authority": "SDD-30 D-RDY-ABA-6",

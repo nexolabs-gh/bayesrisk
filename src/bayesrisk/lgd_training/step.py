@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING, Any, Final
 from bayesrisk.core.config import config_hash
 from bayesrisk.core.mixins import AuditableMixin
 from bayesrisk.core.registry import register
-from bayesrisk.core.steps import ArtifactKey
+from bayesrisk.core.steps import ArtifactKey, ContextoDeResolucion
 from bayesrisk.lgd_training.config import LgdTrainingConfig
-from bayesrisk.lgd_training.exceptions import LgdTrainingError
+from bayesrisk.lgd_training.exceptions import LgdTrainingConfigError, LgdTrainingError
 
 if TYPE_CHECKING:
     import numpy as np
@@ -43,6 +43,18 @@ class LgdTrainingStep(AuditableMixin):
     @classmethod
     def from_config(cls, cfg: LgdTrainingConfig) -> LgdTrainingStep:
         """Construye el paso sin ajustar ni cargar librerías numéricas."""
+        return cls(cfg)
+
+    @classmethod
+    def from_config_with_context(
+        cls, cfg: LgdTrainingConfig, *, contexto: ContextoDeResolucion
+    ) -> LgdTrainingStep:
+        """Rechaza la mezcla de historia y cartera antes de ejecutar cualquier paso."""
+        if "provisioning_internal" in contexto.dominios_activos:
+            raise LgdTrainingConfigError(
+                "Entrenar LGD requiere otro Study, separado de la cartera de provisión; "
+                "aplique después la tabla del predictor como entrada externa."
+            )
         return cls(cfg)
 
     def execute(self, study: Study, rng: np.random.Generator) -> dict[str, Any]:

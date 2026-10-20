@@ -251,6 +251,8 @@ _OUTSIDE_JOB_FORM_POLICIES: dict[str, tuple[str, ...]] = {
 }
 
 _INTERNAL_DISCRIMINATOR_POLICIES: dict[str, tuple[str, ...]] = {
+    "lgd_training.schema_version": ("1.0.0",),
+    "lgd_training.type": ("standard",),
     "binning.type": ("standard",),
     "calibration.type": ("standard",),
     "data.type": ("standard",),
@@ -264,7 +266,7 @@ _INTERNAL_DISCRIMINATOR_POLICIES: dict[str, tuple[str, ...]] = {
     "provisioning.type": ("standard",),
     "provisioning_cmf.type": ("standard",),
     "provisioning_ifrs9.type": ("standard",),
-    "provisioning_internal.type": ("standard",),
+    "provisioning_internal.type": ("standard", "full_population"),
     "report.type": ("standard",),
     "scorecard.type": ("standard",),
     "selection.type": ("standard",),

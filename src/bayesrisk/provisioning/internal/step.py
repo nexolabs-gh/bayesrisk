@@ -119,6 +119,14 @@ class InternalProvisioningStep(AuditableMixin):
             from bayesrisk.lgd_training.model import LgdModel
 
             model = LgdModel.from_frame(study.artifacts.get(*_LGD_TABLE))
+            # run_step también es público y no tiene el contexto del pipeline completo.
+            # Evita reutilizar la historia del mismo Study mediante esa puerta incremental.
+            if study.artifacts.has("lgd_training", "fitted_model") or (
+                study.run_context is not None and model.source_run_id == study.run_context.run_id
+            ):
+                raise InternalInputError(
+                    "El predictor LGD debe provenir de otro Study, separado de esta cartera."
+                )
         elif fitted:
             raise InternalInputError(
                 "La rama fitted exige la tabla de coeficientes lgd_training.model_table."

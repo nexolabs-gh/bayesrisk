@@ -179,6 +179,11 @@ _VIA_DE_LOS_ESCENARIOS = (
 )
 
 _EXENTOS: dict[str, str] = {
+    "provisioning_internal.type": (
+        "D-H3-3: discriminador técnico fijado por el trabajo; full_population aplica la PD a "
+        "toda la cartera del scorecard sin modificar sus muestras ni su método. No es una "
+        "elección metodológica adicional y permanece oculto en el formulario."
+    ),
     "forward.input.macro_source.type": _VIA_DE_LOS_ESCENARIOS,
     "forward.input.pd_basis_assumption": _VIA_DE_LOS_ESCENARIOS,
     "forward.input.term_structure_sources": _VIA_DE_LOS_ESCENARIOS,
