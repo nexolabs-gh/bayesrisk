@@ -431,7 +431,7 @@ def read_interpretation(value: Any) -> ValidationInterpretation | None:
     if value is None:
         return None
     if isinstance(value, ValidationInterpretation):
-        return ValidationInterpretation.model_validate(value.model_dump())
+        value = value.model_dump()
     if isinstance(value, Mapping) and value.get("policy_id") != POLICY_ID:
         return None
     return ValidationInterpretation.model_validate(value)

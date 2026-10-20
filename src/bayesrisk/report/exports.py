@@ -143,7 +143,11 @@ def data_export_refs(
                     table_key=key,
                     title=table_title(key),
                     rows=rows,
-                    filename=f"{config.basename}__{_slug(key)}.csv",
+                    # Las particiones son dinámicas: su slug no es una identidad única.
+                    # El ordinal canónico separa también nombres iguales en Windows.
+                    filename=f"{config.basename}__"
+                    + (f"{diagnostic.index(key) + 1:02d}_" if key in diagnostic else "")
+                    + f"{_slug(key)}.csv",
                 )
             )
         if "xlsx" in formats:
@@ -162,6 +166,9 @@ def data_export_refs(
                     ),
                 )
             )
+    destinations = [(ref.filename.casefold(), ref.sheet.casefold()) for ref in refs]
+    if len(destinations) != len(set(destinations)):
+        raise ReportExportError("Los adjuntos de datos contienen destinos duplicados.")
     return tuple(refs)
 
 

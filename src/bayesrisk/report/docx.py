@@ -412,6 +412,7 @@ def _section(
         word.sections[-1].page_width,
         word.sections[-1].page_height,
     )
+    original_margins = (word.sections[-1].left_margin, word.sections[-1].right_margin)
     landscape = False
     for table in section["tables"]:
         diagnostic = str(table["key"]).startswith("validation.calibration_tie_groups.")
@@ -423,8 +424,10 @@ def _section(
                 page.orientation = WD_ORIENT.LANDSCAPE
                 page.page_width = max(original_page[1:])
                 page.page_height = min(original_page[1:])
+                page.left_margin = page.right_margin = inches(0.5)
             else:
                 page.orientation, page.page_width, page.page_height = original_page
+                page.left_margin, page.right_margin = original_margins
             landscape = diagnostic
         _caption(word, table["title"], points=points, bold=True)
         escritas = _table(
@@ -446,6 +449,7 @@ def _section(
     if landscape:
         page = word.add_section(WD_SECTION_START.NEW_PAGE)
         page.orientation, page.page_width, page.page_height = original_page
+        page.left_margin, page.right_margin = original_margins
     if section["data_exports"]:
         _data_exports(word, section["data_exports"])
     _payload_blocks(word, section)
@@ -571,11 +575,19 @@ def _table(
             if index in derecha:
                 cells[index].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
     if compact:
+        from docx.oxml.ns import qn
         from docx.oxml.parser import OxmlElement
 
         table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
         for row in table.rows:
             for cell in row.cells:
+                margins = OxmlElement("w:tcMar")
+                for side in ("left", "right"):
+                    margin = OxmlElement(f"w:{side}")
+                    margin.set(qn("w:w"), "40")
+                    margin.set(qn("w:type"), "dxa")
+                    margins.append(margin)
+                cell._tc.get_or_add_tcPr().append(margins)
                 for paragraph in cell.paragraphs:
                     paragraph.paragraph_format.space_after = Pt(3)
                     for run in paragraph.runs:

@@ -469,6 +469,8 @@ def test_hlc_word_conserva_columnas_en_hoja_horizontal_y_restaura_formato(corrid
     assert any(s.page_width > s.page_height for s in document.sections)
     assert document.sections[-1].page_width == document.sections[0].page_width
     assert document.sections[-1].page_height == document.sections[0].page_height
+    assert document.sections[-1].left_margin == document.sections[0].left_margin
+    assert document.sections[-1].right_margin == document.sections[0].right_margin
     tables = [t for t in document.tables if "PD mínima" in [c.text for c in t.rows[0].cells]]
     assert len(tables) == len(corrida.study.artifacts.get("validation", "interpretation").hl)
     for table in tables:

@@ -12,7 +12,7 @@ jamás como «Pasa». No se cambia el modelo, su calibrador, alfa, G ni las guar
 | Decisiones aprobadas | D-HLC-1…8 |
 | Contratos que enmienda | SDD-22 §§3.2/7/9, D-VAL-17 y D-HLG-2 en la interpretación; D-FLU/resúmenes e informe para consumirla |
 | Contratos preservados | Fórmula/DTO/tablas/contadores históricos; F1 2.x; D-HLG-1; D-CMP formato 1; defaults y hashes nikodym |
-| Estado de entrega | Implementación S60 y controles locales completos; pendiente revisión adversarial del código e integración con CI |
+| Estado de entrega | Implementada en S60; revisión, CI y producción se acreditan en el cierre operativo conforme al runbook |
 | Entrega autorizada | Una capa completa de interpretación y tablas aditivas por las tres puertas |
 
 ## 1. Propósito y responsabilidad
@@ -292,7 +292,14 @@ Sin azar. Registrar `policy_id`, fuente/contexto, claves de entrada, conteos, K,
 de PD, presencia de cortes históricos que dividen empates y motivo de la nueva conclusión.
 Un evento separado por partición, sin repetir ni sobrescribir las decisiones históricas.
 Mantener data_hash/config_hash/model_hash/bundle_hash y todos los prefijos nikodym.
-Firmar los nuevos artefactos mediante el mecanismo de persistencia existente.
+Persistir los nuevos artefactos mediante `Study.save/load`, con las mismas condiciones
+de confianza y el cotejo de `config_hash` existentes. No se incorpora firma ni digest
+individual de cada archivo joblib; la concordancia entre interpretación, card y tabla
+detecta incoherencias, pero no autentica el origen ni protege frente a una alteración
+coordinada. Esa garantía adicional requeriría otro diseño y autorización.
+
+Precisión aprobada por Cami el 2026-10-20 durante la revisión de implementación S60:
+la redacción inicial atribuía al mecanismo existente una firma individual que no proporciona.
 
 Cobertura requerida para la implementación eventual:
 

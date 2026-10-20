@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -360,6 +361,37 @@ def test_consumidor_rechaza_tabla_adulterada_y_politica_futura_no_se_aplica() ->
         overwrite=True,
     )
     assert study_interpretation(study)[1] is None
+
+
+@pytest.mark.parametrize("as_mapping", [False, True])
+def test_politica_futura_persistida_degrada_a_historico(tmp_path: Path, as_mapping: bool) -> None:
+    from test_report_builder import _lineage
+    from test_validation_step import _scorecard_study
+
+    from bayesrisk.core.study import Study
+    from bayesrisk.guided.summaries import SummaryContext, build_stage_summary
+    from bayesrisk.report.builder import ReportBuilder
+    from bayesrisk.report.config import ReportConfig
+    from bayesrisk.validation.interpretation import UNSUPPORTED_POLICY_TEXT, study_interpretation
+    from bayesrisk.validation.step import ValidationStep
+
+    study = _scorecard_study(config=_config())
+    ValidationStep(_config()).execute(study, np.random.default_rng(4))
+    value = study.artifacts.get("validation", "interpretation")
+    future = value.model_copy(update={"policy_id": "hl_context_v2"})
+    raw = future.model_dump() if as_mapping else future
+    study.artifacts.set("validation", "interpretation", raw, overwrite=True)
+    study.save(tmp_path / "study")
+    loaded = Study.load(tmp_path / "study", trust=True)
+    assert study_interpretation(loaded)[1] is None
+    context = SummaryContext(tmp_path, tmp_path / "run", "Datos de prueba", "Muestras declaradas")
+    summary = build_stage_summary("validation", loaded, context)
+    assert UNSUPPORTED_POLICY_TEXT in " ".join(summary.lines)
+    assert not any("Evaluación contextual" in line for line in summary.lines)
+    loaded.run_context.lineage = _lineage()
+    bundle = ReportBuilder(ReportConfig(sections={"missing_policy": "skip"})).collect(loaded)
+    assert not any(key.startswith("validation.calibration_tie_groups.") for key in bundle.tables)
+    assert bundle.validation_interpretation["policy_id"] == "hl_context_v2"
 
 
 @pytest.mark.parametrize(

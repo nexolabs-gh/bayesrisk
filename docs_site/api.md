@@ -478,6 +478,11 @@ declaración sobre calibración, nunca independencia del pipeline. La falta de u
 contextual validado se muestra explícitamente. Sin artefacto nuevo se identifica la lectura
 histórica; una política desconocida no se aplica por defecto.
 
+Los artefactos se guardan con `Study.save/load` y conservan sus condiciones de confianza y
+el cotejo de `config_hash`. No hay firma ni digest individual de cada archivo joblib.
+El cotejo entre interpretación, card y tabla detecta incoherencias; no autentica el origen
+ni protege frente a una alteración coordinada.
+
 ::: bayesrisk.validation.interpretation.interpret_validation
     options:
       heading_level: 3

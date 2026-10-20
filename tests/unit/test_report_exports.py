@@ -100,6 +100,26 @@ def test_csv_completo_sin_truncar_y_con_el_identificador(tmp_path: Path) -> None
     assert not list(tmp_path.glob("*coefficients*"))
 
 
+def test_csv_diagnosticos_con_nombres_colisionantes_conservan_cada_particion(
+    tmp_path: Path,
+) -> None:
+    """Las particiones dinámicas no pueden perderse al normalizar su nombre de archivo."""
+    names = ("oot-a", "oot_a", "OOT A", "á", "é")
+    tables = {
+        f"validation.calibration_tie_groups.{name}": pd.DataFrame({"Observaciones": [i + 1]})
+        for i, name in enumerate(names)
+    }
+    config = ReportConfig(formats=("csv",))
+    refs = data_export_refs(tables, config=config)
+    assert len({r.filename.casefold() for r in refs}) == len(names)
+    assert refs == data_export_refs(dict(reversed(list(tables.items()))), config=config)
+    exports = write_data_exports(tables, config=config, output_dir=str(tmp_path))
+    assert len(exports) == len(names)
+    for ref in refs:
+        frame = pd.read_csv(exports[ref.filename], encoding="utf-8-sig", index_col=0)
+        pd.testing.assert_frame_equal(frame, tables[ref.table_key].rename_axis("id"))
+
+
 def _frame_con_celdas_activas() -> pd.DataFrame:
     """Un identificador y un nivel de categórica que una planilla leería como fórmula."""
     frame = _score_frame(rows=4)
