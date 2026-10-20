@@ -70,6 +70,7 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
     "explain",
     "forward",
     "governance",
+    "lgd_training",
     "markov",
     "ml",
     "provisioning",
@@ -82,6 +83,7 @@ EXPERIMENTAL_DOMAINS: Final[tuple[str, ...]] = (
 """Superficies que aún crecen: pueden cambiar de forma aditiva o romper dentro de 2.x."""
 
 EXPERIMENTAL_SYMBOLS: Final[dict[str, str]] = {
+    "bayesrisk.guided.lgd.Lgd": "H3 experimental: historia y aplicación separadas.",
     "bayesrisk.guided.provision.Provision": "H3 experimental: tres puertas y aceptación en curso.",
     # `bayesrisk.guided.ecl.Ecl` salió aquí como adelanto declarado (D-ECL-9, 2.4.0) y se retiró al
     # cerrar sus tres puertas (capa B de FLUJO-GUIADO-IFRS9, S31): la garantía cubre su firma, sus

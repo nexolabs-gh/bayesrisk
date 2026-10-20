@@ -4374,9 +4374,23 @@
             "equals": "model",
             "path": "provisioning_internal.pd_source"
           }
+        },
+        {
+          "artifact": [
+            "lgd_training",
+            "model_table"
+          ],
+          "columns": [],
+          "key_question": "Modelo aplicable a toda la cartera; no se empareja por operación",
+          "label": "Modelo LGD ajustado con historia separada",
+          "scope": "global_model",
+          "when": {
+            "equals": "fitted",
+            "path": "provisioning_internal.lgd.method"
+          }
         }
       ],
-      "external_input": "La PD calibrada de tu modelo.",
+      "external_input": "La PD calibrada de tu modelo. Si aplicas LGD de historia separada, aporta su tabla de coeficientes.",
       "id": "provision_interna",
       "jurisdiction_code": null,
       "jurisdiction_label": null,
@@ -4535,9 +4549,17 @@
           "when": null
         },
         {
-          "help": "Las dos primeras leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación prescinde de ella: la calcula desde tus flujos.",
+          "help": "Las dos formas de LGD provista leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación la calcula desde tus flujos. El modelo de historia separada aplica un predictor ya ajustado, sin objetivo observado en esta cartera.",
           "multiple": false,
           "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Carga la tabla del predictor LGD ya ajustado. No necesita resultado observado en esta cartera ni vuelve a ajustar.",
+              "label": "Aplicar un modelo de historia separada",
+              "motivo": null,
+              "value": "fitted"
+            },
             {
               "estado": "disponible",
               "exige": [],
@@ -4968,8 +4990,23 @@
     },
     {
       "description": "El scorecard completo y la provisión interna en una sola corrida y un solo informe, para el área que hace las dos cosas.",
-      "external_artifacts": [],
-      "external_input": null,
+      "external_artifacts": [
+        {
+          "artifact": [
+            "lgd_training",
+            "model_table"
+          ],
+          "columns": [],
+          "key_question": "Modelo aplicable a toda la cartera; no se empareja por operación",
+          "label": "Modelo LGD ajustado con historia separada",
+          "scope": "global_model",
+          "when": {
+            "equals": "fitted",
+            "path": "provisioning_internal.lgd.method"
+          }
+        }
+      ],
+      "external_input": "Si aplicas LGD de historia separada, aporta su tabla de coeficientes.",
       "id": "pd_y_lgd",
       "jurisdiction_code": null,
       "jurisdiction_label": null,
@@ -5887,9 +5924,17 @@
           "when": null
         },
         {
-          "help": "Las dos primeras leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación prescinde de ella: la calcula desde tus flujos.",
+          "help": "Las dos formas de LGD provista leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación la calcula desde tus flujos. El modelo de historia separada aplica un predictor ya ajustado, sin objetivo observado en esta cartera.",
           "multiple": false,
           "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Carga la tabla del predictor LGD ya ajustado. No necesita resultado observado en esta cartera ni vuelve a ajustar.",
+              "label": "Aplicar un modelo de historia separada",
+              "motivo": null,
+              "value": "fitted"
+            },
             {
               "estado": "disponible",
               "exige": [],
@@ -6962,9 +7007,23 @@
             "equals": "model",
             "path": "provisioning_internal.pd_source"
           }
+        },
+        {
+          "artifact": [
+            "lgd_training",
+            "model_table"
+          ],
+          "columns": [],
+          "key_question": "Modelo aplicable a toda la cartera; no se empareja por operación",
+          "label": "Modelo LGD ajustado con historia separada",
+          "scope": "global_model",
+          "when": {
+            "equals": "fitted",
+            "path": "provisioning_internal.lgd.method"
+          }
         }
       ],
-      "external_input": "La PD calibrada de tu modelo, por operación.",
+      "external_input": "La PD calibrada de tu modelo, por operación. Si aplicas LGD de historia separada, aporta su tabla de coeficientes.",
       "id": "comparar_provisiones",
       "jurisdiction_code": "CL",
       "jurisdiction_label": "Chile",
@@ -7123,9 +7182,17 @@
           "when": null
         },
         {
-          "help": "Las dos primeras leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación prescinde de ella: la calcula desde tus flujos.",
+          "help": "Las dos formas de LGD provista leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación la calcula desde tus flujos. El modelo de historia separada aplica un predictor ya ajustado, sin objetivo observado en esta cartera.",
           "multiple": false,
           "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Carga la tabla del predictor LGD ya ajustado. No necesita resultado observado en esta cartera ni vuelve a ajustar.",
+              "label": "Aplicar un modelo de historia separada",
+              "motivo": null,
+              "value": "fitted"
+            },
             {
               "estado": "disponible",
               "exige": [],
@@ -8631,9 +8698,23 @@
             "equals": "model",
             "path": "provisioning_internal.pd_source"
           }
+        },
+        {
+          "artifact": [
+            "lgd_training",
+            "model_table"
+          ],
+          "columns": [],
+          "key_question": "Modelo aplicable a toda la cartera; no se empareja por operación",
+          "label": "Modelo LGD ajustado con historia separada",
+          "scope": "global_model",
+          "when": {
+            "equals": "fitted",
+            "path": "provisioning_internal.lgd.method"
+          }
         }
       ],
-      "external_input": "La PD de tu modelo, calibrada o sin calibrar.",
+      "external_input": "La PD de tu modelo, calibrada o sin calibrar. Si aplicas LGD de historia separada, aporta su tabla de coeficientes.",
       "id": "lgd_modelada",
       "jurisdiction_code": null,
       "jurisdiction_label": null,
@@ -8792,9 +8873,17 @@
           "when": null
         },
         {
-          "help": "Las dos primeras leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación prescinde de ella: la calcula desde tus flujos.",
+          "help": "Las dos formas de LGD provista leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación la calcula desde tus flujos. El modelo de historia separada aplica un predictor ya ajustado, sin objetivo observado en esta cartera.",
           "multiple": false,
           "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Carga la tabla del predictor LGD ya ajustado. No necesita resultado observado en esta cartera ni vuelve a ajustar.",
+              "label": "Aplicar un modelo de historia separada",
+              "motivo": null,
+              "value": "fitted"
+            },
             {
               "estado": "disponible",
               "exige": [],
@@ -9043,6 +9132,7 @@
       "missing_sections": [],
       "offered": true,
       "overrides": [],
+      "related_job": "entrenar_lgd",
       "required_decisions": [
         {
           "answer_forms": [
@@ -9649,8 +9739,23 @@
         "path": "provisioning_internal.type"
       },
       "description": "Scorecard y provisión interna con cobertura explícita de operaciones fuera del ajuste. Experimental.",
-      "external_artifacts": [],
-      "external_input": null,
+      "external_artifacts": [
+        {
+          "artifact": [
+            "lgd_training",
+            "model_table"
+          ],
+          "columns": [],
+          "key_question": "Modelo aplicable a toda la cartera; no se empareja por operación",
+          "label": "Modelo LGD ajustado con historia separada",
+          "scope": "global_model",
+          "when": {
+            "equals": "fitted",
+            "path": "provisioning_internal.lgd.method"
+          }
+        }
+      ],
+      "external_input": "Si aplicas LGD de historia separada, aporta su tabla de coeficientes.",
       "id": "pd_y_lgd_h3",
       "jurisdiction_code": null,
       "jurisdiction_label": null,
@@ -10568,9 +10673,17 @@
           "when": null
         },
         {
-          "help": "Las dos primeras leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación prescinde de ella: la calcula desde tus flujos.",
+          "help": "Las dos formas de LGD provista leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el proceso de recuperación la calcula desde tus flujos. El modelo de historia separada aplica un predictor ya ajustado, sin objetivo observado en esta cartera.",
           "multiple": false,
           "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Carga la tabla del predictor LGD ya ajustado. No necesita resultado observado en esta cartera ni vuelve a ajustar.",
+              "label": "Aplicar un modelo de historia separada",
+              "motivo": null,
+              "value": "fitted"
+            },
             {
               "estado": "disponible",
               "exige": [],
@@ -11598,6 +11711,308 @@
         "validation",
         "master_scale",
         "provisioning_internal",
+        "report",
+        "governance"
+      ],
+      "status": "available",
+      "toggle_overrides": {},
+      "unavailable_reason": null
+    },
+    {
+      "description": "Entrenar con incumplimientos de resultado disponible, evaluar aparte y guardar un predictor para otra cartera. Experimental.",
+      "external_artifacts": [],
+      "external_input": null,
+      "id": "entrenar_lgd",
+      "jurisdiction_code": null,
+      "jurisdiction_label": null,
+      "label": "Ajustar LGD con historia separada",
+      "latent_sections": [
+        "governance"
+      ],
+      "methodology_choices": [
+        {
+          "help": "Cambia la velocidad de lectura, nunca el resultado: el contenido que llega al cálculo es el mismo y las cifras del informe no se mueven.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Viene incluido y sirve para cualquier tamaño de archivo habitual.",
+              "label": "El lector estándar",
+              "motivo": null,
+              "value": "pandas"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Acelera la lectura de archivos muy grandes. Se instala aparte: si no está en tu entorno, la corrida se detiene al abrir el archivo.",
+              "label": "El lector rápido, para archivos grandes",
+              "motivo": null,
+              "value": "polars"
+            }
+          ],
+          "path": "data.load.backend",
+          "question": "¿Con qué motor quieres leer tu archivo?",
+          "when": null
+        },
+        {
+          "help": "Puedes dejar que se reconozca por la extensión, o decirlo tú si el archivo no la trae o la trae equivocada.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Mira cómo termina el nombre del archivo y elige el lector que toca.",
+              "label": "Reconocerlo por la extensión",
+              "motivo": null,
+              "value": "auto"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El formato más portable; no transporta el índice de las filas.",
+              "label": "Texto separado por comas",
+              "motivo": null,
+              "value": "csv"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Formato columnar comprimido: conserva los tipos y el índice, y es el más rápido de leer.",
+              "label": "Parquet",
+              "motivo": null,
+              "value": "parquet"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Lee la primera hoja del libro. Se instala aparte: si no está en tu entorno, la corrida se detiene al abrir el archivo.",
+              "label": "Planilla de Excel",
+              "motivo": null,
+              "value": "excel"
+            }
+          ],
+          "path": "data.load.file_format",
+          "question": "¿En qué formato viene tu archivo?",
+          "when": null
+        },
+        {
+          "help": "Puedes pedir varios a la vez. Unos son el documento del informe y otros son las tablas por operación completas, que salen como archivos aparte.",
+          "multiple": true,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El mismo informe paginado, listo para el comité. Se instala aparte y además necesita librerías del sistema: si faltan, el informe sale en los demás formatos y queda un aviso.",
+              "label": "Documento para imprimir y firmar",
+              "motivo": null,
+              "value": "pdf"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Con títulos y tablas nativas, para que Validación comente y firme sobre el archivo. Se instala aparte: si falta, el informe sale en los demás formatos y queda un aviso.",
+              "label": "Informe en Word",
+              "motivo": null,
+              "value": "docx"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El informe como texto con sus figuras al lado, para recompilarlo con las plantillas de tu institución. No hay que instalar nada.",
+              "label": "Fuente editable en texto plano",
+              "motivo": null,
+              "value": "md"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Las tablas con una fila por operación, completas y sin recortar, fuera del documento. No hay que instalar nada, y sólo hay archivo si tu corrida produce esas tablas.",
+              "label": "Tablas por operación, un archivo por tabla",
+              "motivo": null,
+              "value": "csv"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Las mismas tablas completas, una hoja por tabla. Se instala aparte; si falta, el informe sale igual con un aviso y sin el libro, salvo que pidas lo contrario en «Opciones de la planilla». La opción «csv» entrega lo mismo sin instalar nada.",
+              "label": "Tablas por operación en un libro de Excel",
+              "motivo": null,
+              "value": "xlsx"
+            }
+          ],
+          "path": "report.formats",
+          "question": "¿En qué formatos quieres el entregable?",
+          "when": null
+        },
+        {
+          "help": "Un capítulo falta cuando el paso que lo produce no dejó su resultado en la corrida. La decisión se toma al armar el informe, con todo lo demás ya calculado.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Lo correcto cuando el informe va a un comité y un capítulo ausente lo invalida: prefieres no tener documento antes que tener uno incompleto.",
+              "label": "Detener la corrida y nombrar el capítulo que falta",
+              "motivo": null,
+              "value": "error"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El informe sale con ese capítulo declarado ausente y anotado entre las limitaciones. Ningún número se inventa para rellenarlo.",
+              "label": "Publicarlo marcado como no disponible",
+              "motivo": null,
+              "value": "warn"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El capítulo desaparece del documento como si no lo hubieras exigido: el informe sale más corto y sin rastro de la ausencia.",
+              "label": "Omitirlo en silencio",
+              "motivo": null,
+              "value": "skip"
+            }
+          ],
+          "path": "report.sections.missing_policy",
+          "question": "¿Qué hacer si al informe le falta uno de los capítulos que exigiste?",
+          "when": null
+        },
+        {
+          "help": "Cambia sólo el aspecto de ese documento y del que sale paginado a partir de él; los números, las tablas y el texto son exactamente los mismos.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Con índice lateral navegable y el estilo de marca; es la que se ve en los informes de ejemplo.",
+              "label": "La presentación editorial de la casa",
+              "motivo": null,
+              "value": "bayesrisk"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Pensada para imprimir o para pegar el contenido dentro de la plantilla corporativa de tu institución.",
+              "label": "Una hoja sobria, sin índice lateral",
+              "motivo": null,
+              "value": "plain"
+            }
+          ],
+          "path": "report.html.theme",
+          "question": "¿Con qué presentación quieres el informe que se abre en el navegador?",
+          "when": null
+        },
+        {
+          "help": "Son los espacios en blanco con su guía de redacción —opinión de Validación, conclusiones, visto bueno— que el motor no llena porque los escribe una persona.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Quien valide ve qué se espera en cada bloque. Es lo útil mientras el informe está en revisión y todavía se está escribiendo.",
+              "label": "Publicarlos con su guía de redacción",
+              "motivo": null,
+              "value": "show"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Lo que corresponde en la versión final del entregable, donde un espacio en blanco se lee como un descuido y no como una tarea pendiente.",
+              "label": "Ocultarlos",
+              "motivo": null,
+              "value": "hide"
+            }
+          ],
+          "path": "report.document.placeholders",
+          "question": "¿El informe debe traer los bloques que firma quien valida?",
+          "when": null
+        },
+        {
+          "help": "Elijas lo que elijas, los números, las tablas y la prosa técnica los escribe el motor y son reproducibles. Esto sólo aplica si además activas esa ayuda.",
+          "multiple": false,
+          "options": [
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "El texto de acompañamiento se redacta con reglas fijas dentro de tu máquina. Es lo que corre de fábrica y no manda nada a ningún servicio.",
+              "label": "El propio motor, sin salir a la red",
+              "motivo": null,
+              "value": "none"
+            },
+            {
+              "estado": "disponible",
+              "exige": [],
+              "help": "Redacta el acompañamiento a partir de un resumen ya depurado: nunca recibe tus datos ni recalcula una cifra. Se instala aparte y pide la credencial en una variable de entorno; sin ella el informe sale con el texto del motor y un aviso.",
+              "label": "Un modelo de lenguaje externo",
+              "motivo": null,
+              "value": "anthropic"
+            }
+          ],
+          "path": "report.ai.provider",
+          "question": "¿Quién redacta el texto de acompañamiento del informe?",
+          "when": null
+        }
+      ],
+      "missing_sections": [],
+      "offered": true,
+      "overrides": [
+        [
+          "data.target",
+          null
+        ],
+        [
+          "data.partition",
+          null
+        ]
+      ],
+      "required_decisions": [
+        {
+          "answer_forms": [],
+          "help": "Fracción entre cero y uno en las operaciones elegibles.",
+          "path": "lgd_training.target_col",
+          "question": "¿Qué columna trae la LGD observada?"
+        },
+        {
+          "answer_forms": [],
+          "help": "Numéricas, finitas y disponibles al aplicar; no se imputan ni transforman.",
+          "path": "lgd_training.covariate_cols",
+          "question": "¿Qué covariables crudas usará el predictor?"
+        },
+        {
+          "answer_forms": [],
+          "help": "Puede repetirse dentro de una muestra; se rechaza si cruza entrenamiento y evaluación.",
+          "path": "lgd_training.entity_col",
+          "question": "¿Qué columna identifica al deudor?"
+        },
+        {
+          "answer_forms": [],
+          "help": "Usa train, evaluation o excluded. La institución fija las muestras antes del ajuste.",
+          "path": "lgd_training.sample_col",
+          "question": "¿Qué columna declara las muestras?"
+        },
+        {
+          "answer_forms": [],
+          "help": "Marca booleana o 0/1, sin nulos ni texto; las otras operaciones se excluyen.",
+          "path": "lgd_training.default_col",
+          "question": "¿Qué columna marca incumplimiento?"
+        },
+        {
+          "answer_forms": [],
+          "help": "Booleano o 0/1 según la definición institucional; no certifica cierre económico.",
+          "path": "lgd_training.resolved_col",
+          "question": "¿Qué columna declara resultado completo?"
+        },
+        {
+          "answer_forms": [],
+          "help": "Lo escribe tu institución: el motor no puede inventarlo, y sin esto la ficha del modelo no se emite.",
+          "path": "governance.purpose",
+          "question": "¿Para qué se va a usar este modelo y sobre qué cartera decide?"
+        }
+      ],
+      "sections": [
+        "data",
+        "lgd_training",
         "report",
         "governance"
       ],

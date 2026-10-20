@@ -92,6 +92,7 @@ export const CONFIG_SECTIONS: ConfigSectionDef[] = [
     description:
       "Cómo se interpreta el dataset cargado: esquema, tipos, target, missing y partición.",
   },
+  { key: "lgd_training", label: "Entrenamiento LGD", description: "Historia separada, población declarada y evaluación descriptiva." },
   {
     // Entre «Esquema y target» y «Optimal Binning» porque ése es su lugar en el pipeline: el
     // análisis exploratorio describe la población ANTES de que el binning la transforme, y es

@@ -65,6 +65,9 @@ DECLARED_METRICS: Final[dict[str, tuple[str, ...]]] = {
 """Métricas que cada dominio publica, SIN el prefijo de dominio (lo pone ``core``)."""
 
 DOMAINS_WITHOUT_METRICS: Final[dict[str, str]] = {
+    "lgd_training": (
+        "H3 publica tablas diagnósticas descriptivas; no añade escalares de calidad al canal."
+    ),
     "markov": "Fuera de F1; su SDD declara su lista cuando se aborde.",
     "master_scale": (
         "Su lectura —los tramos, la tabla de cortes— vive en sus artefactos, su resumen y el "

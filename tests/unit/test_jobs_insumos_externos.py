@@ -74,6 +74,23 @@ def _campo_en(path: str) -> Any | None:
     return campo
 
 
+def _campos_union(path: str) -> list[Any]:
+    """Resuelve campos en todas las ramas tipadas, sin elegir el primer método LGD."""
+
+    def modelos(annotation):
+        if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+            return [annotation]
+        return [cls for arg in typing.get_args(annotation) for cls in modelos(arg)]
+
+    section, *parts = path.split(".")
+    classes = modelos(cargar_configs_de_dominio().get(section))
+    fields = []
+    for part in parts:
+        fields = [cls.model_fields[part] for cls in classes if part in cls.model_fields]
+        classes = [cls for field in fields for cls in modelos(field.annotation)]
+    return fields
+
+
 def test_el_barrido_no_es_vacuo() -> None:
     """Con cero entradas, todos los tests de abajo pasarían por vacuidad."""
     entradas = _entradas()
@@ -85,6 +102,11 @@ def test_el_barrido_no_es_vacuo() -> None:
 def test_toda_entrada_declara_sus_cinco_piezas() -> None:
     """Forma mínima: a medias deja a la interfaz sin qué pedir o sin dónde escribir la respuesta."""
     for job_id, entrada in _entradas():
+        if entrada.get("scope") == "global_model":
+            assert set(entrada) == _CLAVES_DE_ENTRADA | {"scope"}
+            assert entrada["artifact"] == ["lgd_training", "model_table"]
+            assert entrada["columns"] == []
+            continue
         assert set(entrada) == _CLAVES_DE_ENTRADA, f"{job_id}: {sorted(entrada)}"
         assert len(entrada["artifact"]) == 2, f"{job_id}: la clave no es (dominio, clave)"
         assert entrada["key_question"].endswith("?"), f"{job_id}: la llave no se pregunta"
@@ -141,9 +163,9 @@ def test_la_condicion_apunta_a_un_campo_real_y_a_un_valor_admitido() -> None:
         if condicion is None:
             continue
         assert set(condicion) == {"path", "equals"}, f"{job_id}: {sorted(condicion)}"
-        campo = _campo_en(condicion["path"])
-        assert campo is not None, f"{job_id}: `when` apunta a {condicion['path']}, que no existe"
-        admitidos = typing.get_args(campo.annotation)
+        campos = _campos_union(condicion["path"])
+        assert campos, f"{job_id}: `when` apunta a {condicion['path']}, que no existe"
+        admitidos = tuple(value for campo in campos for value in typing.get_args(campo.annotation))
         if admitidos:
             assert condicion["equals"] in admitidos, (
                 f"{job_id}: {condicion['path']} no admite {condicion['equals']!r}; "
@@ -230,6 +252,8 @@ def test_las_dos_claves_de_validar_un_modelo_son_las_que_el_motor_exige() -> Non
     claves = [tuple(e["artifact"]) for e in por_id["validar_modelo"]["external_artifacts"]]
     assert claves == [("calibration", "calibrated_pd_frame"), ("scorecard", "score")]
     internas = [tuple(e["artifact"]) for e in por_id["provision_interna"]["external_artifacts"]]
-    assert internas == [("calibration", "calibrated_pd_frame"), ("model", "raw_pd_frame")], (
-        "el método interno pide una clave u otra según de dónde salga la PD: las dos se declaran"
-    )
+    assert internas == [
+        ("calibration", "calibrated_pd_frame"),
+        ("model", "raw_pd_frame"),
+        ("lgd_training", "model_table"),
+    ], "PD declara ambas fuentes y fitted exige la tabla global LGD"

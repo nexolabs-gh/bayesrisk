@@ -33,6 +33,7 @@ def test_list_datasets_estable_y_con_roles_f1() -> None:
         # porque el Cap. B-1 las exige.
         "provision_interna_generica",
         "ifrs9_retail_latam",
+        "lgd_historia_sintetica",
     ]
 
     for descriptor in primero:
@@ -47,6 +48,10 @@ def test_list_datasets_estable_y_con_roles_f1() -> None:
         # D-PRO-1: el rol `id` vive en el ÍNDICE, no entre las columnas. Los roles se comprueban
         # sobre la unión porque el pipeline F1 los necesita todos, pero cada uno en su sitio.
         roles = {col["role"] for col in (*descriptor["columns"], *descriptor["index_columns"])}
+        if descriptor["id"] == "lgd_historia_sintetica":
+            assert roles == {"id", "feature", "target", "sample", "default", "resolved"}
+            assert descriptor["n_rows"] == 400
+            continue
         assert roles >= _ROLES_ESPERADOS  # target/feature/segment/cohort/id presentes
         assert {col["role"] for col in descriptor["index_columns"]} == {"id"}
         assert "id" not in {col["role"] for col in descriptor["columns"]}

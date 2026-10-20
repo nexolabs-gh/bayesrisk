@@ -52,6 +52,7 @@ if TYPE_CHECKING:
     from bayesrisk.explain.config import ExplainConfig
     from bayesrisk.forward.config import ForwardConfig
     from bayesrisk.governance.config import GovernanceConfig
+    from bayesrisk.lgd_training.config import LgdTrainingConfig
     from bayesrisk.markov.config import MarkovConfig
     from bayesrisk.master_scale.config import MasterScaleConfig
     from bayesrisk.ml.config import MLConfig
@@ -127,6 +128,7 @@ _VALIDATION_CONFIG_CLS: type[BaseModel] | None = None
 _MASTER_SCALE_CONFIG_CLS: type[BaseModel] | None = None
 _MONITORING_CONFIG_CLS: type[BaseModel] | None = None
 _COMPARISON_CONFIG_CLS: type[BaseModel] | None = None
+_LGD_TRAINING_CONFIG_CLS: type[BaseModel] | None = None
 _REPORT_CONFIG_CLS: type[BaseModel] | None = None
 _AUDIT_CONFIG_CLS: type[BaseModel] | None = None
 _GOVERNANCE_CONFIG_CLS: type[BaseModel] | None = None
@@ -322,7 +324,7 @@ class DecisionEntry(BayesRiskBaseConfig):
 #: ausente (o ``None``), el ``config_hash`` y el YAML son byte a byte los de la 2.10.0. Toda sección
 #: que se agregue a la raíz entra aquí (un gate lo exige en los dos sentidos).
 SECCIONES_NACIDAS_DESPUES_DE_2_10_0: frozenset[str] = frozenset(
-    {"master_scale", "monitoring", "comparison"}
+    {"master_scale", "monitoring", "comparison", "lgd_training"}
 )
 
 
@@ -676,6 +678,17 @@ class BayesRiskConfig(BayesRiskBaseConfig):
     if TYPE_CHECKING:
         # Vista de mypy: tipo estricto. En runtime el campo es `Any` (rama `else`) y la
         # validación/coerción a `ReportConfig` la hace `_valida_report` vía hook diferido.
+        lgd_training: LgdTrainingConfig | None = None
+    else:
+        lgd_training: Any = Field(
+            default=None,
+            title="Entrenamiento LGD",
+            description=(
+                "Ajusta una severidad fraccional con historia separada "
+                "y conserva un predictor reutilizable."
+            ),
+        )
+    if TYPE_CHECKING:
         report: ReportConfig | None
     else:
         report: Any = Field(
@@ -1349,6 +1362,22 @@ class BayesRiskConfig(BayesRiskBaseConfig):
                 "serializables ni floats no finitos), o importa `bayesrisk.comparison` para "
                 "validarlo como ComparisonConfig."
             ) from exc
+        return valor
+
+    @field_validator("lgd_training", mode="before")
+    @classmethod
+    def _valida_lgd_training(cls, valor: Any) -> Any:
+        """Valida LGD de forma diferida, conservando el blob canónico en core."""
+        if valor is None:
+            return valor
+        if _LGD_TRAINING_CONFIG_CLS is not None:
+            if isinstance(valor, _LGD_TRAINING_CONFIG_CLS):
+                return valor
+            return _LGD_TRAINING_CONFIG_CLS.model_validate(valor)
+        try:
+            json.dumps(valor, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("lgd_training debe ser JSON-canónico y determinista.") from exc
         return valor
 
     @field_validator("validation", mode="before")

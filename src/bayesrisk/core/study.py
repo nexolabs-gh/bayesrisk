@@ -88,6 +88,7 @@ _DOMAIN_MODULES: Final[dict[str, str]] = {
     "master_scale": "bayesrisk.master_scale",
     "monitoring": "bayesrisk.monitoring",
     "comparison": "bayesrisk.comparison",
+    "lgd_training": "bayesrisk.lgd_training",
 }
 _DOMAIN_CONFIG_CLASSES: Final[dict[str, tuple[str, str]]] = {
     "data": ("bayesrisk.data.config", "DataConfig"),
@@ -121,6 +122,7 @@ _DOMAIN_CONFIG_CLASSES: Final[dict[str, tuple[str, str]]] = {
     "master_scale": ("bayesrisk.master_scale.config", "MasterScaleConfig"),
     "monitoring": ("bayesrisk.monitoring.config", "MonitoringConfig"),
     "comparison": ("bayesrisk.comparison.config", "ComparisonConfig"),
+    "lgd_training": ("bayesrisk.lgd_training.config", "LgdTrainingConfig"),
 }
 # Secciones de INFRAESTRUCTURA que el schema de la interfaz expande sin que sean pasos (D-GOB-10).
 # Va aparte de ``_DOMAIN_CONFIG_CLASSES`` a propósito: ``_default_step_names`` deriva el pipeline
@@ -165,6 +167,7 @@ _DEFAULT_DOMAIN_ORDER: Final[tuple[str, ...]] = (
     # La comparación (SDD-34, D-CMP-1) es una corrida propia sin ``data``: lee los resúmenes
     # comparables de otras corridas. Nacida después de la 2.10.0, sólo corre si está declarada.
     "comparison",
+    "lgd_training",
     # ``report`` corre AL FINAL: es la foto de todo lo que corrió. Antes vivía tras ``stability``,
     # de modo que ``ReportBuilder`` nunca veía las cards de provisiones y su capítulo condicional
     # era inalcanzable (SDD-28 D8). ``report`` es INFRA (no entra al ``config_hash``), así que

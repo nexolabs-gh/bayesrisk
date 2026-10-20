@@ -71,7 +71,7 @@ describe("golden espejo: las marcas del schema son exactamente las del golden (D
     expect(new Set(declaradas)).toEqual(new Set(Object.keys(ESSENTIALS_BY_SECTION)))
     // Quince desde la capa C de IFRS9-FIRMABLE (`forward`, con sus tres esenciales) y dieciséis
     // desde la capa B del SDD-32 (`master_scale`, con sus dos).
-    expect(declaradas).toHaveLength(19)
+    expect(declaradas).toHaveLength(20)
   })
 
   it.each(Object.keys(ESSENTIALS_BY_SECTION))(
@@ -145,6 +145,7 @@ describe("la división de una sección es exacta y no pierde ni duplica campos",
       if (DE_IFRS9.has(clave)) deIfrs9 += porRama
       else if (DEL_MONITOREO.has(clave)) delMonitoreo += porRama
       else if (clave === "comparison") expect(porRama).toBe(1)
+      else if (clave === "lgd_training") expect(porRama).toBe(6)
       else total += porRama
     }
     // 37 desde la capa B del SDD-32: `master_scale` 2.

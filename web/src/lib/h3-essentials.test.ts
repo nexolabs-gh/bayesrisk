@@ -12,7 +12,7 @@ const defs = schema.$defs ?? {}
 const section = resolveRef(unwrapNullable(schema.properties!.provisioning_internal).schema, defs)
 
 describe("H3: esenciales reales de la rama LGD", () => {
-  it.each(["provided", "group_historical", "fractional_response", "beta_regression", "workout"])(
+  it.each(["provided", "group_historical", "fractional_response", "beta_regression", "workout", "fitted"])(
     "%s: censo completo, sin pérdidas ni duplicados, por rama y objetivo activo", (method) => {
       for (const recovery_col of [null, "tasa"]) {
         const value = { lgd: { method, recovery_col } }
@@ -47,7 +47,7 @@ describe("H3: esenciales reales de la rama LGD", () => {
     config.provisioning_internal.type = "standard"
     expect(jobForConfig(FIXTURE_JOBS.jobs, config)?.id).toBe("pd_y_lgd")
   })
-  it.each(["provided", "fractional_response", "beta_regression", "workout"])(
+  it.each(["provided", "fractional_response", "beta_regression", "workout", "fitted"])(
     "%s: el selector sólo aparece abierto; piso y techo sólo en Avanzado", (method) => {
       const value = { lgd: { method, recovery_col: method === "workout" ? "recupero" : null } }
       const essential = essentialFields(section, defs, null, value).find(([name]) => name === "lgd")![1]
@@ -77,6 +77,6 @@ describe("H3: esenciales reales de la rama LGD", () => {
     }))
     expect(html.includes("Columna LGD")).toBe(recovery_col === null)
     expect(html.includes("Columna de tasa recuperada")).toBe(recovery_col !== null)
-    expect(discriminatedBranches(part, defs)).toHaveLength(5)
+    expect(discriminatedBranches(part, defs)).toHaveLength(6)
   })
 })

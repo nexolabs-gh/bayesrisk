@@ -80,6 +80,7 @@ _CARD_KEY_BY_DOMAIN: dict[str, str] = {
     # jamás entran al payload — reventarían ``/api/results``.
     "provisioning_cmf": "card",
     "provisioning_internal": "card",
+    "lgd_training": "card",
     "provisioning": "card",
     # IFRS 9 / ECL (SDD-16). Misma regla que las de arriba: se serializa la card y frames AGREGADOS
     # (distribución de staging, curva ECL por período, resumen por carteraxstage, conteo de gatillos
@@ -214,6 +215,10 @@ def _dump_card(domain: str, card: BaseModel) -> dict[str, Any]:
     tiene que fallar ruidoso, no publicarse como ausencia. Hallazgo de la revisión adversarial de
     S9, verificado.
     """
+    if domain == "lgd_training" and isinstance(card, dict):
+        # Esta ficha experimental es tabular/simple; conserva el guard estricto de finitud.
+        _ensure_json_safe(card, context="lgd_training.card")
+        return dict(card)
     if domain != "eda":
         return dump_dto(card)
     dumped = card.model_dump(mode="json")
@@ -321,6 +326,9 @@ def _augment_with_rich_artifacts(study: Study, payload: dict[str, Any]) -> None:
         payload["provisioning_internal"]["groups"] = _domain_records(
             study, "provisioning_internal", "groups"
         )
+    if isinstance(payload["lgd_training"], dict):
+        for key in ("evaluation", "population"):
+            payload["lgd_training"][key] = _domain_records(study, "lgd_training", key)
     if isinstance(payload["provisioning"], dict):
         # La comparación estándar-vs-interno con la fuente que muerde (``binding``): el titular.
         payload["provisioning"]["comparison"] = _domain_records(study, "provisioning", "comparison")

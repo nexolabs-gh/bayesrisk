@@ -400,9 +400,10 @@ function PresetSelector({
  * Un trabajo NO disponible aparece igual, con su motivo y sin poder iniciarse (D-JOB-6): ocultarlo
  * dejaría al usuario creyendo que la librería no lo tiene, que es la mentira contraria a prometerlo.
  */
-function JobCard({ job, onPick }: { job: Job; onPick: (job: Job) => void }) {
+function JobCard({ job, onPick, related }: { job: Job; onPick: (job: Job) => void; related?: Job }) {
   const disponible = job.status === "available"
   return (
+    <div className="flex flex-col gap-2">
     <button
       type="button"
       disabled={!disponible}
@@ -447,6 +448,11 @@ function JobCard({ job, onPick }: { job: Job; onPick: (job: Job) => void }) {
         )}
       </span>
     </button>
+    {related && <button type="button" onClick={() => onPick(related)}
+      className="text-left text-xs font-medium text-brand-accent-dark underline underline-offset-4">
+      {related.label}
+    </button>}
+    </div>
   )
 }
 
@@ -482,7 +488,7 @@ export function JobCatalogo({
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {estandar.map((job) => (
-            <JobCard key={job.id} job={job} onPick={onPick} />
+            <JobCard key={job.id} job={job} onPick={onPick} related={jobs.find((candidate) => candidate.id === job.related_job)} />
           ))}
         </div>
       </div>
@@ -504,7 +510,7 @@ export function JobCatalogo({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {porJurisdiccion.map((job) => (
-              <JobCard key={job.id} job={job} onPick={onPick} />
+              <JobCard key={job.id} job={job} onPick={onPick} related={jobs.find((candidate) => candidate.id === job.related_job)} />
             ))}
           </div>
         </div>

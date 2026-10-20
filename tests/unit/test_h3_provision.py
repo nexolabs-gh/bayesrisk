@@ -150,8 +150,9 @@ def test_identificador_duplicado_rechaza_y_no_imputa(tmp_path: Path) -> None:
     assert not p.study.artifacts.has("provisioning_internal", "detail")
 
 
+@pytest.mark.parametrize("lgd_method", ["provided", "fitted"])
 def test_desde_scorecard_preserva_config_snapshot_y_decisiones(
-    tmp_path: Path, fake_binning_process
+    tmp_path: Path, fake_binning_process, lgd_method
 ) -> None:
     from _ui_f1 import write_stacked_behavior_parquet
 
@@ -186,6 +187,25 @@ def test_desde_scorecard_preserva_config_snapshot_y_decisiones(
     digest = config_hash(sc.config)
     snapshot = Path(sc.config.data.load.source).read_bytes()
     args = {"as_of": "fecha", "portfolio": "cartera", "exposure": "exposicion", "lgd": "lgd"}
+    if lgd_method == "fitted":
+        from test_h3_lgd_training import historia
+
+        from bayesrisk import Lgd
+
+        history = historia().rename(columns={"=ratio": "score", "NA": "exposicion"})
+        fitted = Lgd(
+            history,
+            target="lgd",
+            features=["score", "exposicion"],
+            entity="deudor",
+            sample="muestra",
+            default="incumplio",
+            resolved="completo",
+            id="operacion",
+            run_dir=tmp_path / "historia",
+            formats=(),
+        ).run(raise_on_error=True)
+        args["lgd"] = fitted.model_
     with pytest.raises(ProvisionInputError, match="coincide"):
         Provision.from_scorecard(sc, name="original", run_dir=tmp_path, **args)
     p = Provision.from_scorecard(sc, name="combinado", run_dir=tmp_path, **args)
@@ -223,7 +243,12 @@ def test_desde_scorecard_preserva_config_snapshot_y_decisiones(
         update={"partition": data_cfg.partition.model_copy(update={"ttd_includes_excluded": False})}
     )
     config = p.config.model_copy(update={"data": disabled, "report": None})
-    failed = bayesrisk.run(config, run_dir=tmp_path / "sin-ttd")
+    inputs = (
+        {("lgd_training", "model_table"): args["lgd"].to_frame()}
+        if lgd_method == "fitted"
+        else None
+    )
+    failed = bayesrisk.run(config, artifacts=inputs, run_dir=tmp_path / "sin-ttd")
     assert failed.run_context.status == "failed"
     assert "Falta PD para 20 operaciones" in failed.run_context.error.message
     assert failed.artifacts.has("calibration", "calibrated_pd_frame")

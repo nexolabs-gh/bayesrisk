@@ -184,6 +184,11 @@ describe("el catálogo bundleado sostiene todo lo anterior", () => {
     const declarados: ExternalArtifact[] = jobs.flatMap((j) => j.external_artifacts)
     expect(declarados.length).toBeGreaterThanOrEqual(4)
     for (const entry of declarados) {
+      if (entry.scope === "global_model") {
+        expect(entry.artifact).toEqual(["lgd_training", "model_table"])
+        expect(entry.columns).toEqual([])
+        continue
+      }
       expect(entry.key_question.endsWith("?")).toBe(true)
       expect(entry.columns.length).toBeGreaterThan(0)
       for (const columna of entry.columns) {
@@ -191,6 +196,20 @@ describe("el catálogo bundleado sostiene todo lo anterior", () => {
         expect(columna.config_paths.length).toBeGreaterThan(0)
       }
     }
+  })
+})
+
+describe("H3: tabla global del predictor", () => {
+  it("sólo el modelo viaja sin llave y no reclama alineación posicional", () => {
+    const pedidos = requiredExternalArtifacts(byId("provision_interna"), {
+      provisioning_internal: { pd_source: "calibration", lgd: { method: "fitted" } },
+    })
+    const modelo: [string, string] = ["lgd_training", "model_table"]
+    expect(pedidos.map((e) => e.artifact)).toEqual([PD, modelo])
+    const inputs = { [artifactKey(PD)]: input(), [artifactKey(modelo)]: input({ keyColumn: "" }) }
+    expect(externalRefs(pedidos, inputs)[1]).toEqual({ artifact: modelo, dataset_id: "uploaded_abc" })
+    expect(positionalInputs(pedidos, inputs)).toEqual([])
+    expect(byId("lgd_modelada").related_job).toBe("entrenar_lgd")
   })
 })
 

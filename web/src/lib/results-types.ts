@@ -1410,6 +1410,8 @@ export interface RunSummaries {
 }
 
 export interface ResultsResponse {
+  /** Proyecto H3 con predictor, entradas y evidencia; sólo si el backend lo conservó. */
+  project_available?: boolean
   status: ResultsStatus
   run_id: string
   error: string | null

@@ -142,7 +142,8 @@ from bayesrisk.ui.routes import schema_payload
 #: suma, enumerados contra la 2.13.0, **0 desapariciones y 3 apariciones**: ``monitoring.bundle``,
 #: ``monitoring.period`` y ``monitoring.default``.
 # S51: aparecen sólo comparison.runs y comparison.runs[]; ninguna desaparición.
-HOJAS_DEL_FORMULARIO = 641
+# H3 B: +7 nodos de seis roles (lista y elemento) y +3 de fitted; cero pérdidas.
+HOJAS_DEL_FORMULARIO = 651
 
 #: Hojas que el barrido de PARIDAD contra el catálogo de defaults efectivos resuelve.
 #:
@@ -188,7 +189,8 @@ HOJAS_DEL_FORMULARIO = 641
 #: arriba (sin uniones discriminadas, las dos cifras suben lo mismo). 520 → 523 el 2026-10-13 con
 #: la capa B del SDD-33: los tres nodos de ``monitoring`` (``bundle`` y ``period`` sin default,
 #: como decisiones obligatorias; ``default`` con el suyo, ``null``).
-HOJAS_CON_DEFAULT_EFECTIVO = 525
+# H3 B: seis roles y el ítem de covariables; este walker visita la rama inicial LGD.
+HOJAS_CON_DEFAULT_EFECTIVO = 532
 
 #: Descriptores de hoja que el barrido de paridad compara, en las DOS coordenadas (`$defs` y
 #: `sections`). Segundo golden, por la misma razón que el de 394: un barrido que recorra menos
@@ -312,7 +314,8 @@ HOJAS_CON_DEFAULT_EFECTIVO = 525
 #: aparece con su única hoja —``sections.comparison.runs``, obligatoria—, enumerada contra
 #: ``af6c06a``: ninguna otra hoja nueva ni retirada. La sección no entra al formulario hasta la
 #: capa B.
-DESCRIPTORES_TOTALES = 1100
+# H3 B: ocho campos de LgdTrainingConfig y tres de InternalLgdFitted.
+DESCRIPTORES_TOTALES = 1111
 
 
 #: Las 19 secciones que el formulario ofrece. Espejo de ``SECCIONES_DEL_FORMULARIO`` de
@@ -321,6 +324,7 @@ DESCRIPTORES_TOTALES = 1100
 #: mapa expandible, no en el de dominios, así que los barridos de abajo preguntan por la unión.
 SECCIONES_ESPERADAS = (
     "data",
+    "lgd_training",
     "eda",
     "binning",
     "selection",
@@ -918,6 +922,7 @@ def _hojas_del_formulario() -> list[tuple[str, list[str]]]:
 #: Un ancla concreta por cada una de las 20 secciones. Escritas a mano: derivarlas del propio
 #: recorrido convertiría el gate en una tautología, que es el defecto que ya se pagó una vez.
 ANCLAS_POR_SECCION: dict[str, str] = {
+    "lgd_training": "lgd_training.covariate_cols[]",
     "data": "data.schema.columns[].name",
     "eda": "eda.default_rate.axis",
     "binning": "binning.feature_columns[]",

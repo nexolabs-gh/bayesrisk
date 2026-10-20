@@ -2099,7 +2099,7 @@ export function ContextualValidationPanel({ validation, showTables = true }: { v
 
 function RunSummarySection({ summaries, validation }: { summaries: RunSummaries; validation: ValidationResult | null }) {
   const { final, stages, error } = summaries
-  const isPortfolio = ["cartera", "provision_interna", "pd_provision"].includes(final?.family ?? "")
+  const isPortfolio = ["cartera", "provision_interna", "pd_provision", "lgd"].includes(final?.family ?? "")
   const historicalNotice = validation
     ? validation.interpretation?.policy_id === "hl_context_v1" ? null
       : validation.interpretation ? UNSUPPORTED_POLICY_TEXT : HISTORICAL_READING_TEXT

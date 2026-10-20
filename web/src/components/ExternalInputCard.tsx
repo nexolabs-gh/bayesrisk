@@ -70,6 +70,7 @@ export function ExternalInputCard({
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
   const key = artifactKey(artifact.artifact)
+  const globalModel = artifact.scope === "global_model"
 
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -82,7 +83,7 @@ export function ExternalInputCard({
     }
     setUploading(true)
     try {
-      const resp = await uploadDataset(file)
+      const resp = await uploadDataset(file, globalModel ? "lgd_training.model_table" : undefined)
       onInput(key, {
         datasetId: resp.dataset_id,
         fileName: file.name,
@@ -99,9 +100,9 @@ export function ExternalInputCard({
   }
 
   const columnas = input?.columns ?? []
-  const porOrden = input !== undefined && input.keyColumn === null
+  const porOrden = !globalModel && input !== undefined && input.keyColumn === null
   const llaveDesalineada =
-    input !== undefined && carteraKeyMismatch(input.keyColumn, carteraColumns)
+    !globalModel && input !== undefined && carteraKeyMismatch(input.keyColumn, carteraColumns)
 
   return (
     <Card className="shadow-card">
@@ -112,7 +113,9 @@ export function ExternalInputCard({
           </p>
           <p className="text-sm font-medium text-foreground">{artifact.label}</p>
           <p className="text-sm text-muted-foreground">
-            Sube una tabla con una fila por operación. Después eliges qué columna es cada cosa.
+            {globalModel
+              ? "Sube la tabla del modelo LGD. Se aplica a toda la cartera, sin emparejar sus filas con operaciones ni volver a ajustar."
+              : "Sube una tabla con una fila por operación. Después eliges qué columna es cada cosa."}
           </p>
         </div>
 
@@ -156,7 +159,7 @@ export function ExternalInputCard({
 
         {input !== undefined ? (
           <div className="space-y-4">
-            <div className="space-y-1.5">
+            {!globalModel && <div className="space-y-1.5">
               <Label htmlFor={`llave-${key}`}>{artifact.key_question}</Label>
               <Select
                 value={input.keyColumn ?? POR_ORDEN}
@@ -182,7 +185,7 @@ export function ExternalInputCard({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div>}
 
             {llaveDesalineada ? (
               /* D-PUE-6-bis: emparejar exige la columna en los DOS archivos. El backend lo rechaza

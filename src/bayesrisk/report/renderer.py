@@ -66,9 +66,9 @@ from bayesrisk.report.config import (
 )
 from bayesrisk.report.document import (
     APPENDIX_TABLES_ID,
+    ATTACHMENT_ONLY_TABLES,
     HL_GROUP_TABLE_PREFIX,
     KEY_TABLES,
-    PER_OBSERVATION_TABLES,
     max_visible_rows,
     ordered_sections,
     table_title,
@@ -382,12 +382,16 @@ def build_document_view(
     nunca **qué bloques hay** ni en qué orden. ``chart_format`` es lo único que varía por destino:
     el HTML y el ``.qmd`` embeben SVG; Word no los admite y pide PNG.
     """
-    from bayesrisk.report.prose import internal_report_family
+    from bayesrisk.report.prose import internal_report_family, lgd_report
 
     section_views = _section_views(bundle, ai_blocks, config, chart_format)
     return {
         "brand_subtitle": (
-            "Provisión interna" if internal_report_family(bundle) else "Validación de modelos"
+            "Entrenamiento LGD"
+            if lgd_report(bundle)
+            else (
+                "Provisión interna" if internal_report_family(bundle) else "Validación de modelos"
+            )
         ),
         "title": _report_title(bundle),
         "document_title": _document_title(bundle),
@@ -480,6 +484,7 @@ def _supuestos_de_la_pagina(payload: Mapping[str, Any]) -> list[str] | None:
     if payload.get("family") not in {
         "cartera",
         "provision_interna",
+        "lgd",
         "pd_provision",
     } or not isinstance(final, Mapping):
         return None
@@ -589,9 +594,9 @@ def _is_comparison_run(bundle: ReportInputBundle) -> bool:
 
 def _report_title(bundle: ReportInputBundle) -> str:
     """El título del artefacto según lo que la corrida ES."""
-    from bayesrisk.report.prose import internal_report_family
+    from bayesrisk.report.prose import internal_report_family, lgd_report
 
-    if internal_report_family(bundle):
+    if internal_report_family(bundle) or lgd_report(bundle):
         return _document_title(bundle)
     if _is_ifrs9_run(bundle):
         return "Reporte IFRS 9 / ECL"
@@ -604,8 +609,10 @@ def _report_title(bundle: ReportInputBundle) -> str:
 
 def _cover_kicker(bundle: ReportInputBundle) -> str:
     """La línea sobre el título de la portada, según lo que la corrida ES."""
-    from bayesrisk.report.prose import internal_report_family
+    from bayesrisk.report.prose import internal_report_family, lgd_report
 
+    if lgd_report(bundle):
+        return "Informe de entrenamiento LGD"
     if internal_report_family(bundle):
         return "Informe de provisión interna"
     if _is_ifrs9_run(bundle):
@@ -625,8 +632,10 @@ def _document_title(bundle: ReportInputBundle) -> str:
     **además** del scorecard tampoco es sólo una validación de scorecard: el usuario la corrió por
     la provisión, y el título debe nombrarla.
     """
-    from bayesrisk.report.prose import internal_report_family
+    from bayesrisk.report.prose import internal_report_family, lgd_report
 
+    if lgd_report(bundle):
+        return "Informe de Entrenamiento LGD"
     internal_family = internal_report_family(bundle)
     if internal_family:
         return (
@@ -651,8 +660,10 @@ def _exec_scope_note(bundle: ReportInputBundle) -> str:
     El texto histórico decía «la integración con IFRS 9 corresponde a fases posteriores»: falso
     —y en la primera página— cuando el capítulo central del informe ES la ECL IFRS 9.
     """
-    from bayesrisk.report.prose import internal_report_family, internal_scope
+    from bayesrisk.report.prose import internal_report_family, internal_scope, lgd_report, lgd_scope
 
+    if lgd_report(bundle):
+        return "Alcance: " + lgd_scope()
     if internal_report_family(bundle):
         return "Alcance: " + internal_scope(bundle)
     validation = bundle.cards.get("validation") if "validation" in bundle.results else None
@@ -812,7 +823,7 @@ def _tables_for_section(
         keys: tuple[str, ...] = tuple(
             key
             for key in sorted(bundle.tables, key=str)
-            if key not in shown and key not in PER_OBSERVATION_TABLES
+            if key not in shown and key not in ATTACHMENT_ONLY_TABLES
         )
     elif section.id.startswith("validation.") and section.status == "included":
         keys = (section.id,) if section.id in bundle.tables else ()
@@ -832,7 +843,7 @@ def _tables_for_section(
         keys = tuple(
             key
             for key in KEY_TABLES.get(section.source_domain, ())
-            if key in bundle.tables and key not in PER_OBSERVATION_TABLES
+            if key in bundle.tables and key not in ATTACHMENT_ONLY_TABLES
         )
     else:
         keys = ()
@@ -875,12 +886,23 @@ def _data_exports_view(
     keys = tuple(
         key
         for key in sorted(bundle.tables, key=str)
-        if key in PER_OBSERVATION_TABLES or key.startswith("validation.calibration_tie_groups.")
+        if key in ATTACHMENT_ONLY_TABLES or key.startswith("validation.calibration_tie_groups.")
     )
     if not keys:
         return {}
     refs = data_export_refs(bundle.tables, config=config)
     return {
+        "model_title": "Predictor y tablas de datos" if "lgd_training.model_table" in keys else "",
+        "model_note": (
+            "La tabla del predictor es global, no tiene una fila por operación. Las tablas "
+            "enumeradas se entregan completas en los adjuntos CSV/Excel solicitados."
+            if refs
+            else "La tabla del predictor es global, no tiene una fila por operación. "
+            "No se emitieron adjuntos CSV/Excel: añada csv o xlsx a report.formats "
+            "para obtener las tablas completas."
+        )
+        if "lgd_training.model_table" in keys
+        else "",
         "has_diagnostics": any(
             key.startswith("validation.calibration_tie_groups.") for key in keys
         ),

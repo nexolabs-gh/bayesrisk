@@ -424,7 +424,7 @@ def test_toda_forma_de_obtener_la_lgd_tiene_su_frase_en_el_informe() -> None:
     """
     del_motor = _metodos_del_motor()
     etiquetadas = frozenset(_INTERNAL_LGD_LABELS)
-    assert len(del_motor) == 5, f"el motor acepta {sorted(del_motor)}: ¿cambió la unión?"
+    assert len(del_motor) == 6, f"el motor acepta {sorted(del_motor)}: ¿cambió la unión?"
     assert del_motor == etiquetadas, (
         f"el motor acepta {sorted(del_motor)} y el informe etiqueta {sorted(etiquetadas)}. Un "
         "método sin frase sale con su literal técnico en un documento que lee un regulador; una "

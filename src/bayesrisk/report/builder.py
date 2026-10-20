@@ -82,6 +82,7 @@ else:
 __all__ = ["CANONICAL_SECTION_ORDER", "OPTIONAL_REPORT_INPUTS", "ReportBuilder"]
 
 _CARD_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
+    ("lgd_training", "card"),
     # Población real (SDD-02). Opcional: no entra en ``ReportStep.requires``.
     ("data", "data_card"),
     ("eda", "eda_card"),
@@ -138,6 +139,10 @@ OPTIONAL_REPORT_INPUTS: Final[tuple[tuple[str, str], ...]] = (
     + (("validation", "interpretation"), ("validation", "calibration_tie_groups"))
 )
 _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
+    ("lgd_training", "model_table"),
+    ("lgd_training", "predictions"),
+    ("lgd_training", "evaluation"),
+    ("lgd_training", "population"),
     ("eda", "default_rate"),
     ("eda", "stability"),
     ("eda", "univariate"),
@@ -283,6 +288,10 @@ class ReportBuilder:
         tables.update(tablas_comparacion)
         tables.update(_serie_de_estabilidad(study))
         tables.update(_extract_card_dataframes(cards))
+        if "lgd_training" in cards:
+            from bayesrisk.lgd_training.presentation import report_tables
+
+            tables.update(report_tables(tables))
         figures = self._collect_figures(study)
         pipeline_params = _collect_pipeline_params(study)
         missing_sections = self._missing_required_sections(cards)
@@ -417,6 +426,8 @@ class ReportBuilder:
         """Construye las subsecciones de dominio que cuelgan de un capítulo."""
         if spec.id == "context":
             return self._domain_subsections(spec.id, CONTEXT_DOMAINS, bundle, number, kind="data")
+        if spec.id == "lgd_training":
+            return self._domain_subsections(spec.id, ("lgd_training",), bundle, number, kind="data")
         if spec.id == "methodology":
             return self._methodology_subsections(bundle, number)
         if spec.id == "results":
@@ -827,6 +838,7 @@ def _hay_pagina_ejecutiva(bundle: ReportInputBundle) -> bool:
     if any(domain in bundle.cards for domain in RESULT_DOMAINS):
         return True
     return bundle.summary.get("family") in {
+        "lgd",
         "provision_interna",
         "pd_provision",
         _FAMILIA_CARTERA,
@@ -846,6 +858,12 @@ _FAMILIA_COMPARACION: Final = "comparacion"
 
 def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]:
     """Prosa determinista del capítulo; los capítulos sin prosa propia devuelven vacío."""
+    if chapter_id == EXECUTIVE_SUMMARY_ID and (bundle.summary or {}).get("family") == "lgd":
+        return (
+            "Estado del ajuste, población y supuestos declarados, desde la misma fuente que "
+            "la puerta guiada y la pantalla. Las métricas son descriptivas; terminar la corrida "
+            "no equivale a aprobar el predictor para uso institucional.",
+        )
     if chapter_id == EXECUTIVE_SUMMARY_ID and (bundle.summary or {}).get("family") in {
         _FAMILIA_CARTERA,
         "provision_interna",
@@ -914,6 +932,12 @@ def _chapter_body(chapter_id: str, bundle: ReportInputBundle) -> tuple[str, ...]
     if chapter_id == "limitations":
         return prose.limitations_body(bundle)
     if chapter_id == APPENDIX_TABLES_ID:
+        if "lgd_training" in bundle.cards:
+            return (
+                "Este anexo completa las tablas agregadas del cuerpo. La tabla del predictor y las "
+                "predicciones por operación se identifican por separado como adjuntos; su emisión "
+                "depende de los formatos solicitados.",
+            )
         return (
             "Este anexo reproduce íntegras todas las tablas que produjo la corrida, incluidas "
             "las que el cuerpo del informe ya mostró. Es la trazabilidad completa: nada de lo "
@@ -967,7 +991,7 @@ def _run_summary(study: Study, config: ReportConfig) -> dict[str, Any]:
         "sin_decisiones": SIN_DECISIONES,
         "error": None,
     }
-    if family_of(study.config) in {_FAMILIA_CARTERA, "provision_interna", "pd_provision"}:
+    if family_of(study.config) in {_FAMILIA_CARTERA, "provision_interna", "pd_provision", "lgd"}:
         # Una provisión (D-ECL-12): la página dice sus «Supuestos» en lugar de la validación
         # técnica, que no tiene. Se declara aunque el resumen no se arme, para que el capítulo
         # diga por qué no hay resumen en vez de omitirse. El payload del scorecard no gana

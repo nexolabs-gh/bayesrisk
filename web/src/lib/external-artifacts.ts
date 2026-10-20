@@ -94,7 +94,7 @@ export function externalRefs(
     refs.push({
       artifact: entry.artifact,
       dataset_id: input.datasetId,
-      key_column: input.keyColumn,
+      ...(isGlobalModel(entry) ? {} : { key_column: input.keyColumn }),
     })
   }
   return refs
@@ -114,8 +114,13 @@ export function positionalInputs(
 ): ExternalArtifact[] {
   return required.filter((entry) => {
     const input = inputs[artifactKey(entry.artifact)]
-    return input !== undefined && input.keyColumn === null
+    return !isGlobalModel(entry) && input !== undefined && input.keyColumn === null
   })
+}
+
+/** La excepción pertenece a la tabla de modelo declarada por el catálogo. */
+export function isGlobalModel(entry: ExternalArtifact): boolean {
+  return entry.scope === "global_model" && artifactKey(entry.artifact) === "lgd_training.model_table"
 }
 
 /**

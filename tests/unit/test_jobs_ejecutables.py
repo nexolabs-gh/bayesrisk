@@ -48,6 +48,12 @@ from bayesrisk.ui.jobs import list_jobs
 #: aleatoria es la única forma sin huecos, y el resto son nombres de columna cualesquiera. Nada de
 #: esto viaja a ningún preset.
 _DECISIONES_CONTESTADAS: dict[str, Any] = {
+    "lgd_training.target_col": "lgd_observada",
+    "lgd_training.covariate_cols": ["deuda_ingreso", "antiguedad_meses"],
+    "lgd_training.entity_col": "deudor",
+    "lgd_training.sample_col": "muestra",
+    "lgd_training.default_col": "incumplio",
+    "lgd_training.resolved_col": "resuelto",
     "data.target.bad_rule": {"all_of": [{"col": "dpd", "op": ">", "value": 90}], "any_of": []},
     "data.partition.strategy": {
         "type": "random",
@@ -269,7 +275,7 @@ def test_el_barrido_no_es_vacuo(trabajos: list[dict[str, Any]]) -> None:
     disponibles = [j for j in trabajos if j["status"] == "available"]
     # 10 → 11 con la capa B del SDD-33: «Monitorear un modelo en uso».
     # H3 agrega el recorrido explícito que consume la PD de toda la población.
-    assert len(trabajos) == 13, f"el catálogo tiene {len(trabajos)} trabajos, no 13"
+    assert len(trabajos) == 14, f"el catálogo tiene {len(trabajos)} trabajos, no 14"
     assert len(disponibles) >= 7, f"sólo {len(disponibles)} disponibles: el gate mediría casi nada"
     for ancla in ("scorecard_pd", "pd_lifetime", "comparar_provisiones", "provisiones_ifrs9"):
         assert ancla in {j["id"] for j in disponibles}, f"«{ancla}» debería estar disponible"

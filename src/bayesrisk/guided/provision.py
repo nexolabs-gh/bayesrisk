@@ -18,6 +18,7 @@ import pandas as pd
 from bayesrisk.core.exceptions import BayesRiskError, ConfigError
 from bayesrisk.guided._puerta import _PuertaGuiada
 from bayesrisk.guided.inference import Inferencia, columnas_esquema
+from bayesrisk.lgd_training.model import LgdModel
 
 
 class ProvisionInputError(ConfigError):
@@ -53,7 +54,7 @@ class Provision(_PuertaGuiada):
         portfolio: str,
         exposure: str,
         pd: str,
-        lgd: str,
+        lgd: str | LgdModel,
         id: str | None = None,
         name: str = "provision",
         run_dir: str | Path = "bayesrisk-runs",
@@ -68,11 +69,14 @@ class Provision(_PuertaGuiada):
         self._external_files: list[tuple[Path, str]] = []
         try:
             frame, source, label = self._cargar(data)
-            self._validar_columnas(frame, [as_of, portfolio, exposure, pd, lgd])
+            self._validar_columnas(
+                frame, [as_of, portfolio, exposure, pd, *self._columnas_lgd(lgd)]
+            )
             index_col, unique_keys, id_label = self._resolver_id(frame, id)
             esquema = columnas_esquema(frame)
             cfg: dict[str, Any] = {
                 "name": name,
+                "audit": {"enabled": True},
                 "data": {
                     "load": {"source": source},
                     "schema": {
@@ -108,6 +112,8 @@ class Provision(_PuertaGuiada):
                 cfg["tracking"] = {"enabled": True, "tracking_uri": str(track)}
             tabla_pd = frame[[pd]].rename(columns={pd: "pd_calibrated"}).copy(deep=True)
             self._artifacts = {("calibration", "calibrated_pd_frame"): tabla_pd}
+            if isinstance(lgd, LgdModel):
+                self._artifacts[("lgd_training", "model_table")] = lgd.validated().to_frame()
             self._inferencias(label, id_label, len(esquema))
             self._config, self._steps = self._resolver_pipeline(
                 self._validar_config(cfg), artifacts=self._artifacts
@@ -126,7 +132,7 @@ class Provision(_PuertaGuiada):
         as_of: str,
         portfolio: str,
         exposure: str,
-        lgd: str,
+        lgd: str | LgdModel,
         name: str = "provision",
         run_dir: str | Path = "bayesrisk-runs",
     ) -> Provision:
@@ -152,7 +158,7 @@ class Provision(_PuertaGuiada):
             raise ProvisionInputError("El Scorecard no declara una fuente de datos reproducible.")
         try:
             frame, source, label = obj._cargar(Path(data_config.load.source))
-            obj._validar_columnas(frame, [as_of, portfolio, exposure, lgd])
+            obj._validar_columnas(frame, [as_of, portfolio, exposure, *cls._columnas_lgd(lgd)])
             cfg = deepcopy(scorecard.config.model_dump(mode="python", by_alias=True))
             cfg["name"] = name
             cfg["run"] = {"steps": None}
@@ -168,20 +174,35 @@ class Provision(_PuertaGuiada):
                 *scorecard._inference_lines,
                 "Proyecto nuevo: la provisión consume toda la población con PD disponible",
             )
-            obj._config, obj._steps = obj._resolver_pipeline(obj._validar_config(cfg))
+            if isinstance(lgd, LgdModel):
+                obj._artifacts[("lgd_training", "model_table")] = lgd.validated().to_frame()
+            obj._config, obj._steps = obj._resolver_pipeline(
+                obj._validar_config(cfg), artifacts=obj._artifacts
+            )
             obj._publicar_snapshot()
+            obj._guardar_entradas()
             return obj
         except BaseException:
             obj._descartar_snapshot()
             raise
 
     @staticmethod
-    def _seccion(as_of: str, portfolio: str, exposure: str, lgd: str) -> dict[str, Any]:
+    def _columnas_lgd(lgd: str | LgdModel) -> tuple[str, ...]:
+        if isinstance(lgd, LgdModel):
+            return lgd.validated().features
+        if not isinstance(lgd, str):
+            raise ProvisionInputError("lgd exige una columna o un LgdModel validado.")
+        return (lgd,)
+
+    @staticmethod
+    def _seccion(as_of: str, portfolio: str, exposure: str, lgd: str | LgdModel) -> dict[str, Any]:
         return {
             "as_of_date_col": as_of,
             "portfolio_col": portfolio,
             "exposure_col": exposure,
-            "lgd": {"method": "provided", "lgd_col": lgd},
+            "lgd": {"method": "fitted"}
+            if isinstance(lgd, LgdModel)
+            else {"method": "provided", "lgd_col": lgd},
         }
 
     @staticmethod

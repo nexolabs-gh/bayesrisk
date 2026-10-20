@@ -1,7 +1,7 @@
 r"""Exports de datos del reporte: las tablas **por observación**, completas y fuera del documento.
 
 Un informe de validación no es un contenedor de datasets. Las tablas con una fila por crédito
-(:data:`~bayesrisk.report.document.PER_OBSERVATION_TABLES`) ocupaban dos tercios del documento
+(:data:`~bayesrisk.report.document.ATTACHMENT_ONLY_TABLES`) ocupaban dos tercios del documento
 truncadas a 200 filas, con lo que no servían **ni como dato** (incompletas) **ni como informe**
 (ruido que nadie lee). Aquí se emiten **íntegras** —sin truncar— como archivos adjuntos, y el
 documento las referencia por nombre.
@@ -16,8 +16,9 @@ Dos formatos, ambos opt-in vía ``report.formats``:
   Sin el extra **degrada con gracia**, igual que el PDF y el ``.docx``: avisa y entrega el resto
   del informe, o detiene la corrida si ``report.xlsx.fail_if_unavailable`` lo pide.
 
-El índice del frame se exporta **siempre**: en estas tablas es el identificador de la operación
-(``loan_id``), y perderlo dejaría un dataset anónimo e inservible para conciliar contra el origen.
+El índice de las tablas por observación se exporta: identifica la operación. La tabla global
+del predictor LGD conserva exclusivamente su schema cerrado, sin índice adicional; se entrega
+en su propio libro para poder reimportarla con el lector tipado del modelo.
 
 Las celdas de TEXTO que una planilla leería como fórmula —un identificador o un nivel de
 categórica que empiece por ``=``, ``+``, ``-``, ``@``, tabulador o retorno de carro, y esos datos
@@ -40,7 +41,7 @@ from pydantic import BaseModel, ConfigDict
 
 from bayesrisk.core.spreadsheet_safety import CSV_QUOTING, neutralize_formula_prefixes
 from bayesrisk.report.config import ReportConfig
-from bayesrisk.report.document import PER_OBSERVATION_TABLES, table_title
+from bayesrisk.report.document import ATTACHMENT_ONLY_TABLES, table_title
 from bayesrisk.report.exceptions import ReportDependencyError, ReportExportError
 
 if TYPE_CHECKING:
@@ -64,6 +65,7 @@ __all__ = [
 DATA_EXPORT_FORMATS: Final[frozenset[str]] = frozenset({"csv", "xlsx"})
 
 _WORKBOOK_SUFFIX: Final = "__por_observacion.xlsx"
+_LGD_MODEL_TABLE: Final = "lgd_training.model_table"
 _XLSX_MISSING_MSG: Final = (
     "No se pudo generar el export .xlsx: falta openpyxl. Instale `bayesrisk[excel]` y reintente, o "
     "pida el formato 'csv', que no requiere extras."
@@ -100,7 +102,7 @@ class DataExportRef(BaseModel):
 
 def per_observation_tables(tables: Mapping[str, DataFrameLike]) -> tuple[str, ...]:
     """Claves de las tablas por observación presentes en el bundle, en orden canónico."""
-    return tuple(sorted(key for key in tables if key in PER_OBSERVATION_TABLES))
+    return tuple(sorted(key for key in tables if key in ATTACHMENT_ONLY_TABLES))
 
 
 def _diagnostic_tables(tables: Mapping[str, DataFrameLike]) -> tuple[str, ...]:
@@ -157,7 +159,13 @@ def data_export_refs(
                     title=table_title(key),
                     rows=rows,
                     filename=f"{config.basename}"
-                    + ("__diagnostico_calibracion.xlsx" if key in diagnostic else _WORKBOOK_SUFFIX),
+                    + (
+                        "__modelo_lgd.xlsx"
+                        if key == _LGD_MODEL_TABLE
+                        else "__diagnostico_calibracion.xlsx"
+                        if key in diagnostic
+                        else _WORKBOOK_SUFFIX
+                    ),
                     sheet=(
                         f"{diagnostic.index(key) + 1:02d} "
                         + _sheet_name(key.rsplit(".", 1)[-1])[:28]
@@ -200,14 +208,21 @@ def write_data_exports(
     exports: dict[str, str] = {}
     for ref in refs:
         if not ref.sheet:
-            path = _write_csv(tables[ref.table_key], directory / ref.filename)
+            path = _write_csv(
+                tables[ref.table_key],
+                directory / ref.filename,
+                index=ref.table_key != _LGD_MODEL_TABLE,
+            )
             exports[ref.filename] = str(path)
     filenames = dict.fromkeys(ref.filename for ref in refs if ref.sheet)
     for filename in filenames:
         workbook = tuple(ref for ref in refs if ref.sheet and ref.filename == filename)
         sheets = {ref.sheet: tables[ref.table_key] for ref in workbook}
         try:
-            path = _write_xlsx(sheets, directory / workbook[0].filename)
+            if any(ref.table_key == _LGD_MODEL_TABLE for ref in workbook):
+                path = write_workbook(sheets, directory / workbook[0].filename, index=False)
+            else:
+                path = _write_xlsx(sheets, directory / workbook[0].filename)
         except ReportDependencyError as exc:
             # Segunda capa, y NO es código muerto: ``find_spec`` dice que el paquete está, pero un
             # ``openpyxl`` presente y roto (instalación a medias, versión incompatible con el
@@ -264,7 +279,7 @@ def _prepare_output_dir(output_dir: str) -> Path:
     return directory
 
 
-def _write_csv(table: DataFrameLike, path: Path) -> Path:
+def _write_csv(table: DataFrameLike, path: Path, *, index: bool = True) -> Path:
     """Escribe un ``.csv`` completo y byte-determinista (tmp + ``replace``, como el HTML)."""
     temp_path = path.with_name(f".{path.name}.tmp")
     try:
@@ -274,7 +289,7 @@ def _write_csv(table: DataFrameLike, path: Path) -> Path:
         # (``spreadsheet_safety.CSV_QUOTING``).
         _exportable(table).to_csv(
             temp_path,
-            index=True,
+            index=index,
             encoding="utf-8-sig",
             lineterminator="\n",
             quoting=CSV_QUOTING,

@@ -112,6 +112,7 @@ export interface ExternalColumnRole {
  * obligatoria, y por la misma razón.
  */
 export interface ExternalArtifact {
+  scope?: "global_model"
   artifact: [string, string]
   label: string
   /** Condición del config que hace pertinente esta clave; `null` = siempre. */
@@ -122,6 +123,7 @@ export interface ExternalArtifact {
 
 /** Un trabajo del catálogo, tal como lo publica `GET /api/jobs`. */
 export interface Job {
+  related_job?: string
   /** Recorrido explícito dentro de las mismas secciones; lo declara el catálogo. */
   config_match?: { path: string; equals: string }
   id: string

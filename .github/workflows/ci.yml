@@ -244,7 +244,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libharfbuzz-subset0 libffi-dev
 
       - name: Install pdf extra
-        run: uv sync --locked --python 3.12 --extra pdf --group test
+        run: uv sync --locked --python 3.12 --extra pdf --extra scoring --group test
 
       - name: PDF tests reales (WeasyPrint)
         env:
@@ -256,7 +256,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: h3-pdf-evidence
-          path: ${{ runner.temp }}/h3-pdf/provision/reports/
+          path: |
+            ${{ runner.temp }}/h3-pdf/provision/reports/
+            ${{ runner.temp }}/h3-pdf/lgd/reports/
+            ${{ runner.temp }}/h3-pdf/aplicacion_lgd/reports/
           if-no-files-found: error
 
   coverage-regulatory:

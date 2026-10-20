@@ -662,7 +662,7 @@ describe("D-EXI-2: la opción que exige otro campo ofrece el salto a ese campo",
     }
     // Control positivo del otro lado: las dos ramas observadas NO exigen nada.
     const observadas = punto!.options.filter((o) => o.estado === "disponible")
-    expect(observadas).toHaveLength(2)
+    expect(observadas).toHaveLength(3) // provided, histórica y predictor externo fitted
     for (const opcion of observadas) expect(opcion.exige).toEqual([])
   })
 
@@ -1148,7 +1148,7 @@ describe("la jurisdicción sale del listado principal, sin perder ningún trabaj
   it("el cable trae los ONCE y marca la oferta; el fixture empaquetado no ofrece los dos de CMF", () => {
     // D-JUR-9.2: recortar el cable rompería el YAML propio, así que se marca en vez de filtrar.
     // 10 → 11 con la capa B del SDD-33: «Monitorear un modelo en uso».
-    expect(JOBS).toHaveLength(13)
+    expect(JOBS).toHaveLength(14)
     const noOfrecidos = JOBS.filter((j) => !j.offered).map((j) => j.id)
     expect(noOfrecidos).toEqual(["provisiones_cmf", "comparar_provisiones"])
     // Y la marca se deriva de la jurisdicción: la demo estática no tiene lanzador ni opt-in.
@@ -1163,7 +1163,7 @@ describe("la jurisdicción sale del listado principal, sin perder ningún trabaj
     expect(estandar.map((j) => j.id)).not.toContain("comparar_provisiones")
     // Anti-vacuidad: los nueve neutros siguen ahí, en el orden del catálogo (ocho hasta la capa B
     // del SDD-33, que suma «Monitorear un modelo en uso»).
-    expect(estandar).toHaveLength(11)
+    expect(estandar).toHaveLength(12)
     expect(estandar[0].id).toBe("scorecard_pd")
   })
 
@@ -1172,7 +1172,7 @@ describe("la jurisdicción sale del listado principal, sin perder ningún trabaj
     const conOptIn = JOBS.map((j) => ({ ...j, offered: true }))
     const { estandar, porJurisdiccion } = catalogoDeLanding(conOptIn)
     expect(porJurisdiccion.map((j) => j.id)).toEqual(["provisiones_cmf", "comparar_provisiones"])
-    expect(estandar).toHaveLength(11)
+    expect(estandar).toHaveLength(12)
   })
 
   it("🔴 CONTROL NEGATIVO: `offered` ausente ofrece todo, nunca deja la landing vacía", () => {

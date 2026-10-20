@@ -27,7 +27,7 @@ from bayesrisk.core.registry import register
 from bayesrisk.core.steps import ArtifactKey, ContextoDeResolucion
 from bayesrisk.report.builder import OPTIONAL_REPORT_INPUTS, ReportBuilder
 from bayesrisk.report.config import ReportConfig
-from bayesrisk.report.document import PER_OBSERVATION_TABLES, max_visible_rows
+from bayesrisk.report.document import ATTACHMENT_ONLY_TABLES, max_visible_rows
 from bayesrisk.report.exceptions import ReportExportError
 from bayesrisk.report.exports import DATA_EXPORT_FORMATS, write_data_exports
 from bayesrisk.report.results import (
@@ -360,7 +360,7 @@ def _maybe_write_data_exports(
     """Escribe los adjuntos de datos (``csv``/``xlsx``) y devuelve ``{archivo: ruta}``.
 
     Es lo que puebla ``ReportResult.data_exports``. Las tablas por observación salieron del
-    documento (:data:`~bayesrisk.report.document.PER_OBSERVATION_TABLES`); aquí se entregan
+    documento (:data:`~bayesrisk.report.document.ATTACHMENT_ONLY_TABLES`); aquí se entregan
     **completas**, que es la única forma en que sirven para algo.
     """
     output_dir = _export_dir(config, manifest)
@@ -450,7 +450,7 @@ def _truncated_tables(
     """
     truncated: list[tuple[str, int, int]] = []
     for key, table in bundle.tables.items():
-        if key in PER_OBSERVATION_TABLES:
+        if key in ATTACHMENT_ONLY_TABLES:
             continue
         max_rows = max_visible_rows(key, config.sections.max_table_rows)
         row_count = len(getattr(table, "index", ()))

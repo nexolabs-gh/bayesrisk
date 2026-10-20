@@ -43,6 +43,7 @@ from bayesrisk.ui.jobs import _DECISIONES_POR_TRABAJO, decisiones_de, list_jobs
 #: esa lista vive en `test_column_roles.py`, y aquí sólo acota el barrido a lo navegable.
 SECCIONES_DEL_FORMULARIO = (
     "data",
+    "lgd_training",
     "eda",
     "binning",
     "selection",

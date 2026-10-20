@@ -392,6 +392,27 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
     # nada.
     metrics.extend(_metricas_del_monitoreo(bundle, notes))
 
+    if "lgd_training" in bundle.cards:
+        diagnostics = bundle.tables.get("lgd_training.evaluation")
+        if diagnostics is not None and hasattr(diagnostics, "to_dict"):
+            for row in diagnostics.to_dict(orient="records"):
+                if row.get("predictor") != "fitted":
+                    continue
+                scope = "Entrenamiento" if row.get("sample") == "train" else "Evaluación"
+                for key, label in (
+                    ("mae", "Error absoluto medio LGD"),
+                    ("rmse", "Raíz del error cuadrático medio LGD"),
+                ):
+                    metrics.append(
+                        ExecutiveMetric(
+                            label=label, scope=scope, value=_cifra(row.get(key)), band="Descriptivo"
+                        )
+                    )
+        notes.append(
+            "Los errores LGD describen las muestras declaradas; no son un veredicto de validación. "
+            "La media de referencia se compara en el capítulo de entrenamiento."
+        )
+
     if not metrics:
         notes.append(
             "Las métricas clave no están disponibles: esta corrida no evaluó desempeño ni "
@@ -422,7 +443,14 @@ def context_body(bundle: ReportInputBundle) -> tuple[str, ...]:
             facts.append(f"{_miles(n_features)} variables de entrada")
         if bad_rate is not None:
             facts.append(f"una tasa de incumplimiento de {_pct(bad_rate)}")
-        if facts and target_col is None:
+        if facts and "lgd_training" in bundle.cards:
+            paragraphs.append(
+                f"La historia procesada contiene {_enumerar(tuple(facts))}. "
+                "El entrenamiento LGD usa el objetivo, incumplimiento, disponibilidad y muestras "
+                "declarados en su configuración. Los conteos y exclusiones se muestran en el "
+                "capítulo de entrenamiento; no se infieren de las particiones de scorecard."
+            )
+        elif facts and target_col is None:
             # D-ECL-2: corrida de cartera, sin target ni partición; no hay tablas que citar.
             paragraphs.append(
                 f"La población procesada contiene {_enumerar(tuple(facts))}. Es una corrida de "
@@ -621,6 +649,14 @@ def methodology_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
 
 def methodology_body(bundle: ReportInputBundle, domain: str) -> tuple[str, ...]:
     """Despacha la prosa metodológica de la etapa pedida."""
+    if domain == "lgd_training":
+        return (
+            "Respuesta fraccional binomial con enlace logit e intercepto, ajustada sólo en la "
+            "muestra de entrenamiento declarada. No pondera por exposición, selecciona variables "
+            "ni transforma covariables. La evaluación usa entidades declaradas distintas.",
+            "La media del objetivo de entrenamiento es la referencia fija para ambas muestras. "
+            "Los diagnósticos no constituyen un test de validación ni certifican calidad.",
+        )
     if domain == "data":
         return _methodology_data(bundle)
     if domain == "binning":
@@ -1135,6 +1171,16 @@ def results_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
 
 def results_body(bundle: ReportInputBundle, domain: str) -> tuple[str, ...]:
     """Despacha la prosa de resultados de la etapa pedida."""
+    if domain == "lgd_training":
+        card = _card(bundle, domain)
+        if card is None:
+            return ()
+        return (
+            f"Entrenamiento: {_miles(card['n_train'])} operaciones; "
+            f"evaluación: {_miles(card['n_evaluation'])}; excluidas: {_miles(card['n_excluded'])}.",
+            lgd_scope(),
+            *(str(note) for note in card["warnings"]),
+        )
     if domain == "data":
         return _results_data(bundle)
     if domain == "binning":
@@ -2651,6 +2697,8 @@ def _results_provisioning_internal(bundle: ReportInputBundle) -> tuple[str, ...]
 #: las dos ramas leían la misma columna; con la severidad MODELADA, el documento que lee un
 #: regulador no diría que la LGD salió de una regresión ajustada sobre esa misma cartera.
 _INTERNAL_LGD_LABELS: Final[dict[str, str]] = {
+    "fitted": "La severidad se predice con un modelo de historia separada, "
+    "sin reajustarlo con esta cartera",
     # ⚠️ Dice «exposición» y no «monto colocado»: es el mismo `exposure_col` que este capítulo nombra
     # así dos líneas antes y dieciséis después. Dos nombres para la misma magnitud, en el mismo
     # párrafo, se leen como dos magnitudes distintas.
@@ -2699,6 +2747,17 @@ def _internal_lgd_paragraphs(card: Mapping[str, Any]) -> tuple[str, ...]:
     metodo = seccion.get("lgd_method")
     if not metodo:
         return ()
+    if metodo == "fitted":
+        provenance = _mapping(seccion.get("lgd_fitted_provenance"))
+        return (
+            _INTERNAL_LGD_LABELS["fitted"] + ".",
+            *tuple(str(note) for note in provenance.get("notes", ())),
+            "Ajuste de origen: " + str(provenance.get("source_run_id", "No disponible")),
+            "Huella del config de origen: "
+            + str(provenance.get("source_config_hash", "No disponible")),
+            "Huella de los datos de origen: "
+            + str(provenance.get("source_data_hash", "No disponible")),
+        )
     etiqueta = _INTERNAL_LGD_LABELS.get(str(metodo))
     if etiqueta is None:
         # Un método que el motor acepta y esta tabla no conoce: se nombra en crudo antes que
@@ -3288,6 +3347,13 @@ def conclusions_body(bundle: ReportInputBundle) -> tuple[str, ...]:
             f"{_enumerar(tuple(str(item) for item in bundle.missing_sections))}."
         )
 
+    if "lgd_training" in bundle.cards:
+        hallazgos.append(
+            "El predictor LGD se ajustó en entrenamiento y se evaluó sin reajuste en la muestra "
+            "declarada. Los errores y su referencia son descriptivos; no acreditan calidad, "
+            "transportabilidad ni independencia del pipeline completo."
+        )
+
     if not hallazgos:
         return (
             "El motor no dispone de hallazgos automáticos que resumir: esta corrida no evaluó "
@@ -3395,6 +3461,20 @@ def _decisiones_humanas_de_la_ficha(bundle: ReportInputBundle) -> tuple[str, ...
     return (sin_decisiones,) if sin_decisiones else ()
 
 
+def lgd_report(bundle: ReportInputBundle) -> bool:
+    """Identifica la corrida de entrenamiento LGD por lo que ejecutó."""
+    return "lgd_training" in bundle.cards and (bundle.summary or {}).get("family") == "lgd"
+
+
+def lgd_scope() -> str:
+    """Alcance del ajuste, compartido por portada y limitaciones."""
+    return (
+        "Entrenamiento LGD experimental con historia separada y evaluación descriptiva. "
+        "No certifica calidad, transportabilidad ni independencia del pipeline completo. "
+        "La disponibilidad temporal del objetivo y de las covariables la declara la institución."
+    )
+
+
 def internal_report_family(bundle: ReportInputBundle) -> str | None:
     """Recorrido H3 efectivo; no reetiqueta un informe con otro motor de provisión."""
     family = (bundle.summary or {}).get("family")
@@ -3427,7 +3507,9 @@ def limitations_body(bundle: ReportInputBundle) -> tuple[str, ...]:
     tiene_monitoreo = _card(bundle, "monitoring") is not None and _card(bundle, "scorecard") is None
     validation = _card(bundle, "validation") if "validation" in bundle.results else None
     validation_families = set(_sequence(validation.get("families_run"))) if validation else set()
-    if internal_report_family(bundle):
+    if lgd_report(bundle):
+        alcance = lgd_scope()
+    elif internal_report_family(bundle):
         alcance = internal_scope(bundle)
     elif tiene_monitoreo:
         # SDD-33 capa B (pasada 1 de Codex): un monitoreo no construye ni valida un modelo; decirlo

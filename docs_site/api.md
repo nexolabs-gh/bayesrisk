@@ -55,6 +55,15 @@ el informe y las tablas completas.
 
 ::: bayesrisk.guided.provision.Provision
 
+`bayesrisk.Lgd` entrena con historia y muestras declaradas y entrega `bayesrisk.LgdModel`,
+un predictor reutilizable en una cartera sin LGD observada. Ambas superficies son
+**experimentales**. El ajuste usa sólo entrenamiento; evaluación y media de referencia son
+descriptivas, sin certificación de calidad, transportabilidad ni independencia del pipeline.
+
+::: bayesrisk.guided.lgd.Lgd
+
+::: bayesrisk.lgd_training.model.LgdModel
+
 `bayesrisk.Monitor` monitorea una tarjeta en uso con la misma mecánica: la tarjeta guardada, la
 cartera nueva con su columna de periodo y, si la hay, la de desenlace; por periodo dice si cambió
 la población, si el modelo sigue ordenando y si cada tramo acierta su PD, con un veredicto y su

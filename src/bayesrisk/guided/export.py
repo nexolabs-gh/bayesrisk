@@ -294,7 +294,9 @@ def _hojas_de_la_etapa(
             continue
         hoja = _nombre_de_hoja(clave, hojas)
         hojas[hoja] = tabla
-        con_indice[hoja] = True  # como los exports del informe: el índice es el identificador
+        # El transporte global LGD conserva su schema cerrado; las tablas por operación
+        # conservan el identificador, como sus adjuntos del informe.
+        con_indice[hoja] = clave != "lgd_training.model_table"
         indice.append({"Hoja": hoja, "Contenido": table_title(clave), "Filas": len(tabla.index)})
     indice[0]["Filas"] = len(hojas[_SHEET_SUMMARY].index)
     hojas[_SHEET_INDEX] = pd.DataFrame(indice)

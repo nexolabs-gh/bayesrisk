@@ -29,6 +29,7 @@ from bayesrisk.core.mixins import AuditableMixin
 from bayesrisk.core.registry import register
 from bayesrisk.core.steps import ArtifactKey
 from bayesrisk.provisioning.internal.config import (
+    InternalLgdFitted,
     InternalLgdModelada,
     InternalLgdWorkout,
     InternalProvisioningConfig,
@@ -61,6 +62,7 @@ _PD_ARTIFACT_BY_SOURCE: Final[dict[str, tuple[str, str]]] = {
     "calibration": ("calibration", "calibrated_pd_frame"),
     "model": ("model", "raw_pd_frame"),
 }
+_LGD_TABLE: Final[ArtifactKey] = ("lgd_training", "model_table")
 _INTERNAL_EXTRA_MESSAGE: Final = (
     "InternalProvisioningStep requiere pandas; instale las dependencias base."
 )
@@ -82,8 +84,10 @@ class InternalProvisioningStep(AuditableMixin):
         self.config = config
         self.requires = _requires_for(config)
         self.optional_requires: tuple[ArtifactKey, ...] = ()
+        if _LGD_TABLE not in self.requires:
+            self.optional_requires = (_LGD_TABLE,)
         if config.type == "full_population":
-            self.optional_requires = (_pd_complementaria(config.pd_source),)
+            self.optional_requires = (*self.optional_requires, _pd_complementaria(config.pd_source))
             self.provides = (
                 *type(self).provides,
                 ("provisioning_internal", "pd_input"),
@@ -105,6 +109,20 @@ class InternalProvisioningStep(AuditableMixin):
         pandas = _import_pandas()
 
         cfg = _internal_config_from_study(study, fallback=self.config)
+        model = None
+        fitted = cfg.method == "pd_lgd" and isinstance(cfg.lgd, InternalLgdFitted)
+        if study.artifacts.has(*_LGD_TABLE):
+            if not fitted:
+                raise InternalInputError(
+                    "La tabla del modelo LGD exige method=pd_lgd y lgd.method=fitted."
+                )
+            from bayesrisk.lgd_training.model import LgdModel
+
+            model = LgdModel.from_frame(study.artifacts.get(*_LGD_TABLE))
+        elif fitted:
+            raise InternalInputError(
+                "La rama fitted exige la tabla de coeficientes lgd_training.model_table."
+            )
         frame = _as_dataframe(
             _require_artifact(study, "data", "frame"),
             pandas,
@@ -129,12 +147,36 @@ class InternalProvisioningStep(AuditableMixin):
             pd_frame=pd_frame,
             as_of_date=as_of_date,
             audit=self,
+            fitted_model=model,
         )
         if (pd_domain, pd_key) in getattr(study, "_injected_artifacts", ()):
             metrics = result.card.metric_sections
             metrics["provisioning_internal"]["pd_external"] = True
             card = result.card.model_copy(update={"metric_sections": metrics})
             result = result.model_copy(update={"card": card})
+        if model is not None:
+            from bayesrisk.lgd_training.engine import APPLICATION_LIMIT, declaration_lines
+
+            metrics = result.card.metric_sections
+            metrics["provisioning_internal"]["lgd_fitted_provenance"] = {
+                "source_config_hash": model.source_config_hash,
+                "source_data_hash": model.source_data_hash,
+                "source_run_id": model.source_run_id,
+                "fit_environment": model.fit_environment,
+                "features": list(model.features),
+                "declaration_status": model.declaration_status,
+                "declaration_text": model.declaration_text,
+                "notes": [*declaration_lines(model), APPLICATION_LIMIT],
+            }
+            result = result.model_copy(
+                update={"card": result.card.model_copy(update={"metric_sections": metrics})}
+            )
+            self.log_decision(
+                regla="internal_lgd_fitted",
+                umbral="predictor congelado",
+                valor=metrics["provisioning_internal"]["lgd_fitted_provenance"],
+                accion="aplicar_sin_reajuste",
+            )
         self._log_internal_decisions(config=cfg, result=result, pd_artifact=(pd_domain, pd_key))
         self._publish_artifacts(study, result)
         return result
@@ -234,6 +276,8 @@ def _procedencia_de_la_lgd(config: InternalProvisioningConfig) -> dict[str, Any]
     lgd = config.lgd
     if config.method != "pd_lgd":
         return {"aplicada": False, "origen": "no_aplica"}
+    if isinstance(lgd, InternalLgdFitted):
+        return {"aplicada": True, "origen": "historia_separada", "artefacto": list(_LGD_TABLE)}
     if isinstance(lgd, InternalLgdModelada):
         insumos: dict[str, Any] = {"aplicada": True, "origen": "modelada"}
         if isinstance(lgd, InternalLgdWorkout):
@@ -255,7 +299,10 @@ def _procedencia_de_la_lgd(config: InternalProvisioningConfig) -> dict[str, Any]
 
 def _requires_for(config: InternalProvisioningConfig) -> tuple[ArtifactKey, ...]:
     """Arma las claves ``requires`` dinámicas según ``pd_source`` (CT-1, SDD-28 §4.1)."""
-    return (("data", "frame"), _PD_ARTIFACT_BY_SOURCE[config.pd_source])
+    keys: tuple[ArtifactKey, ...] = (("data", "frame"), _PD_ARTIFACT_BY_SOURCE[config.pd_source])
+    if config.method == "pd_lgd" and isinstance(config.lgd, InternalLgdFitted):
+        keys += (_LGD_TABLE,)
+    return keys
 
 
 def _pd_complementaria(source: str) -> ArtifactKey:

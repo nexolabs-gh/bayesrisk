@@ -18,7 +18,8 @@ global cuando está activa.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Self
+from copy import deepcopy
+from typing import Annotated, Any, Literal, Self, cast
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -47,6 +48,7 @@ InternalLgdMethod = Literal[
     "beta_regression",
     "fractional_response",
     "workout",
+    "fitted",
 ]
 InternalProvisioningMethod = Literal["pd_lgd", "direct_loss_rate"]
 InternalRoundingPolicy = Literal["none", "currency_2dp", "integer_currency"]
@@ -56,6 +58,7 @@ __all__ = [
     "InternalGroupingMethod",
     "InternalLgdBetaRegression",
     "InternalLgdConfig",
+    "InternalLgdFitted",
     "InternalLgdFractionalResponse",
     "InternalLgdGroupHistorical",
     "InternalLgdMethod",
@@ -176,6 +179,29 @@ class _InternalLgdComun(BayesRiskBaseConfig):
             raise InternalConfigError(
                 f"lgd.lgd_floor ({self.lgd_floor}) no puede superar lgd.lgd_cap ({self.lgd_cap})."
             )
+        return self
+
+
+class InternalLgdFitted(BayesRiskBaseConfig):
+    """Aplica el predictor de una historia separada sin objetivo en esta cartera."""
+
+    model_config = ConfigDict(json_schema_extra=_esenciales_lgd)
+    method: Literal["fitted"] = Field(
+        default="fitted",
+        title="Método LGD",
+        description="Aplica una tabla de coeficientes de historia separada, sin volver a ajustar.",
+        json_schema_extra={"ui_widget": "selectbox", "ui_group": "LGD", "ui_order": 1},
+    )
+    # Reutiliza exactamente límites y presentación vigentes, sin incorporar un objetivo inerte
+    # ni alterar el dump/orden de las cinco ramas históricas.
+    lgd_floor: UnitInterval = cast(Any, deepcopy(_InternalLgdComun.model_fields["lgd_floor"]))
+    lgd_cap: UnitInterval = cast(Any, deepcopy(_InternalLgdComun.model_fields["lgd_cap"]))
+
+    @model_validator(mode="after")
+    def _check_bounds(self) -> Self:
+        """Exige el mismo orden de límites que las otras ramas."""
+        if self.lgd_floor > self.lgd_cap:
+            raise InternalConfigError("El piso de LGD no puede superar su techo.")
         return self
 
 
@@ -556,7 +582,8 @@ InternalLgdConfig = Annotated[
     | InternalLgdGroupHistorical
     | InternalLgdBetaRegression
     | InternalLgdFractionalResponse
-    | InternalLgdWorkout,
+    | InternalLgdWorkout
+    | InternalLgdFitted,
     Field(discriminator="method"),
 ]
 

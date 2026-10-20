@@ -1508,6 +1508,20 @@
           "value": null
         }
       },
+      "provisioning_internal__InternalLgdFitted": {
+        "lgd_cap": {
+          "has_default": true,
+          "value": 1.0
+        },
+        "lgd_floor": {
+          "has_default": true,
+          "value": 0.0
+        },
+        "method": {
+          "has_default": true,
+          "value": "fitted"
+        }
+      },
       "provisioning_internal__InternalLgdFractionalResponse": {
         "covariate_cols": {
           "has_default": true,
@@ -3219,6 +3233,34 @@
         "scenario_log_filename": {
           "has_default": true,
           "value": "scenario_log.jsonl"
+        }
+      },
+      "lgd_training": {
+        "covariate_cols": {
+          "has_default": false
+        },
+        "default_col": {
+          "has_default": false
+        },
+        "entity_col": {
+          "has_default": false
+        },
+        "resolved_col": {
+          "has_default": false
+        },
+        "sample_col": {
+          "has_default": false
+        },
+        "schema_version": {
+          "has_default": true,
+          "value": "1.0.0"
+        },
+        "target_col": {
+          "has_default": false
+        },
+        "type": {
+          "has_default": true,
+          "value": "standard"
         }
       },
       "markov": {
@@ -9514,6 +9556,47 @@
         "title": "InternalLgdBetaRegression",
         "type": "object"
       },
+      "provisioning_internal__InternalLgdFitted": {
+        "additionalProperties": false,
+        "description": "Aplica el predictor de una historia separada sin objetivo en esta cartera.",
+        "properties": {
+          "lgd_cap": {
+            "default": 1.0,
+            "description": "Techo explícito aplicado tras validar la LGD; nunca clipa un valor inválido.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Techo de LGD",
+            "type": "number",
+            "ui_group": "LGD",
+            "ui_order": 4,
+            "ui_widget": "number_input"
+          },
+          "lgd_floor": {
+            "default": 0.0,
+            "description": "Piso explícito aplicado tras validar la LGD; nunca clipa un valor inválido.",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Piso de LGD",
+            "type": "number",
+            "ui_group": "LGD",
+            "ui_order": 3,
+            "ui_widget": "number_input"
+          },
+          "method": {
+            "const": "fitted",
+            "default": "fitted",
+            "description": "Aplica una tabla de coeficientes de historia separada, sin volver a ajustar.",
+            "title": "Método LGD",
+            "type": "string",
+            "ui_essential": true,
+            "ui_group": "LGD",
+            "ui_order": 1,
+            "ui_widget": "selectbox"
+          }
+        },
+        "title": "InternalLgdFitted",
+        "type": "object"
+      },
       "provisioning_internal__InternalLgdFractionalResponse": {
         "additionalProperties": false,
         "description": "La severidad se modela con una regresión fraccional, que admite los extremos 0 y 1.",
@@ -13585,6 +13668,110 @@
         "description": "Documenta el modelo para su gobierno: model card, inventario y diario de overlays.",
         "title": "Gobernanza"
       },
+      "lgd_training": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "description": "Ajusta LGD fraccional con muestras declaradas y evalúa sin volver a ajustar.",
+            "properties": {
+              "covariate_cols": {
+                "column_role": "input",
+                "description": "Columnas numéricas disponibles para aplicar el predictor. No se transforman ni imputan.",
+                "items": {
+                  "type": "string"
+                },
+                "title": "Covariables crudas",
+                "type": "array",
+                "ui_essential": true,
+                "ui_group": "Historia declarada",
+                "ui_order": 2,
+                "ui_widget": "multiselect"
+              },
+              "default_col": {
+                "column_role": "input",
+                "description": "Marca booleana o 0/1, sin nulos. Sólo se ajustan incumplimientos declarados.",
+                "title": "Incumplimiento observado",
+                "type": "string",
+                "ui_essential": true,
+                "ui_group": "Historia declarada",
+                "ui_order": 5,
+                "ui_widget": "text_input"
+              },
+              "entity_col": {
+                "column_role": "input",
+                "description": "Identifica al deudor: puede repetirse dentro de una muestra, nunca entre entrenamiento y evaluación elegibles.",
+                "title": "Entidad de separación",
+                "type": "string",
+                "ui_essential": true,
+                "ui_group": "Historia declarada",
+                "ui_order": 3,
+                "ui_widget": "text_input"
+              },
+              "resolved_col": {
+                "column_role": "input",
+                "description": "Marca booleana o 0/1 de resultado completo según definición institucional. No certifica cierre económico ni ausencia de sesgo.",
+                "title": "Resultado disponible",
+                "type": "string",
+                "ui_essential": true,
+                "ui_group": "Historia declarada",
+                "ui_order": 6,
+                "ui_widget": "text_input"
+              },
+              "sample_col": {
+                "column_role": "input",
+                "description": "Columna con train, evaluation o excluded. La institución fija las muestras antes del ajuste.",
+                "title": "Muestra declarada",
+                "type": "string",
+                "ui_essential": true,
+                "ui_group": "Historia declarada",
+                "ui_order": 4,
+                "ui_widget": "text_input"
+              },
+              "schema_version": {
+                "const": "1.0.0",
+                "default": "1.0.0",
+                "title": "Versión del esquema",
+                "type": "string",
+                "ui_widget": "hidden"
+              },
+              "target_col": {
+                "column_role": "input",
+                "description": "Columna de severidad observada, entre cero y uno, en las operaciones elegibles.",
+                "title": "LGD observada",
+                "type": "string",
+                "ui_essential": true,
+                "ui_group": "Historia declarada",
+                "ui_order": 1,
+                "ui_widget": "text_input"
+              },
+              "type": {
+                "const": "standard",
+                "default": "standard",
+                "title": "Tipo de entrenamiento",
+                "type": "string",
+                "ui_widget": "hidden"
+              }
+            },
+            "required": [
+              "target_col",
+              "covariate_cols",
+              "entity_col",
+              "sample_col",
+              "default_col",
+              "resolved_col"
+            ],
+            "title": "LgdTrainingConfig",
+            "type": "object",
+            "ui_essentials_declared": true
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Ajusta una severidad fraccional con historia separada y conserva un predictor reutilizable.",
+        "title": "Entrenamiento LGD"
+      },
       "markov": {
         "anyOf": [
           {
@@ -14995,6 +15182,7 @@
                 "discriminator": {
                   "mapping": {
                     "beta_regression": "#/$defs/InternalLgdBetaRegression",
+                    "fitted": "#/$defs/InternalLgdFitted",
                     "fractional_response": "#/$defs/InternalLgdFractionalResponse",
                     "group_historical": "#/$defs/InternalLgdGroupHistorical",
                     "provided": "#/$defs/InternalLgdProvided",
@@ -15017,6 +15205,9 @@
                   },
                   {
                     "$ref": "#/$defs/provisioning_internal__InternalLgdWorkout"
+                  },
+                  {
+                    "$ref": "#/$defs/provisioning_internal__InternalLgdFitted"
                   }
                 ],
                 "title": "Cómo se obtiene la LGD",
@@ -16449,6 +16640,7 @@
     "master_scale",
     "monitoring",
     "comparison",
+    "lgd_training",
     "report",
     "audit",
     "governance",

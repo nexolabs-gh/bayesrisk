@@ -71,7 +71,7 @@ def test_cobertura_total_no_sobrescribe_f1(source, main, extra, col) -> None:
 
 def test_variante_estandar_conserva_contrato_de_artefactos() -> None:
     step = InternalProvisioningStep(InternalProvisioningConfig())
-    assert step.optional_requires == ()
+    assert step.optional_requires == (("lgd_training", "model_table"),)
     assert len(step.provides) == 5
 
 

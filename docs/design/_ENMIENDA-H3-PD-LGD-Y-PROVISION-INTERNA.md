@@ -484,7 +484,9 @@ Datos para aceptación: F5 actual para PD+LGD provista; conjunto sintético nuev
 separadas con oráculos y extremos para la ruta modelada; al menos un conjunto externo real con
 procedencia y uso admisible para evaluar transportabilidad y límites. Hay antecedentes de análisis
 LGD externo en D-FIR-9; no sustituyen esta aceptación ni acreditan automáticamente derechos para
-redistribuir datos. **No se ha ejecutado ni acreditado esa aceptación real en S61.** Antes de
+redistribuir datos. **Al formular el diseño aún no se había ejecutado la aceptación real.** La precisión aprobada
+anterior rige su aceptación funcional: se ejecutó en S61 con 47 préstamos de entrenamiento y
+9 de evaluación, sin atribuir validación. La receta y artefactos se conservan en privado. Antes de
 iniciar capa B, inventariar disponibilidad/licencia, definición de default, recuperaciones,
 madurez, covariables disponibles y particiones; si no hay un conjunto admisible, no declarar H3
 cerrado ni fabricar tres ejemplos sintéticos como si fueran evidencia real. Su selección debe
@@ -563,3 +565,14 @@ simultáneos. Sin report/governance son 411/202; rutas únicas 370/166 son otra 
 incluye 158 nodos de data; no adjudicar esa complejidad íntegra a LGD. El notebook modelado
 propuesto usa archivos ya preparados: documentación y datos de ejemplo deben incluir también el
 contrato de preparación y la tabla de evaluación. Sin eso, cumplir 25 líneas sería cosmético.
+
+
+### Medición de implementación B (S61)
+
+El barrido completo pasa de 641 a 651 nodos, sin desapariciones: seis roles LGD más el
+ítem de la lista de covariables (7 nodos) y método/piso/techo de la rama fitted (3).
+Versión y tipo técnicos están ocultos. PD+LGD pasa de 458 a 461; interno/modelada de
+249 a 252. El trabajo de entrenamiento tiene 212 nodos incluyendo data, informe y gobernanza.
+No cambian las hojas de los trabajos scorecard e IFRS 9. Los seis esenciales y los nueve
+workout se prueban por rama, con unión completa y sin duplicados entre básico y avanzado.
+La revisión de implementación y el CI final siguen pendientes al registrar esta medición.

@@ -47,6 +47,7 @@ __all__ = [
     "APPENDIX_PARAMETERS_ID",
     "APPENDIX_PARAMETER_DOMAINS",
     "APPENDIX_TABLES_ID",
+    "ATTACHMENT_ONLY_TABLES",
     "CANONICAL_SECTION_ORDER",
     "CHAPTER_SPECS",
     "COMPARISON_CONCENTRATION_TABLE",
@@ -102,6 +103,7 @@ PIPELINE_DOMAINS: Final[tuple[str, ...]] = (
 )
 
 DOMAIN_TITLES: Final[dict[str, str]] = {
+    "lgd_training": "Entrenamiento LGD con historia separada",
     "data": "Población, particiones y exclusiones",
     "eda": "Población y calidad de datos",
     "binning": "Binning WoE y poder predictivo",
@@ -221,6 +223,7 @@ VALIDATION_FAMILIES: Final[tuple[tuple[str, str], ...]] = (
 # Mantener esta tupla separada evita que provisiones/survival/IFRS 9 se vuelvan requisitos
 # implícitos de F1.
 APPENDIX_PARAMETER_DOMAINS: Final[tuple[str, ...]] = (
+    "lgd_training",
     "data",
     *PIPELINE_DOMAINS,
     "survival",
@@ -246,6 +249,7 @@ EXECUTIVE_SUMMARY_ID: Final = "executive_summary"
 # Etapas que describe el capítulo de Metodología, en el orden en que ocurrieron. ``data`` aporta
 # config y una card de población opcional; su tratamiento debe quedar escrito aun sin esa card.
 METHODOLOGY_STEPS: Final[tuple[tuple[str, str], ...]] = (
+    ("lgd_training", "Ajuste y evaluación de LGD"),
     ("data", "Tratamiento de datos y particiones"),
     ("binning", "Binning WoE"),
     ("selection", "Selección de variables"),
@@ -335,6 +339,11 @@ COMPARISON_SECTIONS: Final[dict[str, tuple[str, tuple[str, ...]]]] = {
 # que el cuerpo no mostró, no lo que ya mostró—: el cuerpo cura, el anexo completa. Repetir una
 # tabla íntegra en dos sitios no añade trazabilidad, añade páginas.
 KEY_TABLES: Final[dict[str, tuple[str, ...]]] = {
+    "lgd_training": (
+        "lgd_training.coefficients",
+        "lgd_training.evaluation_readable",
+        "lgd_training.population_readable",
+    ),
     "data": ("data.states", "data.partitions", "data.exclusions"),
     # 🔴 Las claves llevan el nombre de la TABLA dentro del artefacto: los artefactos de `eda`
     # son DTOs que envuelven su frame (`DefaultRateResult.by_period`, `QualityResult.by_column`)
@@ -409,6 +418,7 @@ def max_visible_rows(table_key: str, max_table_rows: int) -> int:
 # filas: un umbral expulsaría del informe justo la evidencia que lo sostiene.
 PER_OBSERVATION_TABLES: Final[frozenset[str]] = frozenset(
     {
+        "lgd_training.predictions",
         "provisioning_internal.detail",
         "provisioning_internal.pd_input",
         "binning.woe_frame",
@@ -421,9 +431,20 @@ PER_OBSERVATION_TABLES: Final[frozenset[str]] = frozenset(
     }
 )
 
+# La tabla global de coeficientes es un transporte canónico, no una tabla por operación.
+# Se entrega íntegra como adjunto; su vista decodificada sí pertenece al cuerpo del informe.
+ATTACHMENT_ONLY_TABLES: Final = PER_OBSERVATION_TABLES | {"lgd_training.model_table"}
+
 # Títulos legibles por artefacto tabular: el informe habla de "Coeficientes del modelo PD", no de
 # `model.coefficients`. Las claves dinámicas (una tabla por variable) se resuelven en `table_title`.
 _TABLE_TITLES: Final[dict[str, str]] = {
+    "lgd_training.model_table": "Modelo LGD reutilizable (tabla de transporte)",
+    "lgd_training.coefficients": "Coeficientes del modelo LGD",
+    "lgd_training.predictions": "LGD observada y predicha por operación elegible",
+    "lgd_training.evaluation": "Diagnósticos completos de entrenamiento y evaluación",
+    "lgd_training.population": "Conteos completos de población y exclusiones",
+    "lgd_training.evaluation_readable": "Evaluación descriptiva y media de referencia",
+    "lgd_training.population_readable": "Población y exclusiones de la historia",
     "provisioning_internal.detail": (
         "Detalle de provisión interna por operación (prorrateo del grupo)"
     ),
@@ -578,6 +599,7 @@ CHAPTER_SPECS: Final[tuple[ChapterSpec, ...]] = (
             "provisioning_internal",
             "monitoring",
             "comparison",
+            "lgd_training",
         ),
     ),
     ChapterSpec(id="toc", title="Índice", kind="toc", numbered=False),
@@ -616,6 +638,9 @@ CHAPTER_SPECS: Final[tuple[ChapterSpec, ...]] = (
         ),
     ),
     ChapterSpec(id="methodology", title="Metodología", kind="prose"),
+    ChapterSpec(
+        id="lgd_training", title="Entrenamiento LGD", kind="prose", requires_domain="lgd_training"
+    ),
     # Capítulo CONDICIONAL any-of: sus subsecciones son los dominios del pipeline scorecard
     # (``RESULT_DOMAINS``). Una corrida que no ejecutó ninguno (p. ej. IFRS 9 standalone) no
     # emite un «Resultados» vacío: su resultado de negocio vive en el capítulo condicional

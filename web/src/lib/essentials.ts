@@ -59,6 +59,10 @@ function isNullSchema(schema: JsonSchema): boolean {
  * `eda` declara sus esenciales y son cero: todo default, el resumen lo muestra.
  */
 export const ESSENTIALS_BY_SECTION: Record<string, readonly string[]> = {
+  lgd_training: [
+    "lgd_training.target_col", "lgd_training.covariate_cols", "lgd_training.entity_col",
+    "lgd_training.sample_col", "lgd_training.default_col", "lgd_training.resolved_col",
+  ],
   provisioning_internal: [
     "provisioning_internal.as_of_date_col", "provisioning_internal.portfolio_col",
     "provisioning_internal.exposure_col", "provisioning_internal.lgd.method",

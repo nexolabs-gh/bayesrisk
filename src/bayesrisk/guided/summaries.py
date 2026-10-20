@@ -170,6 +170,11 @@ STAGE_LABELS_PD_INTERNA: Final[dict[str, str]] = {
     "report": "Informe y ficha",
 }
 _FAMILIAS: Final[dict[str, dict[str, str]]] = {
+    "lgd": {
+        "data": "Historia de operaciones",
+        "lgd_training": "Entrenamiento LGD",
+        "report": "Informe y ficha",
+    },
     "provision_interna": STAGE_LABELS_INTERNA,
     "pd_provision": STAGE_LABELS_PD_INTERNA,
     "scorecard": STAGE_LABELS,
@@ -179,6 +184,7 @@ _FAMILIAS: Final[dict[str, dict[str, str]]] = {
 }
 #: El título del resumen final de cada familia (deja de estar fijo en «Resumen del scorecard»).
 _TITULOS: Final[dict[str, str]] = {
+    "lgd": "Resumen del entrenamiento LGD",
     "provision_interna": "Resumen de la provisión interna",
     "pd_provision": "Resumen de PD y provisión interna",
     "scorecard": "Resumen del scorecard",
@@ -225,6 +231,8 @@ def family_of(config: Any) -> str:
     """
     if config is None:
         return "scorecard"
+    if getattr(config, "lgd_training", None) is not None:
+        return "lgd"
     if getattr(config, "provisioning_internal", None) is not None:
         return (
             "pd_provision"
@@ -504,7 +512,7 @@ class FinalSummary:
 
     @property
     def _de_cartera(self) -> bool:
-        return self.family in {"cartera", "provision_interna", "pd_provision"}
+        return self.family in {"cartera", "provision_interna", "pd_provision", "lgd"}
 
     @property
     def _rotulo_validacion(self) -> str:
@@ -788,6 +796,10 @@ def build_stage_summaries(study: Study, context: SummaryContext) -> tuple[StageS
 def build_stage_summary(stage: str, study: Study, context: SummaryContext) -> StageSummary:
     """Arma el resumen de ``stage`` con lo que el ``Study`` ya publicó, en la voz de su familia."""
     familia = family_of(getattr(study, "config", None))
+    if stage == "lgd_training":
+        return _resumen_lgd(study, context)
+    if stage == "data" and familia == "lgd":
+        return replace(_resumen_data(study, context), label="Historia de operaciones")
     if stage == "provisioning_internal":
         return _resumen_interna(study, context)
     if stage == "data" and familia == "provision_interna":
@@ -801,6 +813,38 @@ def build_stage_summary(stage: str, study: Study, context: SummaryContext) -> St
     if builder is None:
         return StageSummary(stage=stage, label=label, lines=("Etapa sin resumen propio.",))
     return builder(study, context)
+
+
+def _resumen_lgd(study: Study, context: SummaryContext) -> StageSummary:
+    """Diagnósticos del ajuste, sin convertirlos en certificación de calidad."""
+    from bayesrisk.lgd_training.presentation import readable_evaluation, readable_population
+
+    card = _card(study, "lgd_training", "card")
+    if card is None:
+        return StageSummary(
+            stage="lgd_training", label="Entrenamiento LGD", lines=("El ajuste no terminó.",)
+        )
+    return StageSummary(
+        stage="lgd_training",
+        label="Entrenamiento LGD",
+        lines=(
+            f"{_miles(card['n_train'])} operaciones de entrenamiento · "
+            f"{_miles(card['n_evaluation'])} de evaluación",
+            f"{_miles(card['n_excluded'])} operaciones excluidas, conservadas en la historia",
+            f"{len(card['features'])} covariables crudas; respuesta fraccional con intercepto",
+            "Sólo entrenamiento ajusta el predictor y la media de referencia",
+            "Las métricas describen la muestra; no certifican calidad ni transportabilidad",
+        ),
+        alerts=tuple(card["warnings"]),
+        table=readable_evaluation(_artifact(study, "lgd_training", "evaluation")),
+        extra_tables=(
+            (
+                "Población y exclusiones",
+                readable_population(_artifact(study, "lgd_training", "population")),
+                {},
+            ),
+        ),
+    )
 
 
 def _resumen_interna(study: Study, context: SummaryContext) -> StageSummary:
@@ -5201,6 +5245,8 @@ def build_final_summary(
     «Supuestos», y sus cinco cifras son las de la provisión (:func:`_resumen_final_cartera`).
     """
     familia = family_of(getattr(study, "config", None)) if study is not None else context.family
+    if familia == "lgd":
+        return _resumen_final_lgd(study, stages, context)
     if familia in {"provision_interna", "pd_provision"}:
         return _resumen_final_interna(study, stages, context, familia)
     if familia == "cartera":
@@ -5225,6 +5271,35 @@ def build_final_summary(
         decisions=tuple(context.decision_lines),
         files=files,
         stages=tuple(stages),
+    )
+
+
+def _resumen_final_lgd(
+    study: Study | None, stages: Sequence[StageSummary], context: SummaryContext
+) -> FinalSummary:
+    card = _card(study, "lgd_training", "card") if study is not None else None
+    figures: tuple[tuple[str, str], ...] = ()
+    if card is not None:
+        figures = (
+            ("Operaciones de historia", _miles(card["n_rows"])),
+            ("Entrenamiento", _miles(card["n_train"])),
+            ("Evaluación", _miles(card["n_evaluation"])),
+            ("Excluidas", _miles(card["n_excluded"])),
+            ("Covariables", _miles(len(card["features"]))),
+        )
+    return FinalSummary(
+        execution=_estado_de_ejecucion(study, stages, context, stage_labels("lgd")),
+        validation="No se emite veredicto de calidad: evaluación descriptiva",
+        figures=figures,
+        review=tuple(f"{s.label}: {a}" for s in stages for a in s.alerts),
+        decisions=tuple(context.decision_lines),
+        files=_archivos(study, context),
+        stages=tuple(stages),
+        title=_TITULOS["lgd"],
+        family="lgd",
+        assumptions=tuple(card["warnings"])
+        if card is not None
+        else ("El ajuste todavía no dejó un predictor terminado",),
     )
 
 
@@ -5255,6 +5330,9 @@ def _resumen_final_interna(
                 ),
             ),
         )
+        from bayesrisk.report.prose import _internal_lgd_paragraphs
+
+        assumptions.extend(_internal_lgd_paragraphs(card))
     if family == "pd_provision" and study is not None:
         assumptions.append(f"Validación de la PD: {_estado_de_validacion(study, context)}")
     if study is not None and any(

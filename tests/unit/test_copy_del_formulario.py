@@ -36,6 +36,7 @@ from bayesrisk.ui.routes import schema_payload
 #: (`web/src/lib/schema.ts`); el gate de deriva de ese catálogo vive en `test_column_roles.py`.
 SECCIONES_DEL_FORMULARIO = (
     "data",
+    "lgd_training",
     "eda",
     "binning",
     "selection",

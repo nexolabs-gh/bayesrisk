@@ -19,6 +19,7 @@ import {
   getReportDocx,
   getReportEditable,
   getReportPdf,
+  getReportProject,
 } from "@/lib/api"
 import {
   REPORT_DOCX_FILENAME,
@@ -54,7 +55,7 @@ type ReportState =
  * el preset estándar pide los cuatro, pero una corrida configurada a mano puede no traerlos (→ 404,
  * que se mapea a un mensaje inline, no a un error de la vista).
  */
-type Entregable = "pdf" | "editable" | "docx"
+type Entregable = "pdf" | "editable" | "docx" | "project"
 
 /**
  * Estado de una descarga binaria (NO es dominio): `idle` en reposo, `downloading` mientras se baja
@@ -72,6 +73,12 @@ const ENTREGABLES: Record<
   Entregable,
   { fetch: (runId: string) => Promise<Blob>; filename: string; label: string; nombre: string }
 > = {
+  project: {
+    fetch: getReportProject,
+    filename: "proyecto-h3.zip",
+    label: "Proyecto, modelo y entradas (ZIP)",
+    nombre: "proyecto H3",
+  },
   pdf: {
     fetch: getReportPdf,
     filename: REPORT_PDF_FILENAME,
@@ -236,6 +243,7 @@ export function ReporteTab({ onNavigate }: ReporteTabProps) {
   if (state.kind === "no-report") {
     return (
       <Card className="shadow-card">
+        <CardContent>
         <EmptyState
           icon={FileText}
           title="Este preset no genera un informe"
@@ -247,6 +255,11 @@ export function ReporteTab({ onNavigate }: ReporteTabProps) {
             icon: ChartColumn,
           }}
         />
+        {currentResults?.project_available && <Button variant="outline" onClick={() => void handleDownload("project")} disabled={download.kind === "downloading"}>
+          <FileDown aria-hidden="true" />{ENTREGABLES.project.label}
+        </Button>}
+        {download.kind === "error" && <p role="status">{download.message}</p>}
+        </CardContent>
       </Card>
     )
   }
@@ -296,7 +309,7 @@ export function ReporteTab({ onNavigate }: ReporteTabProps) {
               <Download aria-hidden="true" />
               Descargar HTML
             </Button>
-            {(["pdf", "docx", "editable"] as const).map((which) => (
+            {(["pdf", "docx", "editable", ...(currentResults?.project_available ? ["project" as const] : [])] as const).map((which) => (
               <Button
                 key={which}
                 variant="outline"

@@ -53,6 +53,7 @@ from bayesrisk.core.config import BayesRiskBaseConfig
 from bayesrisk.core.exceptions import MissingDependencyError
 from bayesrisk.core.markers import INSTITUTIONAL_MARKER, is_declared_warning
 from bayesrisk.provisioning.internal.config import (
+    InternalLgdFitted,
     InternalLgdModelada,
     InternalProvisioningConfig,
 )
@@ -75,6 +76,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
     from bayesrisk.core.audit import AuditSink
+    from bayesrisk.lgd_training.model import LgdModel
 
     DataFrame: TypeAlias = pd.DataFrame
 else:
@@ -141,13 +143,21 @@ class InternalProvisioningEngine:
         pd_frame: DataFrame,
         as_of_date: str,
         audit: AuditSink | None = None,
+        fitted_model: LgdModel | None = None,
     ) -> InternalProvisionResult:
         """Calcula detalle, grupos, resumen y card del método interno, sin consumir azar."""
         pandas = _import_pandas()
         cfg = self.config
         with localcontext() as context:
             context.prec = _PRECISION
-            result = _calculate(cfg, frame, pd_frame=pd_frame, as_of_date=as_of_date, pandas=pandas)
+            result = _calculate(
+                cfg,
+                frame,
+                pd_frame=pd_frame,
+                as_of_date=as_of_date,
+                pandas=pandas,
+                fitted_model=fitted_model,
+            )
         _emit_audit(audit, cfg=cfg, result=result)
         return result
 
@@ -192,6 +202,7 @@ def _calculate(
     pd_frame: DataFrame,
     as_of_date: str,
     pandas: Any,
+    fitted_model: LgdModel | None = None,
 ) -> InternalProvisionResult:
     """Ejecuta el cálculo completo dentro del contexto ``Decimal`` de precisión fija."""
     data = _as_dataframe(frame, pandas=pandas, artifact="frame")
@@ -200,7 +211,7 @@ def _calculate(
             "El método interno exige al menos una operación: el frame de entrada está vacío."
         )
     pd_by_row = _pd_by_row(pd_frame, cfg=cfg, index=data.index, pandas=pandas)
-    severity_by_row = _severity_by_row(data, cfg=cfg)
+    severity_by_row = _severity_by_row(data, cfg=cfg, fitted_model=fitted_model)
     rows = _parse_rows(
         data,
         cfg=cfg,
@@ -291,7 +302,9 @@ def _lgd_modelada(cfg: InternalProvisioningConfig) -> LgdSpec | None:
     return None
 
 
-def _severity_by_row(data: DataFrame, *, cfg: InternalProvisioningConfig) -> dict[Any, Any] | None:
+def _severity_by_row(
+    data: DataFrame, *, cfg: InternalProvisioningConfig, fitted_model: LgdModel | None = None
+) -> dict[Any, Any] | None:
     """Estima la severidad por operación delegando en el motor compartido de LGD (D-LGD-4).
 
     Entra por la MISMA puerta que la PD —un mapa por etiqueta de índice, hermano de ``pd_by_row``—
@@ -305,6 +318,19 @@ def _severity_by_row(data: DataFrame, *, cfg: InternalProvisioningConfig) -> dic
     covariable detiene siempre, porque el motor levanta ``LgdError`` al encontrarlo. Imputar cero
     aquí no dañaría una fila: sesgaría el ajuste y contaminaría a TODAS.
     """
+    fitted = cfg.method == _PD_LGD and isinstance(cfg.lgd, InternalLgdFitted)
+    if fitted:
+        from bayesrisk.lgd_training.model import LgdModel
+
+        if type(fitted_model) is not LgdModel:
+            raise InternalInputError(
+                "La rama fitted exige un modelo LGD validado de historia separada."
+            )
+        return cast(dict[Any, Any], fitted_model.validated().predict(data)[_LGD_COLUMN].to_dict())
+    if fitted_model is not None:
+        raise InternalInputError(
+            "Un modelo LGD externo sólo se admite con method=pd_lgd y lgd.method=fitted."
+        )
     spec = _lgd_modelada(cfg)
     if spec is None:
         return None
@@ -326,7 +352,11 @@ def _parse_rows(
     # nombrar el origen en un mensaje de error. Con severidad modelada no hay columna que exigir
     # —el objetivo del ajuste ya lo validó el motor de LGD—, así que el rótulo deja de ser un
     # nombre de columna y pasa a decir de dónde salió el número.
-    severity_col = cfg.lgd.lgd_col if cfg.method == _PD_LGD else cast(str, cfg.loss_rate_col)
+    severity_col = (
+        (_SEVERIDAD_MODELADA if isinstance(cfg.lgd, InternalLgdFitted) else cfg.lgd.lgd_col)
+        if cfg.method == _PD_LGD
+        else cast(str, cfg.loss_rate_col)
+    )
     severity_label = _SEVERIDAD_MODELADA if modelada else severity_col
     required = [cfg.portfolio_col, cfg.exposure_col]
     if not modelada:

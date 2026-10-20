@@ -341,6 +341,20 @@ def _preflight_insumos(
     for entrada in entradas:
         declaradas = columnas_por_clave.get(entrada["artifact"], [])
         origen = entrada.get("dataset_id")
+        if jobs.es_tabla_global(entrada["artifact"]):
+            if isinstance(origen, str) and origen:
+                try:
+                    _modelo_lgd_global(origen, workdir=workdir)
+                except (UiArtifactError, UiDatasetError) as exc:
+                    avisos.append(
+                        {
+                            "path": None,
+                            "declared": None,
+                            "kind": "external_model",
+                            "message": str(exc),
+                        }
+                    )
+            continue
         if not declaradas or not isinstance(origen, str) or not origen:
             continue  # lo rechaza la puerta al ejecutar; el preflight no duplica ese diagnóstico
         try:
@@ -655,7 +669,12 @@ def datasets_payload() -> list[dict[str, Any]]:
 
 
 def upload_dataset(
-    content: bytes, filename: Any, *, workdir: Path, max_bytes: int | None = None
+    content: bytes,
+    filename: Any,
+    *,
+    workdir: Path,
+    max_bytes: int | None = None,
+    artifact: str | None = None,
 ) -> dict[str, Any]:
     """Ingesta un dataset propio subido y devuelve ``{dataset_id, name, n_rows, columns}``.
 
@@ -687,7 +706,9 @@ def upload_dataset(
         raise UiDatasetError(
             f"el nombre del archivo subido debe ser un string, no {type(filename).__name__}."
         )
-    return datasets.ingest_upload(content, filename, workdir=workdir, max_bytes=max_bytes)
+    return datasets.ingest_upload(
+        content, filename, workdir=workdir, max_bytes=max_bytes, artifact=artifact
+    )
 
 
 #: Donde la pantalla deja las dos tablas de escenarios que lee `forward` (IFRS9-FIRMABLE capa C):
@@ -893,8 +914,29 @@ def _entradas_externas(external_artifacts: Any) -> list[dict[str, Any]]:
                 "este trabajo no admite traer ese resultado de fuera. Elige un trabajo que lo "
                 "pida, o quítalo de la petición."
             )
+        if jobs.es_tabla_global(normalizada) and set(cruda) - {"artifact", "dataset_id"}:
+            raise UiArtifactError(
+                "La tabla global LGD no admite llave, modo ni parámetros de alineación."
+            )
         entradas.append({**cruda, "artifact": normalizada})
     return entradas
+
+
+def _modelo_lgd_global(dataset_id: str, *, workdir: Path) -> Any:
+    """Revalida la tabla bajo las guardas de ruta, sin leer ni alinear una cartera."""
+    from bayesrisk.lgd_training.exceptions import LgdTrainingError
+    from bayesrisk.lgd_training.model import read_model_table
+
+    if not dataset_id.startswith("uploaded_lgd_model_v1_"):
+        raise UiArtifactError(
+            "Vuelve a subir el archivo desde el campo del modelo LGD; "
+            "requiere su lector específico."
+        )
+    source = datasets.materialize(dataset_id, workdir=workdir)
+    try:
+        return read_model_table(source)
+    except LgdTrainingError as exc:
+        raise UiArtifactError(str(exc)) from exc
 
 
 def _claves_externas(external_artifacts: Any) -> tuple[tuple[str, str], ...]:
@@ -994,6 +1036,9 @@ def _materializar_externos(
             raise UiArtifactError(
                 "falta el archivo del que sale el insumo externo: súbelo antes de ejecutar."
             )
+        if jobs.es_tabla_global(clave):
+            materializados[clave] = _modelo_lgd_global(origen, workdir=workdir)
+            continue
         key_column = entrada.get("key_column")
         if key_column is not None and not isinstance(key_column, str):
             raise UiArtifactError(
@@ -1325,7 +1370,13 @@ def build_router() -> APIRouter:
             raise HTTPException(status_code=422, detail=datasets.mensaje_de_tope(tamano, max_bytes))
         content = await file.read()
         try:
-            return upload_dataset(content, file.filename, workdir=workdir, max_bytes=max_bytes)
+            return upload_dataset(
+                content,
+                file.filename,
+                workdir=workdir,
+                max_bytes=max_bytes,
+                artifact=request.query_params.get("artifact"),
+            )
         except UiDatasetError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -1578,6 +1629,17 @@ def build_router() -> APIRouter:
             media_type="application/zip",
             headers={"Content-Disposition": 'attachment; filename="reporte-modelo-quarto.zip"'},
         )
+
+    @router.get("/report/{run_id}/project")
+    async def project_endpoint(run_id: str, request: Request) -> FileResponse:
+        """Descarga el proyecto H3, sin abrir ni ejecutar ninguno de sus objetos."""
+        try:
+            path = runs.project_path(run_id, workdir=Path(request.app.state.settings.workdir))
+        except UiRunNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        if path is None:
+            raise HTTPException(status_code=404, detail="Esta corrida no tiene proyecto H3.")
+        return FileResponse(path, media_type="application/zip", filename="proyecto-h3.zip")
 
     @router.get("/report/{run_id}/docx")
     async def report_docx_endpoint(run_id: str, request: Request) -> Response:

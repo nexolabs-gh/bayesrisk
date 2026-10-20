@@ -772,10 +772,98 @@ _JOBS = (
     },
 )
 
+_GLOBAL_LGD_KEY = ("lgd_training", "model_table")
+_GLOBAL_LGD_INPUT: dict[str, Any] = {
+    "artifact": _GLOBAL_LGD_KEY,
+    "scope": "global_model",
+    "label": "Modelo LGD ajustado con historia separada",
+    "when": {"path": "provisioning_internal.lgd.method", "equals": "fitted"},
+    "key_question": "Modelo aplicable a toda la cartera; no se empareja por operación",
+    "columns": (),
+}
+_JOBS = (
+    *(
+        {
+            **job,
+            "external_artifacts": (*job["external_artifacts"], _GLOBAL_LGD_INPUT),
+            "external_input": (
+                (job["external_input"].rstrip(".") + ". ") if job["external_input"] else ""
+            )
+            + "Si aplicas LGD de historia separada, aporta su tabla de coeficientes.",
+            **({"related_job": "entrenar_lgd"} if job["id"] == "lgd_modelada" else {}),
+        }
+        if "provisioning_internal" in job["sections"]
+        else job
+        for job in _JOBS
+    ),
+    {
+        "id": "entrenar_lgd",
+        "label": "Ajustar LGD con historia separada",
+        "description": (
+            "Entrenar con incumplimientos de resultado disponible, evaluar aparte "
+            "y guardar un predictor para otra cartera. Experimental."
+        ),
+        "sections": ("data", "lgd_training", "report", "governance"),
+        "missing_sections": (),
+        "external_input": None,
+        "external_artifacts": (),
+        "overrides": (
+            ("data.target", None),
+            ("data.partition", None),
+        ),
+        "jurisdiction_code": None,
+        "jurisdiction_label": None,
+        "status": _AVAILABLE,
+        "unavailable_reason": None,
+    },
+)
+
 JOB_IDS: tuple[str, ...] = tuple(job["id"] for job in _JOBS)
 
 
 _DECISIONES_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
+    "lgd_training": tuple(
+        {
+            "path": f"lgd_training.{name}",
+            "question": question,
+            "help": help_text,
+            "answer_forms": (),
+        }
+        for name, question, help_text in (
+            (
+                "target_col",
+                "¿Qué columna trae la LGD observada?",
+                "Fracción entre cero y uno en las operaciones elegibles.",
+            ),
+            (
+                "covariate_cols",
+                "¿Qué covariables crudas usará el predictor?",
+                "Numéricas, finitas y disponibles al aplicar; no se imputan ni transforman.",
+            ),
+            (
+                "entity_col",
+                "¿Qué columna identifica al deudor?",
+                "Puede repetirse dentro de una muestra; se rechaza si cruza "
+                "entrenamiento y evaluación.",
+            ),
+            (
+                "sample_col",
+                "¿Qué columna declara las muestras?",
+                "Usa train, evaluation o excluded. "
+                "La institución fija las muestras antes del ajuste.",
+            ),
+            (
+                "default_col",
+                "¿Qué columna marca incumplimiento?",
+                "Marca booleana o 0/1, sin nulos ni texto; las otras operaciones se excluyen.",
+            ),
+            (
+                "resolved_col",
+                "¿Qué columna declara resultado completo?",
+                "Booleano o 0/1 según la definición institucional; no certifica cierre económico.",
+            ),
+        )
+    ),
     "data": (
         {
             "path": "data.target.bad_rule",
@@ -2724,14 +2812,27 @@ _ABANICO_POR_SECCION: dict[str, tuple[dict[str, Any], ...]] = {
             # —dos clases públicas— y contradiría D-LGD, que decidió que la rama ES el método.
             "when": {"path": "provisioning_internal.method", "equals": "pd_lgd"},
             "help": (
-                "Las dos primeras "
+                "Las dos formas de LGD provista "
                 "leen la severidad que trae tu archivo y sólo se diferencian en cómo la resumen "
                 "por grupo. Las dos regresiones la MODELAN, pero siguen necesitando la observada "
                 "como objetivo del ajuste —o la fracción recuperada, si la nombras—. Sólo el "
-                "proceso de recuperación prescinde de ella: la calcula desde tus flujos."
+                "proceso de recuperación la calcula desde tus flujos. "
+                "El modelo de historia separada "
+                "aplica un predictor ya ajustado, sin objetivo observado en esta cartera."
             ),
             "multiple": False,
             "options": (
+                {
+                    "value": "fitted",
+                    "label": "Aplicar un modelo de historia separada",
+                    "help": (
+                        "Carga la tabla del predictor LGD ya ajustado. "
+                        "No necesita resultado observado en esta cartera ni vuelve a ajustar."
+                    ),
+                    "estado": _DISPONIBLE,
+                    "motivo": None,
+                    "prueba": None,
+                },
                 {
                     "value": "provided",
                     "label": "Ponderada por monto, conservando la de cada operación",
@@ -5114,6 +5215,7 @@ def _insumo_json(entrada: dict[str, Any]) -> dict[str, Any]:
         entrada,
         frozenset({"artifact", "label", "when", "key_question", "columns"}),
         f"insumo externo {entrada.get('label')!r}",
+        opcionales=frozenset({"scope"}),
     )
     # 🔴 También en cada columna, y no sólo en la entrada de arriba: la revisión adversarial midió
     # que el mismo modo de fallo seguía vivo un nivel más abajo — una clave nueva dentro de
@@ -5128,6 +5230,7 @@ def _insumo_json(entrada: dict[str, Any]) -> dict[str, Any]:
     if condicion is not None:
         _exige_claves(condicion, frozenset({"path", "equals"}), "condición de un insumo externo")
     return {
+        **({"scope": entrada["scope"]} if "scope" in entrada else {}),
         "artifact": list(entrada["artifact"]),
         "label": entrada["label"],
         "when": None if condicion is None else dict(condicion),
@@ -5137,6 +5240,19 @@ def _insumo_json(entrada: dict[str, Any]) -> dict[str, Any]:
             for columna in entrada["columns"]
         ],
     }
+
+
+def es_tabla_global(clave: tuple[str, str]) -> bool:
+    """La excepción global pertenece a una clave cerrada del catálogo, nunca al cliente."""
+    entradas = [e for job in _JOBS for e in job["external_artifacts"] if e["artifact"] == clave]
+    scopes = {e.get("scope") for e in entradas}
+    if clave == _GLOBAL_LGD_KEY:
+        if scopes != {"global_model"}:
+            raise ValueError("El catálogo debe declarar la tabla LGD global de forma consistente.")
+        return True
+    if scopes - {None}:
+        raise ValueError("Sólo la tabla LGD declarada puede ser global.")
+    return False
 
 
 def artefactos_admitidos() -> frozenset[tuple[str, str]]:

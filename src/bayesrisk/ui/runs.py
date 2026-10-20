@@ -3,7 +3,8 @@
 Cada corrida se persiste como su **payload ya serializado** (``results.json`` de
 :func:`~bayesrisk.ui.serializers.serialize_study`) más, si la produjo, el HTML del reporte
 (``report.html``). Se evita *pickle* del ``Study`` vivo (arrastra el stack ML y es frágil entre
-versiones): se guarda solo lo que la UI necesita servir (decisión de implementación D-UI, §4.3).
+versiones) en la ruta histórica. H3 añade un ZIP de proyecto para descarga, con Study.save y
+entradas tabulares reproducibles; nunca carga Study/joblib desde HTTP.
 La única tabla que el payload puede no traer entera es la tasa de incumplimiento por período o
 cohorte —viaja hasta un tope, cierre 1 de D-SC—, y cuando se recorta la tabla completa queda al
 lado, como ``eda_default_rate.csv``: el archivo existe **si y sólo si** la respuesta se recortó.
@@ -64,6 +65,7 @@ __all__ = [
     "load_report_md_bundle",
     "load_report_pdf",
     "load_results",
+    "project_path",
     "reservar_trail",
     "save",
 ]
@@ -254,11 +256,109 @@ def save(
         docx = _report_artifact_bytes(study, "docx_path")
         if docx is not None:
             (staging / _REPORT_DOCX_FILENAME).write_bytes(docx)
+        if study.artifacts.has("lgd_training", "card") or study.artifacts.has(
+            "provisioning_internal", "card"
+        ):
+            _save_h3_project(study, staging)
+            payload["project_available"] = True
+            (staging / _RESULTS_FILENAME).write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8"
+            )
         _publicar_corrida(staging, run_dir)
     except BaseException as exc:
         _apartar_corrida_fallida(staging, run_dir, exc, trail_copiado=trail_copiado)
         raise
     return run_id
+
+
+def _save_h3_project(study: Study, staging: Path) -> None:
+    """Entrega H3 por pantalla: conserva estudio, entradas y adjuntos sin cargarlos por HTTP."""
+    from bayesrisk.core.config import BayesRiskConfig, dump_config
+
+    project = staging / "project"
+    project.mkdir()
+    study.save(project / "study")
+    inputs = project / "inputs"
+    inputs.mkdir()
+    raw = study.config.model_dump(mode="python", by_alias=True)
+    if study.config.data is not None and study.config.data.load.source is not None:
+        source = Path(study.config.data.load.source)
+        target = inputs / ("data" + source.suffix)
+        shutil.copyfile(source, target)
+        raw["data"]["load"]["source"] = target.relative_to(project).as_posix()
+    external = []
+    for number, (domain, key) in enumerate(sorted(study._injected_artifacts)):
+        table = study.artifacts.get(domain, key)
+        target = inputs / f"external_{number:02d}.parquet"
+        table.to_parquet(target)
+        external.append({"artifact": [domain, key], "path": target.relative_to(project).as_posix()})
+    if study.artifacts.has("lgd_training", "model_table"):
+        study.artifacts.get("lgd_training", "model_table").to_parquet(
+            project / "modelo_lgd.parquet", index=False
+        )
+    if isinstance(raw.get("report"), dict):
+        raw["report"]["output_dir"] = "reports-reproducidos"
+    if isinstance(raw.get("audit"), dict):
+        raw["audit"]["trail_filename"] = "audit_trail.jsonl"
+    (project / "config-portable.yaml").write_text(
+        dump_config(BayesRiskConfig.model_validate(raw)), encoding="utf-8"
+    )
+    (project / "entradas.json").write_text(json.dumps(external, indent=2), encoding="utf-8")
+    if study.artifacts.has("report", "result"):
+        result = study.artifacts.get("report", "result")
+        for name, path in getattr(result, "data_exports", {}).items():
+            if Path(name).name != name or Path(name).suffix not in {".csv", ".xlsx"}:
+                raise UiError("El informe publicó un nombre de adjunto no admitido.")
+            shutil.copyfile(path, project / name)
+    for name in (
+        _REPORT_FILENAME,
+        _REPORT_PDF_FILENAME,
+        _REPORT_DOCX_FILENAME,
+        _TRAIL_FILENAME,
+        _RESULTS_FILENAME,
+    ):
+        if (staging / name).is_file():
+            shutil.copyfile(staging / name, project / name)
+    (project / "LEEME.txt").write_text(
+        "Proyecto H3: evidencia local de una corrida.\n"
+        "El modelo reutilizable es modelo_lgd.parquet, si existe; "
+        "se puede subir por el campo LGD.\n"
+        "results.json e informe conservan supuestos, exclusiones y límites de la corrida.\n"
+        "study/ conserva el config original y sus artefactos. "
+        "Study.load exige confianza explícita; "
+        "no autentica individualmente archivos joblib. HTTP no carga esos objetos.\n"
+        "config-portable.yaml cambia únicamente rutas de entrada/salida. "
+        "Al reproducir en otra "
+        "carpeta esas rutas pueden cambiar el config_hash; el original queda en study/.\n"
+        "Con los extras de la corrida instalados, ejecuta reproducir.py "
+        "desde esta carpeta. "
+        "Entrenar crea un ajuste nuevo; aplicar un predictor no lo reajusta.\n",
+        encoding="utf-8",
+    )
+    (project / "reproducir.py").write_text(
+        '"""Reproduce el proyecto local con entradas tabulares; no deserializa joblib."""\n'
+        "import json\nfrom pathlib import Path\nimport pandas as pd\n"
+        "import bayesrisk\nfrom bayesrisk.core.config import load_config\n"
+        "config = load_config('config-portable.yaml')\n"
+        "entries = json.loads(Path('entradas.json').read_text(encoding='utf-8'))\n"
+        "artifacts = {tuple(e['artifact']): pd.read_parquet(e['path']) for e in entries}\n"
+        "study = bayesrisk.run(config, artifacts=artifacts, run_dir='corrida-reproducida')\n"
+        "assert study.run_context.status == 'done', study.run_context.error\n",
+        encoding="utf-8",
+    )
+    with zipfile.ZipFile(staging / "project.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(project.rglob("*")):
+            if path.is_file():
+                archive.write(path, path.relative_to(project).as_posix())
+
+
+def project_path(run_id: str, *, workdir: Path) -> Path | None:
+    """Descarga fija de proyecto: sin ruta ni nombre de archivo aportados por el cliente."""
+    folder = _run_dir(workdir, run_id)
+    path = folder / "project.zip"
+    if path.resolve().parent != folder.resolve():
+        raise UiRunNotFoundError("El proyecto sale del directorio de la corrida.")
+    return path if path.is_file() else None
 
 
 def _fuente_del_config(study: Study) -> str:

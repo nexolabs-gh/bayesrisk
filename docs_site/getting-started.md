@@ -363,6 +363,7 @@ Los trabajos del catálogo, en el orden en que aparecen:
 | **Severidad modelada o calculada** | La LGD modelada con las variables de tu archivo, o calculada descontando lo que ya recuperaste. |
 | **Stress testing** | Escenarios adversos y shocks macro sobre la cartera. Hoy sólo por código: el motor corre desde Python y todavía no tiene pantalla. |
 | **PD + provisión de toda la cartera** | Scorecard y provisión interna con cobertura explícita de operaciones fuera del ajuste. Si falta PD para alguna operación, la provisión se detiene y conserva los resultados de PD. Experimental. |
+| **Ajustar LGD con historia separada** | Entrena con muestras declaradas, evalúa descriptivamente y entrega un predictor para otra cartera sin resultado observado. Experimental; no acredita validación ni transportabilidad. |
 <!-- catalogo-trabajos:end -->
 
 Los tres trabajos del scorecard abren con la sección **Análisis exploratorio**, que describe la

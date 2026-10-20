@@ -470,11 +470,15 @@ def _data_exports(word: Any, exports: Mapping[str, Any]) -> None:
     """Declara dónde quedó el detalle por observación (los adjuntos de datos)."""
     diagnostics = exports.get("has_diagnostics", False)
     word.add_heading(
-        "Datos y diagnóstico de calibración" if diagnostics else "Detalle por observación", level=3
+        exports.get("model_title")
+        or ("Datos y diagnóstico de calibración" if diagnostics else "Detalle por observación"),
+        level=3,
     )
     if exports["requested"]:
         word.add_paragraph(
-            "Las tablas de datos y del diagnóstico descriptivo de calibración se entregan "
+            exports["model_note"]
+            if exports.get("model_note")
+            else "Las tablas de datos y del diagnóstico descriptivo de calibración se entregan "
             "completas como adjuntos. Los grupos descriptivos permanecen también en el cuerpo "
             "del informe."
             if diagnostics
@@ -496,7 +500,9 @@ def _data_exports(word: Any, exports: Mapping[str, Any]) -> None:
         )
         return
     word.add_paragraph(
-        "Las tablas enumeradas no se exportaron como adjuntos: añada 'csv' o 'xlsx' a "
+        exports["model_note"]
+        if exports.get("model_note")
+        else "Las tablas enumeradas no se exportaron como adjuntos: añada 'csv' o 'xlsx' a "
         "report.formats para obtenerlas completas."
         if diagnostics
         else "Esta corrida produjo tablas con una fila por operación que no se reproducen "

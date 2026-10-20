@@ -18,7 +18,7 @@ import pandas as pd
 from bayesrisk.core.exceptions import ConfigError
 from bayesrisk.core.mixins import AuditableMixin
 from bayesrisk.core.registry import register
-from bayesrisk.core.steps import ArtifactKey, campo_de_card, card_publicada
+from bayesrisk.core.steps import ArtifactKey, ContextoDeResolucion, campo_de_card, card_publicada
 from bayesrisk.data.card import DataCardSection
 from bayesrisk.data.config import DataConfig
 from bayesrisk.data.hashing import data_hash
@@ -61,11 +61,24 @@ class DataStep(AuditableMixin):
         """Construye el paso desde la sección ``DataConfig`` ya validada y arma ``provides``."""
         self.config = config
         self.provides = _provides_for(config)
+        self._historia_lgd = False
 
     @classmethod
     def from_config(cls, cfg: DataConfig) -> DataStep:
         """Construye ``DataStep`` desde ``BayesRiskConfig.data``."""
         return cls(cfg)
+
+    @classmethod
+    def from_config_with_context(
+        cls, cfg: DataConfig, *, contexto: ContextoDeResolucion
+    ) -> DataStep:
+        """La historia LGD conserva filas y usa sus propias muestras declaradas."""
+        historia = "lgd_training" in contexto.dominios_activos
+        if historia and not cfg.es_corrida_de_cartera:
+            raise ConfigError("La historia LGD exige data.target=null y data.partition=null.")
+        step = cls(cfg)
+        step._historia_lgd = historia
+        return step
 
     def motivo_sin_proveer(self, consumidor: str, clave: str) -> str | None:
         """Por qué este paso, activo, no produce ``clave`` para ``consumidor`` (D-ECL-2).
@@ -90,6 +103,10 @@ class DataStep(AuditableMixin):
         """
         source = self._resolve_load_source(study)
         df = DataLoader.from_config(self.config.load).load(source, audit=self._audit)
+        if self._historia_lgd and (not df.columns.is_unique or not df.index.is_unique):
+            raise ConfigError(
+                "La historia LGD exige columnas e índice técnico únicos antes de filtrar."
+            )
         validated = SchemaValidator.from_config(self.config.schema_).validate(df, audit=self._audit)
         masked = SpecialValuePolicy.from_config(self.config.missing).apply(
             validated, audit=self._audit

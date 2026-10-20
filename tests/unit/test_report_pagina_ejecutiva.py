@@ -113,6 +113,8 @@ def test_el_capitulo_es_el_primero_del_documento_y_condicional_al_scorecard() ->
     assert spec.kind == "summary"
     assert spec.numbered is False
     assert set(spec.requires_any_domain) == {
+        "lgd_training",
+        "provisioning_internal",
         *RESULT_DOMAINS,
         "provisioning_ifrs9",
         "monitoring",

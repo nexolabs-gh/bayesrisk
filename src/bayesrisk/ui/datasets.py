@@ -160,6 +160,17 @@ _IFRS9_COLUMNS: tuple[dict[str, str], ...] = (
 
 # Registro determinista: id -> parámetros de generación. ``seed`` es CONSTANTE por dataset (jamás
 # derivado de hash()/reloj) para garantizar reproducibilidad byte-lógica entre corridas.
+_LGD_HISTORY_COLUMNS: tuple[dict[str, str], ...] = (
+    {"name": "deudor", "dtype": "str", "role": "id"},
+    {"name": "muestra", "dtype": "str", "role": "sample"},
+    {"name": "incumplio", "dtype": "bool", "role": "default"},
+    {"name": "resuelto", "dtype": "bool", "role": "resolved"},
+    {"name": "lgd_observada", "dtype": "float", "role": "target"},
+    {"name": "deuda_ingreso", "dtype": "float", "role": "feature"},
+    {"name": "antiguedad_meses", "dtype": "float", "role": "feature"},
+)
+
+
 _DATASETS: dict[str, dict[str, Any]] = {
     "consumo_comportamiento": {
         "name": "Consumo — comportamiento",
@@ -294,6 +305,18 @@ _DATASETS: dict[str, dict[str, Any]] = {
         "portfolio_weights": (0.40, 0.30, 0.15, 0.15),
         "ifrs9": True,
     },
+    "lgd_historia_sintetica": {
+        "name": "Historia sintética — entrenamiento LGD separado",
+        "description": (
+            "400 operaciones inventadas: 300 de entrenamiento, 80 de evaluación y 20 abiertas "
+            "excluidas. Deudores repetidos sólo dentro de una muestra, con ID de operación único. "
+            "Objetivo sintético con extremos 0 y 1 y dos covariables crudas. "
+            "Sirve para recorrer la herramienta; no valida calidad ni transportabilidad."
+        ),
+        "n_rows": 400,
+        "seed": 20_261_020,
+        "lgd_history": True,
+    },
 }
 
 
@@ -361,6 +384,8 @@ def _valores_publicables(dataset_id: str) -> dict[str, tuple[str, ...]]:
 def _columns_for(dataset_id: str) -> tuple[dict[str, str], ...]:
     """Devuelve el esquema de columnas del dataset (los de provisiones traen un superconjunto)."""
     spec = _DATASETS[dataset_id]
+    if spec.get("lgd_history"):
+        return _LGD_HISTORY_COLUMNS
     if spec.get("ifrs9"):
         return _IFRS9_COLUMNS
     if spec.get("internal_only"):
@@ -371,7 +396,12 @@ def _columns_for(dataset_id: str) -> tuple[dict[str, str], ...]:
 
 
 def ingest_upload(
-    content: bytes, filename: str, *, workdir: Path, max_bytes: int | None = None
+    content: bytes,
+    filename: str,
+    *,
+    workdir: Path,
+    max_bytes: int | None = None,
+    artifact: str | None = None,
 ) -> dict[str, Any]:
     """Ingesta un dataset propio subido y lo materializa a parquet canónico bajo ``workdir``.
 
@@ -416,8 +446,24 @@ def ingest_upload(
             f"formato de archivo subido no admitido: '{suffix or filename}'; use uno de "
             f"{sorted(_ALLOWED_UPLOAD_SUFFIXES)}."
         )
-    dataset_id = f"{_UPLOAD_PREFIX}{sha256(content).hexdigest()[:32]}"
-    frame = _read_upload(content, filename, suffix)
+    if artifact is not None:
+        from bayesrisk.lgd_training.exceptions import LgdTrainingError
+        from bayesrisk.lgd_training.model import read_model_table
+        from bayesrisk.ui.jobs import es_tabla_global
+
+        if artifact != "lgd_training.model_table" or not es_tabla_global(
+            ("lgd_training", "model_table")
+        ):
+            raise UiDatasetError("La subida especializada sólo admite la tabla declarativa de LGD.")
+        digest = sha256(b"lgd_model_v1\0" + suffix.encode() + b"\0" + content).hexdigest()[:32]
+        dataset_id = f"{_UPLOAD_PREFIX}lgd_model_v1_{digest}"
+        try:
+            frame = read_model_table(content, file_format=suffix.lstrip("."))
+        except LgdTrainingError as exc:
+            raise UiDatasetError(str(exc)) from exc
+    else:
+        dataset_id = f"{_UPLOAD_PREFIX}{sha256(content).hexdigest()[:32]}"
+        frame = _read_upload(content, filename, suffix)
     if len(frame) < 1 or len(frame.columns) < 1:
         raise UiDatasetError(f"el archivo subido '{filename}' no contiene filas/columnas de datos.")
     path = _upload_path(workdir, dataset_id)
@@ -789,6 +835,8 @@ def _generate(dataset_id: str) -> pd.DataFrame:
     de ejemplo: la UI no calcula riesgo (SDD-23 §1), solo materializa datos para el motor.
     """
     spec = _DATASETS[dataset_id]
+    if spec.get("lgd_history"):
+        return _generate_lgd_history(dataset_id)
     if spec.get("drift"):  # rama separada: los datasets sin drift no tocan una sola llamada al rng
         return _generate_drift(dataset_id)
     if spec.get("ifrs9"):  # superconjunto: survival (duration/event) + economicas IFRS 9 / ECL
@@ -843,6 +891,31 @@ _CARTERAS_GENERICAS: Final[dict[str, str]] = {
     "independiente": "microempresa",
     "pensionado": "consumo_senior",
 }
+
+
+def _generate_lgd_history(dataset_id: str) -> pd.DataFrame:
+    """Historia inventada para enseñar preparación y separación; no es validación empírica."""
+    spec = _DATASETS[dataset_id]
+    rng = np.random.default_rng(spec["seed"])
+    n = spec["n_rows"]
+    dti = rng.uniform(0.05, 1.5, n)
+    months = rng.uniform(1, 120, n)
+    mean = 0.2 + 0.3 * dti / 1.5 + 0.1 * (1 - months / 120)
+    observed = rng.beta(mean * 8, (1 - mean) * 8)
+    observed[0], observed[1] = 0.0, 1.0
+    observed[380:] = np.nan
+    return pd.DataFrame(
+        {
+            "deudor": [f"D{i // 2:04d}" for i in range(n)],
+            "muestra": ["train"] * 300 + ["evaluation"] * 80 + ["excluded"] * 20,
+            "incumplio": np.ones(n, dtype=bool),
+            "resuelto": np.arange(n) < 380,
+            "lgd_observada": observed,
+            "deuda_ingreso": dti,
+            "antiguedad_meses": months,
+        },
+        index=pd.Index([f"H{i:04d}" for i in range(n)], name="loan_id"),
+    )
 
 
 def _generate_provision_interna(dataset_id: str) -> pd.DataFrame:

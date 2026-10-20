@@ -102,6 +102,73 @@ def test_h3_pdf_final_muestra_procedencia_y_supuestos(tmp_path: Path) -> None:
     assert detail.name.casefold() in "".join(text.split())
 
 
+@pytest.mark.skipif(not _HAS_WEASYPRINT, reason="WeasyPrint nativo se verifica en CI PDF")
+def test_h3_pdf_entrenamiento_y_aplicacion_conservan_declaracion(tmp_path: Path) -> None:
+    """PDF final de las dos etapas B, con diagnóstico y límites institucionales visibles."""
+    import os
+
+    from pypdf import PdfReader
+
+    from bayesrisk import Lgd, Provision
+    from bayesrisk.ui.datasets import materialize
+
+    directory = Path(os.environ.get("BAYESRISK_H3_PDF_EVIDENCE", str(tmp_path)))
+    p = Lgd(
+        materialize("lgd_historia_sintetica", workdir=directory),
+        target="lgd_observada",
+        features=["deuda_ingreso", "antiguedad_meses"],
+        entity="deudor",
+        sample="muestra",
+        default="incumplio",
+        resolved="resuelto",
+        id="loan_id",
+        run_dir=directory,
+        purpose="Prueba funcional con datos inventados",
+        assumptions=["Entidad declarada; objetivo sintético; disponibilidad declarada"],
+        limitations=["No acredita independencia del pipeline completo ni transportabilidad"],
+        formats=["pdf", "csv"],
+    ).run(raise_on_error=True)
+    frame = pd.DataFrame(
+        {
+            "deuda_ingreso": [0.2, 1.0],
+            "antiguedad_meses": [12.0, 36.0],
+            "fecha": ["2026-01-01"] * 2,
+            "cartera": ["A"] * 2,
+            "exposicion": [100.0] * 2,
+            "pd": [0.1, 0.9],
+        }
+    )
+    q = Provision(
+        frame,
+        as_of="fecha",
+        portfolio="cartera",
+        exposure="exposicion",
+        pd="pd",
+        lgd=p.model_,
+        run_dir=directory,
+        name="aplicacion_lgd",
+        formats=["pdf", "csv"],
+    )
+    q.run(raise_on_error=True)
+    for project, title in ((p, "entrenamiento lgd"), (q, "provisión interna")):
+        path = next((project.project_dir / "reports").glob("*.pdf"))
+        text = " ".join(
+            " ".join(page.extract_text() for page in PdfReader(path).pages).split()
+        ).casefold()
+        for literal in (
+            title,
+            "objetivo sintético",
+            "disponibilidad declarada",
+            "transportabilidad",
+        ):
+            assert literal in text
+        if project is p:
+            for literal in ("evaluación", "entrenamiento", "media de entrenamiento", "coeficiente"):
+                assert literal in text
+        else:
+            assert "no se reajustó" in text
+
+
 def _lineage() -> LineageBundle:
     """Lineage fijo mínimo para el bundle sintético."""
     return LineageBundle(

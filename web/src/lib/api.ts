@@ -121,7 +121,7 @@ export interface PipelineInfo {
 export interface ExternalArtifactRef {
   artifact: [string, string]
   dataset_id: string
-  key_column: string | null
+  key_column?: string | null
 }
 
 /** POST /api/validate */
@@ -458,7 +458,7 @@ export function listDatasets(): Promise<DatasetInfo[]> {
  * `boundary` por sí mismo). Reproduce el manejo de error de `request()`: lee el body
  * (json → text) y lanza `ApiError` con el status y el cuerpo. El front solo transporta.
  */
-export async function uploadDataset(file: File): Promise<UploadedDataset> {
+export async function uploadDataset(file: File, artifact?: "lgd_training.model_table"): Promise<UploadedDataset> {
   if (DEMO_MODE) {
     throw new ApiError(
       "La subida de datasets no está disponible en la demo. Usa el dataset de ejemplo ya cargado.",
@@ -467,7 +467,8 @@ export async function uploadDataset(file: File): Promise<UploadedDataset> {
   }
   const form = new FormData()
   form.append("file", file)
-  const res = await fetch(`${API_BASE}/api/upload`, {
+  const suffix = artifact ? `?artifact=${encodeURIComponent(artifact)}` : ""
+  const res = await fetch(`${API_BASE}/api/upload${suffix}`, {
     method: "POST",
     // Sin `Content-Type`: el browser pone el boundary. El token sí va, porque `/api/upload` es
     // mutador y el backend exige `Origin` same-origin + token (enmienda B2.2, E-B2.2-2).
@@ -677,7 +678,14 @@ export async function getReportEditable(runId: string): Promise<Blob> {
   return res.blob()
 }
 
-/** GET /api/report/{run_id}/docx — el informe en Word. Opt-in vía `formats` (404 si no se generó). */
+/** GET /api/report/{run_id}/project — proyecto H3 conservado; 404 si no existe. */
+export async function getReportProject(runId: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/api/report/${encodeURIComponent(runId)}/project`)
+  if (!res.ok) throw new ApiError(`HTTP ${res.status} en /api/report/project`, res.status)
+  return res.blob()
+}
+
+/** Informe Word, opt-in vía `formats`. */
 export async function getReportDocx(runId: string): Promise<Blob> {
   if (DEMO_MODE) return demoGetReportDocx()
   const res = await fetch(`${API_BASE}/api/report/${encodeURIComponent(runId)}/docx`)

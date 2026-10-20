@@ -34,6 +34,14 @@ EXCEPCION_AL_TOPE: Final[dict[str, int]] = {"provisioning_ifrs9": 12, "provision
 #: Un mismo camino puede vivir en varias ramas de una unión (``holdout_fraction``) y se lista una
 #: vez.
 ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
+    "lgd_training": (
+        "lgd_training.target_col",
+        "lgd_training.covariate_cols",
+        "lgd_training.entity_col",
+        "lgd_training.sample_col",
+        "lgd_training.default_col",
+        "lgd_training.resolved_col",
+    ),
     "provisioning_internal": (
         "provisioning_internal.as_of_date_col",
         "provisioning_internal.portfolio_col",
@@ -135,6 +143,7 @@ ESENCIALES_POR_SECCION: Final[dict[str, tuple[str, ...]]] = {
 #: Lo que la pantalla muestra a la vez por sección (la rama más cargada de la partición: fecha o
 #: cohorte con su frontera y su holdout). Es la cifra 2 de SDD-31 §5 para el scorecard.
 ESENCIALES_VISIBLES_A_LA_VEZ: Final[dict[str, int]] = {
+    "lgd_training": 6,
     "provisioning_internal": 9,
     "data": 6,
     "eda": 0,
@@ -234,13 +243,13 @@ def _secciones() -> dict[str, dict[str, Any]]:
 def test_el_golden_cubre_las_dieciseis_secciones() -> None:
     """Las trece del scorecard, las tres de cálculo de IFRS 9 —survival, forward y la provisión— y,
     desde la capa B del SDD-33, el monitoreo: diecisiete (el nombre conserva su historia)."""
-    assert len(ESENCIALES_POR_SECCION) == 19
+    assert len(ESENCIALES_POR_SECCION) == 20
     assert set(_secciones()) == set(ESENCIALES_POR_SECCION)
     # 39 caminos del scorecard (37 hasta la capa B del SDD-32, que suma los dos de la escala;
     # 41 marcas: un camino de la partición vive en varias ramas) y 20 de IFRS 9 (12 hasta
     # CASO-REAL-IFRS9 §8-3; 15 hasta IFRS9-FIRMABLE §8-5; 17 hasta su capa C) y 3 del monitoreo
     # (SDD-33 capa B).
-    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 74
+    assert sum(len(caminos) for caminos in ESENCIALES_POR_SECCION.values()) == 80
 
 
 def test_cada_marca_del_schema_esta_en_el_golden_y_cada_entrada_del_golden_esta_marcada() -> None:
