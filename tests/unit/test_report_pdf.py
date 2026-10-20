@@ -91,8 +91,10 @@ def test_h3_pdf_final_muestra_procedencia_y_supuestos(tmp_path: Path) -> None:
     p.run(raise_on_error=True)
     path = next((p.project_dir / "reports").glob("*.pdf"))
     reader = pypdf.PdfReader(path)
-    text = "\n".join(page.extract_text() for page in reader.pages)
-    assert "Supuestos" in text and "PD externa" in text
+    # El estilo del documento convierte los encabezados a mayúsculas. La extracción
+    # puede introducir saltos de línea; el gate exige el contenido, no su capitalización.
+    text = " ".join(" ".join(page.extract_text() for page in reader.pages).split()).casefold()
+    assert "supuestos" in text and "pd externa" in text
     assert "prorratea" in text and "74" in text
     assert "provisioning_internal_detail.csv" in text
 
