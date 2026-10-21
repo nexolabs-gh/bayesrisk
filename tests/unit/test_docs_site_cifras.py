@@ -201,8 +201,16 @@ def test_la_portada_publica_la_version_que_el_paquete_declara() -> None:
     """
     import bayesrisk
 
-    esperado = f"Estado: {bayesrisk.__version__} — release estable"
-    assert esperado in _texto("index.md"), (
-        f"la portada no dice «{esperado}»: el bump de versión no llegó a docs_site/index.md, "
-        "así que la página de entrada anuncia una versión que no es la publicada"
+    texto = _texto("index.md")
+    estados = (
+        f"Estado: {bayesrisk.__version__} — release estable",
+        f"Estado: {bayesrisk.__version__} — candidato de release",
     )
+    assert sum(estado in texto for estado in estados) == 1, (
+        f"la portada no identifica inequívocamente la versión {bayesrisk.__version__}"
+    )
+    if estados[1] in texto:
+        assert "todavía no se ha publicado en PyPI" in texto
+        assert "Publicada en PyPI:" in texto
+        assert f"Publicada en PyPI: `{bayesrisk.__version__}`" not in texto
+        assert "Disponible en PyPI: `pip install bayesrisk`" not in texto

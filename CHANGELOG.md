@@ -9,13 +9,20 @@ entradas anteriores conservan el nombre con el que se publicaron.
 
 ## [No publicado]
 
+**Candidato 2.17.0.** Preparado para revisión; todavía no publicado en PyPI.
+
 ### Añadido
 
 - Puerta experimental `Provision` para provisión interna con PD/LGD declaradas, composición
   con `Scorecard` sobre toda la cartera y entregables HTML, Word, PDF, Excel, CSV y ZIP.
   Conserva la fórmula grupal y el prorrateo por exposición. Incluye esenciales condicionales,
   recorrido de pantalla y notebook mínimo; no acredita calidad de las entradas.
-  El entrenamiento LGD con historia separada es la capa siguiente de H3 y aún no está entregado.
+  Incluye la puerta experimental `Lgd`: entrena con historia separada y covariables crudas,
+  diagnostica entrenamiento/evaluación y entrega un predictor reutilizable en carteras sin
+  severidad observada. El transporte tabular de coeficientes es cerrado; no se admiten
+  objetos Study/joblib como entrada HTTP. La aceptación con Freddie Mac prueba funcionamiento
+  con identidad de préstamo, pérdida proxy y disponibilidad al corte; no acredita calidad,
+  transportabilidad ni independencia por deudor o temporal.
 
 - Evaluación contextual de validación (`hl_context_v1`) y diagnóstico de calibración que
   conserva juntas las PD iguales, disponibles por API, guiada, pantalla, informes y exports.
@@ -33,6 +40,10 @@ entradas anteriores conservan el nombre con el que se publicaron.
 
 ### Corregido
 
+- El gate del notebook LGD conserva la comparación exacta de cifras, conteos y advertencias,
+  admitiendo únicamente el residuo numérico de los dos sesgos medios de entrenamiento cerca
+  de cero. La variación entre backends BLAS ya no produce falsos rojos del HTML guardado;
+  los cálculos, el formato público y las salidas del cuaderno permanecen intactos.
 - La validación del esquema inferido acepta enteros y flotantes de distintos anchos, incluidos
   `int32`, `float32`, `uint64` e `Int32`, conservando valores, nulos e índices. Las conversiones
   numéricas declaradas que perderían valores se rechazan con un mensaje explícito.

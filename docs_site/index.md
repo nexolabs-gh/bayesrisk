@@ -13,11 +13,15 @@ jurisdicción se aterriza encima**, y hay un caso de referencia implementado que
     bit que nikodym 1.20.0. Migrar es cambiar una línea —`import bayesrisk`—: lo explica
     [Migrar desde nikodym](migrar-desde-nikodym.md).
 
-!!! note "Estado: 2.16.0 — release estable"
-    Disponible en PyPI: `pip install bayesrisk`. El pipeline de scorecard (F1) es **API estable
+!!! note "Estado: 2.17.0 — candidato de release"
+    Publicada en PyPI: `2.16.0`. El candidato `2.17.0` todavía no se ha publicado en PyPI;
+    `pip install bayesrisk` instala la versión publicada. Consulta las
+    [versiones disponibles en PyPI](https://pypi.org/project/bayesrisk/).
+    El pipeline de scorecard (F1) es **API estable
     (SemVer 2.x)**; las superficies que aún crecen (modelado ML, provisiones, survival,
     forward-looking, stress, validación y gobernanza) siguen experimentales, fuera de la garantía
-    SemVer 2.x. Esta documentación se construye desde el código publicado.
+    SemVer 2.x. Esta documentación se construye desde el candidato, que incluye capacidades
+    posteriores a la versión publicada; la guía de cada capacidad indica su disponibilidad.
 
     La comparación de modelos es estable desde la 2.16.0: elige corridas guardadas en la
     pantalla o por código y obtén su lectura, sus gráficos, el informe y el libro Excel.
