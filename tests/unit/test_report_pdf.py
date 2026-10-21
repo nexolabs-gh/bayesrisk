@@ -61,6 +61,52 @@ _MARCA = "marcaunicaxyzbayesrisk"
 
 
 @pytest.mark.skipif(not _HAS_WEASYPRINT, reason="WeasyPrint nativo se verifica en CI PDF")
+@pytest.mark.parametrize("kind", ["figura", "tabla"])
+def test_pdf_no_recorta_figuras_ni_encabezados_anchos(kind: str) -> None:
+    """Regresión de la recaptura 2.17: contenido real dentro del ancho imprimible."""
+    from importlib.resources import files
+
+    from weasyprint import HTML
+
+    from bayesrisk.report.renderer import _font_faces
+
+    css = files("bayesrisk.report.templates").joinpath("scorecard_report.css").read_text()
+    if kind == "figura":
+        body = (
+            '<figure class="chart-slot"><svg xmlns="http://www.w3.org/2000/svg" '
+            'width="619.2pt" height="403.2pt" viewBox="0 0 619.2 403.2" '
+            'style="max-width:100%;height:auto">'
+            '<rect x="0" y="0" width="619.2" height="400" fill="blue"/>'
+            "</svg></figure>"
+        )
+    else:
+        headers = "".join(f"<th>Semáforo Fuera de tiempo (OOT) {i}</th>" for i in range(13))
+        cells = "<td>0,123456</td>" * 13
+        body = (
+            '<figure class="table-block table-block--wide"><table>'
+            f"<thead><tr>{headers}</tr></thead><tbody><tr>{cells}</tr></tbody>"
+            "</table></figure>"
+        )
+    document = HTML(string=f"<style>{_font_faces()}{css}</style><main>{body}</main>").render()
+    measured = []
+    for page in document.pages:
+        box = page._page_box
+        left, right = box.margin_left, box.margin_left + box.width
+        for item in box.descendants():
+            tag = item.element_tag or ""
+            if tag.endswith("svg") or tag in {"table", "th", "td"}:
+                measured.append(tag)
+                assert item.position_x >= left - 0.01
+                assert item.position_x + item.width <= right + 0.01, (
+                    kind,
+                    tag,
+                    item.position_x + item.width,
+                    right,
+                )
+    assert measured
+
+
+@pytest.mark.skipif(not _HAS_WEASYPRINT, reason="WeasyPrint nativo se verifica en CI PDF")
 def test_h3_pdf_final_muestra_procedencia_y_supuestos(tmp_path: Path) -> None:
     """La evidencia final H3 se publica por el job PDF para inspección visual del writer."""
     import os

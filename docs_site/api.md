@@ -2,8 +2,9 @@
 
 Superficie pública de bayesrisk, organizada por dominio. Cada símbolo se genera
 automáticamente desde sus *docstrings* con [mkdocstrings]; las firmas y campos son los del código
-del candidato (`2.17.0`), todavía pendiente de publicación. PyPI ofrece `2.16.0`;
-las capacidades nuevas del candidato no se obtienen instalando esa versión publicada.
+de la versión `2.17.0`. La disponibilidad de esa versión se confirma en
+[PyPI](https://pypi.org/project/bayesrisk/#history): esta referencia puede anticipar la publicación.
+Comprueba que la versión instalada corresponda a la capacidad que quieres usar.
 
 !!! note "Estabilidad (SemVer 2.x)"
     El pipeline de validación de scorecard (F1) —el trío `run` → `Study` → `BayesRiskConfig` y los

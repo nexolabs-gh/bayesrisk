@@ -403,8 +403,9 @@ def _section(
     for chart in section["charts"]:
         word.add_picture(io.BytesIO(chart["png"]), width=inches(_FIGURE_WIDTH_INCHES))
         _caption(word, chart["title"], points=points)
-    # D-HLC: conservar las 13 columnas sin partir las cifras en A4 vertical.
-    # Sólo las nuevas tablas cambian de disposición; al terminar se restaura la hoja.
+    # La recaptura 2.17 evidenció cifras partidas desde nueve columnas (binning),
+    # además de las tablas anchas de desempeño: usan horizontal y tipografía compacta.
+    # Al terminar se restaura la disposición original del documento.
     from docx.enum.section import WD_ORIENT, WD_SECTION_START
 
     original_page = (
@@ -416,11 +417,12 @@ def _section(
     landscape = False
     for table in section["tables"]:
         diagnostic = str(table["key"]).startswith("validation.calibration_tie_groups.")
-        if diagnostic and landscape:
+        wide = diagnostic or len(table["columns"]) >= 9
+        if wide and landscape:
             word.add_page_break()
-        if diagnostic != landscape:
+        if wide != landscape:
             page = word.add_section(WD_SECTION_START.NEW_PAGE)
-            if diagnostic:
+            if wide:
                 page.orientation = WD_ORIENT.LANDSCAPE
                 page.page_width = max(original_page[1:])
                 page.page_height = min(original_page[1:])
@@ -428,14 +430,14 @@ def _section(
             else:
                 page.orientation, page.page_width, page.page_height = original_page
                 page.left_margin, page.right_margin = original_margins
-            landscape = diagnostic
+            landscape = wide
         _caption(word, table["title"], points=points, bold=True)
         escritas = _table(
             word,
             tuple(table["columns"]),
             [tuple(row) for row in table["rows"]],
             numeric=tuple(table.get("numeric") or ()),
-            compact=diagnostic,
+            compact=wide,
         )
         # La leyenda dice lo que el Word trae DE VERDAD: su cinturón puede cortar por debajo de
         # lo que la vista canónica permitió, y decir «mostrando 1000» con 500 filas ocultaba
@@ -560,6 +562,8 @@ def _table(
     HTML (D-INF-2).
     """
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml.parser import OxmlElement
     from docx.shared import Pt
 
     derecha = {indice for indice, es in enumerate(numeric) if es}
@@ -580,11 +584,35 @@ def _table(
             cells[index].text = str(value)
             if index in derecha:
                 cells[index].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    # Una cifra no debe continuar en otra página. Cada página de una tabla larga
+    # repite su encabezado para conservar la relación entre valores y columnas.
+    table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
+    for row in table.rows:
+        row._tr.get_or_add_trPr().append(OxmlElement("w:cantSplit"))
     if compact:
-        from docx.oxml.ns import qn
-        from docx.oxml.parser import OxmlElement
-
-        table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
+        # Columnas iguales partían 484,8741 aunque otras sólo alojaban conteos cortos.
+        # Repartir el ancho por el token más largo del cuerpo conserva también los
+        # límites numéricos de los intervalos. Éstos pueden envolver entre tokens;
+        # noWrap no evita por sí solo el corte de cifras en LibreOffice.
+        weights = [
+            max(
+                3,
+                max(
+                    (len(token) for row in visible for token in str(row[index]).split()),
+                    default=0,
+                ),
+            )
+            + 1
+            for index in range(len(columns))
+        ]
+        page = word.sections[-1]
+        available = page.page_width - page.left_margin - page.right_margin
+        table.autofit = False
+        for index, weight in enumerate(weights):
+            width = int(available * weight / sum(weights))
+            table.columns[index].width = width
+            for row in table.rows:
+                row.cells[index].width = width
         for row in table.rows:
             for cell in row.cells:
                 margins = OxmlElement("w:tcMar")

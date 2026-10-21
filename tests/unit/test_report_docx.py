@@ -39,6 +39,78 @@ _HAS_DOCX = importlib.util.find_spec("docx") is not None
 _SKIP_DOCX = pytest.mark.skipif(not _HAS_DOCX, reason="requiere el extra docx (python-docx)")
 
 
+@_SKIP_DOCX
+@pytest.mark.parametrize("n_columns", [8, 9, 20])
+def test_tablas_anchas_caben_sin_partir_cifras_y_restauran_pagina(n_columns: int) -> None:
+    from docx import Document
+    from docx.enum.section import WD_ORIENT
+    from docx.shared import Inches, Pt
+
+    from bayesrisk.report.docx import _section
+
+    word = Document()
+    original = (word.sections[0].page_width, word.sections[0].page_height)
+    columns = tuple(f"Métrica {index}" for index in range(n_columns))
+    values = tuple("0,5113" for _ in columns)
+    section = {
+        "kind": "data",
+        "level": 2,
+        "status": "included",
+        "number": "1.1",
+        "title": "Desempeño",
+        "body": (),
+        "placeholder": None,
+        "charts": (),
+        "tables": [
+            {
+                "key": "performance.summary",
+                "title": "Desempeño por partición",
+                "columns": columns,
+                "rows": [values],
+                "total_rows": 1,
+            }
+        ],
+        "data_exports": None,
+        "payload_items": (),
+        "metric_items": (),
+        "narration": None,
+    }
+    _section(word, section, ReportConfig(), inches=Inches, points=Pt)
+    assert any(page.orientation == WD_ORIENT.LANDSCAPE for page in word.sections) == (
+        n_columns >= 9
+    )
+    assert (word.sections[-1].page_width, word.sections[-1].page_height) == original
+    assert tuple(cell.text for cell in word.tables[0].rows[1].cells) == values
+
+
+@_SKIP_DOCX
+@pytest.mark.parametrize("compact", [False, True])
+def test_tablas_repiten_encabezado_y_no_dividen_una_fila_entre_paginas(compact: bool) -> None:
+    from docx import Document
+    from docx.oxml.ns import qn
+
+    from bayesrisk.report.docx import _table
+
+    word = Document()
+    _table(word, ("Conteo", "IV", "JS"), [("917", "0,000304", "0,0000038")], compact=compact)
+    table = word.tables[0]
+    assert table.rows[0]._tr.get_or_add_trPr().find(qn("w:tblHeader")) is not None
+    for row in table.rows:
+        assert row._tr.get_or_add_trPr().find(qn("w:cantSplit")) is not None
+    if compact:
+        assert table.columns[2].width > table.columns[0].width
+        assert (
+            sum(column.width for column in table.columns)
+            <= (
+                word.sections[-1].page_width
+                - word.sections[-1].left_margin
+                - word.sections[-1].right_margin
+            )
+            + 2_000
+        )  # Redondeo a twips de las tres columnas.
+    assert [cell.text for cell in table.rows[1].cells] == ["917", "0,000304", "0,0000038"]
+
+
 def _lineage() -> LineageBundle:
     """Lineage fijo del bundle sintético."""
     return LineageBundle(

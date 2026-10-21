@@ -148,8 +148,9 @@ sc.resume()                         # corrida nueva y completa con la decisión;
     selección, el resumen final y los doce libros de Excel—, listo para abrir en Jupyter o VS Code
     y correr celda por celda. CI ejecuta todo y compara sus salidas guardadas. Éstas ya
     distinguen el resultado histórico de HL de la evaluación contextual y sus límites;
-    requieren la implementación contextual de `main`, posterior a **PyPI 2.16.0**.
-    Esa versión publicada conserva la lectura anterior. Las PD no mejoran por cambiar
+    requieren **bayesrisk 2.17.0 o posterior**. Confirma su disponibilidad en
+    [PyPI](https://pypi.org/project/bayesrisk/#history); la versión 2.16.0 conserva la lectura
+    anterior. Las PD no mejoran por cambiar
     su interpretación.
 
 `run()` imprime el resumen de cada etapa mientras corre y, en un notebook, la última línea pinta

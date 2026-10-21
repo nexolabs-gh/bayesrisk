@@ -110,7 +110,8 @@ def test_el_corte_del_titular_no_es_vacuo() -> None:
     # El bloque DESTACADO de la portada tiene que quedar DENTRO. Es donde más se ve y fue el hueco
     # del primer criterio: sin este ancla, el gate volvería a cortar antes de tiempo sin avisar.
     assert "Estado: 2.x (estable)" in _titular(_README.read_text(encoding="utf-8"))
-    assert "release estable" in _titular(_PORTADA_DOCS.read_text(encoding="utf-8"))
+    assert "Versión del código documentado:" in _titular(_PORTADA_DOCS.read_text(encoding="utf-8"))
+    assert "La guía de cada capacidad indica" in _titular(_PORTADA_DOCS.read_text(encoding="utf-8"))
     # Y la SALVEDAD tiene que quedar fuera: ahí nombrar el país es obligatorio.
     assert "no son oficiales" not in _titular(_PORTADA_DOCS.read_text(encoding="utf-8"))
 

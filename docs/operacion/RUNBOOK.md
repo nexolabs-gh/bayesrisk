@@ -1178,8 +1178,13 @@ Sólo con el OK explícito de Cami para ESA release (AGENTS.md: un OK anterior n
 cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en una de las dos.
 
 1. **Bump en un commit propio.** `__version__` en `src/bayesrisk/__init__.py` (pyproject lo lee),
-   `CHANGELOG.md` (`## [No publicado]` → `## [X.Y.Z] — AAAA-MM-DD`), `docs_site/index.md`
-   («Estado: X.Y.Z — release estable») y `docs_site/api.md` («código publicado (`X.Y.Z`)»). Suite
+   `CHANGELOG.md` (`## [No publicado]` → `## [X.Y.Z]`), `docs_site/index.md`
+   («Versión del código documentado: X.Y.Z») y `docs_site/api.md` («código de la versión X.Y.Z»).
+   Durante la preparación previa al OK de publicación, esos textos identifican el código y enlazan
+   PyPI para confirmar disponibilidad; no afirman que ya esté publicado. Así el candidato revisado
+   puede promoverse sin una edición editorial posterior que cambie su SHA. La fecha efectiva de
+   publicación la acredita PyPI. Actualizar también los requisitos de instalación en guías/cuadernos,
+   preservando las salidas históricas y sus fuentes. Suite
    completa sobre ese árbol, push, CI job a job (§8). Antes de una Release manual desde rama,
    despachar `ci.yml` sobre el mismo SHA/ref y verificar también H10 completo. Release conserva
    el veto a cualquier CI rojo del SHA y elige el último run del ref con H10 completo: los bytes
@@ -1222,7 +1227,7 @@ cortaron la 1.13.0 y la 1.14.0 (2026-09-12); cada trampa de abajo se pagó en un
    grupo dev porque `tests/unit/_ui_client.py` lo usa).
 6. **Producción la publica el Deploy del último push a `main`, no el tag.** Comprobar
    `https://docs.bayesadvisory.cl/build-sha.txt` y `https://demo.bayesadvisory.cl/build-sha.txt` = HEAD de
-   `main`, «Estado: X.Y.Z» en la portada, la guía y el changelog que la release toca, y el bundle de
+   `main`, «Versión del código documentado: X.Y.Z» en la portada, la guía y el changelog que la release toca, y el bundle de
    la demo con las corridas publicadas. La regla «producción no retrocede, no pierde un commit verde
    y no se publica a ciegas» vive en `scripts/deploy_no_retroceder_produccion.py` (con sus tests):
    un Deploy que se detiene en rojo dice por qué; el rerun del commit adelantado repara una

@@ -84,7 +84,9 @@ from bayesrisk.validation.results import VALIDATION_STATUS_LABELS
 # Recalculado el 2026-09-27 por el renombre (D-REN-9): medido con `diff` contra el render de
 # `315ccd4`, cambian sólo la marca (portada y barra: «bayesrisk»), el comentario del tema en el
 # CSS y la clave `bayesrisk` de `library_versions` en el anexo de linaje.
-GOLDEN_HTML_SHA256 = "da8879824379c54e02814ef9da9594b0380150df572a996b9c1f58dd7c4aba8e"
+# Recalculado el 2026-10-21 (preparación 2.17): CSS de impresión evita clipping de SVG
+# y encabezados anchos. El CSS anterior recupera da887982…; fuera del CSS no cambia el digest.
+GOLDEN_HTML_SHA256 = "ef1fc6ef512056c84ada8b4ebbc7b5491d90130e5e3f2abf2a4208635644d9a5"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 

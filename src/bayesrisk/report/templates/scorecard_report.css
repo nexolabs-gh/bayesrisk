@@ -986,6 +986,16 @@ figcaption {
     break-inside: avoid;
   }
 
+  /* En flex, WeasyPrint conserva el ancho intrínseco del SVG con estilo inline y puede
+     recortar su última columna. El bloque impreso usa todo el ancho disponible. */
+  .chart-slot {
+    display: block;
+  }
+
+  .chart-slot svg {
+    width: 100%;
+  }
+
   .table-block {
     overflow-x: visible;
   }
@@ -1008,6 +1018,13 @@ figcaption {
     white-space: nowrap;
     overflow-wrap: normal;
     padding: 2px 3px;
+  }
+
+  /* Los valores numéricos permanecen juntos; los títulos largos sí deben envolver.
+     Un encabezado nowrap expandía la escala maestra fuera de la página apaisada. */
+  .table-block--wide thead th {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   thead {
