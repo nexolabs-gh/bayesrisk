@@ -694,5 +694,72 @@
    }
   ],
   "n_rows": 6000
+ },
+ {
+  "id": "lgd_historia_sintetica",
+  "name": "Historia sintética — entrenamiento LGD separado",
+  "description": "400 operaciones inventadas: 300 de entrenamiento, 80 de evaluación y 20 abiertas excluidas. Deudores repetidos sólo dentro de una muestra, con ID de operación único. Objetivo sintético con extremos 0 y 1 y dos covariables crudas. Sirve para recorrer la herramienta; no valida calidad ni transportabilidad.",
+  "columns": [
+   {
+    "name": "deudor",
+    "dtype": "str",
+    "role": "id",
+    "values": []
+   },
+   {
+    "name": "muestra",
+    "dtype": "str",
+    "role": "sample",
+    "values": [
+     "train",
+     "evaluation",
+     "excluded"
+    ]
+   },
+   {
+    "name": "incumplio",
+    "dtype": "bool",
+    "role": "default",
+    "values": [
+     "True"
+    ]
+   },
+   {
+    "name": "resuelto",
+    "dtype": "bool",
+    "role": "resolved",
+    "values": [
+     "True",
+     "False"
+    ]
+   },
+   {
+    "name": "lgd_observada",
+    "dtype": "float",
+    "role": "target",
+    "values": []
+   },
+   {
+    "name": "deuda_ingreso",
+    "dtype": "float",
+    "role": "feature",
+    "values": []
+   },
+   {
+    "name": "antiguedad_meses",
+    "dtype": "float",
+    "role": "feature",
+    "values": []
+   }
+  ],
+  "index_columns": [
+   {
+    "name": "loan_id",
+    "dtype": "str",
+    "role": "id",
+    "values": []
+   }
+  ],
+  "n_rows": 400
  }
 ]

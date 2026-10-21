@@ -1,0 +1,3310 @@
+{
+  "validation": {
+    "model_ref": "preset-estandar-consumo",
+    "families_run": [
+      "discrimination",
+      "calibration",
+      "stability"
+    ],
+    "overall_status": "fail",
+    "n_tests": 3,
+    "n_failed": 1,
+    "dependency_versions": {
+      "numpy": "2.4.6",
+      "pandas": "2.3.3",
+      "scipy": "1.18.0"
+    },
+    "falta_dato": [],
+    "metric_sections": {
+      "validation": {
+        "families_run": [
+          "discrimination",
+          "calibration",
+          "stability"
+        ],
+        "overall_status": "fail",
+        "n_tests": 3,
+        "n_failed": 1,
+        "traffic_light": {
+          "green": 0,
+          "amber": 0,
+          "red": 0
+        },
+        "not_evaluable_grades": [],
+        "traffic_light_cuts": null,
+        "not_evaluable_partitions": [],
+        "min_rows_per_group": 30,
+        "stability_source": "stability_artifact",
+        "stability_recompute": null
+      }
+    },
+    "discrimination": [
+      {
+        "partition": "desarrollo",
+        "n_total": 3961,
+        "n_bad": 924,
+        "auc": 0.7123458941453674,
+        "gini": 0.42469178829073484,
+        "ks": 0.32014426688447106,
+        "source": "performance_artifact",
+        "status": "ok"
+      },
+      {
+        "partition": "holdout",
+        "n_total": 1031,
+        "n_bad": 244,
+        "auc": 0.6946460932780636,
+        "gini": 0.3892921865561272,
+        "ks": 0.3118920157477034,
+        "source": "performance_artifact",
+        "status": "ok"
+      },
+      {
+        "partition": "oot",
+        "n_total": 1008,
+        "n_bad": 239,
+        "auc": 0.6560957827097084,
+        "gini": 0.31219156541941673,
+        "ks": 0.25190569723218226,
+        "source": "performance_artifact",
+        "status": "ok"
+      }
+    ],
+    "calibration": [
+      {
+        "partition": "desarrollo",
+        "test": "hosmer_lemeshow",
+        "grade": "ALL",
+        "n": 3961,
+        "observed_defaults": 924,
+        "expected_pd": 0.2332744256500883,
+        "observed_dr": 0.23327442565008835,
+        "statistic": 6.0079459070858094,
+        "degrees_of_freedom": 8,
+        "p_value": 0.6463417818687744,
+        "alpha": 0.05,
+        "decision": "pass",
+        "traffic_light": null,
+        "green_alpha": null,
+        "red_alpha": null,
+        "not_evaluable_reason": null
+      },
+      {
+        "partition": "desarrollo",
+        "test": "brier",
+        "grade": "ALL",
+        "n": 3961,
+        "observed_defaults": 924,
+        "expected_pd": 0.2332744256500883,
+        "observed_dr": 0.23327442565008835,
+        "statistic": 0.16017512853019625,
+        "degrees_of_freedom": null,
+        "p_value": null,
+        "alpha": null,
+        "decision": "not_evaluable",
+        "traffic_light": null,
+        "green_alpha": null,
+        "red_alpha": null,
+        "not_evaluable_reason": null
+      },
+      {
+        "partition": "oot",
+        "test": "hosmer_lemeshow",
+        "grade": "ALL",
+        "n": 1008,
+        "observed_defaults": 239,
+        "expected_pd": 0.23337826490146854,
+        "observed_dr": 0.2371031746031746,
+        "statistic": 19.451071238480708,
+        "degrees_of_freedom": 8,
+        "p_value": 0.012624826300114127,
+        "alpha": 0.05,
+        "decision": "fail",
+        "traffic_light": null,
+        "green_alpha": null,
+        "red_alpha": null,
+        "not_evaluable_reason": null
+      },
+      {
+        "partition": "oot",
+        "test": "brier",
+        "grade": "ALL",
+        "n": 1008,
+        "observed_defaults": 239,
+        "expected_pd": 0.23337826490146854,
+        "observed_dr": 0.2371031746031746,
+        "statistic": 0.1712783240444833,
+        "degrees_of_freedom": null,
+        "p_value": null,
+        "alpha": null,
+        "decision": "not_evaluable",
+        "traffic_light": null,
+        "green_alpha": null,
+        "red_alpha": null,
+        "not_evaluable_reason": null
+      },
+      {
+        "partition": "holdout",
+        "test": "hosmer_lemeshow",
+        "grade": "ALL",
+        "n": 1031,
+        "observed_defaults": 244,
+        "expected_pd": 0.2365457016462397,
+        "observed_dr": 0.23666343355965083,
+        "statistic": 10.120586966328936,
+        "degrees_of_freedom": 8,
+        "p_value": 0.2566641296613826,
+        "alpha": 0.05,
+        "decision": "pass",
+        "traffic_light": null,
+        "green_alpha": null,
+        "red_alpha": null,
+        "not_evaluable_reason": null
+      },
+      {
+        "partition": "holdout",
+        "test": "brier",
+        "grade": "ALL",
+        "n": 1031,
+        "observed_defaults": 244,
+        "expected_pd": 0.2365457016462397,
+        "observed_dr": 0.23666343355965083,
+        "statistic": 0.16427526251605157,
+        "degrees_of_freedom": null,
+        "p_value": null,
+        "alpha": null,
+        "decision": "not_evaluable",
+        "traffic_light": null,
+        "green_alpha": null,
+        "red_alpha": null,
+        "not_evaluable_reason": null
+      }
+    ],
+    "stability": [
+      {
+        "metric": "score_psi",
+        "comparison": "dev_vs_holdout",
+        "feature": "score",
+        "value": 0.012661369137620228,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "score_psi",
+        "comparison": "dev_vs_oot",
+        "feature": "score",
+        "value": 0.006791904590247704,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "pd_psi",
+        "comparison": "dev_vs_holdout",
+        "feature": "pd_calibrated",
+        "value": 0.013181930579331572,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "pd_psi",
+        "comparison": "dev_vs_oot",
+        "feature": "pd_calibrated",
+        "value": 0.006464855842500351,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_holdout",
+        "feature": "antiguedad_meses__points",
+        "value": 0.0025873483214359826,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_oot",
+        "feature": "antiguedad_meses__points",
+        "value": 0.0015310776058722018,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_holdout",
+        "feature": "deuda_ingreso__points",
+        "value": 0.0033222521652540153,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_oot",
+        "feature": "deuda_ingreso__points",
+        "value": 0.008178247929472134,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_holdout",
+        "feature": "ingreso_mensual__points",
+        "value": 0.0029940746611031763,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_oot",
+        "feature": "ingreso_mensual__points",
+        "value": 0.009808125367143388,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_holdout",
+        "feature": "mora_max_12m__points",
+        "value": 0.010208836708625104,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_oot",
+        "feature": "mora_max_12m__points",
+        "value": 0.006914226908744894,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_holdout",
+        "feature": "utilizacion_linea__points",
+        "value": 0.007215410052570199,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "csi",
+        "comparison": "dev_vs_oot",
+        "feature": "utilizacion_linea__points",
+        "value": 0.003973405325129219,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      },
+      {
+        "metric": "temporal_score",
+        "comparison": "period",
+        "feature": "score",
+        "value": 0.010496790152161864,
+        "stable_threshold": 0.1,
+        "review_threshold": 0.25,
+        "band": "stable",
+        "action": "none",
+        "source": "stability_artifact",
+        "status": "ok",
+        "decision": "pass"
+      }
+    ],
+    "backtesting": [],
+    "hosmer_lemeshow_groups": [
+      {
+        "partition": "desarrollo",
+        "group": 1,
+        "n": 397,
+        "observed_defaults": 16,
+        "expected_defaults": 20.9544407315304,
+        "observed_dr": 0.04030226700251889,
+        "mean_pd": 0.05278196657816222,
+        "gap_pp": -1.2479699575643328,
+        "oe_ratio": 0.7635612997260579,
+        "contribution": 1.2366968172212167
+      },
+      {
+        "partition": "desarrollo",
+        "group": 2,
+        "n": 396,
+        "observed_defaults": 44,
+        "expected_defaults": 37.05816561464969,
+        "observed_dr": 0.1111111111111111,
+        "mean_pd": 0.09358122629962043,
+        "gap_pp": 1.7529884811490675,
+        "oe_ratio": 1.187322666144222,
+        "contribution": 1.4346160546596283
+      },
+      {
+        "partition": "desarrollo",
+        "group": 3,
+        "n": 396,
+        "observed_defaults": 53,
+        "expected_defaults": 50.669243218704324,
+        "observed_dr": 0.13383838383838384,
+        "mean_pd": 0.12795263439066748,
+        "gap_pp": 0.588574944771636,
+        "oe_ratio": 1.0459994393686798,
+        "contribution": 0.12294458933367165
+      },
+      {
+        "partition": "desarrollo",
+        "group": 4,
+        "n": 396,
+        "observed_defaults": 67,
+        "expected_defaults": 63.854456188836075,
+        "observed_dr": 0.1691919191919192,
+        "mean_pd": 0.16124862673948503,
+        "gap_pp": 0.7943292452434164,
+        "oe_ratio": 1.0492611479120837,
+        "contribution": 0.18474258747658412
+      },
+      {
+        "partition": "desarrollo",
+        "group": 5,
+        "n": 396,
+        "observed_defaults": 66,
+        "expected_defaults": 76.26256375682809,
+        "observed_dr": 0.16666666666666666,
+        "mean_pd": 0.19258223170916183,
+        "gap_pp": -2.5915565042495174,
+        "oe_ratio": 0.8654311728943254,
+        "contribution": 1.7104171125400685
+      },
+      {
+        "partition": "desarrollo",
+        "group": 6,
+        "n": 396,
+        "observed_defaults": 93,
+        "expected_defaults": 90.43301889853409,
+        "observed_dr": 0.23484848484848486,
+        "mean_pd": 0.22836620933973253,
+        "gap_pp": 0.6482275508752328,
+        "oe_ratio": 1.0283854407685546,
+        "contribution": 0.09442936648395212
+      },
+      {
+        "partition": "desarrollo",
+        "group": 7,
+        "n": 396,
+        "observed_defaults": 99,
+        "expected_defaults": 106.20879920293176,
+        "observed_dr": 0.25,
+        "mean_pd": 0.2682040383912418,
+        "gap_pp": -1.8204038391241795,
+        "oe_ratio": 0.9321261585006907,
+        "contribution": 0.6686138215691971
+      },
+      {
+        "partition": "desarrollo",
+        "group": 8,
+        "n": 396,
+        "observed_defaults": 130,
+        "expected_defaults": 124.44573400157793,
+        "observed_dr": 0.3282828282828283,
+        "mean_pd": 0.3142569040443887,
+        "gap_pp": 1.4025924238439569,
+        "oe_ratio": 1.0446320321301785,
+        "contribution": 0.3615029884561581
+      },
+      {
+        "partition": "desarrollo",
+        "group": 9,
+        "n": 396,
+        "observed_defaults": 153,
+        "expected_defaults": 149.1863149393651,
+        "observed_dr": 0.38636363636363635,
+        "mean_pd": 0.37673311853375024,
+        "gap_pp": 0.9630517829886109,
+        "oe_ratio": 1.02556323656218,
+        "contribution": 0.15641795878727627
+      },
+      {
+        "partition": "desarrollo",
+        "group": 10,
+        "n": 396,
+        "observed_defaults": 203,
+        "expected_defaults": 204.92726344704244,
+        "observed_dr": 0.5126262626262627,
+        "mean_pd": 0.5174930895127334,
+        "gap_pp": -0.48668268864707764,
+        "oe_ratio": 0.9905953780154758,
+        "contribution": 0.037564610558056405
+      },
+      {
+        "partition": "oot",
+        "group": 1,
+        "n": 101,
+        "observed_defaults": 10,
+        "expected_defaults": 5.425200556479137,
+        "observed_dr": 0.09900990099009901,
+        "mean_pd": 0.053714856994842936,
+        "gap_pp": 4.529504399525608,
+        "oe_ratio": 1.8432498293648023,
+        "contribution": 4.076676970618081
+      },
+      {
+        "partition": "oot",
+        "group": 2,
+        "n": 101,
+        "observed_defaults": 13,
+        "expected_defaults": 9.45215299919223,
+        "observed_dr": 0.12871287128712872,
+        "mean_pd": 0.093585673259329,
+        "gap_pp": 3.512719802779972,
+        "oe_ratio": 1.3753480292914182,
+        "contribution": 1.4691707100098206
+      },
+      {
+        "partition": "oot",
+        "group": 3,
+        "n": 101,
+        "observed_defaults": 20,
+        "expected_defaults": 13.16625667374575,
+        "observed_dr": 0.19801980198019803,
+        "mean_pd": 0.1303589769677797,
+        "gap_pp": 6.766082501241833,
+        "oe_ratio": 1.5190346425405117,
+        "contribution": 4.078636392046753
+      },
+      {
+        "partition": "oot",
+        "group": 4,
+        "n": 101,
+        "observed_defaults": 15,
+        "expected_defaults": 16.13211868114806,
+        "observed_dr": 0.1485148514851485,
+        "mean_pd": 0.1597239473380996,
+        "gap_pp": -1.12090958529511,
+        "oe_ratio": 0.929822070893202,
+        "contribution": 0.09455195622248473
+      },
+      {
+        "partition": "oot",
+        "group": 5,
+        "n": 101,
+        "observed_defaults": 24,
+        "expected_defaults": 19.066355050102544,
+        "observed_dr": 0.2376237623762376,
+        "mean_pd": 0.18877579257527272,
+        "gap_pp": 4.88479698009649,
+        "oe_ratio": 1.2587618313480908,
+        "contribution": 1.573719066532151
+      },
+      {
+        "partition": "oot",
+        "group": 6,
+        "n": 101,
+        "observed_defaults": 25,
+        "expected_defaults": 22.286971132765316,
+        "observed_dr": 0.24752475247524752,
+        "mean_pd": 0.22066308052242886,
+        "gap_pp": 2.686167195281866,
+        "oe_ratio": 1.121731609516293,
+        "contribution": 0.4237722638548092
+      },
+      {
+        "partition": "oot",
+        "group": 7,
+        "n": 101,
+        "observed_defaults": 17,
+        "expected_defaults": 26.805791408418475,
+        "observed_dr": 0.16831683168316833,
+        "mean_pd": 0.265403875330876,
+        "gap_pp": -9.708704364770767,
+        "oe_ratio": 0.6341913111605083,
+        "contribution": 4.883014731071156
+      },
+      {
+        "partition": "oot",
+        "group": 8,
+        "n": 101,
+        "observed_defaults": 32,
+        "expected_defaults": 31.455084797580614,
+        "observed_dr": 0.31683168316831684,
+        "mean_pd": 0.3114364831443625,
+        "gap_pp": 0.5395200023954327,
+        "oe_ratio": 1.0173235966752598,
+        "contribution": 0.013709543067339408
+      },
+      {
+        "partition": "oot",
+        "group": 9,
+        "n": 100,
+        "observed_defaults": 38,
+        "expected_defaults": 38.05214917541003,
+        "observed_dr": 0.38,
+        "mean_pd": 0.38052149175410027,
+        "gap_pp": -0.05214917541002673,
+        "oe_ratio": 0.9986295340331597,
+        "contribution": 0.00011536908729989607
+      },
+      {
+        "partition": "oot",
+        "group": 10,
+        "n": 100,
+        "observed_defaults": 45,
+        "expected_defaults": 53.40321054583813,
+        "observed_dr": 0.45,
+        "mean_pd": 0.5340321054583813,
+        "gap_pp": -8.40321054583813,
+        "oe_ratio": 0.8426459671628672,
+        "contribution": 2.837704235970815
+      },
+      {
+        "partition": "holdout",
+        "group": 1,
+        "n": 104,
+        "observed_defaults": 10,
+        "expected_defaults": 5.6503513454642205,
+        "observed_dr": 0.09615384615384616,
+        "mean_pd": 0.05433030139869443,
+        "gap_pp": 4.182354475515173,
+        "oe_ratio": 1.7698014492545546,
+        "contribution": 3.540735039900478
+      },
+      {
+        "partition": "holdout",
+        "group": 2,
+        "n": 103,
+        "observed_defaults": 9,
+        "expected_defaults": 9.617628363717616,
+        "observed_dr": 0.08737864077669903,
+        "mean_pd": 0.09337503265745258,
+        "gap_pp": -0.5996391880753543,
+        "oe_ratio": 0.9357816355175865,
+        "contribution": 0.043748059897526205
+      },
+      {
+        "partition": "holdout",
+        "group": 3,
+        "n": 103,
+        "observed_defaults": 15,
+        "expected_defaults": 13.367736684609532,
+        "observed_dr": 0.14563106796116504,
+        "mean_pd": 0.12978385130688866,
+        "gap_pp": 1.584721665427638,
+        "oe_ratio": 1.1221046878690928,
+        "contribution": 0.22903160662467864
+      },
+      {
+        "partition": "holdout",
+        "group": 4,
+        "n": 103,
+        "observed_defaults": 23,
+        "expected_defaults": 17.185410855219722,
+        "observed_dr": 0.22330097087378642,
+        "mean_pd": 0.16684864907980312,
+        "gap_pp": 5.645232179398329,
+        "oe_ratio": 1.3383444942786582,
+        "contribution": 2.3613167300946967
+      },
+      {
+        "partition": "holdout",
+        "group": 5,
+        "n": 103,
+        "observed_defaults": 13,
+        "expected_defaults": 20.054175671431338,
+        "observed_dr": 0.1262135922330097,
+        "mean_pd": 0.19470073467409066,
+        "gap_pp": -6.848714244108095,
+        "oe_ratio": 0.6482440471746472,
+        "contribution": 3.0812747403880176
+      },
+      {
+        "partition": "holdout",
+        "group": 6,
+        "n": 103,
+        "observed_defaults": 22,
+        "expected_defaults": 23.098427250134883,
+        "observed_dr": 0.21359223300970873,
+        "mean_pd": 0.22425657524402798,
+        "gap_pp": -1.066434223431925,
+        "oe_ratio": 0.9524457990909979,
+        "contribution": 0.06733518901983418
+      },
+      {
+        "partition": "holdout",
+        "group": 7,
+        "n": 103,
+        "observed_defaults": 25,
+        "expected_defaults": 27.446841979570983,
+        "observed_dr": 0.24271844660194175,
+        "mean_pd": 0.2664741939764173,
+        "gap_pp": -2.3755747374475558,
+        "oe_ratio": 0.910851602476081,
+        "contribution": 0.2973747340335483
+      },
+      {
+        "partition": "holdout",
+        "group": 8,
+        "n": 103,
+        "observed_defaults": 34,
+        "expected_defaults": 32.96102366572318,
+        "observed_dr": 0.3300970873786408,
+        "mean_pd": 0.3200099385021668,
+        "gap_pp": 1.0087148876473995,
+        "oe_ratio": 1.0315213612542402,
+        "contribution": 0.04816239269027912
+      },
+      {
+        "partition": "holdout",
+        "group": 9,
+        "n": 103,
+        "observed_defaults": 41,
+        "expected_defaults": 39.475679072852934,
+        "observed_dr": 0.39805825242718446,
+        "mean_pd": 0.38325902012478574,
+        "gap_pp": 1.4799232302398713,
+        "oe_ratio": 1.038614178728475,
+        "contribution": 0.09543779745643124
+      },
+      {
+        "partition": "holdout",
+        "group": 10,
+        "n": 103,
+        "observed_defaults": 52,
+        "expected_defaults": 55.021343508548696,
+        "observed_dr": 0.5048543689320388,
+        "mean_pd": 0.5341878010538709,
+        "gap_pp": -2.9333432121832037,
+        "oe_ratio": 0.9450877911027514,
+        "contribution": 0.35617067622344317
+      }
+    ]
+  },
+  "summaries": {
+    "stages": [
+      {
+        "stage": "data",
+        "label": "Datos y muestras",
+        "lines": [
+          "Archivo: consumo_comportamiento",
+          "6.000 filas · 1.407 malos (23,45 %) · 8 columnas",
+          "Muestras: Desarrollo 3.961 (23,33 %) · Holdout 1.031 (23,67 %) · Fuera de tiempo (OOT) 1.008 (23,71 %) — cohortes fuera de tiempo: 2024Q2 (columna «cohorte»); holdout 20 % del resto",
+          "Evidencia de la corrida: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690"
+        ],
+        "alerts": [],
+        "table": {
+          "columns": [
+            "Muestra",
+            "Filas",
+            "Malos",
+            "Tasa de malos"
+          ],
+          "rows": [
+            [
+              "Desarrollo",
+              "3.961",
+              "924",
+              "23,33 %"
+            ],
+            [
+              "Holdout",
+              "1.031",
+              "244",
+              "23,67 %"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "1.008",
+              "239",
+              "23,71 %"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "eda",
+        "label": "Análisis exploratorio",
+        "lines": [
+          "Tasa de malos por cohorte: 5 períodos, media 23,33 %",
+          "Deterioro de la tasa en el tiempo: no evaluable (eje de cohorte, sin orden cronológico)",
+          "6 columnas descritas frente al incumplimiento",
+          "Marcas de calidad del archivo: casi única: ingreso_mensual"
+        ],
+        "alerts": [],
+        "table": {
+          "columns": [
+            "Por cohorte",
+            "Filas",
+            "Malos",
+            "Tasa de malos",
+            "Poca confianza"
+          ],
+          "rows": [
+            [
+              "2023Q1",
+              "785",
+              "201",
+              "25,61 %",
+              "no"
+            ],
+            [
+              "2023Q2",
+              "789",
+              "170",
+              "21,55 %",
+              "no"
+            ],
+            [
+              "2023Q3",
+              "838",
+              "188",
+              "22,43 %",
+              "no"
+            ],
+            [
+              "2023Q4",
+              "777",
+              "174",
+              "22,39 %",
+              "no"
+            ],
+            [
+              "2024Q1",
+              "772",
+              "191",
+              "24,74 %",
+              "no"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "binning",
+        "label": "Tramos y WoE",
+        "lines": [
+          "6 de 6 variables tramificadas",
+          "Poder predictivo (IV): fuerte: ingreso_mensual · medio: deuda_ingreso · débil: utilizacion_linea, mora_max_12m, antiguedad_meses · sin poder: segmento"
+        ],
+        "alerts": [
+          "antiguedad_meses: la tasa de malos invierte la tendencia en Holdout",
+          "deuda_ingreso: la tasa de malos invierte la tendencia en Fuera de tiempo (OOT)",
+          "ingreso_mensual: la tasa de malos invierte la tendencia en Fuera de tiempo (OOT)",
+          "mora_max_12m: la tasa de malos invierte la tendencia en Holdout y Fuera de tiempo (OOT)"
+        ],
+        "table": {
+          "columns": [
+            "Variable",
+            "Tipo",
+            "Tramos",
+            "IV",
+            "Banda de IV",
+            "Tendencia"
+          ],
+          "rows": [
+            [
+              "ingreso_mensual",
+              "numérica",
+              "6",
+              "0,305",
+              "fuerte",
+              "descendente"
+            ],
+            [
+              "deuda_ingreso",
+              "numérica",
+              "6",
+              "0,164",
+              "medio",
+              "ascendente"
+            ],
+            [
+              "utilizacion_linea",
+              "numérica",
+              "5",
+              "0,061",
+              "débil",
+              "ascendente"
+            ],
+            [
+              "mora_max_12m",
+              "numérica",
+              "6",
+              "0,022",
+              "débil",
+              "ascendente"
+            ],
+            [
+              "antiguedad_meses",
+              "numérica",
+              "6",
+              "0,041",
+              "débil",
+              "descendente"
+            ],
+            [
+              "segmento",
+              "categórica",
+              "3",
+              "0,003",
+              "sin poder",
+              "—"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "selection",
+        "label": "Selección de variables",
+        "lines": [
+          "Entran 5 de 6 variables candidatas",
+          "Salen: segmento (IV insuficiente)",
+          "Correlación máxima entre las finales 0,0303 y VIF máximo 1,002"
+        ],
+        "alerts": [],
+        "table": {
+          "columns": [
+            "Variable",
+            "Entra",
+            "Motivo",
+            "IV",
+            "AUC",
+            "KS",
+            "Correlación máxima",
+            "VIF",
+            "IV Desarrollo",
+            "IV Holdout",
+            "IV Fuera de tiempo (OOT)"
+          ],
+          "rows": [
+            [
+              "antiguedad_meses",
+              "sí",
+              "inclusión",
+              "0,041",
+              "0,548",
+              "0,061",
+              "—",
+              "1,001",
+              "0,041",
+              "0,109",
+              "0,101"
+            ],
+            [
+              "deuda_ingreso",
+              "sí",
+              "inclusión",
+              "0,164",
+              "0,602",
+              "0,1601",
+              "—",
+              "1,0001",
+              "0,164",
+              "0,107",
+              "0,1695"
+            ],
+            [
+              "ingreso_mensual",
+              "sí",
+              "inclusión",
+              "0,305",
+              "0,647",
+              "0,212",
+              "—",
+              "1,001",
+              "0,305",
+              "0,252",
+              "0,13999"
+            ],
+            [
+              "mora_max_12m",
+              "sí",
+              "inclusión",
+              "0,022",
+              "0,5399",
+              "0,064",
+              "—",
+              "1,002",
+              "0,022",
+              "0,033",
+              "0,081"
+            ],
+            [
+              "segmento",
+              "no",
+              "IV insuficiente",
+              "0,003",
+              "0,515",
+              "0,023",
+              "—",
+              "—",
+              "0,003",
+              "0,009",
+              "0,006"
+            ],
+            [
+              "utilizacion_linea",
+              "sí",
+              "inclusión",
+              "0,061",
+              "0,566",
+              "0,098",
+              "—",
+              "1,001",
+              "0,061",
+              "0,219",
+              "0,085"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "model",
+        "label": "Modelo",
+        "lines": [
+          "Variables finales (5): antiguedad_meses, deuda_ingreso, ingreso_mensual, mora_max_12m, utilizacion_linea",
+          "Stepwise bidireccional: 5 iteraciones, 5 entradas y 0 salidas",
+          "Ajuste en Desarrollo: pseudo-R² de McFadden 0,097 · AIC 3.898,72 · p-valor del test de razón de verosimilitud < 0,001 · convergió"
+        ],
+        "alerts": [
+          "Concentra más del 90 % del IV del modelo: ingreso_mensual"
+        ],
+        "table": {
+          "columns": [
+            "Variable",
+            "Coeficiente",
+            "Error estándar",
+            "p-valor",
+            "Signo esperado",
+            "IV",
+            "Contribución al IV"
+          ],
+          "rows": [
+            [
+              "intercepto",
+              "-1,1921",
+              "0,0405",
+              "< 0,001",
+              "—",
+              "—",
+              "—"
+            ],
+            [
+              "antiguedad_meses",
+              "-1,08104",
+              "0,2101",
+              "< 0,001",
+              "sí",
+              "0,041",
+              "6,98 %"
+            ],
+            [
+              "deuda_ingreso",
+              "-1,0783",
+              "0,0971",
+              "< 0,001",
+              "sí",
+              "0,164",
+              "27,60 %"
+            ],
+            [
+              "ingreso_mensual",
+              "-1,0517",
+              "0,0772",
+              "< 0,001",
+              "sí",
+              "0,305",
+              "51,43 %"
+            ],
+            [
+              "mora_max_12m",
+              "-0,9678",
+              "0,2715",
+              "< 0,001",
+              "sí",
+              "0,022",
+              "3,69 %"
+            ],
+            [
+              "utilizacion_linea",
+              "-1,1154",
+              "0,1632",
+              "< 0,001",
+              "sí",
+              "0,061",
+              "10,30 %"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "scorecard",
+        "label": "Tarjeta de puntuación",
+        "lines": [
+          "Escala: 20 puntos por duplicar las odds, 600 puntos a odds 50:1 (factor 28,85, desplazamiento 487,12)",
+          "Puntajes observados: de 446 a 622 (media 526,1)",
+          "5 variables con puntos; un puntaje más alto indica menor riesgo"
+        ],
+        "alerts": [],
+        "table": {
+          "columns": [
+            "Variable",
+            "Tramo",
+            "WoE",
+            "Puntos"
+          ],
+          "rows": [
+            [
+              "antiguedad_meses",
+              "< 12,5",
+              "-0,315",
+              "94"
+            ],
+            [
+              "antiguedad_meses",
+              "≥ 12,5 y < 36,5",
+              "-0,135",
+              "100"
+            ],
+            [
+              "antiguedad_meses",
+              "≥ 36,5 y < 43,5",
+              "-0,019",
+              "104"
+            ],
+            [
+              "antiguedad_meses",
+              "≥ 43,5 y < 89,5",
+              "0,005",
+              "104"
+            ],
+            [
+              "antiguedad_meses",
+              "≥ 89,5 y < 114,5",
+              "0,135",
+              "109"
+            ],
+            [
+              "antiguedad_meses",
+              "≥ 114,5",
+              "0,7505",
+              "128"
+            ],
+            [
+              "antiguedad_meses",
+              "Valores especiales",
+              "0,000",
+              "104"
+            ],
+            [
+              "antiguedad_meses",
+              "Faltantes",
+              "0,000",
+              "104"
+            ],
+            [
+              "deuda_ingreso",
+              "< 0,07795000076293945",
+              "0,714",
+              "127"
+            ],
+            [
+              "deuda_ingreso",
+              "≥ 0,07795000076293945 y < 0,1565999984741211",
+              "0,272",
+              "113"
+            ],
+            [
+              "deuda_ingreso",
+              "≥ 0,1565999984741211 y < 0,374099999666214",
+              "0,218",
+              "111"
+            ],
+            [
+              "deuda_ingreso",
+              "≥ 0,374099999666214 y < 0,5116499960422516",
+              "-0,103",
+              "101"
+            ],
+            [
+              "deuda_ingreso",
+              "≥ 0,5116499960422516 y < 0,8504999876022339",
+              "-0,3902",
+              "92"
+            ],
+            [
+              "deuda_ingreso",
+              "≥ 0,8504999876022339",
+              "-1,082",
+              "71"
+            ],
+            [
+              "deuda_ingreso",
+              "Valores especiales",
+              "0,000",
+              "104"
+            ],
+            [
+              "deuda_ingreso",
+              "Faltantes",
+              "0,000",
+              "104"
+            ],
+            [
+              "ingreso_mensual",
+              "< 242.795,8828125",
+              "-0,902",
+              "77"
+            ],
+            [
+              "ingreso_mensual",
+              "≥ 242.795,8828125 y < 354.256,5",
+              "-0,582",
+              "87"
+            ],
+            [
+              "ingreso_mensual",
+              "≥ 354.256,5 y < 464.805,09375",
+              "-0,254",
+              "97"
+            ],
+            [
+              "ingreso_mensual",
+              "≥ 464.805,09375 y < 631.639,46875",
+              "0,036",
+              "105"
+            ],
+            [
+              "ingreso_mensual",
+              "≥ 631.639,46875 y < 913.196,96875",
+              "0,428",
+              "117"
+            ],
+            [
+              "ingreso_mensual",
+              "≥ 913.196,96875",
+              "1,2099",
+              "141"
+            ],
+            [
+              "ingreso_mensual",
+              "Valores especiales",
+              "0,000",
+              "104"
+            ],
+            [
+              "ingreso_mensual",
+              "Faltantes",
+              "0,000",
+              "104"
+            ],
+            [
+              "mora_max_12m",
+              "< 2,5",
+              "0,361",
+              "114"
+            ],
+            [
+              "mora_max_12m",
+              "≥ 2,5 y < 3,5",
+              "0,214",
+              "110"
+            ],
+            [
+              "mora_max_12m",
+              "≥ 3,5 y < 5,5",
+              "0,091",
+              "107"
+            ],
+            [
+              "mora_max_12m",
+              "≥ 5,5 y < 7,5",
+              "-0,075",
+              "102"
+            ],
+            [
+              "mora_max_12m",
+              "≥ 7,5 y < 9,5",
+              "-0,126",
+              "101"
+            ],
+            [
+              "mora_max_12m",
+              "≥ 9,5",
+              "-0,206",
+              "99"
+            ],
+            [
+              "mora_max_12m",
+              "Valores especiales",
+              "0,000",
+              "104"
+            ],
+            [
+              "mora_max_12m",
+              "Faltantes",
+              "0,000",
+              "104"
+            ],
+            [
+              "utilizacion_linea",
+              "< 0,10254999995231628",
+              "0,612",
+              "124"
+            ],
+            [
+              "utilizacion_linea",
+              "≥ 0,10254999995231628 y < 0,25129999220371246",
+              "0,2496",
+              "112"
+            ],
+            [
+              "utilizacion_linea",
+              "≥ 0,25129999220371246 y < 0,4483500123023987",
+              "0,062",
+              "106"
+            ],
+            [
+              "utilizacion_linea",
+              "≥ 0,4483500123023987 y < 0,6779000163078308",
+              "-0,165",
+              "99"
+            ],
+            [
+              "utilizacion_linea",
+              "≥ 0,6779000163078308",
+              "-0,466",
+              "89"
+            ],
+            [
+              "utilizacion_linea",
+              "Valores especiales",
+              "0,000",
+              "104"
+            ],
+            [
+              "utilizacion_linea",
+              "Faltantes",
+              "0,000",
+              "104"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "calibration",
+        "label": "Calibración",
+        "lines": [
+          "Método: desplazamiento del intercepto (intercept offset); ancla a través del ciclo (TTC): la tasa de incumplimiento observada en Desarrollo = 23,33 %",
+          "PD media en Desarrollo: cruda 23,33 % → calibrada 23,33 % (desplazamiento del intercepto 0,0000)",
+          "Orden de riesgo preservado"
+        ],
+        "alerts": [],
+        "table": {
+          "columns": [
+            "Muestra",
+            "Filas",
+            "PD media cruda",
+            "PD media calibrada",
+            "Tasa de malos observada"
+          ],
+          "rows": [
+            [
+              "Desarrollo",
+              "3.961",
+              "23,33 %",
+              "23,33 %",
+              "23,33 %"
+            ],
+            [
+              "Holdout",
+              "1.031",
+              "23,65 %",
+              "23,65 %",
+              "23,67 %"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "1.008",
+              "23,34 %",
+              "23,34 %",
+              "23,71 %"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "performance",
+        "label": "Desempeño",
+        "lines": [
+          "Desarrollo: AUC 0,712 · Gini 0,425 · KS 0,3201",
+          "Holdout: AUC 0,695 · Gini 0,389 · KS 0,312",
+          "Fuera de tiempo (OOT): AUC 0,656 · Gini 0,312 · KS 0,252",
+          "Caída Desarrollo → Fuera de tiempo (OOT): AUC -0,056 (-7,9 %) · KS -0,068 (-21,3 %)"
+        ],
+        "alerts": [],
+        "table": {
+          "columns": [
+            "Muestra",
+            "Decil",
+            "Filas",
+            "Malos",
+            "Tasa de malos",
+            "PD media",
+            "Puntaje medio",
+            "Captura acumulada de malos",
+            "KS en el decil"
+          ],
+          "rows": [
+            [
+              "Desarrollo",
+              "1",
+              "397",
+              "203",
+              "51,13 %",
+              "51,72 %",
+              "484,87",
+              "21,97 %",
+              "0,156"
+            ],
+            [
+              "Desarrollo",
+              "2",
+              "396",
+              "154",
+              "38,89 %",
+              "37,65 %",
+              "501,56",
+              "38,64 %",
+              "0,243"
+            ],
+            [
+              "Desarrollo",
+              "3",
+              "396",
+              "129",
+              "32,58 %",
+              "31,41 %",
+              "509,43",
+              "52,60 %",
+              "0,294"
+            ],
+            [
+              "Desarrollo",
+              "4",
+              "396",
+              "99",
+              "25,00 %",
+              "26,81 %",
+              "515,86",
+              "63,31 %",
+              "0,304"
+            ],
+            [
+              "Desarrollo",
+              "5",
+              "396",
+              "93",
+              "23,48 %",
+              "22,83 %",
+              "521,96",
+              "73,38 %",
+              "0,305"
+            ],
+            [
+              "Desarrollo",
+              "6",
+              "396",
+              "67",
+              "16,92 %",
+              "19,25 %",
+              "528,07",
+              "80,63 %",
+              "0,269"
+            ],
+            [
+              "Desarrollo",
+              "7",
+              "396",
+              "65",
+              "16,41 %",
+              "16,12 %",
+              "534,32",
+              "87,66 %",
+              "0,2303"
+            ],
+            [
+              "Desarrollo",
+              "8",
+              "396",
+              "54",
+              "13,64 %",
+              "12,79 %",
+              "542,14",
+              "93,51 %",
+              "0,176"
+            ],
+            [
+              "Desarrollo",
+              "9",
+              "396",
+              "44",
+              "11,11 %",
+              "9,35 %",
+              "552,51",
+              "98,27 %",
+              "0,108"
+            ],
+            [
+              "Desarrollo",
+              "10",
+              "396",
+              "16",
+              "4,04 %",
+              "5,27 %",
+              "571,59",
+              "100,00 %",
+              "0,000"
+            ],
+            [
+              "Holdout",
+              "1",
+              "104",
+              "52",
+              "50,00 %",
+              "53,31 %",
+              "482,94",
+              "21,31 %",
+              "0,147"
+            ],
+            [
+              "Holdout",
+              "2",
+              "103",
+              "41",
+              "39,81 %",
+              "38,25 %",
+              "500,74",
+              "38,11 %",
+              "0,236"
+            ],
+            [
+              "Holdout",
+              "3",
+              "103",
+              "34",
+              "33,01 %",
+              "31,95 %",
+              "508,69",
+              "52,05 %",
+              "0,288"
+            ],
+            [
+              "Holdout",
+              "4",
+              "103",
+              "25",
+              "24,27 %",
+              "26,60 %",
+              "516,16",
+              "62,30 %",
+              "0,291"
+            ],
+            [
+              "Holdout",
+              "5",
+              "103",
+              "22",
+              "21,36 %",
+              "22,39 %",
+              "522,59",
+              "71,31 %",
+              "0,279"
+            ],
+            [
+              "Holdout",
+              "6",
+              "103",
+              "13",
+              "12,62 %",
+              "19,45 %",
+              "527,67",
+              "76,64 %",
+              "0,217"
+            ],
+            [
+              "Holdout",
+              "7",
+              "103",
+              "23",
+              "22,33 %",
+              "16,65 %",
+              "533,22",
+              "86,07 %",
+              "0,2101"
+            ],
+            [
+              "Holdout",
+              "8",
+              "103",
+              "15",
+              "14,56 %",
+              "12,94 %",
+              "541,86",
+              "92,21 %",
+              "0,1597"
+            ],
+            [
+              "Holdout",
+              "9",
+              "103",
+              "10",
+              "9,71 %",
+              "9,30 %",
+              "552,66",
+              "96,31 %",
+              "0,083"
+            ],
+            [
+              "Holdout",
+              "10",
+              "103",
+              "9",
+              "8,74 %",
+              "5,41 %",
+              "570,45",
+              "100,00 %",
+              "0,000"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "1",
+              "101",
+              "45",
+              "44,55 %",
+              "53,30 %",
+              "482,92",
+              "18,83 %",
+              "0,115"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "2",
+              "101",
+              "38",
+              "37,62 %",
+              "37,92 %",
+              "501,19",
+              "34,73 %",
+              "0,193"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "3",
+              "101",
+              "32",
+              "31,68 %",
+              "31,04 %",
+              "509,93",
+              "48,12 %",
+              "0,237"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "4",
+              "101",
+              "17",
+              "16,83 %",
+              "26,46 %",
+              "516,41",
+              "55,23 %",
+              "0,199"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "5",
+              "101",
+              "26",
+              "25,74 %",
+              "21,99 %",
+              "523,28",
+              "66,11 %",
+              "0,2099"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "6",
+              "101",
+              "23",
+              "22,77 %",
+              "18,82 %",
+              "529,07",
+              "75,73 %",
+              "0,205"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "7",
+              "101",
+              "15",
+              "14,85 %",
+              "15,92 %",
+              "534,73",
+              "82,01 %",
+              "0,156"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "8",
+              "101",
+              "20",
+              "19,80 %",
+              "12,97 %",
+              "541,57",
+              "90,38 %",
+              "0,134"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "9",
+              "100",
+              "13",
+              "13,00 %",
+              "9,30 %",
+              "552,61",
+              "95,82 %",
+              "0,075"
+            ],
+            [
+              "Fuera de tiempo (OOT)",
+              "10",
+              "100",
+              "10",
+              "10,00 %",
+              "5,35 %",
+              "571,25",
+              "100,00 %",
+              "0,000"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "stability",
+        "label": "Estabilidad",
+        "lines": [
+          "Desarrollo vs. Holdout: peor PSI 0,0132 (PD calibrada) → Estable",
+          "Desarrollo vs. OOT: peor PSI 0,0068 (score) → Estable",
+          "CSI más alto: mora_max_12m (0,0102)",
+          "Estabilidad temporal del score por período: 6 períodos"
+        ],
+        "alerts": [],
+        "table": {
+          "columns": [
+            "Métrica",
+            "Comparación",
+            "Variable",
+            "Valor",
+            "Banda"
+          ],
+          "rows": [
+            [
+              "PSI del score",
+              "Desarrollo vs. Holdout",
+              "score",
+              "0,0127",
+              "Estable"
+            ],
+            [
+              "PSI del score",
+              "Desarrollo vs. OOT",
+              "score",
+              "0,0068",
+              "Estable"
+            ],
+            [
+              "PSI de la PD",
+              "Desarrollo vs. Holdout",
+              "pd_calibrated",
+              "0,0132",
+              "Estable"
+            ],
+            [
+              "PSI de la PD",
+              "Desarrollo vs. OOT",
+              "pd_calibrated",
+              "0,0065",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. Holdout",
+              "antiguedad_meses__points",
+              "0,0026",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. OOT",
+              "antiguedad_meses__points",
+              "0,0015",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. Holdout",
+              "deuda_ingreso__points",
+              "0,0033",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. OOT",
+              "deuda_ingreso__points",
+              "0,0082",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. Holdout",
+              "ingreso_mensual__points",
+              "0,00299",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. OOT",
+              "ingreso_mensual__points",
+              "0,0098",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. Holdout",
+              "mora_max_12m__points",
+              "0,0102",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. OOT",
+              "mora_max_12m__points",
+              "0,0069",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. Holdout",
+              "utilizacion_linea__points",
+              "0,0072",
+              "Estable"
+            ],
+            [
+              "CSI",
+              "Desarrollo vs. OOT",
+              "utilizacion_linea__points",
+              "0,00397",
+              "Estable"
+            ],
+            [
+              "PSI temporal",
+              "Período",
+              "score",
+              "0,0105",
+              "Estable"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "validation",
+        "label": "Validación formal",
+        "lines": [
+          "Estado técnico: Falla — lo decide Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)",
+          "3 pruebas con veredicto, 1 fallida; familias: discriminación, calibración y estabilidad",
+          "El estado técnico es una síntesis del motor; el veredicto lo firma un validador"
+        ],
+        "alerts": [
+          "Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)"
+        ],
+        "table": {
+          "columns": [
+            "Familia",
+            "Prueba",
+            "Muestra",
+            "Valor",
+            "p-valor",
+            "Veredicto"
+          ],
+          "rows": [
+            [
+              "Discriminación",
+              "AUC",
+              "Desarrollo",
+              "0,7123",
+              "—",
+              "Evaluada"
+            ],
+            [
+              "Discriminación",
+              "AUC",
+              "Holdout",
+              "0,6946",
+              "—",
+              "Evaluada"
+            ],
+            [
+              "Discriminación",
+              "AUC",
+              "Fuera de tiempo (OOT)",
+              "0,6561",
+              "—",
+              "Evaluada"
+            ],
+            [
+              "Calibración",
+              "Hosmer-Lemeshow",
+              "Desarrollo",
+              "6,0079",
+              "0,646",
+              "Pasa"
+            ],
+            [
+              "Calibración",
+              "Puntaje de Brier",
+              "Desarrollo",
+              "0,1602",
+              "—",
+              "Sin veredicto"
+            ],
+            [
+              "Calibración",
+              "Hosmer-Lemeshow",
+              "Fuera de tiempo (OOT)",
+              "19,4511",
+              "0,013",
+              "Falla"
+            ],
+            [
+              "Calibración",
+              "Puntaje de Brier",
+              "Fuera de tiempo (OOT)",
+              "0,1713",
+              "—",
+              "Sin veredicto"
+            ],
+            [
+              "Calibración",
+              "Hosmer-Lemeshow",
+              "Holdout",
+              "10,1206",
+              "0,257",
+              "Pasa"
+            ],
+            [
+              "Calibración",
+              "Puntaje de Brier",
+              "Holdout",
+              "0,1643",
+              "—",
+              "Sin veredicto"
+            ],
+            [
+              "Estabilidad",
+              "PSI del score · score",
+              "Desarrollo vs. Holdout",
+              "0,0127",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "PSI del score · score",
+              "Desarrollo vs. OOT",
+              "0,0068",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "PSI de la PD · pd_calibrated",
+              "Desarrollo vs. Holdout",
+              "0,0132",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "PSI de la PD · pd_calibrated",
+              "Desarrollo vs. OOT",
+              "0,0065",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · antiguedad_meses",
+              "Desarrollo vs. Holdout",
+              "0,0026",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · antiguedad_meses",
+              "Desarrollo vs. OOT",
+              "0,0015",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · deuda_ingreso",
+              "Desarrollo vs. Holdout",
+              "0,0033",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · deuda_ingreso",
+              "Desarrollo vs. OOT",
+              "0,0082",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · ingreso_mensual",
+              "Desarrollo vs. Holdout",
+              "0,00299",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · ingreso_mensual",
+              "Desarrollo vs. OOT",
+              "0,0098",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · mora_max_12m",
+              "Desarrollo vs. Holdout",
+              "0,0102",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · mora_max_12m",
+              "Desarrollo vs. OOT",
+              "0,0069",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · utilizacion_linea",
+              "Desarrollo vs. Holdout",
+              "0,0072",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "CSI · utilizacion_linea",
+              "Desarrollo vs. OOT",
+              "0,00397",
+              "—",
+              "Pasa (Estable)"
+            ],
+            [
+              "Estabilidad",
+              "PSI temporal · score",
+              "Período",
+              "0,0105",
+              "—",
+              "Pasa (Estable)"
+            ]
+          ]
+        }
+      },
+      {
+        "stage": "master_scale",
+        "label": "Escala maestra",
+        "lines": [
+          "5 tramos de puntaje, del 1, de menor riesgo, al 5; cada uno con al menos el 5 % de Desarrollo y una tasa de malos distinta de la de sus vecinos.",
+          "PD del tramo de 4,77 % a 53,52 %; su promedio en Desarrollo es el ancla de la calibración, 23,33 %.",
+          "En Holdout y Fuera de tiempo (OOT) hay tramos que revisar (ver «Qué revisar»).",
+          "El tramo mayor tiene el 35,3 % de Desarrollo (tramo 2); índice de concentración 0,244.",
+          "Sin corte declarado: la tabla de cortes muestra, para cada límite, cuánto se aprueba, la tasa de malos, los malos evitados y los buenos rechazados.",
+          "La PD de cada tramo es su tasa de malos de Desarrollo llevada al ancla de la calibración; en una cartera de aprobados, la tabla mide a quien pasó la política anterior."
+        ],
+        "alerts": [
+          "En Fuera de tiempo (OOT), el tramo 1 subestima su PD (rojo)."
+        ],
+        "table": {
+          "columns": [
+            "Tramo",
+            "Puntaje",
+            "PD del tramo",
+            "Participación Desarrollo",
+            "Tasa de malos Desarrollo",
+            "Semáforo Desarrollo",
+            "Participación Holdout",
+            "Tasa de malos Holdout",
+            "Semáforo Holdout",
+            "Participación Fuera de tiempo (OOT)",
+            "Tasa de malos Fuera de tiempo (OOT)",
+            "Semáforo Fuera de tiempo (OOT)"
+          ],
+          "rows": [
+            [
+              "1",
+              "desde 556 puntos",
+              "4,77 %",
+              "12,40 %",
+              "4,68 %",
+              "Verde",
+              "12,71 %",
+              "9,16 %",
+              "Ámbar",
+              "13,39 %",
+              "11,85 %",
+              "Rojo"
+            ],
+            [
+              "2",
+              "de 527 a 555 puntos",
+              "13,96 %",
+              "35,27 %",
+              "13,96 %",
+              "Verde",
+              "34,72 %",
+              "15,36 %",
+              "Verde",
+              "36,61 %",
+              "17,07 %",
+              "Ámbar"
+            ],
+            [
+              "3",
+              "de 512 a 526 puntos",
+              "24,89 %",
+              "24,14 %",
+              "24,90 %",
+              "Verde",
+              "23,28 %",
+              "22,08 %",
+              "Verde",
+              "22,42 %",
+              "22,12 %",
+              "Verde"
+            ],
+            [
+              "4",
+              "de 494 a 511 puntos",
+              "36,85 %",
+              "19,72 %",
+              "36,88 %",
+              "Verde",
+              "20,66 %",
+              "36,62 %",
+              "Verde",
+              "18,85 %",
+              "34,74 %",
+              "Verde"
+            ],
+            [
+              "5",
+              "hasta 493 puntos",
+              "53,52 %",
+              "8,48 %",
+              "53,57 %",
+              "Verde",
+              "8,63 %",
+              "51,69 %",
+              "Verde",
+              "8,73 %",
+              "50,00 %",
+              "Verde"
+            ]
+          ]
+        },
+        "extra_tables": [
+          {
+            "title": "Tabla de puntos de corte",
+            "columns": [
+              "Muestra",
+              "Aprobar",
+              "Puntaje",
+              "Aprobados",
+              "Tasa de malos de los aprobados",
+              "PD esperada de los aprobados",
+              "Malos evitados",
+              "Buenos rechazados"
+            ],
+            "rows": [
+              [
+                "Desarrollo",
+                "Tramos 1 a 1",
+                "desde 556 puntos",
+                "12,40 %",
+                "4,68 %",
+                "4,77 %",
+                "97,51 %",
+                "84,59 %"
+              ],
+              [
+                "Desarrollo",
+                "Tramos 1 a 2",
+                "desde 527 puntos",
+                "47,66 %",
+                "11,55 %",
+                "11,57 %",
+                "76,41 %",
+                "45,01 %"
+              ],
+              [
+                "Desarrollo",
+                "Tramos 1 a 3",
+                "desde 512 puntos",
+                "71,80 %",
+                "16,03 %",
+                "16,05 %",
+                "50,65 %",
+                "21,37 %"
+              ],
+              [
+                "Desarrollo",
+                "Tramos 1 a 4",
+                "desde 494 puntos",
+                "91,52 %",
+                "20,52 %",
+                "20,53 %",
+                "19,48 %",
+                "5,14 %"
+              ],
+              [
+                "Desarrollo",
+                "Todos los tramos",
+                "todos los puntajes",
+                "100,00 %",
+                "23,33 %",
+                "23,33 %",
+                "0,00 %",
+                "0,00 %"
+              ],
+              [
+                "Holdout",
+                "Tramos 1 a 1",
+                "desde 556 puntos",
+                "12,71 %",
+                "9,16 %",
+                "4,77 %",
+                "95,08 %",
+                "84,88 %"
+              ],
+              [
+                "Holdout",
+                "Tramos 1 a 2",
+                "desde 527 puntos",
+                "47,43 %",
+                "13,70 %",
+                "11,50 %",
+                "72,54 %",
+                "46,38 %"
+              ],
+              [
+                "Holdout",
+                "Tramos 1 a 3",
+                "desde 512 puntos",
+                "70,71 %",
+                "16,46 %",
+                "15,91 %",
+                "50,82 %",
+                "22,62 %"
+              ],
+              [
+                "Holdout",
+                "Tramos 1 a 4",
+                "desde 494 puntos",
+                "91,37 %",
+                "21,02 %",
+                "20,64 %",
+                "18,85 %",
+                "5,46 %"
+              ],
+              [
+                "Holdout",
+                "Todos los tramos",
+                "todos los puntajes",
+                "100,00 %",
+                "23,67 %",
+                "23,48 %",
+                "0,00 %",
+                "0,00 %"
+              ],
+              [
+                "Fuera de tiempo (OOT)",
+                "Tramos 1 a 1",
+                "desde 556 puntos",
+                "13,39 %",
+                "11,85 %",
+                "4,77 %",
+                "93,31 %",
+                "84,53 %"
+              ],
+              [
+                "Fuera de tiempo (OOT)",
+                "Tramos 1 a 2",
+                "desde 527 puntos",
+                "50,00 %",
+                "15,67 %",
+                "11,50 %",
+                "66,95 %",
+                "44,73 %"
+              ],
+              [
+                "Fuera de tiempo (OOT)",
+                "Tramos 1 a 3",
+                "desde 512 puntos",
+                "72,42 %",
+                "17,67 %",
+                "15,64 %",
+                "46,03 %",
+                "21,85 %"
+              ],
+              [
+                "Fuera de tiempo (OOT)",
+                "Tramos 1 a 4",
+                "desde 494 puntos",
+                "91,27 %",
+                "21,20 %",
+                "20,02 %",
+                "18,41 %",
+                "5,72 %"
+              ],
+              [
+                "Fuera de tiempo (OOT)",
+                "Todos los tramos",
+                "todos los puntajes",
+                "100,00 %",
+                "23,71 %",
+                "22,95 %",
+                "0,00 %",
+                "0,00 %"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "stage": "report",
+        "label": "Informe y ficha",
+        "lines": [
+          "Informe HTML: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.html",
+          "Informe Word: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx",
+          "Informe PDF: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf",
+          "Fuente editable (Quarto): /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd",
+          "Registro de auditoría: /home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690/audit_trail.jsonl"
+        ],
+        "alerts": [],
+        "table": null
+      }
+    ],
+    "final": {
+      "execution": "completada",
+      "validation": "Falla — lo decide Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)",
+      "figures": [
+        [
+          "AUC en Fuera de tiempo (OOT)",
+          "0,656"
+        ],
+        [
+          "Gini en Fuera de tiempo (OOT)",
+          "0,312"
+        ],
+        [
+          "KS en Fuera de tiempo (OOT)",
+          "0,252"
+        ],
+        [
+          "Caída del AUC Desarrollo → Fuera de tiempo (OOT)",
+          "-0,056 (-7,9 %)"
+        ],
+        [
+          "Peor PSI entre score y PD",
+          "0,0132 (Desarrollo vs. Holdout) → Estable"
+        ]
+      ],
+      "review": [
+        "Tramos y WoE: antiguedad_meses: la tasa de malos invierte la tendencia en Holdout",
+        "Tramos y WoE: deuda_ingreso: la tasa de malos invierte la tendencia en Fuera de tiempo (OOT)",
+        "Tramos y WoE: ingreso_mensual: la tasa de malos invierte la tendencia en Fuera de tiempo (OOT)",
+        "Tramos y WoE: mora_max_12m: la tasa de malos invierte la tendencia en Holdout y Fuera de tiempo (OOT)",
+        "Modelo: Concentra más del 90 % del IV del modelo: ingreso_mensual",
+        "Validación formal: Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)",
+        "Escala maestra: En Fuera de tiempo (OOT), el tramo 1 subestima su PD (rojo)."
+      ],
+      "decisions": [],
+      "files": [
+        [
+          "Carpeta del proyecto",
+          "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690"
+        ],
+        [
+          "Evidencia de la corrida",
+          "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690"
+        ],
+        [
+          "Registro de auditoría",
+          "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/runs/fac2d6ed783744ccab385cc484be8690/audit_trail.jsonl"
+        ],
+        [
+          "Informe HTML",
+          "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.html"
+        ],
+        [
+          "Informe Word",
+          "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx"
+        ],
+        [
+          "Informe PDF",
+          "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf"
+        ],
+        [
+          "Fuente editable (Quarto)",
+          "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd"
+        ]
+      ]
+    },
+    "error": null
+  },
+  "model_card": {
+    "run_id": "fac2d6ed783744ccab385cc484be8690",
+    "config_hash": "5037311efe486db01b93de8dc89f69e1fe55c1a6da5418ba5c257904e1819c1c",
+    "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8",
+    "git_sha": "267942a265a9df2fa3584001d694bce32abf7acb",
+    "git_dirty": false,
+    "root_seed": 20240706,
+    "schema_version": "1.0.0",
+    "created_at": "2026-10-12T15:46:35.515918Z",
+    "purpose": "Demostración pública de bayesrisk: scorecard de comportamiento sobre una cartera de consumo sintética. Ilustra el flujo completo de construcción y validación; no decide sobre ninguna operación real.",
+    "assumptions": [
+      "Los datos son sintéticos y reproducibles: no representan a ninguna institución.",
+      "La definición de incumplimiento es la del dataset de ejemplo (bad_flag)."
+    ],
+    "limitations": [
+      "Sin uso productivo: las cifras sirven para leer el informe, no para decidir."
+    ],
+    "data_description": {
+      "source": "consumo_comportamiento.parquet",
+      "n_rows": 6000,
+      "n_features": 8,
+      "target_col": "target",
+      "bad_rate": 0.2345,
+      "class_counts": {
+        "bueno": 4593,
+        "malo": 1407,
+        "indeterminado": 0,
+        "excluido": 0
+      },
+      "partition_sizes": {
+        "desarrollo": 3961,
+        "holdout": 1031,
+        "oot": 1008,
+        "fuera_de_modelo": 0
+      },
+      "partition_bad_rates": {
+        "desarrollo": 0.23327442565008835,
+        "holdout": 0.23666343355965083,
+        "oot": 0.2371031746031746,
+        "fuera_de_modelo": 0.0
+      },
+      "performance_window_months": null,
+      "exclusions_by_reason": {},
+      "data_hash": "74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8"
+    },
+    "metrics": {
+      "data.n_rows": 6000.0,
+      "data.n_features": 8.0,
+      "data.bad_rate": 0.2345,
+      "eda.overall_default_rate": 0.23327442565008835,
+      "eda.n_periods": 5.0,
+      "eda.stability_flagged": 0.0,
+      "binning.n_variables_binned": 6.0,
+      "binning.n_variables_skipped": 0.0,
+      "selection.n_candidates": 6.0,
+      "selection.n_selected": 5.0,
+      "selection.max_abs_correlation_after_selection": 0.030325981242350992,
+      "model.n_final_features": 5.0,
+      "scorecard.n_variables": 5.0,
+      "calibration.target_pd": 0.23327442565008835,
+      "calibration.calibrated_mean_pd_dev": 0.2332744256500883,
+      "calibration.observed_default_rate_dev": 0.23327442565008835,
+      "performance.auc_desarrollo": 0.7123458941453674,
+      "performance.gini_desarrollo": 0.42469178829073484,
+      "performance.ks_desarrollo": 0.32014426688447106,
+      "performance.auc_holdout": 0.6946460932780636,
+      "performance.gini_holdout": 0.3892921865561272,
+      "performance.ks_holdout": 0.3118920157477034,
+      "performance.auc_oot": 0.6560957827097084,
+      "performance.gini_oot": 0.31219156541941673,
+      "performance.ks_oot": 0.25190569723218226,
+      "stability.worst_psi": 0.013181930579331572,
+      "stability.worst_csi_value": 0.010208836708625104
+    },
+    "metric_sections": {
+      "performance": {
+        "discrimination": {
+          "effective_deciles_by_partition": {
+            "desarrollo": 10,
+            "holdout": 10,
+            "oot": 10
+          },
+          "not_evaluable_reasons_by_partition": {},
+          "threshold_flags_by_partition": {}
+        }
+      },
+      "stability": {
+        "stability": {
+          "temporal_axis": "period",
+          "include_pd_stability": true,
+          "csi_features": [
+            "antiguedad_meses__points",
+            "deuda_ingreso__points",
+            "ingreso_mensual__points",
+            "mora_max_12m__points",
+            "utilizacion_linea__points"
+          ],
+          "n_periods": 6
+        }
+      }
+    },
+    "decisions": [
+      {
+        "step": null,
+        "regla": "partition_strategy",
+        "umbral": "cohort",
+        "valor": "cohort",
+        "accion": "aplicar_estrategia",
+        "ts": "2026-10-12T15:46:35.828567Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "partition_summary",
+        "umbral": "sizes_bad_rates",
+        "valor": {
+          "bad_rates": {
+            "desarrollo": 0.23327442565008835,
+            "fuera_de_modelo": 0.0,
+            "holdout": 0.23666343355965083,
+            "oot": 0.2371031746031746
+          },
+          "sizes": {
+            "desarrollo": 3961,
+            "fuera_de_modelo": 0,
+            "holdout": 1031,
+            "oot": 1008
+          }
+        },
+        "accion": "reportar_particiones",
+        "ts": "2026-10-12T15:46:35.828669Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "estabilidad_temporal",
+        "umbral": 0.25,
+        "valor": "eje de cohorte sin cronología",
+        "accion": "no_evaluable",
+        "ts": "2026-10-12T15:46:35.850046Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "monotonia_auto_resuelta",
+        "umbral": "auto_asc_desc",
+        "valor": {
+          "monotonic_trend": "descending",
+          "variable": "ingreso_mensual"
+        },
+        "accion": "registrar_tendencia",
+        "ts": "2026-10-12T15:46:40.307831Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "monotonia_auto_resuelta",
+        "umbral": "auto_asc_desc",
+        "valor": {
+          "monotonic_trend": "ascending",
+          "variable": "deuda_ingreso"
+        },
+        "accion": "registrar_tendencia",
+        "ts": "2026-10-12T15:46:40.307918Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "monotonia_auto_resuelta",
+        "umbral": "auto_asc_desc",
+        "valor": {
+          "monotonic_trend": "ascending",
+          "variable": "utilizacion_linea"
+        },
+        "accion": "registrar_tendencia",
+        "ts": "2026-10-12T15:46:40.307945Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "monotonia_auto_resuelta",
+        "umbral": "auto_asc_desc",
+        "valor": {
+          "monotonic_trend": "ascending",
+          "variable": "mora_max_12m"
+        },
+        "accion": "registrar_tendencia",
+        "ts": "2026-10-12T15:46:40.307964Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "monotonia_auto_resuelta",
+        "umbral": "auto_asc_desc",
+        "valor": {
+          "monotonic_trend": "descending",
+          "variable": "antiguedad_meses"
+        },
+        "accion": "registrar_tendencia",
+        "ts": "2026-10-12T15:46:40.307981Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "bins_colapsados",
+        "umbral": 6,
+        "valor": {
+          "n_bins": 5,
+          "variable": "utilizacion_linea"
+        },
+        "accion": "conservar_variable",
+        "ts": "2026-10-12T15:46:40.308564Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "bins_colapsados",
+        "umbral": 6,
+        "valor": {
+          "n_bins": 3,
+          "variable": "segmento"
+        },
+        "accion": "conservar_variable",
+        "ts": "2026-10-12T15:46:40.308605Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "iv_bajo",
+        "umbral": 0.02,
+        "valor": {
+          "iv": 0.002922409359928141,
+          "variable": "segmento"
+        },
+        "accion": "diagnosticar_sin_eliminar",
+        "ts": "2026-10-12T15:46:40.308628Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "low_iv",
+        "umbral": 0.02,
+        "valor": {
+          "feature": "segmento",
+          "iv": 0.002922409359928141,
+          "iv_band": "none",
+          "woe_column": "segmento__woe"
+        },
+        "accion": "excluir",
+        "ts": "2026-10-12T15:46:40.684450Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "model_wald_pvalue",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -1.0000000000000009,
+          "feature": "ingreso_mensual",
+          "lr_stat": null,
+          "p_value": 9.904266606971208e-41
+        },
+        "accion": "enter",
+        "ts": "2026-10-12T15:46:40.901432Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "model_iv_contribution",
+        "umbral": 0.9,
+        "valor": {
+          "beta": null,
+          "feature": "ingreso_mensual",
+          "lr_stat": null,
+          "p_value": null
+        },
+        "accion": "flag",
+        "ts": "2026-10-12T15:46:40.913945Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "model_wald_pvalue",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -1.0523094045477277,
+          "feature": "deuda_ingreso",
+          "lr_stat": null,
+          "p_value": 4.298619202001231e-28
+        },
+        "accion": "enter",
+        "ts": "2026-10-12T15:46:40.965927Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "model_wald_pvalue",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -1.1026846747332208,
+          "feature": "utilizacion_linea",
+          "lr_stat": null,
+          "p_value": 9.970285673886036e-12
+        },
+        "accion": "enter",
+        "ts": "2026-10-12T15:46:41.018289Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "model_wald_pvalue",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -1.0902029723775233,
+          "feature": "antiguedad_meses",
+          "lr_stat": null,
+          "p_value": 1.7899471110037847e-07
+        },
+        "accion": "enter",
+        "ts": "2026-10-12T15:46:41.058893Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "model_wald_pvalue",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -0.9678239296796618,
+          "feature": "mora_max_12m",
+          "lr_stat": null,
+          "p_value": 0.00036461213095663236
+        },
+        "accion": "enter",
+        "ts": "2026-10-12T15:46:41.091528Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "model_stepwise_enter",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -1.0000000000000009,
+          "criterion": "wald_pvalue",
+          "detail": "wald_p=9.90427e-41",
+          "feature": "ingreso_mensual",
+          "iteration": 1,
+          "lr_stat": null,
+          "p_value": 9.904266606971208e-41,
+          "woe_column": "ingreso_mensual__woe"
+        },
+        "accion": "entrar",
+        "ts": "2026-10-12T15:46:41.175781Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
+      },
+      {
+        "step": null,
+        "regla": "model_iv_contribution",
+        "umbral": 0.9,
+        "valor": {
+          "beta": null,
+          "criterion": "iv_contribution",
+          "detail": "iv_contribution=1",
+          "feature": "ingreso_mensual",
+          "iteration": 2,
+          "iv": 0.3047503805275573,
+          "iv_contribution": 1.0,
+          "lr_stat": null,
+          "p_value": null,
+          "woe_column": "ingreso_mensual__woe"
+        },
+        "accion": "flag",
+        "ts": "2026-10-12T15:46:41.175896Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": "contribución al IV 1,0000 > máximo 0,90"
+      },
+      {
+        "step": null,
+        "regla": "model_stepwise_enter",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -1.0523094045477277,
+          "criterion": "wald_pvalue",
+          "detail": "wald_p=4.29862e-28",
+          "feature": "deuda_ingreso",
+          "iteration": 2,
+          "lr_stat": null,
+          "p_value": 4.298619202001231e-28,
+          "woe_column": "deuda_ingreso__woe"
+        },
+        "accion": "entrar",
+        "ts": "2026-10-12T15:46:41.175936Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
+      },
+      {
+        "step": null,
+        "regla": "model_stepwise_enter",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -1.1026846747332208,
+          "criterion": "wald_pvalue",
+          "detail": "wald_p=9.97029e-12",
+          "feature": "utilizacion_linea",
+          "iteration": 3,
+          "lr_stat": null,
+          "p_value": 9.970285673886036e-12,
+          "woe_column": "utilizacion_linea__woe"
+        },
+        "accion": "entrar",
+        "ts": "2026-10-12T15:46:41.175970Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
+      },
+      {
+        "step": null,
+        "regla": "model_stepwise_enter",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -1.0902029723775233,
+          "criterion": "wald_pvalue",
+          "detail": "wald_p=1.78995e-07",
+          "feature": "antiguedad_meses",
+          "iteration": 4,
+          "lr_stat": null,
+          "p_value": 1.7899471110037847e-07,
+          "woe_column": "antiguedad_meses__woe"
+        },
+        "accion": "entrar",
+        "ts": "2026-10-12T15:46:41.176000Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
+      },
+      {
+        "step": null,
+        "regla": "model_stepwise_enter",
+        "umbral": 0.05,
+        "valor": {
+          "beta": -0.9678239296796618,
+          "criterion": "wald_pvalue",
+          "detail": "wald_p=0.000364612",
+          "feature": "mora_max_12m",
+          "iteration": 5,
+          "lr_stat": null,
+          "p_value": 0.00036461213095663236,
+          "woe_column": "mora_max_12m__woe"
+        },
+        "accion": "entrar",
+        "ts": "2026-10-12T15:46:41.176027Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": "p-valor < 0,001 (Wald < 0,001); umbral 0,05"
+      },
+      {
+        "step": null,
+        "regla": "statsmodels_convergence",
+        "umbral": {
+          "fit_maxiter": 100,
+          "tol": 1e-08
+        },
+        "valor": {
+          "converged": true,
+          "n_iterations": 6,
+          "optimizer": "newton"
+        },
+        "accion": "aceptar_ajuste",
+        "ts": "2026-10-12T15:46:41.176059Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "woe_duplicado",
+        "umbral": "primera_aparicion_feature_woe",
+        "valor": [
+          {
+            "bin_label": "Missing",
+            "feature": "antiguedad_meses",
+            "points_descartados": 104,
+            "points_usados": 104,
+            "woe": 0.0
+          },
+          {
+            "bin_label": "Missing",
+            "feature": "deuda_ingreso",
+            "points_descartados": 104,
+            "points_usados": 104,
+            "woe": 0.0
+          },
+          {
+            "bin_label": "Missing",
+            "feature": "ingreso_mensual",
+            "points_descartados": 104,
+            "points_usados": 104,
+            "woe": 0.0
+          },
+          {
+            "bin_label": "Missing",
+            "feature": "mora_max_12m",
+            "points_descartados": 104,
+            "points_usados": 104,
+            "woe": 0.0
+          },
+          {
+            "bin_label": "Missing",
+            "feature": "utilizacion_linea",
+            "points_descartados": 104,
+            "points_usados": 104,
+            "woe": 0.0
+          }
+        ],
+        "accion": "usar_punto_determinista",
+        "ts": "2026-10-12T15:46:41.208690Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "scorecard_rounding",
+        "umbral": "nearest_integer",
+        "valor": {
+          "delta_max_abs": 0.4891356761430501,
+          "delta_suma": -3.1047431971888955,
+          "n_variables": 5
+        },
+        "accion": "publicar_puntos_redondeados",
+        "ts": "2026-10-12T15:46:41.209088Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "calibration_anchor",
+        "umbral": "desarrollo",
+        "valor": {
+          "anchor_kind": "through_the_cycle",
+          "anchor_source": "development_observed",
+          "target_pd": 0.23327442565008835
+        },
+        "accion": "fijar_ancla",
+        "ts": "2026-10-12T15:46:41.310639Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "calibration_method",
+        "umbral": 1e-12,
+        "valor": {
+          "method": "intercept_offset",
+          "n_fit": 3961
+        },
+        "accion": "ajustar_calibracion",
+        "ts": "2026-10-12T15:46:41.310731Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "calibration_offset",
+        "umbral": 1e-12,
+        "valor": {
+          "calibrated_mean_pd_dev": 0.2332744256500883,
+          "offset": -2.721334238405213e-16,
+          "raw_mean_pd_dev": 0.23327442565008835
+        },
+        "accion": "publicar_pd_calibrada",
+        "ts": "2026-10-12T15:46:41.310770Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "calibration_ranking",
+        "umbral": "rank(pd_raw)==rank(pd_calibrated)",
+        "valor": {
+          "ranking_preserved": true,
+          "ties_created": 0
+        },
+        "accion": "registrar_ranking",
+        "ts": "2026-10-12T15:46:41.310799Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "calibration_hosmer_lemeshow",
+        "umbral": 0.05,
+        "valor": {
+          "p_value": 0.012624826300114127,
+          "partition": "oot",
+          "statistic": 19.451071238480708
+        },
+        "accion": "revisar_calibracion",
+        "ts": "2026-10-12T15:46:41.447357Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "master_scale_grades",
+        "umbral": {
+          "monotona": true,
+          "p_valor_maximo_entre_vecinos": 0.05,
+          "participacion_minima": 0.05,
+          "tramos_maximos": 10
+        },
+        "valor": {
+          "causa": null,
+          "cortes": [
+            493.5,
+            511.5,
+            526.5,
+            555.5
+          ],
+          "estado_del_solver": "OPTIMAL",
+          "origen": "formed",
+          "tramos": 5
+        },
+        "accion": "formar_tramos",
+        "ts": "2026-10-12T15:46:41.515908Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "master_scale_pd",
+        "umbral": "development_observed",
+        "valor": {
+          "ancla": 0.23327442565008835,
+          "delta": -0.0018263473459344541,
+          "igualados": [],
+          "pd": [
+            0.04768122881497633,
+            0.13962309155935385,
+            0.2488747341268789,
+            0.36850072369576287,
+            0.5351540080706614
+          ]
+        },
+        "accion": "asignar_pd_por_tramo",
+        "ts": "2026-10-12T15:46:41.516008Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "master_scale_tramo_rojo",
+        "umbral": "oot",
+        "valor": {
+          "tramo": 1
+        },
+        "accion": "alertar",
+        "ts": "2026-10-12T15:46:41.516046Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "report_sections",
+        "umbral": [
+          "eda",
+          "binning",
+          "selection",
+          "model",
+          "scorecard",
+          "calibration",
+          "performance",
+          "stability"
+        ],
+        "valor": {
+          "missing_sections": [],
+          "sections": [
+            "executive_summary",
+            "toc",
+            "introduction",
+            "model_card",
+            "context",
+            "context.data",
+            "context.eda",
+            "methodology",
+            "methodology.data",
+            "methodology.binning",
+            "methodology.selection",
+            "methodology.model",
+            "methodology.scorecard",
+            "methodology.calibration",
+            "results",
+            "results.binning",
+            "results.selection",
+            "results.model",
+            "results.scorecard",
+            "results.calibration",
+            "results.performance",
+            "results.stability",
+            "results.master_scale",
+            "validation",
+            "validation.discrimination",
+            "validation.calibration",
+            "validation.stability",
+            "conclusions",
+            "limitations",
+            "appendix_lineage",
+            "appendix_tables",
+            "appendix_parameters",
+            "appendix_parameters.data",
+            "appendix_parameters.eda",
+            "appendix_parameters.binning",
+            "appendix_parameters.selection",
+            "appendix_parameters.model",
+            "appendix_parameters.scorecard",
+            "appendix_parameters.calibration",
+            "appendix_parameters.performance",
+            "appendix_parameters.stability",
+            "appendix_parameters.validation",
+            "appendix_parameters.master_scale"
+          ]
+        },
+        "accion": "renderizar_reporte",
+        "ts": "2026-10-12T15:47:08.702858Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "report_ai_disabled",
+        "umbral": false,
+        "valor": {
+          "provider": "none"
+        },
+        "accion": "usar_narrativa_basica",
+        "ts": "2026-10-12T15:47:08.718527Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "report_export_html",
+        "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
+        "valor": {
+          "path": "scorecard_report.html",
+          "sha256": "71e990f4af12badec9964190ef05649444f00733fb44315c4dccde60a887b8b1"
+        },
+        "accion": "publicar_html_local",
+        "ts": "2026-10-12T15:47:08.718639Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "report_export_pdf",
+        "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
+        "valor": {
+          "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.pdf"
+        },
+        "accion": "publicar_pdf_local",
+        "ts": "2026-10-12T15:47:08.718673Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "report_export_md",
+        "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
+        "valor": {
+          "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.qmd"
+        },
+        "accion": "publicar_qmd_local",
+        "ts": "2026-10-12T15:47:08.718695Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      },
+      {
+        "step": null,
+        "regla": "report_export_docx",
+        "umbral": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports",
+        "valor": {
+          "path": "/home/runner/work/bayesrisk/bayesrisk/.bayesrisk-demo-fixtures-f1/reports/scorecard_report.docx"
+        },
+        "accion": "publicar_docx_local",
+        "ts": "2026-10-12T15:47:08.718712Z",
+        "autor": null,
+        "motivo": null,
+        "detalle_legible": null
+      }
+    ],
+    "determinism_caveats": [],
+    "review_date": "2026-10-12T15:47:08.728244Z",
+    "next_review_date": "2027-10-12T15:47:08.728244Z",
+    "environment": {
+      "python_version": "3.12.15",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+      "library_versions": {
+        "bayesrisk": "2.12.0",
+        "numpy": "2.4.6",
+        "pandas": "2.3.3",
+        "pandera": "0.32.0",
+        "pyarrow": "24.0.0",
+        "pydantic": "2.13.4",
+        "joblib": "1.5.3",
+        "PyYAML": "6.0.3"
+      },
+      "uv_lock_hash": "6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322",
+      "captured_at": "2026-10-12T15:47:08.729283Z"
+    }
+  }
+}

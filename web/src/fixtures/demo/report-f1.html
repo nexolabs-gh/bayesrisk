@@ -1006,6 +1006,16 @@ figcaption {
     break-inside: avoid;
   }
 
+  /* En flex, WeasyPrint conserva el ancho intrínseco del SVG con estilo inline y puede
+     recortar su última columna. El bloque impreso usa todo el ancho disponible. */
+  .chart-slot {
+    display: block;
+  }
+
+  .chart-slot svg {
+    width: 100%;
+  }
+
   .table-block {
     overflow-x: visible;
   }
@@ -1028,6 +1038,13 @@ figcaption {
     white-space: nowrap;
     overflow-wrap: normal;
     padding: 2px 3px;
+  }
+
+  /* Los valores numéricos permanecen juntos; los títulos largos sí deben envolver.
+     Un encabezado nowrap expandía la escala maestra fuera de la página apaisada. */
+  .table-block--wide thead th {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   thead {
@@ -1202,7 +1219,7 @@ figcaption {
     </div>
     <div class="cover-field">
       <dt>Fecha de emisión</dt>
-      <dd>2026-10-12</dd>
+      <dd>2026-10-21</dd>
     </div>
   </dl>
 
@@ -1210,7 +1227,7 @@ figcaption {
     <p class="lineage-caption">Trazabilidad de la corrida (lineage)</p>
     <div class="lineage-line"><code>config_hash=5037311efe486db01b93de8dc89f69e1fe55c1a6da5418ba5c257904e1819c1c</code></div>
     <div class="lineage-line"><code>data_hash=74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8</code></div>
-    <div class="lineage-line"><code>git_sha=267942a265a9df2fa3584001d694bce32abf7acb</code></div>
+    <div class="lineage-line"><code>git_sha=06c5ad70cbbe909c30e94456faccc79bddf71d03</code></div>
     <div class="lineage-line"><code>root_seed=20240706</code></div>
   </div>
 
@@ -1240,7 +1257,7 @@ figcaption {
 
   <dl class="summary-states">
     <dt>Ejecución</dt><dd>corrieron sin fallos Datos y muestras, Análisis exploratorio, Tramos y WoE, Selección de variables, Modelo, Tarjeta de puntuación, Calibración, Desempeño, Estabilidad, Validación formal y Escala maestra; este informe es la última etapa de la corrida</dd>
-    <dt>Validación técnica</dt><dd>Falla — lo decide Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)</dd>
+    <dt>Validación técnica</dt><dd>Evaluación contextual: Revisar: calibración pendiente</dd>
   </dl>
 
   <h4>Cifras clave</h4>
@@ -1261,7 +1278,7 @@ figcaption {
     <li>⚠ Tramos y WoE: ingreso_mensual: la tasa de malos invierte la tendencia en Fuera de tiempo (OOT)</li>
     <li>⚠ Tramos y WoE: mora_max_12m: la tasa de malos invierte la tendencia en Holdout y Fuera de tiempo (OOT)</li>
     <li>⚠ Modelo: Concentra más del 90 % del IV del modelo: ingreso_mensual</li>
-    <li>⚠ Validación formal: Estado técnico «Falla»: revisar Hosmer-Lemeshow en Fuera de tiempo (OOT) (p-valor 0,013; PD media agregada 23,34 % frente a 23,71 % observada; la mayor diferencia, en el grupo 7 de 10: 16,83 % observado frente a 26,54 % predicho)</li>
+    <li>⚠ Validación formal: Evaluación contextual: Revisar: calibración pendiente.</li>
     <li>⚠ Escala maestra: En Fuera de tiempo (OOT), el tramo 1 subestima su PD (rojo).</li>
   </ul>
 
@@ -1363,10 +1380,10 @@ figcaption {
           <td><span class="band band-ok">Estable</span></td>
         </tr>
         <tr>
-          <td>Estado técnico de validación formal</td>
+          <td>Evaluación contextual</td>
           <td>preset-estandar-consumo</td>
-          <td class="num">1 de 3 pruebas fallidas</td>
-          <td><span class="band band-alert">Falla</span></td>
+          <td class="num">Sin pruebas de pasa o falla</td>
+          <td><span class="band band-warn">Revisar</span></td>
         </tr>
       </tbody>
     </table>
@@ -1374,9 +1391,13 @@ figcaption {
 
   <p class="muted">No se configuraron umbrales de discriminación, de modo que el motor no puede levantar alertas sobre AUC, Gini ni KS: «sin alertas» significa que no había umbral contra el cual comparar, no que la métrica sea satisfactoria.</p>
   <p class="muted">Las bandas de PSI usan los umbrales configurados: estable por debajo de 0,10, revisión desde 0,10 y redesarrollo desde 0,25.</p>
+  <p class="muted">Evaluación contextual: Revisar: calibración pendiente.</p>
+  <p class="muted">0 pruebas evaluables sin HL; 0 rechazos. Familias ejecutadas: Discriminación, Calibración, Estabilidad.</p>
+  <p class="muted">La evaluación se limita a las familias ejecutadas; no certifica la calibración global ni la aprobación institucional del modelo.</p>
+  <p class="muted">La librería aún no dispone de un contraste de calibración validado para este contexto.</p>
   <p class="muted">La validación formal ejecutó discriminación, calibración y estabilidad. Su estado es una síntesis técnica del motor y no sustituye el veredicto que debe firmar un validador humano.</p>
 
-  <p class="scope-note">Alcance: scorecard y validación formal de las familias configuradas. El capítulo «Validación formal» reproduce el resultado que publicó el motor; el veredicto permanece bajo responsabilidad humana. Todos los valores provienen de la corrida trazada en la portada: no se completan con supuestos.</p>
+  <p class="scope-note">Alcance: scorecard y validación formal de las familias configuradas. El capítulo «Validación formal» distingue la evaluación contextual disponible del resultado convencional histórico; el veredicto permanece bajo responsabilidad humana. Todos los valores provienen de la corrida trazada en la portada: no se completan con supuestos.</p>
 </section>
 
 <section id="section-toc" data-section-id="toc" data-kind="toc" class="report-section chapter toc">
@@ -3768,7 +3789,7 @@ L 608.4 229.840234
 
 
   <p>La PD se calibró por desplazamiento del intercepto (intercept offset), ajustando sobre la partición de Desarrollo contra la tasa de incumplimiento observada en Desarrollo, que resultó ser 23,33 %. El ancla es a través del ciclo (TTC).</p>
-  <p>El desplazamiento aplicado al intercepto es -2,7e-16, lo que preserva el ordenamiento del score: la calibración corrige el nivel de la PD, no su ranking.</p>
+  <p>El desplazamiento aplicado al intercepto es -1,01e-16, lo que preserva el ordenamiento del score: la calibración corrige el nivel de la PD, no su ranking.</p>
   <p>El ajuste se realizó sobre 3961 observaciones de Desarrollo.</p>
 
 
@@ -6190,6 +6211,20 @@ L 357.81 486.278125
     </tbody>
   </table>
 </figure>
+<figure class="table-block">
+  <figcaption class="table-title">PSI del puntaje por período contra Desarrollo</figcaption>
+  <table id="table-stability-psi_by_period" data-table-key="stability.psi_by_period">
+    <thead><tr><th>Período</th><th>Operaciones</th><th>Puntaje medio</th><th>Mediana del puntaje</th><th>PD media</th><th>PSI</th><th>Banda</th></tr></thead>
+    <tbody>
+      <tr><td>2023Q1</td><td>1.005</td><td>526,0667</td><td>526,0000</td><td>23,44 %</td><td>0,0056</td><td>Estable</td></tr>
+      <tr><td>2023Q2</td><td>1.002</td><td>526,51397</td><td>526,0000</td><td>23,12 %</td><td>0,0034</td><td>Estable</td></tr>
+      <tr><td>2023Q3</td><td>1.011</td><td>525,4164</td><td>524,0000</td><td>23,83 %</td><td>0,0043</td><td>Estable</td></tr>
+      <tr><td>2023Q4</td><td>992</td><td>526,5897</td><td>525,0000</td><td>23,04 %</td><td>0,0105</td><td>Estable</td></tr>
+      <tr><td>2024Q1</td><td>982</td><td>525,9389</td><td>525,0000</td><td>23,55 %</td><td>0,0074</td><td>Estable</td></tr>
+      <tr><td>2024Q2</td><td>1.008</td><td>526,2252</td><td>526,5000</td><td>23,34 %</td><td>0,0068</td><td>Estable</td></tr>
+    </tbody>
+  </table>
+</figure>
 
 </section>
 <section id="section-results-master_scale" data-section-id="results.master_scale" data-kind="data" data-level="2" class="report-section subsection">
@@ -6247,7 +6282,12 @@ L 357.81 486.278125
   <h2><span class="section-number">6</span>Validación formal</h2>
 
 
-  <p>La validación formal del modelo «preset-estandar-consumo» ejecutó discriminación, calibración y estabilidad. El estado técnico agregado publicado por el motor es «Falla».</p>
+  <p>Evaluación contextual: Revisar: calibración pendiente.</p>
+  <p>0 pruebas evaluables sin HL; 0 rechazos. Familias ejecutadas: Discriminación, Calibración, Estabilidad.</p>
+  <p>La evaluación se limita a las familias ejecutadas; no certifica la calibración global ni la aprobación institucional del modelo.</p>
+  <p>La librería aún no dispone de un contraste de calibración validado para este contexto.</p>
+  <p>Resultado convencional de HL y estado histórico:</p>
+  <p>La validación formal del modelo «preset-estandar-consumo» ejecutó discriminación, calibración y estabilidad. El estado técnico histórico publicado por el motor es «Falla».</p>
   <p>El resultado registra 3 pruebas, de las cuales 1 quedó fallida. Las tablas se copian del resultado que publicó la validación, sin recalcular métricas ni decisiones.</p>
   <p>Este estado es evidencia técnica; el veredicto de aprobación, aprobación con observaciones o rechazo corresponde al validador humano y queda POR COMPLETAR.</p>
 
@@ -6282,9 +6322,63 @@ L 357.81 486.278125
   <h3 class="subsection-title"><span class="section-number">6.2</span>Calibración</h3>
 
 
-  <p>La tabla reúne Hosmer-Lemeshow, Brier y, cuando fue configurado, el contraste por grado con sus decisiones y semáforo publicados. Filas evaluadas: 6.</p>
+  <p>El diagnóstico descriptivo conserva juntas las PD iguales; sus grupos no tienen p-valor, grados de libertad ni decisión. Un grupo pequeño no acredita precisión. Desarrollo: Misma muestra que declara el ajuste de calibración. Fuente: parámetros y ficha del ajuste de calibración; no acredita independencia del pipeline completo. 3961 observaciones; 10 grupos descriptivos de 10 solicitados. El agrupamiento convencional separa PD iguales y puede depender de su orden; no se ha medido un cambio de veredicto en esta muestra. Holdout: Muestra distinta de la declarada para calibrar; independencia y ausencia de reutilización no certificadas. Fuente: parámetros y ficha del ajuste de calibración; no acredita independencia del pipeline completo. 1031 observaciones; 10 grupos descriptivos de 10 solicitados. El agrupamiento convencional separa PD iguales y puede depender de su orden; no se ha medido un cambio de veredicto en esta muestra. Fuera de tiempo (OOT): Muestra distinta de la declarada para calibrar; independencia y ausencia de reutilización no certificadas. Fuente: parámetros y ficha del ajuste de calibración; no acredita independencia del pipeline completo. 1008 observaciones; 10 grupos descriptivos de 10 solicitados. El agrupamiento convencional separa PD iguales y puede depender de su orden; no se ha medido un cambio de veredicto en esta muestra. La tabla histórica reúne el resultado convencional de Hosmer-Lemeshow, el puntaje informativo de Brier y, cuando fue configurado, el contraste por grado con sus decisiones y semáforo publicados. Filas evaluadas: 6.</p>
 
 
+<figure class="table-block table-block--wide">
+  <figcaption class="table-title">Diagnóstico descriptivo de calibración · Desarrollo</figcaption>
+  <table id="table-validation-calibration_tie_groups-desarrollo" data-table-key="validation.calibration_tie_groups.desarrollo">
+    <thead><tr><th class="num">Grupo</th><th class="num">PD mínima</th><th class="num">PD máxima</th><th class="num">Observaciones</th><th class="num">Malos observados</th><th class="num">Malos esperados</th><th class="num">Tasa observada (%)</th><th class="num">PD media (%)</th><th class="num">Diferencia (pp)</th><th class="num">O/E</th><th>Ausencia de O/E</th><th class="num">No incumplimientos esperados</th><th>Bajo mínimo histórico</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="num">0,0105</td><td class="num">0,0752</td><td class="num">397</td><td class="num">16</td><td class="num">20,9544</td><td class="num">4,0302</td><td class="num">5,2782</td><td class="num">-1,24797</td><td class="num">0,7636</td><td></td><td class="num">376,0456</td><td>No</td></tr>
+      <tr><td class="num">2</td><td class="num">0,0754</td><td class="num">0,1098</td><td class="num">396</td><td class="num">44</td><td class="num">37,0582</td><td class="num">11,1111</td><td class="num">9,3581</td><td class="num">1,75299</td><td class="num">1,1873</td><td></td><td class="num">358,9418</td><td>No</td></tr>
+      <tr><td class="num">3</td><td class="num">0,11002</td><td class="num">0,1457</td><td class="num">399</td><td class="num">54</td><td class="num">51,1065</td><td class="num">13,5338</td><td class="num">12,8086</td><td class="num">0,7252</td><td class="num">1,0566</td><td></td><td class="num">347,8935</td><td>No</td></tr>
+      <tr><td class="num">4</td><td class="num">0,1458</td><td class="num">0,1776</td><td class="num">397</td><td class="num">66</td><td class="num">64,1278</td><td class="num">16,6247</td><td class="num">16,1531</td><td class="num">0,4716</td><td class="num">1,0292</td><td></td><td class="num">332,8722</td><td>No</td></tr>
+      <tr><td class="num">5</td><td class="num">0,1777</td><td class="num">0,2103</td><td class="num">405</td><td class="num">70</td><td class="num">78,2859</td><td class="num">17,28395</td><td class="num">19,3299</td><td class="num">-2,0459</td><td class="num">0,8942</td><td></td><td class="num">326,7141</td><td>No</td></tr>
+      <tr><td class="num">6</td><td class="num">0,2104</td><td class="num">0,2474</td><td class="num">385</td><td class="num">90</td><td class="num">88,1939</td><td class="num">23,3766</td><td class="num">22,9075</td><td class="num">0,4691</td><td class="num">1,0205</td><td></td><td class="num">296,8061</td><td>No</td></tr>
+      <tr><td class="num">7</td><td class="num">0,2474</td><td class="num">0,2886</td><td class="num">396</td><td class="num">99</td><td class="num">106,2913</td><td class="num">25,0000</td><td class="num">26,8412</td><td class="num">-1,8412</td><td class="num">0,9314</td><td></td><td class="num">289,7087</td><td>No</td></tr>
+      <tr><td class="num">8</td><td class="num">0,2886</td><td class="num">0,3406</td><td class="num">397</td><td class="num">130</td><td class="num">124,8904</td><td class="num">32,7456</td><td class="num">31,4585</td><td class="num">1,28705</td><td class="num">1,0409</td><td></td><td class="num">272,1096</td><td>No</td></tr>
+      <tr><td class="num">9</td><td class="num">0,34204</td><td class="num">0,42097</td><td class="num">393</td><td class="num">152</td><td class="num">148,1644</td><td class="num">38,6768</td><td class="num">37,7009</td><td class="num">0,97598</td><td class="num">1,0259</td><td></td><td class="num">244,8356</td><td>No</td></tr>
+      <tr><td class="num">10</td><td class="num">0,4211</td><td class="num">0,8104</td><td class="num">396</td><td class="num">203</td><td class="num">204,9273</td><td class="num">51,2626</td><td class="num">51,7493</td><td class="num">-0,4867</td><td class="num">0,9906</td><td></td><td class="num">191,0727</td><td>No</td></tr>
+    </tbody>
+  </table>
+</figure>
+<figure class="table-block table-block--wide">
+  <figcaption class="table-title">Diagnóstico descriptivo de calibración · Holdout</figcaption>
+  <table id="table-validation-calibration_tie_groups-holdout" data-table-key="validation.calibration_tie_groups.holdout">
+    <thead><tr><th class="num">Grupo</th><th class="num">PD mínima</th><th class="num">PD máxima</th><th class="num">Observaciones</th><th class="num">Malos observados</th><th class="num">Malos esperados</th><th class="num">Tasa observada (%)</th><th class="num">PD media (%)</th><th class="num">Diferencia (pp)</th><th class="num">O/E</th><th>Ausencia de O/E</th><th class="num">No incumplimientos esperados</th><th>Bajo mínimo histórico</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="num">0,0178</td><td class="num">0,0732</td><td class="num">104</td><td class="num">10</td><td class="num">5,6504</td><td class="num">9,6154</td><td class="num">5,43303</td><td class="num">4,1824</td><td class="num">1,7698</td><td></td><td class="num">98,3496</td><td>No</td></tr>
+      <tr><td class="num">2</td><td class="num">0,0743</td><td class="num">0,1101</td><td class="num">103</td><td class="num">9</td><td class="num">9,6176</td><td class="num">8,7379</td><td class="num">9,3375</td><td class="num">-0,5996</td><td class="num">0,9358</td><td></td><td class="num">93,3824</td><td>No</td></tr>
+      <tr><td class="num">3</td><td class="num">0,1112</td><td class="num">0,1505</td><td class="num">103</td><td class="num">15</td><td class="num">13,3677</td><td class="num">14,5631</td><td class="num">12,9784</td><td class="num">1,5847</td><td class="num">1,1221</td><td></td><td class="num">89,6323</td><td>No</td></tr>
+      <tr><td class="num">4</td><td class="num">0,1509</td><td class="num">0,1826</td><td class="num">103</td><td class="num">23</td><td class="num">17,1854</td><td class="num">22,3301</td><td class="num">16,6849</td><td class="num">5,6452</td><td class="num">1,3383</td><td></td><td class="num">85,8146</td><td>No</td></tr>
+      <tr><td class="num">5</td><td class="num">0,1828</td><td class="num">0,2075</td><td class="num">104</td><td class="num">14</td><td class="num">20,2617</td><td class="num">13,4615</td><td class="num">19,4824</td><td class="num">-6,0209</td><td class="num">0,69096</td><td></td><td class="num">83,7383</td><td>No</td></tr>
+      <tr><td class="num">6</td><td class="num">0,2091</td><td class="num">0,2426</td><td class="num">102</td><td class="num">21</td><td class="num">22,8909</td><td class="num">20,5882</td><td class="num">22,4421</td><td class="num">-1,8538</td><td class="num">0,9174</td><td></td><td class="num">79,1091</td><td>No</td></tr>
+      <tr><td class="num">7</td><td class="num">0,2441</td><td class="num">0,2935</td><td class="num">103</td><td class="num">25</td><td class="num">27,4468</td><td class="num">24,2718</td><td class="num">26,6474</td><td class="num">-2,3756</td><td class="num">0,9109</td><td></td><td class="num">75,5532</td><td>No</td></tr>
+      <tr><td class="num">8</td><td class="num">0,2939</td><td class="num">0,3466</td><td class="num">103</td><td class="num">34</td><td class="num">32,96102</td><td class="num">33,0097</td><td class="num">32,00099</td><td class="num">1,0087</td><td class="num">1,0315</td><td></td><td class="num">70,03898</td><td>No</td></tr>
+      <tr><td class="num">9</td><td class="num">0,3471</td><td class="num">0,4206</td><td class="num">103</td><td class="num">41</td><td class="num">39,4757</td><td class="num">39,8058</td><td class="num">38,3259</td><td class="num">1,4799</td><td class="num">1,0386</td><td></td><td class="num">63,5243</td><td>No</td></tr>
+      <tr><td class="num">10</td><td class="num">0,4207</td><td class="num">0,7728</td><td class="num">103</td><td class="num">52</td><td class="num">55,0213</td><td class="num">50,4854</td><td class="num">53,4188</td><td class="num">-2,9333</td><td class="num">0,9451</td><td></td><td class="num">47,9787</td><td>No</td></tr>
+    </tbody>
+  </table>
+</figure>
+<figure class="table-block table-block--wide">
+  <figcaption class="table-title">Diagnóstico descriptivo de calibración · Fuera de tiempo (OOT)</figcaption>
+  <table id="table-validation-calibration_tie_groups-oot" data-table-key="validation.calibration_tie_groups.oot">
+    <thead><tr><th class="num">Grupo</th><th class="num">PD mínima</th><th class="num">PD máxima</th><th class="num">Observaciones</th><th class="num">Malos observados</th><th class="num">Malos esperados</th><th class="num">Tasa observada (%)</th><th class="num">PD media (%)</th><th class="num">Diferencia (pp)</th><th class="num">O/E</th><th>Ausencia de O/E</th><th class="num">No incumplimientos esperados</th><th>Bajo mínimo histórico</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td class="num">0,0094</td><td class="num">0,0753</td><td class="num">101</td><td class="num">10</td><td class="num">5,4252</td><td class="num">9,90099</td><td class="num">5,3715</td><td class="num">4,5295</td><td class="num">1,8432</td><td></td><td class="num">95,5748</td><td>No</td></tr>
+      <tr><td class="num">2</td><td class="num">0,0758</td><td class="num">0,1124</td><td class="num">101</td><td class="num">13</td><td class="num">9,4522</td><td class="num">12,8713</td><td class="num">9,3586</td><td class="num">3,5127</td><td class="num">1,3753</td><td></td><td class="num">91,5478</td><td>No</td></tr>
+      <tr><td class="num">3</td><td class="num">0,1127</td><td class="num">0,1459</td><td class="num">101</td><td class="num">20</td><td class="num">13,1663</td><td class="num">19,80198</td><td class="num">13,0359</td><td class="num">6,7661</td><td class="num">1,51903</td><td></td><td class="num">87,8337</td><td>No</td></tr>
+      <tr><td class="num">4</td><td class="num">0,14602</td><td class="num">0,17404</td><td class="num">101</td><td class="num">15</td><td class="num">16,1321</td><td class="num">14,8515</td><td class="num">15,9724</td><td class="num">-1,1209</td><td class="num">0,9298</td><td></td><td class="num">84,8679</td><td>No</td></tr>
+      <tr><td class="num">5</td><td class="num">0,1742</td><td class="num">0,2018</td><td class="num">102</td><td class="num">24</td><td class="num">19,2681</td><td class="num">23,5294</td><td class="num">18,8903</td><td class="num">4,6391</td><td class="num">1,2456</td><td></td><td class="num">82,7319</td><td>No</td></tr>
+      <tr><td class="num">6</td><td class="num">0,2021</td><td class="num">0,24298</td><td class="num">101</td><td class="num">25</td><td class="num">22,3282</td><td class="num">24,7525</td><td class="num">22,1071</td><td class="num">2,6454</td><td class="num">1,1197</td><td></td><td class="num">78,6718</td><td>No</td></tr>
+      <tr><td class="num">7</td><td class="num">0,2441</td><td class="num">0,2851</td><td class="num">102</td><td class="num">18</td><td class="num">27,1330002</td><td class="num">17,6471</td><td class="num">26,60098</td><td class="num">-8,9539</td><td class="num">0,6634</td><td></td><td class="num">74,8669998</td><td>No</td></tr>
+      <tr><td class="num">8</td><td class="num">0,2866</td><td class="num">0,3391</td><td class="num">99</td><td class="num">31</td><td class="num">30,8849</td><td class="num">31,3131</td><td class="num">31,1969</td><td class="num">0,1163</td><td class="num">1,0037</td><td></td><td class="num">68,1151</td><td>No</td></tr>
+      <tr><td class="num">9</td><td class="num">0,3395</td><td class="num">0,4294</td><td class="num">100</td><td class="num">38</td><td class="num">38,0521</td><td class="num">38,0000</td><td class="num">38,0521</td><td class="num">-0,0521</td><td class="num">0,9986</td><td></td><td class="num">61,9479</td><td>No</td></tr>
+      <tr><td class="num">10</td><td class="num">0,4314</td><td class="num">0,7728</td><td class="num">100</td><td class="num">45</td><td class="num">53,4032</td><td class="num">45,0000</td><td class="num">53,4032</td><td class="num">-8,4032</td><td class="num">0,8426</td><td></td><td class="num">46,5968</td><td>No</td></tr>
+    </tbody>
+  </table>
+</figure>
 <figure class="table-block table-block--wide">
   <figcaption class="table-title">Validación formal — calibración</figcaption>
   <table id="table-validation-calibration" data-table-key="validation.calibration">
@@ -6300,7 +6394,7 @@ L 357.81 486.278125
   </table>
 </figure>
 <figure class="table-block">
-  <figcaption class="table-title">Hosmer-Lemeshow por grupo · Desarrollo</figcaption>
+  <figcaption class="table-title">Hosmer-Lemeshow convencional por grupo · Desarrollo</figcaption>
   <table id="table-validation-hosmer_lemeshow_groups-desarrollo" data-table-key="validation.hosmer_lemeshow_groups.desarrollo">
     <thead><tr><th class="num">Grupo</th><th class="num">Observaciones</th><th class="num">Malos observados</th><th class="num">Malos esperados</th><th class="num">Tasa observada (%)</th><th class="num">PD media (%)</th><th class="num">Diferencia (pp)</th><th class="num">O/E</th><th class="num">Contribución al estadístico</th></tr></thead>
     <tbody>
@@ -6318,7 +6412,7 @@ L 357.81 486.278125
   </table>
 </figure>
 <figure class="table-block">
-  <figcaption class="table-title">Hosmer-Lemeshow por grupo · Fuera de tiempo (OOT)</figcaption>
+  <figcaption class="table-title">Hosmer-Lemeshow convencional por grupo · Fuera de tiempo (OOT)</figcaption>
   <table id="table-validation-hosmer_lemeshow_groups-oot" data-table-key="validation.hosmer_lemeshow_groups.oot">
     <thead><tr><th class="num">Grupo</th><th class="num">Observaciones</th><th class="num">Malos observados</th><th class="num">Malos esperados</th><th class="num">Tasa observada (%)</th><th class="num">PD media (%)</th><th class="num">Diferencia (pp)</th><th class="num">O/E</th><th class="num">Contribución al estadístico</th></tr></thead>
     <tbody>
@@ -6336,7 +6430,7 @@ L 357.81 486.278125
   </table>
 </figure>
 <figure class="table-block">
-  <figcaption class="table-title">Hosmer-Lemeshow por grupo · Holdout</figcaption>
+  <figcaption class="table-title">Hosmer-Lemeshow convencional por grupo · Holdout</figcaption>
   <table id="table-validation-hosmer_lemeshow_groups-holdout" data-table-key="validation.hosmer_lemeshow_groups.holdout">
     <thead><tr><th class="num">Grupo</th><th class="num">Observaciones</th><th class="num">Malos observados</th><th class="num">Malos esperados</th><th class="num">Tasa observada (%)</th><th class="num">PD media (%)</th><th class="num">Diferencia (pp)</th><th class="num">O/E</th><th class="num">Contribución al estadístico</th></tr></thead>
     <tbody>
@@ -6407,7 +6501,7 @@ L 357.81 486.278125
   <h2><span class="section-number">8</span>Limitaciones y supuestos</h2>
 
 
-  <p>El alcance de este informe es la construcción y evaluación del scorecard. La validación formal ejecutó discriminación, calibración y estabilidad y se documenta en su capítulo propio; el estado técnico no sustituye el veredicto humano.</p>
+  <p>El alcance de este informe es la construcción y evaluación del scorecard. La evaluación se limita a las familias ejecutadas; no certifica la calibración global ni la aprobación institucional del modelo. La librería aún no dispone de un contraste de calibración validado para este contexto. La procedencia sólo describe la calibración. La validación formal ejecutó discriminación, calibración y estabilidad y se documenta en su capítulo propio; el estado técnico no sustituye el veredicto humano.</p>
   <p>Todas las métricas provienen de la corrida trazada en el Anexo A. El informe no completa ningún hueco con supuestos: lo que no se pudo calcular aparece declarado como no disponible.</p>
   <p>No hay secciones obligatorias ausentes en esta corrida.</p>
   <p>Los supuestos y las limitaciones que la institución declaró están en el capítulo «Ficha del modelo» y no se repiten aquí.</p>
@@ -6422,20 +6516,20 @@ L 357.81 486.278125
   <h4>Parámetros y payload</h4>
   <dl>
     <dt>config_hash</dt><dd>5037311efe486db01b93de8dc89f69e1fe55c1a6da5418ba5c257904e1819c1c</dd>
-    <dt>created_at</dt><dd>2026-10-12T15:46:35.515918Z</dd>
+    <dt>created_at</dt><dd>2026-10-21T15:07:24.165352Z</dd>
     <dt>data_hash</dt><dd>74c5d9ddeca8ff71853623d20ace015d0788564549339d61bfb66f24dfadfcc8</dd>
     <dt>determinism_caveats</dt><dd>[]</dd>
     <dt>git_dirty</dt><dd>no</dd>
-    <dt>git_sha</dt><dd>267942a265a9df2fa3584001d694bce32abf7acb</dd>
+    <dt>git_sha</dt><dd>06c5ad70cbbe909c30e94456faccc79bddf71d03</dd>
     <dt>library_versions</dt><dd><pre>{
   &#34;PyYAML&#34;: &#34;6.0.3&#34;,
-  &#34;bayesrisk&#34;: &#34;2.12.0&#34;,
+  &#34;bayesrisk&#34;: &#34;2.17.0&#34;,
   &#34;numpy&#34;: &#34;2.4.6&#34;,
   &#34;pandas&#34;: &#34;2.3.3&#34;,
   &#34;pydantic&#34;: &#34;2.13.4&#34;
 }</pre></dd>
     <dt>root_seed</dt><dd>20240706</dd>
-    <dt>runtime_environment_hash</dt><dd>ff5ada2a124b9ad420a8412370bace20141d0fa18f4e6d66f4920bd0b1ad2cd6</dd>
+    <dt>runtime_environment_hash</dt><dd>1f1e38d6b7a5fce46227d0a5615efcf41a2cfe76a98435d2a33c3b817468fc2b</dd>
     <dt>schema_version</dt><dd>1.0.0</dd>
     <dt>uv_lock_hash</dt><dd>6c446c2ad040ff52262caae544ea32b26af36b8abebe5f10d5d276f49e967322</dd>
   </dl>
@@ -6498,8 +6592,12 @@ L 357.81 486.278125
   &#34;validation.hosmer_lemeshow_groups.desarrollo&#34;,
   &#34;validation.hosmer_lemeshow_groups.oot&#34;,
   &#34;validation.hosmer_lemeshow_groups.holdout&#34;,
+  &#34;validation.calibration_tie_groups.desarrollo&#34;,
+  &#34;validation.calibration_tie_groups.holdout&#34;,
+  &#34;validation.calibration_tie_groups.oot&#34;,
   &#34;master_scale.scale&#34;,
-  &#34;master_scale.cutoffs&#34;
+  &#34;master_scale.cutoffs&#34;,
+  &#34;stability.psi_by_period&#34;
 ]</pre></dd>
   </dl>
 
@@ -6783,14 +6881,17 @@ L 357.81 486.278125
 </figure>
 
 <div class="data-exports">
-  <h4>Detalle por observación</h4>
-  <p>Esta corrida produjo tablas con una fila por operación que no se reproducen en el informe (son datos, no evidencia de validación) y que <strong>no se exportaron</strong>: añada <code>csv</code> o <code>xlsx</code> a <code>report.formats</code> para obtenerlas completas.</p>
+  <h4>Datos y diagnóstico de calibración</h4>
+  <p>Las tablas enumeradas no se exportaron como adjuntos: añada <code>csv</code> o <code>xlsx</code> a <code>report.formats</code> para obtenerlas completas.</p>
   <ul class="exports-pending">
     <li>Dataset transformado a WoE — 6.000 filas</li>
     <li>PD calibrada por observación — 6.000 filas</li>
     <li>PD sin calibrar por observación — 6.000 filas</li>
     <li>Puntaje por observación — 6.000 filas</li>
     <li>Dataset WoE de las variables seleccionadas — 6.000 filas</li>
+    <li>Diagnóstico descriptivo de calibración · Desarrollo — 10 filas</li>
+    <li>Diagnóstico descriptivo de calibración · Holdout — 10 filas</li>
+    <li>Diagnóstico descriptivo de calibración · Fuera de tiempo (OOT) — 10 filas</li>
   </ul>
 </div>
 
@@ -7420,7 +7521,7 @@ L 357.81 486.278125
     <dt>method</dt><dd>intercept_offset</dd>
     <dt>n_fit</dt><dd>3.961</dd>
     <dt>observed_default_rate_dev</dt><dd>0,2333</dd>
-    <dt>offset</dt><dd>-2,7e-16</dd>
+    <dt>offset</dt><dd>-1,01e-16</dd>
     <dt>pd_calibrated_column</dt><dd>pd_calibrated</dd>
     <dt>pd_raw_column</dt><dd>pd_raw</dd>
     <dt>ranking_preserved</dt><dd>sí</dd>

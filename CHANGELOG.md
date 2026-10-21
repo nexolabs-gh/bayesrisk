@@ -7,9 +7,10 @@ contratos transversales) quedan marcadas como experimentales, fuera de la garant
 Hasta la 1.20.0 la librería se publicó como `nikodym`; desde la 2.0.0 se llama `bayesrisk`, y las
 entradas anteriores conservan el nombre con el que se publicaron.
 
-## [No publicado]
+## [2.17.0]
 
-**Candidato 2.17.0.** Preparado para revisión; todavía no publicado en PyPI.
+Cambios del código de la versión 2.17.0. Su disponibilidad se confirma en
+[PyPI](https://pypi.org/project/bayesrisk/#history); este registro no acredita su publicación.
 
 ### Añadido
 
@@ -30,16 +31,20 @@ entradas anteriores conservan el nombre con el que se publicaron.
   lectura contextual. Sólo HL/Brier deja «No evaluable»; con otra evidencia favorable,
   «Revisar: calibración pendiente». No cambia PD, defaults ni hashes. Sigue pendiente un
   contraste de calibración contextual validado; la comparación formato 1 permanece histórica.
-  Las corridas y los informes antiguos de la demo no se han recapturado.
+  La demo de scorecard e IFRS 9 se recapturó con 2.17.0: los resúmenes e informes descargables
+  incorporan la interpretación vigente y conservan la procedencia de cada corrida.
 
 - Benchmark parcial descargable de German Credit, Taiwan y dos carteras sintéticas: notebook
   mínimo, anexo técnico, entorno fijado, 28 combinaciones con referentes Python, predicciones,
   incertidumbre y artefactos HTML/Word/Excel verificables. Conserva defaults y separa evaluación
-  exterior de Holdout diagnóstico; no selecciona modelos automáticamente. Usa el candidato de
-  CI con las correcciones siguientes, todavía no el wheel 2.16.0 publicado en PyPI.
+  exterior de Holdout diagnóstico; no selecciona modelos automáticamente. La medición histórica
+  conserva su candidato exacto de CI y sus hashes; difiere del wheel 2.16.0 de PyPI.
 
 ### Corregido
 
+- Los informes PDF ajustan las figuras al ancho imprimible y envuelven los encabezados
+  anchos. Word presenta las tablas de nueve o más columnas en horizontal, conserva los
+  valores completos y repite encabezados sin dividir filas entre páginas.
 - El gate del notebook LGD conserva la comparación exacta de cifras, conteos y advertencias,
   admitiendo únicamente el residuo numérico de los dos sesgos medios de entrenamiento cerca
   de cero. La variación entre backends BLAS ya no produce falsos rojos del HTML guardado;

@@ -7,8 +7,8 @@
  * pinta el navegador, sin provider. Lo que esto no prueba —layout, foco, el `<details>`
  * abriéndose— se verifica en la UI viva, como declara `jobs.test.ts`.
  *
- * Los fixtures de la demo se renderizan enteros (charts incluidos): traen `model_card: null` y el
- * guard por presencia los cubre sin recaptura (D-GOB-9 conserva su OK propio).
+ * Los fixtures de la demo se renderizan enteros (charts incluidos). Los casos de ausencia se
+ * construyen explícitamente para que sigan cubiertos cuando la demo incorpora datos nuevos.
  */
 
 import { createElement } from "react"
@@ -36,6 +36,7 @@ import type {
   ValidationStabilityRow,
 } from "@/lib/results-types"
 import { VALIDATION_F1 } from "@/lib/validation.fixture"
+import historicalF1 from "@/lib/validation-historical.fixture.json"
 
 const TITULO = "Ficha del modelo"
 
@@ -81,12 +82,21 @@ describe("D-HLC: interpretación aditiva y lectura histórica", () => {
     expect(html).not.toContain("Evaluación contextual")
     expect(html).not.toContain("Diagnóstico descriptivo")
   })
-  it("la demo anterior se identifica como histórica en el panel y en el resumen", () => {
-    const html = render(demoF1 as unknown as ResultsResponse)
+  it("la corrida anterior se identifica como histórica en el panel y en el resumen", () => {
+    // Fragmentos originales de la demo en 1b08ca3, anteriores a la recaptura 2.17.0.
+    // La compatibilidad histórica no debe depender de la versión de la demo vigente.
+    const html = render({ ...minima(null), ...historicalF1 } as unknown as ResultsResponse)
     expect(html.split("Lectura histórica; contexto no disponible").length).toBeGreaterThanOrEqual(3)
     expect(html).toContain("Los estados de validación de este resumen son históricos")
     expect(html).not.toContain("Diagnóstico descriptivo de calibración")
     expect(block()).toContain("Lectura histórica; contexto no disponible")
+  })
+  it("la demo recapturada publica el contexto disponible sin atribuirle una lectura histórica", () => {
+    const html = render(demoF1 as unknown as ResultsResponse)
+    expect(html).toContain("Evaluación contextual:")
+    expect(html).toContain("Diagnóstico descriptivo de calibración")
+    expect(html).not.toContain("Lectura histórica; contexto no disponible")
+    expect(html).not.toContain("Los estados de validación de este resumen son históricos")
   })
   it("conserva magnitudes pequeñas en el diagnóstico de pantalla", () => {
     const html = block({ ...interpretation, calibration_tie_groups: [{
@@ -623,9 +633,10 @@ describe("resumen del peor PSI en «Estabilidad del score» (D-SC-12)", () => {
 })
 
 describe("«Validación formal» (D-SC-9) sobre una corrida real", () => {
-  // Sin el resumen de la corrida: su etapa «Validación formal» rotula igual que el panel medido.
+  // Aísla el panel: resumen y ficha conservan su propia evidencia, incluida la auditoría cruda.
   const conValidacion = (validation: ValidationResult | null): ResultsResponse => ({
     ...(demoF1 as unknown as ResultsResponse),
+    model_card: null,
     validation,
     summaries: null,
   })
@@ -878,6 +889,8 @@ describe("los cortes del semáforo por grado (D-VAL-15): la fila explica su prop
     porGrado: ValidationCalibrationRow[],
   ): ResultsResponse => ({
     ...(demoF1 as unknown as ResultsResponse),
+    model_card: null,
+    summaries: null,
     validation: {
       ...VALIDATION_F1,
       calibration: [...(VALIDATION_F1.calibration ?? []), ...porGrado],
@@ -1929,7 +1942,7 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
 
   it("la estabilidad pinta la serie de PSI por período de su resumen (SDD-33 D-MNT-9)", () => {
     // La serie la calculaba la etapa y no se publicaba: ahora sale del resumen «Estabilidad», sin
-    // formato propio. Sin la tabla en el resumen (la demo, capturada antes), la serie no aparece.
+    // formato propio. Sin esa tabla en el resumen, la serie no aparece.
     const f1 = demoF1 as unknown as ResultsResponse
     const titulo = "PSI del puntaje por período contra Desarrollo"
     const estabilidad = {
@@ -1949,7 +1962,7 @@ describe("el resumen de la corrida (D-FLU-8): la misma fuente que la puerta guia
     const con = render({ ...f1, summaries: { ...resumenes, stages: [estabilidad] } })
     expect(ocurrencias(con, titulo)).toBe(2)
     expect(ocurrencias(con, "0,0123")).toBe(2)
-    const sin = render(f1)
+    const sin = render({ ...f1, summaries: { ...resumenes, stages: [] } })
     expect(sin).not.toContain(titulo)
   })
 
