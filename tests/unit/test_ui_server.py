@@ -189,6 +189,7 @@ def test_endpoint_datasets(client: TestClient) -> None:
         # ninguna de las cinco que sólo existen porque el Cap. B-1 las exige.
         "provision_interna_generica",
         "ifrs9_retail_latam",
+        "lgd_historia_sintetica",
     ]
     # El de provisiones expone un superconjunto de columnas (las económico-regulatorias que
     # consumen el motor estándar CMF y el método interno); los de F1 solo las 9 del scorecard.

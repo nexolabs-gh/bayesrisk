@@ -173,8 +173,9 @@ def test_el_excel_reproduce_celda_a_celda_las_tablas_de_los_exports_del_informe(
     comparadas = 0
     omitidas = 0
     f1_tables = {key for key in PER_OBSERVATION_TABLES if key.split(".", 1)[0] in STAGE_BOOKS}
-    # H3 tiene su propio censo celda a celda: una corrida F1 no produce provisión interna.
+    # H3 tiene su propio censo celda a celda: F1 no produce entrenamiento LGD ni provisión.
     assert PER_OBSERVATION_TABLES - f1_tables == {
+        "lgd_training.predictions",
         "provisioning_internal.detail",
         "provisioning_internal.pd_input",
     }

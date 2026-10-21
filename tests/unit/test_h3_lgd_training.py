@@ -175,12 +175,15 @@ def test_aplicar_no_ajusta_y_conserva_formula_grupal(tmp_path: Path, monkeypatch
 
 
 def test_entrega_final_exporta_modelo_reutilizable_y_estudio(tmp_path: Path):
-    pytest.importorskip("openpyxl")
+    openpyxl = pytest.importorskip("openpyxl")
     pytest.importorskip("docx")
+    import io
     import zipfile
 
     from bayesrisk.core.study import Study
     from bayesrisk.lgd_training.model import read_model_table
+    from bayesrisk.report.document import table_title
+    from bayesrisk.report.exports import exportable_table
 
     p = puerta(
         tmp_path,
@@ -222,6 +225,37 @@ def test_entrega_final_exporta_modelo_reutilizable_y_estudio(tmp_path: Path):
         assert "entrenamiento LGD usa el objetivo" in output
     books = p.export_excel()
     assert any("LGD" in book.name for book in books)
+    # El censo F1 excluye esta tabla porque la produce H3: aquí se coteja completa.
+    key = "lgd_training.predictions"
+    predictions = p.study.artifacts.get("lgd_training", "predictions")
+    expected_csv = pd.read_csv(
+        io.StringIO(exportable_table(predictions).to_csv()), index_col=0, keep_default_na=False
+    )
+    actual_csv = pd.read_csv(
+        next(reports.glob("*lgd_training_predictions.csv")), index_col=0, keep_default_na=False
+    )
+    pd.testing.assert_frame_equal(actual_csv, expected_csv, check_exact=True)
+    stage_book = openpyxl.load_workbook(
+        next(book for book in books if "LGD" in book.name), read_only=True
+    )
+    report_book = openpyxl.load_workbook(
+        next(reports.glob("*por_observacion.xlsx")), read_only=True
+    )
+    try:
+        index = list(stage_book["Índice"].values)
+        header = list(index[0])
+        sheet = next(
+            row[header.index("Hoja")]
+            for row in index[1:]
+            if row[header.index("Contenido")] == table_title(key)
+        )
+        stage_rows = list(stage_book[sheet].values)
+        report_rows = list(report_book[key.replace(".", "_")[:31]].values)
+        assert stage_rows == report_rows
+        assert len(stage_rows) == len(predictions) + 1
+    finally:
+        stage_book.close()
+        report_book.close()
     saved = p.study.save(tmp_path / "guardado")
     with pytest.raises(Exception, match=r"trust|confianza"):
         Study.load(saved)
