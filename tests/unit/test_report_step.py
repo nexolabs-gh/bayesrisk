@@ -110,7 +110,9 @@ ROOT_SEED = 20_240_629
 # Recalculado el mismo día: `<wbr>` tras cada guion bajo de un identificador (D-INF-3).
 # Recalculado el 2026-09-27 por el renombre (D-REN-9): el mismo cambio de marca que el golden
 # del renderer, medido allí con `diff` contra `315ccd4`.
-GOLDEN_STEP_HTML_SHA256 = "ed189a99e38e5aee97128bc202dbdab0d42a05424b904a2ca8e1dcc0c9dcfa5d"
+# Recalculado el 2026-10-21: CSS de impresión para evitar recortes de SVG/encabezados.
+# Con el CSS anterior se recupera `ed189a99…`; el HTML fuera de `<style>` es idéntico.
+GOLDEN_STEP_HTML_SHA256 = "af5045a72ce195d7f64ed3476b829a02fda4cfa4fd483b192986eaadc33091b0"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 

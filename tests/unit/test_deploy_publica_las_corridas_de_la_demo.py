@@ -60,3 +60,16 @@ def test_las_corridas_retiradas_no_son_ninguna_de_las_publicadas() -> None:
     prohibidas = _ids(retirado.group(1))
     assert prohibidas, "la mitad negativa quedó vacía"
     assert prohibidas.isdisjoint(_run_ids_de_los_fixtures().values())
+
+
+def test_el_deploy_busca_la_version_que_publica_la_portada_docs() -> None:
+    """La espera de frescura y el chequeo final deben reconocer la portada vigente."""
+    from bayesrisk import __version__
+
+    workflow = _DEPLOY.read_text(encoding="utf-8")
+    portada = (_RAIZ / "docs_site" / "index.md").read_text(encoding="utf-8")
+    patrones = re.findall(r'grep -qF "([^"\n]*\$\{version\}[^"\n]*)" <<<"\$docs"', workflow)
+    assert len(patrones) == 2, "faltan la espera de frescura o el chequeo final de versión"
+    for patron in patrones:
+        esperado = patron.replace("${version}", __version__)
+        assert esperado in portada, f"el deploy exige un texto ausente de la portada: {esperado}"

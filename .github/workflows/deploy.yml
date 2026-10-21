@@ -285,7 +285,7 @@ jobs:
             docs="$(curl -fsSL -H 'Cache-Control: no-cache' https://docs.bayesadvisory.cl/ || true)"
             sha_vivo="$(curl -fsSL -H 'Cache-Control: no-cache' https://docs.bayesadvisory.cl/build-sha.txt | tr -d '[:space:]' || true)"
             sha_demo="$(curl -fsSL -H 'Cache-Control: no-cache' https://demo.bayesadvisory.cl/build-sha.txt | tr -d '[:space:]' || true)"
-            if [ "$bundle_vivo" = "$bundle_local" ] && [ "$sha_vivo" = "$DEPLOY_SHA" ] && [ "$sha_demo" = "$DEPLOY_SHA" ] && grep -qF "Estado: ${version}" <<<"$docs"; then
+            if [ "$bundle_vivo" = "$bundle_local" ] && [ "$sha_vivo" = "$DEPLOY_SHA" ] && [ "$sha_demo" = "$DEPLOY_SHA" ] && grep -qF "Versión del código documentado: ${version}" <<<"$docs"; then
               echo "producción sirve este build: ${bundle_local}, docs y demo ${sha_vivo:0:7} y la portada ${version}"
               break
             fi
@@ -297,7 +297,7 @@ jobs:
           done
 
           docs="$(curl -fsSL -H 'Cache-Control: no-cache' https://docs.bayesadvisory.cl/)"
-          if ! grep -qF "Estado: ${version}" <<<"$docs"; then
+          if ! grep -qF "Versión del código documentado: ${version}" <<<"$docs"; then
             echo "::error::docs.bayesadvisory.cl no publica la versión ${version} en su portada"
             exit 1
           fi

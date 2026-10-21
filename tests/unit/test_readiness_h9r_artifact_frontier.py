@@ -1026,3 +1026,166 @@ def test_fallback_portable_retira_destino_si_falla_unlink_del_origen(
         artifacts_module._move_file_exclusive(source, destination)
     assert source.read_bytes() == b"payload"
     assert not os.path.lexists(destination)
+
+
+def _mutate_preserving_file_metadata(target: Path) -> None:
+    """Inyecta bytes distintos con la misma identidad, tamaño y mtime de origen."""
+    original = target.read_bytes()
+    before = target.stat()
+    assert original
+    target.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+    os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns))
+    after = target.stat()
+    assert os.path.samestat(before, after)
+    assert before.st_size == after.st_size
+    assert before.st_mtime_ns == after.st_mtime_ns
+    assert target.read_bytes() != original
+
+
+@pytest.mark.parametrize("operation", ["tree", "inventory", "excluded"])
+def test_cierre_rechaza_contenido_con_metadata_igual(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+) -> None:
+    root = tmp_path / "tree"
+    root.mkdir()
+    target = root / "a.py"
+    target.write_bytes(b"A")
+    original_census = artifacts_module._regular_files_no_reparse
+    calls = 0
+
+    def mutate_at_closure(candidate: Path) -> list[Path]:
+        nonlocal calls
+        paths = original_census(candidate)
+        if candidate == root:
+            calls += 1
+            if calls == 3:
+                _mutate_preserving_file_metadata(target)
+        return paths
+
+    monkeypatch.setattr(artifacts_module, "_regular_files_no_reparse", mutate_at_closure)
+    with pytest.raises(ContractError, match="cambió"):
+        if operation == "tree":
+            artifacts_module.canonical_tree_identity(root)
+        else:
+            exclude = [target] if operation == "excluded" else []
+            artifacts_module.final_inventory(root, exclude=exclude)
+    assert calls == 3
+
+
+@pytest.mark.parametrize("target_kind", ["manifest", "output", "count_sidecar"])
+def test_cierre_manifest_rechaza_contenido_con_metadata_igual(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    target_kind: str,
+) -> None:
+    root = tmp_path / "outputs"
+    publisher = AtomicOutputPublisher(root)
+    publisher.publish("opaque.bin", "rows", 0, b"opaque", record_count=1)
+    publisher.finalize()
+    target = (
+        root
+        / {
+            "manifest": "manifest.json",
+            "output": "opaque.bin",
+            "count_sidecar": "opaque.bin.count.json",
+        }[target_kind]
+    )
+    original_census = artifacts_module._regular_files_no_reparse
+    calls = 0
+
+    def mutate_at_closure(candidate: Path) -> list[Path]:
+        nonlocal calls
+        paths = original_census(candidate)
+        if candidate == root:
+            calls += 1
+            if calls == 3:
+                _mutate_preserving_file_metadata(target)
+        return paths
+
+    monkeypatch.setattr(artifacts_module, "_regular_files_no_reparse", mutate_at_closure)
+    with pytest.raises(ContractError, match="cambió"):
+        validate_output_manifest(root, expected_identities=["rows"])
+    assert calls == 3
+
+
+@pytest.mark.parametrize("empty", [False, True])
+@pytest.mark.parametrize("expiration", ["before", "during", "after"])
+def test_cierre_conserva_deadline_original(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    empty: bool,
+    expiration: str,
+) -> None:
+    root = tmp_path / "tree"
+    root.mkdir()
+    (root / "a.py").write_bytes(b"" if empty else b"A")
+    original_census = artifacts_module._regular_files_no_reparse
+    original_hash = artifacts_module._hash_bound_file
+    calls = 0
+    hash_calls = 0
+    now = 100.0
+
+    def expire_at_closure(candidate: Path) -> list[Path]:
+        nonlocal calls, now
+        paths = original_census(candidate)
+        calls += 1
+        if calls == 3 and expiration == "before":
+            now = 102.0
+        return paths
+
+    def expire_during_hash(
+        candidate: Path,
+        *,
+        context: str,
+        deadline_monotonic: float | None = None,
+    ) -> tuple[Path, int, str, os.stat_result]:
+        nonlocal hash_calls, now
+        hash_calls += 1
+        assert deadline_monotonic == 101.0
+        if hash_calls == 2 and expiration == "during":
+            now = 102.0
+        result = original_hash(candidate, context=context, deadline_monotonic=deadline_monotonic)
+        if hash_calls == 2 and expiration == "after":
+            now = 102.0
+        return result
+
+    monkeypatch.setattr(artifacts_module.time, "monotonic", lambda: now)
+    monkeypatch.setattr(artifacts_module, "_regular_files_no_reparse", expire_at_closure)
+    monkeypatch.setattr(artifacts_module, "_hash_bound_file", expire_during_hash)
+    with pytest.raises(ContractError, match="preflight excedió"):
+        artifacts_module.canonical_tree_identity(root, deadline_monotonic=101.0)
+    assert calls == 3
+
+
+def test_cierre_conserva_identidad_inventario_exclusion_y_manifest_intactos(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "tree"
+    root.mkdir()
+    target = root / "a.py"
+    target.write_bytes(b"A")
+    digest = "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+    entries = [{"relative_path": "a.py", "bytes": 1, "sha256": digest}]
+    assert artifacts_module.canonical_tree_identity(root, include_entries=True) == {
+        "files": 1,
+        "logical_bytes": 1,
+        "sha256": canonical_json_sha256(entries),
+        "entries": entries,
+    }
+    inventory = artifacts_module.final_inventory(root)
+    assert len(inventory) == 1
+    assert inventory[0]["relative_path"] == "a.py"
+    assert inventory[0]["logical_bytes"] == 1
+    assert inventory[0]["sha256"] == digest
+    assert artifacts_module.final_inventory(root, exclude=[target]) == []
+    publisher = AtomicOutputPublisher(tmp_path / "outputs")
+    publisher.publish("opaque.bin", "rows", 0, b"opaque", record_count=1)
+    manifest = publisher.finalize()["manifest"]
+    assert (
+        validate_output_manifest(
+            tmp_path / "outputs", expected_identities=["rows"], expected_counts={"rows": 1}
+        )
+        == manifest
+    )

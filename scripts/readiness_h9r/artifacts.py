@@ -144,18 +144,34 @@ def _assert_bound_tree_snapshot(
     root: Path,
     expected_paths: Sequence[Path],
     expected_versions: Mapping[Path, os.stat_result],
+    expected_hashes: Mapping[Path, str],
     *,
     context: str,
+    deadline_monotonic: float | None = None,
 ) -> None:
-    """Repite censo exacto y liga la versión de cada leaf antes de aceptar el árbol."""
+    """Repite censo y coteja versiones y contenido con las lecturas originales.
+
+    Detecta mutaciones persistentes al cierre, incluso con tamaño/mtime idénticos;
+    no certifica congelación continua ni sustituye los leases del consumidor.
+    """
     observed = _regular_files_no_reparse(root)
     if observed != list(expected_paths):
         raise ContractError(f"{context}: el censo de archivos cambió")
+    if set(expected_versions) != set(observed) or set(expected_hashes) != set(observed):
+        raise ContractError(f"{context}: versiones/hashes no cubren el censo exacto")
+    if deadline_monotonic is not None and time.monotonic() > deadline_monotonic:
+        raise ContractError("preflight_rejected: preflight excedió 300 s al cerrar el árbol")
     for path in observed:
-        version = expected_versions.get(path)
-        if version is None:
-            raise ContractError(f"{context}: falta versión atestiguada para {path}")
+        version = expected_versions[path]
         _assert_bound_file_version(path, version, context=f"{context}: {path}")
+        _, _, digest, _ = _hash_bound_file(
+            path, context=f"{context}: contenido de {path}", deadline_monotonic=deadline_monotonic
+        )
+        _assert_bound_file_version(path, version, context=f"{context}: {path} tras cotejo")
+        if digest != expected_hashes[path]:
+            raise ContractError(f"{context}: el contenido del archivo cambió: {path}")
+    if deadline_monotonic is not None and time.monotonic() > deadline_monotonic:
+        raise ContractError("preflight_rejected: preflight excedió 300 s al cerrar el árbol")
 
 
 def _safe_output_relative_path(raw: object, *, context: str) -> PurePosixPath:
@@ -1109,19 +1125,20 @@ def final_inventory(root: Path, *, exclude: Sequence[Path] = ()) -> list[dict[st
     inventory: list[dict[str, Any]] = []
     paths = _regular_files_no_reparse(root)
     versions: dict[Path, os.stat_result] = {}
+    hashes: dict[Path, str] = {}
     for path in paths:
-        if _absolute_without_following(path) in excluded:
-            versions[path] = path.lstat()
-            continue
         path, payload_bytes, payload_sha256, identity = _hash_bound_file(
             path,
             context=f"inventario final {path}",
         )
+        versions[path] = identity
+        hashes[path] = payload_sha256
+        if path in excluded:
+            continue
         logical, assigned, reliable, source = file_storage_size(path)
         if logical != payload_bytes:
             raise ContractError(f"inventario final mezcló versiones del archivo: {path}")
         _assert_bound_file_version(path, identity, context=f"inventario final ligado {path}")
-        versions[path] = identity
         inventory.append(
             {
                 "relative_path": path.relative_to(root).as_posix(),
@@ -1141,6 +1158,7 @@ def final_inventory(root: Path, *, exclude: Sequence[Path] = ()) -> list[dict[st
         root,
         paths,
         versions,
+        hashes,
         context="inventario final al cerrar el árbol",
     )
     return inventory
@@ -1161,6 +1179,7 @@ def canonical_tree_identity(
     root = _absolute_without_following(root)
     entries: list[dict[str, Any]] = []
     versions: dict[Path, os.stat_result] = {}
+    hashes: dict[Path, str] = {}
     logical_bytes = 0
     try:
         paths = _regular_files_no_reparse(root)
@@ -1173,6 +1192,7 @@ def canonical_tree_identity(
             deadline_monotonic=deadline_monotonic,
         )
         versions[path] = identity
+        hashes[path] = payload_sha256
         entries.append(
             {
                 "relative_path": path.relative_to(root).as_posix(),
@@ -1194,7 +1214,9 @@ def canonical_tree_identity(
         root,
         paths,
         versions,
+        hashes,
         context="árbol instalado al cerrar su atestado",
+        deadline_monotonic=deadline_monotonic,
     )
     from .contracts import canonical_json_sha256
 
@@ -1638,11 +1660,12 @@ def validate_output_manifest(
         "manifest.json",
         context="manifiesto final",
     )
-    manifest_identity = manifest_path.lstat()
-    manifest = _read_canonical_json_object_file(
+    manifest_path, manifest_payload, manifest_identity = _read_bound_file_bytes(
         manifest_path,
         context="manifiesto final",
     )
+    manifest = _parse_canonical_json_object(manifest_payload, context="manifiesto final")
+    _assert_bound_file_version(manifest_path, manifest_identity, context="manifiesto final")
     if set(manifest) != {
         "schema_version",
         "golden_observed_algorithm",
@@ -1676,6 +1699,9 @@ def validate_output_manifest(
         raise ContractError("expected_counts no tiene el mismo dominio cerrado de identidades")
     expected_paths: set[str] = set()
     validated_versions: dict[Path, os.stat_result] = {manifest_path: manifest_identity}
+    validated_hashes: dict[Path, str] = {
+        manifest_path: hashlib.sha256(manifest_payload).hexdigest()
+    }
     for expected_ordinal, artifact in enumerate(artifacts):
         if set(artifact) != {
             "relative_path",
@@ -1723,17 +1749,19 @@ def validate_output_manifest(
             expected_paths.add(auxiliary_path)
         if auxiliary_version is not None:
             validated_versions[auxiliary_version[0]] = auxiliary_version[1]
+            validated_hashes[auxiliary_version[0]] = auxiliary_version[2]
         if expected_counts is not None and artifact.get("record_count") != expected_counts.get(
             str(identity)
         ):
             raise ContractError(f"{identity}: record_count no reconcilia")
         logical, assigned, reliable, source = file_storage_size(path)
+        output_sha256 = hashlib.sha256(output_payload).hexdigest()
         checks = {
             "logical_bytes": len(output_payload),
             "allocated_bytes": assigned,
             "allocation_reliable": reliable,
             "allocation_source": source,
-            "sha256": hashlib.sha256(output_payload).hexdigest(),
+            "sha256": output_sha256,
         }
         if logical != len(output_payload):
             raise ContractError(f"{relative}: tamaño lógico cambió entre handle y allocation")
@@ -1791,6 +1819,7 @@ def validate_output_manifest(
             context=f"output manifestado {relative} final",
         )
         validated_versions[path] = output_identity
+        validated_hashes[path] = output_sha256
     derived_golden = derive_golden_observed_sha256(artifacts)
     if observed_golden != derived_golden:
         raise ContractError("golden observado no deriva del inventario/contenido de outputs")
@@ -1822,6 +1851,7 @@ def validate_output_manifest(
         output_root,
         final_files,
         validated_versions,
+        validated_hashes,
         context="árbol de outputs al cierre",
     )
     return manifest
@@ -1833,7 +1863,7 @@ def _validate_count_evidence(
     path: Path,
     output_payload: bytes,
     artifact: Mapping[str, Any],
-) -> tuple[int, str | None, tuple[Path, os.stat_result] | None]:
+) -> tuple[int, str | None, tuple[Path, os.stat_result, str] | None]:
     """Reabre la evidencia causal del contador y devuelve cardinalidad + auxiliar."""
     raw = artifact.get("count_evidence")
     if not isinstance(raw, dict) or set(raw) != {
@@ -1881,7 +1911,8 @@ def _validate_count_evidence(
     sidecar_logical, _, _, _ = file_storage_size(sidecar_path)
     if sidecar["logical_bytes"] != sidecar_logical or sidecar_logical != len(sidecar_payload):
         raise ContractError("bytes del sidecar de conteo no reconcilian")
-    if sidecar["sha256"] != hashlib.sha256(sidecar_payload).hexdigest():
+    sidecar_sha256 = hashlib.sha256(sidecar_payload).hexdigest()
+    if sidecar["sha256"] != sidecar_sha256:
         raise ContractError("hash del sidecar de conteo no reconcilia")
     payload = _parse_canonical_json_object(
         sidecar_payload,
@@ -1911,4 +1942,4 @@ def _validate_count_evidence(
         sidecar_identity,
         context="sidecar de conteo final",
     )
-    return records, relative, (sidecar_path, sidecar_identity)
+    return records, relative, (sidecar_path, sidecar_identity, sidecar_sha256)
