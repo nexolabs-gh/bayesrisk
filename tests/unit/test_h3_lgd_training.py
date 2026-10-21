@@ -208,6 +208,7 @@ def test_entrega_final_exporta_modelo_reutilizable_y_estudio(tmp_path: Path):
     html = next(reports.glob("*.html")).read_text(encoding="utf-8")
     for literal in ("Entrenamiento LGD", "proxy disponible al corte", "Supuestos"):
         assert literal in html
+    assert 'id="section-methodology-lgd_training"' in html
     from docx import Document
 
     document = Document(next(reports.glob("*.docx")))

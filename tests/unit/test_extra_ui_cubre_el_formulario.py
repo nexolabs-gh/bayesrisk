@@ -60,6 +60,7 @@ EXTRA_POR_SECCION = {
     "forward": None,
     "provisioning_cmf": "scoring",
     "provisioning_internal": "scoring",
+    "lgd_training": "scoring",  # GLM fraccional statsmodels y predictor scipy.
     "provisioning_ifrs9": "scoring",
     "provisioning": "scoring",
     # ⚠️ `report` y NO `None`, aunque el HTML del informe sea núcleo (Jinja2 es dependencia base).

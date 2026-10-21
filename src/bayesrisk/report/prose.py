@@ -650,6 +650,8 @@ def methodology_intro(bundle: ReportInputBundle) -> tuple[str, ...]:
 def methodology_body(bundle: ReportInputBundle, domain: str) -> tuple[str, ...]:
     """Despacha la prosa metodológica de la etapa pedida."""
     if domain == "lgd_training":
+        if _card(bundle, "lgd_training") is None:
+            return ()
         return (
             "Respuesta fraccional binomial con enlace logit e intercepto, ajustada sólo en la "
             "muestra de entrenamiento declarada. No pondera por exposición, selecciona variables "

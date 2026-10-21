@@ -91,6 +91,8 @@ def test_from_config_registro_reexport_contrato_orden_e_import_liviano() -> None
         "monitoring",
         # La comparación (SDD-34): una corrida propia sin datos, desde los resúmenes comparables.
         "comparison",
+        # H3: historia separada, sólo activa cuando está declarada; no altera los órdenes previos.
+        "lgd_training",
         # ``report`` corre AL FINAL: es la foto de todo lo que corrió, incluidas las provisiones
         # (SDD-28 D8). Antes vivía tras ``stability`` y su builder no veía sus cards.
         "report",

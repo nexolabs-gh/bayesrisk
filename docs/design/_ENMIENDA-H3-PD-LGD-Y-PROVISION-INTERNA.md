@@ -585,3 +585,10 @@ Corrección de aceptación en pantalla posterior a la revisión: al emparejar PD
 conserva el índice real de la cartera, también en Parquet con etiquetas propias; antes se imponía
 RangeIndex. El mismo contrato posicional se mantiene. Tests nacidos rojos y verificación del
 writer; sin tercera revisión ni APPROVE independiente de este arreglo final o del copy posterior.
+
+El CI completo detectó además registros de integración desactualizados y una subsección
+metodológica LGD que aparecía sin ajuste. Los censos ahora incluyen los seis roles y la rama
+fitted; la prosa del entrenamiento exige su card. El golden histórico del informe F1 se recupera
+exactamente, sin cambiar la referencia; la aplicación externa tampoco afirma que entrenó.
+Corrección verificada por el writer con tests rojos→verdes y control negativo; no amplía el
+alcance del APPROVE independiente indicado arriba.

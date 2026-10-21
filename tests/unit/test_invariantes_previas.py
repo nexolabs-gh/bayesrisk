@@ -197,6 +197,11 @@ def test_un_requisito_incumplido_no_es_una_columna_que_falte() -> None:
 #: el día que sus trabajos pasaron a disponibles — la exención llevaba tiempo siendo falsa y una
 #: lista escrita a mano no tenía forma de notarlo. Ése *es* el defecto que esto cierra.
 EXENTAS: dict[str, str] = {
+    "lgd_training": (
+        "los seis roles se comprueban por column_role; su model_validator exige nombres "
+        "distintos y covariables sin objetivo ni roles. Elegibilidad, separación, rango y "
+        "convergencia requieren los valores de la historia y se validan antes/durante el ajuste"
+    ),
     # SDD-34 capa B: compara resúmenes guardados, sin archivo de cartera ni columnas.
     "comparison": (
         "no lee columnas: su `model_validator` exige entre dos y diez rutas no vacías y el "

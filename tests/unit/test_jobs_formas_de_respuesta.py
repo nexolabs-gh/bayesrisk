@@ -217,7 +217,16 @@ def test_el_barrido_no_es_vacuo() -> None:
     # dos tablas), que se contestan con un dato y no llevan formas; y, desde la capa B del SDD-33,
     # las dos del monitoreo (la tarjeta y la columna de periodo), también sin formas; y, desde
     # la capa B del SDD-34, las corridas guardadas de la comparación, una lista sin formas.
-    assert len(decisiones) == 12, sorted(decisiones)
+    # H3 añade los seis roles explícitos de historia LGD, sin formas alternativas.
+    assert len(decisiones) == 18, sorted(decisiones)
+    assert {p for p in decisiones if p.startswith("lgd_training.")} == {
+        "lgd_training.target_col",
+        "lgd_training.covariate_cols",
+        "lgd_training.entity_col",
+        "lgd_training.sample_col",
+        "lgd_training.default_col",
+        "lgd_training.resolved_col",
+    }
     assert decisiones["comparison.runs"]["answer_forms"] == []
     con_formas = {p: d["answer_forms"] for p, d in decisiones.items() if d["answer_forms"]}
     assert sorted(con_formas) == ["data.partition.strategy", "data.target.bad_rule"]

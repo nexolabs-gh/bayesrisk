@@ -311,10 +311,11 @@ def test_core_study_cablea_validation_al_cierre_del_computo() -> None:
     """
     order = study_module._DEFAULT_DOMAIN_ORDER
     assert order[-1] == "report"  # la foto final del informe (SDD-28 D8)
-    assert order[-2] == "comparison"
-    assert order[-3] == "monitoring"
-    assert order[-4] == "master_scale"
-    assert order[-5] == "validation"  # el último dominio de cómputo que la validación juzga
+    assert order[-2] == "lgd_training"  # historia independiente; validation no evalúa este ajuste.
+    assert order[-3] == "comparison"
+    assert order[-4] == "monitoring"
+    assert order[-5] == "master_scale"
+    assert order[-6] == "validation"  # el último dominio de cómputo que la validación juzga
     assert order.index("validation") > order.index("performance")
     assert order.index("validation") > order.index("stability")
     assert order.index("validation") > order.index("provisioning")

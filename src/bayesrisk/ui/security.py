@@ -140,6 +140,10 @@ PUBLIC_PATHS: MappingProxyType[tuple[str, str], str] = MappingProxyType(
         ("GET", "/api/report/{run_id}/docx"): (
             "Igual que los resultados: descarga un informe ya generado."
         ),
+        ("GET", "/api/report/{run_id}/project"): (
+            "Descarga el ZIP fijo ya generado por una corrida autorizada, como el informe. "
+            "No recibe rutas ni archivos, no ejecuta el pipeline ni deserializa su contenido."
+        ),
     }
 )
 

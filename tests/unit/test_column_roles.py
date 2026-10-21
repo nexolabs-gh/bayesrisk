@@ -313,6 +313,8 @@ def test_el_footprint_inspeccionable_es_el_que_la_medicion_conto() -> None:
         # modelo en uso», y DOS de sus campos nombran columnas del archivo del usuario —el periodo
         # y el desenlace—. La tarjeta (`bundle`) es una ruta, no una columna: no lleva rol.
         "monitoring",
+        # H3: los seis roles de la historia separada son columnas de entrada inspeccionables.
+        "lgd_training",
     }
 
 

@@ -169,6 +169,7 @@ def test_tres_puertas_6000_filas_y_equivalencia_monetaria(tmp_path: Path, monkey
         assert "lgd_fitted_provenance" in str(output)
         # El informe servido debe mostrar las restricciones efectivamente consumidas.
         html = client.get("/api/report/" + response.json()["run_id"]).text
+        assert 'id="section-methodology-lgd_training"' not in html
         assert "no acredita independencia" in html and "no aportada" in html.lower()
         assert output["project_available"] is True
         bundle = client.get("/api/report/" + response.json()["run_id"] + "/project")
