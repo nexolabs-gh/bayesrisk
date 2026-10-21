@@ -1,5 +1,11 @@
 # Provisión interna paso a paso
 
+!!! note "Disponibilidad: candidato de desarrollo"
+    Las puertas `Provision` y `Lgd` de esta guía todavía no están publicadas en PyPI 2.16.0.
+    Los ejemplos y cuadernos se verificaron con el [wheel candidato](https://github.com/nexolabs-gh/bayesrisk/actions/runs/39523257538),
+    disponible en el artefacto `candidate-distributions-with-evidence` de esa corrida.
+    Instalar la versión publicada en PyPI no incorpora estas funciones.
+
 Este recorrido experimental calcula la provisión por grupos con una PD y una LGD ya
 declaradas. No estima ni valida esas probabilidades. La PD del ejemplo es ilustrativa;
 para una cartera real debes aportar la de tu modelo.
