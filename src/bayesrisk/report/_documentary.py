@@ -565,7 +565,7 @@ def model_warnings(card: Mapping[str, Any]) -> tuple[EditorialFact, ...]:
             EditorialFact(
                 "model.not_converged",
                 "model",
-                "card",
+                "model_card",
                 "fit_statistics.converged",
                 False,
                 "El ajuste no convergió: la inferencia sobre los coeficientes no es válida",
@@ -577,7 +577,7 @@ def model_warnings(card: Mapping[str, Any]) -> tuple[EditorialFact, ...]:
             EditorialFact(
                 f"model.sign.{feature}",
                 "model",
-                "card",
+                "model_card",
                 f"sign_flags.{feature}",
                 feature,
                 f"Coeficiente con el signo invertido respecto del riesgo esperado: {feature}",

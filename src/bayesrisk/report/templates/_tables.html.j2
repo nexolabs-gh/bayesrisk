@@ -3,16 +3,17 @@
 {% for table in section.tables %}
 {# 10+ columnas no entran en A4 vertical: la hoja del PDF pasa a apaisada (clase `--wide`, ver CSS).
    En pantalla la clase no cambia nada: ahí la tabla ya tiene scroll horizontal. #}
-<figure class="table-block{% if table.columns | length >= 10 %} table-block--wide{% endif %}">
+<figure class="table-block{% if table.columns | length >= 10 %} table-block--wide{% endif %}{% if table.support | default(false) %} support-table{% endif %}"{% if table.support | default(false) %} tabindex="0" aria-label="{{ table.title }}"{% endif %}>
   <figcaption class="table-title">{{ table.title }}</figcaption>
   <table id="{{ table.html_id }}" data-table-key="{{ table.key }}">
     <thead><tr>{% for column in table.columns %}<th{% if table.numeric[loop.index0] %} class="num"{% endif %}>{{ column | cortes_de_identificador }}</th>{% endfor %}</tr></thead>
     <tbody>
       {% for row in table.rows %}
-      <tr>{% for cell in row %}{% if table.numeric[loop.index0] %}<td class="num">{{ cell }}</td>{% else %}<td>{{ cell | cortes_de_identificador }}</td>{% endif %}{% endfor %}</tr>
+      <tr>{% for cell in row %}{% if table.numeric[loop.index0] %}<td class="num"{% if documentary %} data-label="{{ table.columns[loop.index0] }}"{% endif %}>{{ cell }}</td>{% else %}<td{% if documentary %} data-label="{{ table.columns[loop.index0] }}"{% endif %}>{{ cell | cortes_de_identificador }}</td>{% endif %}{% endfor %}</tr>
       {% endfor %}
     </tbody>
   </table>
   {% if table.truncated %}<p class="truncated">… (mostrando {{ table.shown_rows_label }} de {{ table.total_rows_label }} filas)</p>{% endif %}
+  {% if table.links | default([]) %}<nav class="evidence-links" aria-label="Evidencia de {{ table.title }}">{% for link in table.links %}<a href="{{ link.href }}">{{ link.label }}</a>{% endfor %}</nav>{% endif %}
 </figure>
 {% endfor %}

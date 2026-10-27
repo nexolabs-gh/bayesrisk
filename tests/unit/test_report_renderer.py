@@ -86,7 +86,9 @@ from bayesrisk.validation.results import VALIDATION_STATUS_LABELS
 # CSS y la clave `bayesrisk` de `library_versions` en el anexo de linaje.
 # Recalculado el 2026-10-21 (preparación 2.17): CSS de impresión evita clipping de SVG
 # y encabezados anchos. El CSS anterior recupera da887982…; fuera del CSS no cambia el digest.
-GOLDEN_HTML_SHA256 = "ef1fc6ef512056c84ada8b4ebbc7b5491d90130e5e3f2abf2a4208635644d9a5"
+# D-DOC-SC A+B (2026-10-27): una entrada, soporte sin recortes y enlaces estables;
+# significado verificado por tests de fuentes y precisión, layout inspeccionado por artefacto.
+GOLDEN_HTML_SHA256 = "034b2571ab9b6178e19a959f60323b82b1a0f2660b94c5faeb0e8eea0deb993d"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
@@ -152,25 +154,34 @@ def test_html_golden_deterministico_y_orden_canonico() -> None:
         flags=re.IGNORECASE,
     )
     assert "/Users/" not in first
-    assert "config_hash=cfg123456789abcdef" in first
-    assert "data_hash=data123456789abcdef" in first
-    assert "git_sha=abc123" in first
+    from lxml import html as html_parser
+
+    lineage = (
+        html_parser.fromstring(first).get_element_by_id("section-appendix_lineage").text_content()
+    )
+    for key, value in (
+        ("config_hash", "cfg123456789abcdef"),
+        ("data_hash", "data123456789abcdef"),
+        ("git_sha", "abc123"),
+    ):
+        assert key in lineage and value in lineage
     assert "0,7432" in first  # es-CL (D-INF-1)
-    assert "-0.0" not in first
 
     # Las secciones del documento salen en el orden canónico aunque el bundle llegue desordenado.
     positions = [first.index(f'data-section-id="{section_id}"') for section_id in _CANONICAL_IDS]
     assert positions == sorted(positions)
 
     performance_table = _table_fragment(first, "table-performance-performance_table")
-    decile_markers = [f'<td class="num">{decile}</td>' for decile in range(12, 2, -1)]
-    decile_positions = [performance_table.index(marker) for marker in decile_markers]
-    assert decile_positions == sorted(decile_positions)
-    assert '<td class="num">11</td>' in performance_table
-    assert '<td class="num">2</td>' not in performance_table
-    assert '<td class="num">1</td>' not in performance_table
+    parsed_table = html_parser.fromstring(performance_table)
+    headings = [th.text_content() for th in parsed_table.xpath(".//thead/tr/th")]
+    column = headings.index("decile")
+    deciles = [
+        row.xpath("./td")[column].text_content() for row in parsed_table.xpath(".//tbody/tr")
+    ]
+    assert deciles == [str(decile) for decile in range(12, 2, -1)]
 
     coefficients_table = _table_fragment(first, "table-model-coefficients")
+    assert "-0.0" not in coefficients_table  # el soporte sí conserva el valor original
     # `beta` y `p_value` son numéricas: su encabezado lleva la clase `num` (D-INF-2).
     column_positions = [
         coefficients_table.index(marca)
@@ -281,7 +292,12 @@ def test_document_view_renderiza_validacion_formal_y_control_negativo() -> None:
     # D-VAL-17: la cuarta palabra es una banda neutra, nunca verde.
     assert renderer_module._band_class(VALIDATION_STATUS_LABELS["not_evaluable"]) == "band-none"
     section = next(item for item in view["sections"] if item["id"] == "validation.discrimination")
-    assert section["tables"][0]["rows"][0][3:6] == ("0,8100", "0,6200", "0,4800")
+    by_column = {
+        column: table["rows"][0][i]
+        for table in section["tables"]
+        for i, column in enumerate(table["columns"])
+    }
+    assert (by_column["auc"], by_column["gini"], by_column["ks"]) == ("0,8100", "0,6200", "0,4800")
     assert section["placeholder"] is None
 
     negative = renderer_module.build_document_view(base, config=ReportConfig())
@@ -337,14 +353,14 @@ def test_documento_tiene_indice_metricas_ejecutivas_y_titulos_legibles() -> None
     # Índice generado, con anclas reales a las secciones.
     assert '<section id="section-toc"' in html
     assert '<a href="#section-results-model">' in html
-    assert '<a href="#exec-summary">' in html
+    assert '<a href="#section-executive_summary">' in html
+    assert html.count('id="exec-summary"') == 1
 
     # El slot ejecutivo ya no está vacío: trae las métricas clave y su banda.
     assert '<div class="exec-metrics-slot"></div>' not in html
-    assert '<table class="exec-metrics">' in html
+    assert '<dl class="summary-metrics">' in html
     assert "0,7432" in html  # AUC de la card de performance
     assert "Sin umbrales de alerta configurados" in html
-    assert "No se configuraron umbrales de discriminación" in html
 
     # Títulos de tabla legibles, con la clave interna degradada a atributo de trazabilidad.
     assert '<figcaption class="table-title">Coeficientes del modelo PD</figcaption>' in html
@@ -353,13 +369,14 @@ def test_documento_tiene_indice_metricas_ejecutivas_y_titulos_legibles() -> None
 
     # La portada imprime los metadatos declarados y deja en blanco lo no declarado.
     assert "Banco Ejemplo S.A." in html
-    assert '<span class="to-fill"' in html
+    assert '<span class="to-fill"' not in html
+    assert "Identificación pendiente:" in html
 
 
 def test_placeholders_show_y_hide() -> None:
     """El bloque POR COMPLETAR trae guía de redacción y desaparece en el entregable final."""
     con_bloque = _renderer().render(_bundle())
-    sin_bloque = _renderer().render(
+    sin_bloque = _renderer(ReportConfig(document={"placeholders": "hide"})).render(
         _bundle(
             sections_override=tuple(
                 section.model_copy(update={"placeholder": None}) for section in _bundle().sections
@@ -367,7 +384,7 @@ def test_placeholders_show_y_hide() -> None:
         )
     )
 
-    assert "POR COMPLETAR — Contexto del modelo" in con_bloque
+    assert "POR COMPLETAR — Decisión y campos institucionales pendientes" in con_bloque
     assert "Describe la cartera: producto, segmento, volumen y período." in con_bloque
     assert '<div class="placeholder">' in con_bloque
     assert '<div class="placeholder">' not in sin_bloque
@@ -376,14 +393,8 @@ def test_placeholders_show_y_hide() -> None:
     assert "La tasa de incumplimiento observada es de 12.35 %." in sin_bloque
 
 
-def test_el_dump_se_degrada_a_anexo_pero_no_se_duplica() -> None:
-    """El anexo COMPLETA al cuerpo; no lo repite. La evidencia no se pierde, deja de duplicarse.
-
-    La tanda 1 dejó el Anexo B publicando **todas** las tablas, incluidas las que el cuerpo ya
-    mostraba: cada tabla clave salía dos veces en el mismo documento (9 tablas duplicadas en una
-    corrida real). Repetir una tabla íntegra no añade trazabilidad, añade páginas. Ahora el cuerpo
-    muestra las tablas que sostienen el juicio y el anexo publica **el resto**.
-    """
+def test_la_lectura_enlaza_al_soporte_original_completo() -> None:
+    """D-DOC-SC: la tabla formateada del cuerpo no sustituye valores/índices del original."""
     correlacion = pd.DataFrame({"variable": ["mora"], "saldo": [0.31]})
     html = _renderer().render(
         _bundle(tables={**_tables(), "selection.correlation_matrix": correlacion})
@@ -393,10 +404,10 @@ def test_el_dump_se_degrada_a_anexo_pero_no_se_duplica() -> None:
     anexo_c_eda = _section_fragment(html, "appendix_parameters.eda")
     resultados_modelo = _section_fragment(html, "results.model")
 
-    # Las tablas clave viven en el CUERPO y no se repiten en el anexo.
+    # Cuerpo y soporte son proyecciones distintas, con enlace de ida y retorno.
     for key in ("performance.performance_table", "model.coefficients"):
-        assert html.count(f'data-table-key="{key}"') == 1
-        assert f'data-table-key="{key}"' not in anexo_b
+        assert html.count(f'data-table-key="{key}"') >= 2
+        assert f'data-table-key="{key}"' in anexo_b
     assert 'data-table-key="model.coefficients"' in resultados_modelo
 
     # Lo que el cuerpo NO muestra sigue íntegro en el anexo: la trazabilidad no se pierde.
@@ -487,11 +498,11 @@ def test_plantilla_y_css_empaquetados_en_el_paquete() -> None:
         assert fuentes.joinpath(nombre).is_file(), nombre
 
 
-def test_el_tema_bayesrisk_incrusta_roboto_y_el_tema_plain_no() -> None:
+def test_el_scorecard_incrusta_roboto_en_ambos_temas() -> None:
     """Capa C2 (D-FLU-11 fila C): el informe usa la tipografía del sitio (Roboto, la que sirve
     docs.bayesadvisory.cl) sin depender de la red ni del sistema: los dos pesos van incrustados en
     el CSS como `data:` URIs desde los archivos empaquetados, y la pila de fuentes empieza por
-    Roboto con la del sistema detrás. El tema `plain` sigue en Arial y sin fuentes incrustadas."""
+    Roboto con la del sistema detrás. D-DOC-SC lo aplica también al scorecard con tema plain."""
     import base64
     from importlib import resources
 
@@ -508,7 +519,8 @@ def test_el_tema_bayesrisk_incrusta_roboto_y_el_tema_plain_no() -> None:
     # regla `@import` para decir que no la usa).
     assert "@import url" not in html and "url(https://" not in html and "url('http" not in html
     plain = HtmlReportRenderer(HtmlRenderConfig(theme="plain")).render(_bundle())
-    assert "@font-face" not in plain and "Roboto" not in plain
+    assert plain.count("@font-face {") == 2 and "Roboto" in plain
+    assert "@font-face" not in renderer_module._css_for_theme("plain")
     assert "font-family:Arial" in plain
 
 

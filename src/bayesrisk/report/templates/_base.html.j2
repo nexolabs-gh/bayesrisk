@@ -15,7 +15,8 @@
      al de scorecard, así que se sobreescribe aquí con el título real de la corrida. #}
   <style>@page { @top-right { content: "{{ document_title }} — CONFIDENCIAL"; } }</style>
 </head>
-<body>
+<body{% if documentary %} class="documentary"{% endif %}>
+{% if documentary %}<a class="skip-link" href="#main-content">Ir al contenido del informe</a>{% endif %}
 {% if theme == "bayesrisk" %}
 <div class="doc-shell">
   <aside class="doc-nav">
@@ -48,7 +49,7 @@
     </nav>
   </aside>
 {% endif %}
-  <main>
+  <main{% if documentary %} id="main-content" tabindex="-1"{% endif %}>
 {% block document %}{% endblock %}
   </main>
 {% if theme == "bayesrisk" %}
@@ -63,10 +64,14 @@
     </nav>
     <div class="doc-downloads">
       <p class="rail-heading">Entregables</p>
+      {% if documentary %}
+      <p>Los archivos de esta corrida se identifican en su soporte de trazabilidad.</p>
+      {% else %}
       <div class="dl"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 2h6l3 3v9H4z" stroke="currentColor" stroke-width="1.2"/><path d="M9.6 2v3.4H13" stroke="currentColor" stroke-width="1.2"/></svg>HTML<span class="tag">.html</span></div>
       <div class="dl"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 2h6l3 3v9H4z" stroke="currentColor" stroke-width="1.2"/><path d="M9.6 2v3.4H13" stroke="currentColor" stroke-width="1.2"/></svg>PDF<span class="tag">.pdf</span></div>
       <div class="dl"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 2h6l3 3v9H4z" stroke="currentColor" stroke-width="1.2"/><path d="M9.6 2v3.4H13" stroke="currentColor" stroke-width="1.2"/></svg>Word<span class="tag">.docx</span></div>
       <div class="dl"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 2h6l3 3v9H4z" stroke="currentColor" stroke-width="1.2"/><path d="M9.6 2v3.4H13" stroke="currentColor" stroke-width="1.2"/></svg>Fuente editable<span class="tag">.qmd</span></div>
+      {% endif %}
     </div>
   </aside>
 </div>

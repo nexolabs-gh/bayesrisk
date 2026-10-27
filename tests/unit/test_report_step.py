@@ -112,7 +112,8 @@ ROOT_SEED = 20_240_629
 # del renderer, medido allí con `diff` contra `315ccd4`.
 # Recalculado el 2026-10-21: CSS de impresión para evitar recortes de SVG/encabezados.
 # Con el CSS anterior se recupera `ed189a99…`; el HTML fuera de `<style>` es idéntico.
-GOLDEN_STEP_HTML_SHA256 = "af5045a72ce195d7f64ed3476b829a02fda4cfa4fd483b192986eaadc33091b0"
+# D-DOC-SC A+B: entrada única, soporte íntegro y navegación común; datos y hashes sin cambio.
+GOLDEN_STEP_HTML_SHA256 = "7d6f816347ce52e23861734d3f3561f5bb91e0567b16b14776e653fdc21119f0"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 

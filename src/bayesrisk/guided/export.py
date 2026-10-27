@@ -178,10 +178,25 @@ def write_stage_workbooks(
             if resumen is None:
                 continue
             hojas, con_indice = _hojas_de_la_etapa(stage, resumen, tablas)
+            if family == "scorecard":
+                hojas = {nombre: tabla.copy() for nombre, tabla in hojas.items()}
+                for tabla in hojas.values():
+                    tabla.attrs["_documentary"] = True
             write_workbook(hojas, temporal / libro, index=con_indice)
             nombres.append(libro)
         decisiones = _hojas_de_decisiones(trail_path) if family not in _LIBRO_UNICO else {}
         if decisiones:
+            if family == "scorecard":
+                import pandas as pd
+
+                decisiones[_SHEET_INDEX] = pd.DataFrame(
+                    [
+                        {"Hoja": nombre, "Contenido": nombre, "Filas": len(tabla.index)}
+                        for nombre, tabla in decisiones.items()
+                    ]
+                )
+                for tabla in decisiones.values():
+                    tabla.attrs["_documentary"] = True
             write_workbook(decisiones, temporal / decisions_book(family), index=False)
             nombres.append(decisions_book(family))
     except BaseException:
@@ -266,7 +281,8 @@ def _hojas_de_la_etapa(
         {"Hoja": _SHEET_SUMMARY, "Contenido": f"Resumen de «{resumen.label}»", "Filas": 0}
     ]
     if resumen.table is not None and not resumen.table.empty:
-        hojas[_SHEET_DECISION] = resumen.table
+        hojas[_SHEET_DECISION] = resumen.table.copy()
+        hojas[_SHEET_DECISION].attrs["_documentary_formats"] = dict(resumen.formats)
         con_indice[_SHEET_DECISION] = False
         indice.append(
             {
@@ -279,7 +295,8 @@ def _hojas_de_la_etapa(
         if tabla.empty:
             continue
         hoja = _nombre_de_hoja(titulo, hojas, titulo=titulo)
-        hojas[hoja] = tabla
+        hojas[hoja] = tabla.copy()
+        hojas[hoja].attrs["_documentary_formats"] = dict(_formatos)
         con_indice[hoja] = False
         indice.append({"Hoja": hoja, "Contenido": titulo, "Filas": len(tabla.index)})
     adicionales = [tabla for _titulo, tabla, _formatos in resumen.extra_tables]
@@ -408,10 +425,13 @@ def _nombre_de_hoja(clave: str, existentes: Mapping[str, Any], *, titulo: str | 
         base = f"Perfil — {'.'.join(partes[3:])}"
     else:
         base = table_title(clave)
-    limpio = "".join("_" if c in _SHEET_FORBIDDEN else c for c in base).strip()
+    limpio = (
+        "".join("_" if c in _SHEET_FORBIDDEN else c for c in base).strip().strip("'") or "Tabla"
+    )
     candidato = limpio[:_SHEET_MAX]
+    ocupados = {nombre.casefold() for nombre in (*existentes, _SHEET_INDEX)}
     n = 2
-    while candidato in existentes:
+    while candidato.casefold() in ocupados:
         sufijo = f" ({n})"
         candidato = f"{limpio[: _SHEET_MAX - len(sufijo)]}{sufijo}"
         n += 1

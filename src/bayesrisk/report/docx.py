@@ -21,6 +21,7 @@ igual que el PDF. El *contenido* sí es determinista: sale de la misma
 
 from __future__ import annotations
 
+import hashlib
 import io
 import warnings
 from collections.abc import Mapping, Sequence
@@ -38,8 +39,7 @@ __all__ = ["DocxReportRenderer", "render_docx"]
 _DOCX_EXTENSION: Final = ".docx"
 _TABLE_STYLE: Final = "Table Grid"
 _MONO_FONT: Final = "Consolas"
-#: La fuente del sitio y del HTML del informe (capa C2). Word la usa si está instalada y, si no,
-#: sustituye: el `.docx` no incrusta fuentes.
+#: La fuente del sitio y del HTML; D-DOC-SC incrusta Regular y Bold en el scorecard.
 _BODY_FONT: Final = "Roboto"
 # Ámbar suave: el bloque POR COMPLETAR tiene que saltar a la vista al abrir el archivo.
 _PLACEHOLDER_FILL: Final = "FFF3CD"
@@ -82,17 +82,36 @@ def render_docx(document: Mapping[str, Any], *, config: ReportConfig) -> bytes:
         ) from exc
 
     word = docx.Document()
-    _aplicar_tipografia_y_marca(word)
+    documentary = bool(document.get("documentary"))
+    _aplicar_tipografia_y_marca(word, documentary=documentary)
+    if documentary:
+        _embed_roboto(word)
     _set_core_properties(word, document, config)
 
-    word.add_heading(str(document["document_title"]), level=0)
+    title = word.add_heading(str(document["document_title"]), level=0)
+    if documentary:
+        for run in title.runs:
+            run.font.size = Pt(13)
+            run.bold = True
     _cover(word, document, config)
     # La página ejecutiva va tras la portada, antes del índice y del resumen ejecutivo.
     for section in document["sections"]:
         if section["kind"] == "summary":
             _summary(word, section, points=Pt)
-    _toc_field(word)
-    _executive(word, document["executive"])
+    _toc_field(word, page_break=not documentary)
+    if documentary:
+        for section in document["sections"]:
+            if section["kind"] == "toc":
+                _bookmark(word.paragraphs[-1], section["html_id"])
+        _links(word, document["toc"])
+        from docx.oxml.ns import qn
+        from docx.oxml.parser import OxmlElement
+
+        update = OxmlElement("w:updateFields")
+        update.set(qn("w:val"), "true")
+        word.settings.element.append(update)
+    else:
+        _executive(word, document["executive"])
     for section in document["sections"]:
         _section(word, section, config, inches=Inches, points=Pt)
 
@@ -175,16 +194,16 @@ class DocxReportRenderer:
 # ─────────────────────────── bloques del documento Word ───────────────────────────
 
 
-def _aplicar_tipografia_y_marca(word: Any) -> None:
+def _aplicar_tipografia_y_marca(word: Any, *, documentary: bool = False) -> None:
     """Los estilos equivalentes al HTML (capa C2): la fuente del sitio y la paleta de la marca.
 
     La plantilla de fábrica de Word trae Calibri y sus títulos en un azul propio; aquí el cuerpo
-    y los títulos declaran Roboto —la que el HTML incrusta y el sitio sirve; Word sustituye si
-    no está instalada— y los títulos llevan el navy y el azul de la marca. Lo monoespaciado
+    y los títulos declaran Roboto, incrustada también en el DOCX; los títulos llevan el navy
+    y el azul de la marca. Lo monoespaciado
     (hashes, rutas, JSON) sigue en Consolas, presente en todo Windows.
     """
     from docx.oxml.ns import qn
-    from docx.shared import RGBColor
+    from docx.shared import Pt, RGBColor
 
     navy = RGBColor(0x0A, 0x22, 0x40)
     brand = RGBColor(0x18, 0x59, 0xE0)
@@ -204,6 +223,16 @@ def _aplicar_tipografia_y_marca(word: Any) -> None:
         color = colores.get(nombre)
         if color is not None:
             estilo.font.color.rgb = color
+        if documentary:
+            estilo.font.size = Pt(
+                {"Normal": 11, "Title": 24, "Heading 1": 20, "Heading 2": 18, "Heading 3": 14}[
+                    nombre
+                ]
+            )
+    if documentary:
+        for name in ("List Bullet", "Caption"):
+            word.styles[name].font.name = _BODY_FONT
+            word.styles[name].font.size = Pt(9 if name == "Caption" else 11)
 
 
 def _set_core_properties(word: Any, document: Mapping[str, Any], config: ReportConfig) -> None:
@@ -231,6 +260,9 @@ def _cover(word: Any, document: Mapping[str, Any], config: ReportConfig) -> None
         [(field["label"], field["value"] if field["filled"] else "") for field in document["cover"]]
         + [("Fecha de emisión", document["emitted_date"])],
     )
+    if document.get("documentary"):
+        word.add_paragraph("Borrador automático para revisión institucional.")
+        return
 
     word.add_paragraph()
     caption = word.add_paragraph("Trazabilidad de la corrida (lineage)")
@@ -252,7 +284,7 @@ def _cover(word: Any, document: Mapping[str, Any], config: ReportConfig) -> None
     word.add_page_break()
 
 
-def _toc_field(word: Any) -> None:
+def _toc_field(word: Any, *, page_break: bool = True) -> None:
     """Inserta el campo TOC nativo de Word: el índice se arma solo desde los estilos de heading.
 
     No es un índice escrito a mano —que quedaría desincronizado en cuanto el validador añada un
@@ -280,16 +312,19 @@ def _toc_field(word: Any) -> None:
 
     for element in (begin, instruction, separate, placeholder, end):
         run._r.append(element)
-    word.add_page_break()
+    if page_break:
+        word.add_page_break()
 
 
 def _summary(word: Any, section: Mapping[str, Any], *, points: Any) -> None:
     """La página ejecutiva: el resumen final de la corrida, desde la vista canónica.
 
-    Los dos estados y los archivos en tablas de dos columnas, las cifras clave en una tabla
-    nativa, las alertas y las decisiones como listas: lo que el comité lee y edita.
+    Estados, cifras y listas editables desde las mismas fuentes que HTML y Markdown.
     """
-    word.add_heading(_heading(section), level=1)
+    heading = word.add_heading(_heading(section), level=1)
+    if section.get("documentary"):
+        _bookmark(heading, section["html_id"])
+        _bookmark(heading, "exec-summary")
     for paragraph in section["body"]:
         word.add_paragraph(paragraph)
     summary = section["summary"] or {}
@@ -303,7 +338,11 @@ def _summary(word: Any, section: Mapping[str, Any], *, points: Any) -> None:
         return
     labels = summary["labels"]
     supuestos = summary.get("assumptions")
-    if supuestos is None:
+    if supuestos is None and section.get("documentary"):
+        for key in ("execution", "validation"):
+            _shaded_paragraph(word, str(labels[key]), fill=_PLACEHOLDER_FILL, bold=True)
+            _shaded_paragraph(word, str(final[key]), fill=_PLACEHOLDER_FILL)
+    elif supuestos is None:
         _key_value_table(
             word,
             [
@@ -319,13 +358,27 @@ def _summary(word: Any, section: Mapping[str, Any], *, points: Any) -> None:
             word.add_paragraph(str(supuesto), style="List Bullet")
     _caption(word, labels["figures"], points=points, bold=True)
     if final["figures"]:
-        _table(word, ("Cifra", "Valor"), [tuple(fila) for fila in final["figures"]])
+        if section.get("documentary"):
+            primary, context = final["figures"][:3], final["figures"][3:]
+            _table(
+                word,
+                tuple(str(f[0]) for f in primary),
+                [tuple(str(f[1]) for f in primary)],
+                complete=True,
+            )
+            for label, value in context:
+                _caption(word, str(label), points=points, bold=True)
+                word.add_paragraph(str(value))
+        else:
+            _table(word, ("Cifra", "Valor"), [tuple(fila) for fila in final["figures"]])
     else:
         word.add_paragraph("Las cifras clave no están disponibles en esta corrida.")
     _caption(word, labels["review"], points=points, bold=True)
     if final["review"]:
         for alerta in final["review"]:
-            word.add_paragraph(f"⚠ {alerta}", style="List Bullet")
+            word.add_paragraph(
+                str(alerta) if section.get("documentary") else f"⚠ {alerta}", style="List Bullet"
+            )
     else:
         word.add_paragraph(str(summary["sin_alertas"])).runs[0].italic = True
     _caption(word, labels["decisions"], points=points, bold=True)
@@ -334,8 +387,17 @@ def _summary(word: Any, section: Mapping[str, Any], *, points: Any) -> None:
             word.add_paragraph(str(linea), style="List Bullet")
     else:
         word.add_paragraph(str(summary["sin_decisiones"])).runs[0].italic = True
-    _caption(word, labels["files"], points=points, bold=True)
-    _key_value_table(word, [(str(rotulo), str(ruta)) for rotulo, ruta in final["files"]])
+    if final["files"] or not section.get("documentary"):
+        _caption(word, labels["files"], points=points, bold=True)
+        _key_value_table(word, [(str(rotulo), str(ruta)) for rotulo, ruta in final["files"]])
+    if section.get("placeholder"):
+        placeholder = section["placeholder"]
+        _shaded_paragraph(
+            word, "POR COMPLETAR — " + placeholder["title"], fill=_PLACEHOLDER_FILL, bold=True
+        )
+        for line in placeholder["guidance"]:
+            _shaded_paragraph(word, line, fill=_PLACEHOLDER_FILL)
+    _links(word, section.get("links", ()))
     word.add_page_break()
 
 
@@ -380,7 +442,9 @@ def _section(
         # ejecutiva ya se escribió tras la portada.
         return
 
-    word.add_heading(_heading(section), level=1 if section["level"] == 1 else 2)
+    heading = word.add_heading(_heading(section), level=1 if section["level"] == 1 else 2)
+    if section.get("documentary"):
+        _bookmark(heading, section["html_id"])
 
     if section["status"] == "missing":
         _shaded_paragraph(
@@ -402,7 +466,15 @@ def _section(
             _shaded_paragraph(word, line, fill=_PLACEHOLDER_FILL)
     for chart in section["charts"]:
         word.add_picture(io.BytesIO(chart["png"]), width=inches(_FIGURE_WIDTH_INCHES))
-        _caption(word, chart["title"], points=points)
+        caption = _caption(word, chart["title"], points=points)
+        if section.get("documentary"):
+            _bookmark(caption, chart["html_id"])
+        _links(word, chart.get("links", ()))
+        for local in chart.get("local_tables", ()):
+            caption = _caption(word, local["title"], points=points)
+            _bookmark(caption, local["html_id"])
+            _table(word, tuple(local["columns"]), local["rows"], complete=True)
+            _links(word, local.get("links", ()))
     # La recaptura 2.17 evidenció cifras partidas desde nueve columnas (binning),
     # además de las tablas anchas de desempeño: usan horizontal y tipografía compacta.
     # Al terminar se restaura la disposición original del documento.
@@ -431,14 +503,18 @@ def _section(
                 page.orientation, page.page_width, page.page_height = original_page
                 page.left_margin, page.right_margin = original_margins
             landscape = wide
-        _caption(word, table["title"], points=points, bold=True)
+        caption = _caption(word, table["title"], points=points, bold=True)
+        if section.get("documentary"):
+            _bookmark(caption, table["html_id"])
         escritas = _table(
             word,
             tuple(table["columns"]),
             [tuple(row) for row in table["rows"]],
             numeric=tuple(table.get("numeric") or ()),
             compact=wide,
+            complete=bool(section.get("documentary")),
         )
+        _links(word, table.get("links", ()))
         # La leyenda dice lo que el Word trae DE VERDAD: su cinturón puede cortar por debajo de
         # lo que la vista canónica permitió, y decir «mostrando 1000» con 500 filas ocultaba
         # evidencia (pasada 16 de la revisión adversarial).
@@ -457,6 +533,7 @@ def _section(
     _payload_blocks(word, section)
     if section["narration"]:
         _narration(word, section["narration"])
+    _links(word, section.get("links", ()))
 
 
 def _heading(section: Mapping[str, Any]) -> str:
@@ -552,11 +629,12 @@ def _table(
     *,
     numeric: Sequence[bool] = (),
     compact: bool = False,
+    complete: bool = False,
 ) -> int:
     """Tabla NATIVA de Word (no una imagen): editable, copiable y con encabezado en negrita.
 
-    Devuelve cuántas filas de datos escribió: el cinturón :data:`_MAX_DOCX_TABLE_ROWS` puede
-    dejar fuera filas que la vista canónica sí permitía, y la leyenda tiene que contarlas.
+    Devuelve cuántas filas de datos escribió. D-DOC-SC usa ``complete`` y conserva todas;
+    las demás familias mantienen :data:`_MAX_DOCX_TABLE_ROWS` y su leyenda de recorte.
 
     Las columnas que ``numeric`` marca se alinean a la derecha, encabezado incluido, como en el
     HTML (D-INF-2).
@@ -567,7 +645,7 @@ def _table(
     from docx.shared import Pt
 
     derecha = {indice for indice, es in enumerate(numeric) if es}
-    visible = list(rows)[:_MAX_DOCX_TABLE_ROWS]
+    visible = list(rows) if complete else list(rows)[:_MAX_DOCX_TABLE_ROWS]
     table = word.add_table(rows=1, cols=len(columns))
     table.style = _TABLE_STYLE
     for index, column in enumerate(columns):
@@ -588,7 +666,14 @@ def _table(
     # repite su encabezado para conservar la relación entre valores y columnas.
     table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
     for row in table.rows:
-        row._tr.get_or_add_trPr().append(OxmlElement("w:cantSplit"))
+        if not complete:
+            row._tr.get_or_add_trPr().append(OxmlElement("w:cantSplit"))
+        else:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.name = _BODY_FONT
+                        run.font.size = Pt(10)
     if compact:
         # Columnas iguales partían 484,8741 aunque otras sólo alojaban conteos cortos.
         # Repartir el ancho por el token más largo del cuerpo conserva también los
@@ -625,8 +710,90 @@ def _table(
                 for paragraph in cell.paragraphs:
                     paragraph.paragraph_format.space_after = Pt(3)
                     for run in paragraph.runs:
-                        run.font.size = Pt(9)
+                        run.font.size = Pt(10 if complete else 9)
     return len(visible)
+
+
+def _bookmark_name(identifier: str) -> str:
+    return "br_" + hashlib.sha256(identifier.encode("utf-8")).hexdigest()[:32]
+
+
+def _embed_roboto(word: Any) -> None:
+    """Incrusta los dos originales verificados (ECMA-376-1 §17.8.1; licencia en el paquete)."""
+    from importlib import import_module, resources
+    from uuid import NAMESPACE_URL, uuid5
+
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+    from docx.opc.packuri import PackURI
+    from docx.opc.part import Part
+    from docx.oxml import parse_xml
+    from docx.oxml.ns import qn
+    from docx.oxml.parser import OxmlElement
+
+    font_table = word.part.part_related_by(RT.FONT_TABLE)
+    tree = parse_xml(font_table.blob)
+    font = OxmlElement("w:font")
+    font.set(qn("w:name"), _BODY_FONT)
+    tree.append(font)
+    for variant, element in (("Regular", "embedRegular"), ("Bold", "embedBold")):
+        raw = (
+            resources.files("bayesrisk.report")
+            .joinpath("templates", "fonts", f"Roboto-{variant}.ttf")
+            .read_bytes()
+        )
+        key = uuid5(NAMESPACE_URL, "bayesrisk:Roboto:" + hashlib.sha256(raw).hexdigest())
+        payload = bytearray(raw)
+        mask = key.bytes[::-1]
+        for i in range(32):
+            payload[i] ^= mask[i % 16]
+        part = Part(
+            PackURI(f"/word/fonts/Roboto-{variant}.odttf"),
+            "application/vnd.openxmlformats-officedocument.obfuscatedFont",
+            bytes(payload),
+            font_table.package,
+        )
+        embedded = OxmlElement(f"w:{element}")
+        embedded.set(qn("r:id"), font_table.relate_to(part, RT.FONT))
+        embedded.set(qn("w:fontKey"), "{" + str(key).upper() + "}")
+        embedded.set(qn("w:subsetted"), "false")
+        font.append(embedded)
+    font_table._blob = import_module("lxml.etree").tostring(
+        tree, xml_declaration=True, encoding="UTF-8", standalone=True
+    )
+    setting = OxmlElement("w:embedTrueTypeFonts")
+    word.settings.element.append(setting)
+
+
+def _bookmark(paragraph: Any, identifier: str) -> None:
+    from docx.oxml.ns import qn
+    from docx.oxml.parser import OxmlElement
+
+    mark = str(len(paragraph._p.getroottree().xpath("//*[local-name()='bookmarkStart']")))
+    start, end = OxmlElement("w:bookmarkStart"), OxmlElement("w:bookmarkEnd")
+    start.set(qn("w:id"), mark)
+    start.set(qn("w:name"), _bookmark_name(identifier))
+    end.set(qn("w:id"), mark)
+    paragraph._p.insert(0, start)
+    paragraph._p.append(end)
+
+
+def _links(word: Any, links: Any) -> None:
+    from docx.oxml.ns import qn
+    from docx.oxml.parser import OxmlElement
+
+    for link in links:
+        paragraph = word.add_paragraph()
+        hyperlink = OxmlElement("w:hyperlink")
+        hyperlink.set(qn("w:anchor"), _bookmark_name(link["href"].removeprefix("#")))
+        run, props, text = OxmlElement("w:r"), OxmlElement("w:rPr"), OxmlElement("w:t")
+        color, size = OxmlElement("w:color"), OxmlElement("w:sz")
+        color.set(qn("w:val"), "1859E0")
+        size.set(qn("w:val"), "18")
+        props.extend((color, size))
+        text.text = str(link.get("label", link.get("title", "")))
+        run.extend((props, text))
+        hyperlink.append(run)
+        paragraph._p.append(hyperlink)
 
 
 def _key_value_table(word: Any, items: Sequence[tuple[str, str]]) -> None:

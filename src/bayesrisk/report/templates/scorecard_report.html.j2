@@ -15,7 +15,7 @@
 {% include "_run_summary.html.j2" %}
 {% endif %}
 {% endfor %}
-{% include "_exec_summary.html.j2" %}
+{% if not documentary %}{% include "_exec_summary.html.j2" %}{% endif %}
 
 {% for section in sections %}
 {% if section.kind == "summary" %}

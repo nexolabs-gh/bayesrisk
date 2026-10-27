@@ -438,6 +438,11 @@ ATTACHMENT_ONLY_TABLES: Final = PER_OBSERVATION_TABLES | {"lgd_training.model_ta
 # Títulos legibles por artefacto tabular: el informe habla de "Coeficientes del modelo PD", no de
 # `model.coefficients`. Las claves dinámicas (una tabla por variable) se resuelven en `table_title`.
 _TABLE_TITLES: Final[dict[str, str]] = {
+    "binning.bin_edges": "Bordes numéricos originales de los tramos",
+    "binning.cut_dictionary": "Diccionario exacto de reglas por tramo",
+    "eda.stability": "Evidencia original de estabilidad del análisis exploratorio",
+    "stability.temporal_records": "Estabilidad temporal completa, incluidos los percentiles",
+    "validation.hosmer_lemeshow_groups": "Grupos HL convencionales: valores originales",
     "binning.event_rate_by_partition": "Tasa de malos por tramo y muestra: soporte íntegro",
     "binning.unseen_categories": "Categorías no vistas por variable y muestra",
     "selection.iv_by_partition": "IV por variable y muestra: soporte íntegro",

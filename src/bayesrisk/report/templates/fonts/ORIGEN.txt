@@ -7,3 +7,9 @@ U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2193, U
 U+2264-2265, U+2022, U+FEFF, U+FFFD; los glifos que la fuente no trae caen a la pila del sistema)
 convertido a WOFF2 sin hinting con fontTools 4.65 (pyftsubset --flavor=woff2 --no-hinting).
 El informe los incrusta en base64 dentro de su CSS para no depender de la red ni del sistema.
+
+2026-10-27, D-DOC-SC: Roboto-Regular.ttf y Roboto-Bold.ttf conservan los originales completos,
+sin modificar, con los hashes de origen anteriores. OS/2.fsType=0 en ambos. El DOCX del
+scorecard los incrusta siguiendo ECMA-376 Part 1, quinta edición, §17.8.1, sin descarga en runtime.
+Referencia oficial: https://ecma-international.org/publications-and-standards/standards/ecma-376/
+Interoperabilidad: https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oe376/1663dabc-5d98-463f-889e-bcd9b77c3d34

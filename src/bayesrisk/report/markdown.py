@@ -84,7 +84,13 @@ class MarkdownReportRenderer:
         blocks.extend(
             _summary(section) for section in document["sections"] if section["kind"] == "summary"
         )
-        blocks.append(_executive(document["executive"]))
+        if not document.get("documentary"):
+            blocks.append(_executive(document["executive"]))
+        else:
+            toc_id = next(
+                (s["html_id"] for s in document["sections"] if s["kind"] == "toc"), "reading-index"
+            )
+            blocks.append(f"## Índice de lectura {{#{toc_id}}}\n\n" + _links(document["toc"]))
         for section in document["sections"]:
             block = _section(section, self.config)
             if block:
@@ -222,6 +228,15 @@ def _front_matter(document: Mapping[str, Any], config: ReportConfig) -> str:
 
 def _cover(document: Mapping[str, Any]) -> str:
     """Portada: los metadatos declarados y la trazabilidad de la corrida (nunca inventados)."""
+    if document.get("documentary"):
+        return "Borrador automático para revisión institucional.\n\n" + _pipe_table(
+            ("Campo", "Valor"),
+            [
+                (field["label"], _texto_inline_literal(str(field["value"])))
+                for field in document["cover"]
+            ]
+            + [("Fecha de emisión", document["emitted_date"])],
+        )
     lines = [
         "::: {.callout-note appearance='simple'}",
         "**USO INTERNO — CONFIDENCIAL**",
@@ -271,6 +286,8 @@ def _summary(section: Mapping[str, Any]) -> str:
     la fuente editable dice lo mismo que la consola, el notebook, la pantalla y el HTML.
     """
     lines = [_heading(section), ""]
+    if section.get("documentary"):
+        lines.extend(["[]{#exec-summary}", ""])
     for paragraph in section["body"]:
         lines.extend([paragraph, ""])
     summary = section["summary"] or {}
@@ -308,7 +325,8 @@ def _summary(section: Mapping[str, Any]) -> str:
         lines.append("Las cifras clave no están disponibles en esta corrida.")
     lines.extend(["", f"**{labels['review']}**", ""])
     if final["review"]:
-        lines.extend(f"- ⚠ {literal(str(alerta))}" for alerta in final["review"])
+        marker = "" if section.get("documentary") else "⚠ "
+        lines.extend(f"- {marker}{literal(str(alerta))}" for alerta in final["review"])
     else:
         lines.append(f"_{summary['sin_alertas']}_")
     lines.extend(["", f"**{labels['decisions']}**", ""])
@@ -316,13 +334,17 @@ def _summary(section: Mapping[str, Any]) -> str:
         lines.extend(f"- {literal(str(linea))}" for linea in final["decisions"])
     else:
         lines.append(f"_{summary['sin_decisiones']}_")
-    lines.extend(["", f"**{labels['files']}**", ""])
-    lines.append(
-        _pipe_table(
-            ("Archivo", "Dónde"),
-            [tuple(literal(str(celda)) for celda in fila) for fila in final["files"]],
+    if final["files"] or not section.get("documentary"):
+        lines.extend(["", f"**{labels['files']}**", ""])
+        lines.append(
+            _pipe_table(
+                ("Archivo", "Dónde"),
+                [tuple(literal(str(celda)) for celda in fila) for fila in final["files"]],
+            )
         )
-    )
+    if section.get("placeholder"):
+        lines.extend(["", _placeholder(section["placeholder"])])
+    lines.extend(["", _links(section.get("links", ()))])
     return "\n".join(lines).rstrip()
 
 
@@ -390,6 +412,9 @@ def _section(section: Mapping[str, Any], config: ReportConfig) -> str:
         lines.extend([_placeholder(section["placeholder"]), ""])
     for chart in section["charts"]:
         lines.extend([_figure(chart, config), ""])
+        lines.extend([_links(chart.get("links", ())), ""])
+        for local in chart.get("local_tables", ()):
+            lines.extend([_table(local), ""])
     for table in section["tables"]:
         lines.extend([_table(table), ""])
     if section["data_exports"]:
@@ -397,6 +422,7 @@ def _section(section: Mapping[str, Any], config: ReportConfig) -> str:
     lines.extend(_payload_blocks(section))
     if section["narration"]:
         lines.extend([_narration(section["narration"]), ""])
+    lines.extend([_links(section.get("links", ())), ""])
     return "\n".join(lines).rstrip()
 
 
@@ -411,7 +437,15 @@ def _heading(section: Mapping[str, Any]) -> str:
     if number and section["kind"] == "appendix" and section["level"] == 1:
         number = f"Anexo {number} —"
     prefix = f"{number} " if number else ""
-    return f"{level} {prefix}{section['title']}"
+    anchor = f" {{#{section['html_id']}}}" if section.get("documentary") else ""
+    return f"{level} {prefix}{section['title']}{anchor}"
+
+
+def _links(links: Any) -> str:
+    return "\n\n".join(
+        f"[{_texto_inline_literal(str(link.get('label', link.get('title', ''))))}]({link['href']})"
+        for link in links
+    )
 
 
 def _placeholder(placeholder: Mapping[str, Any]) -> str:
@@ -440,13 +474,24 @@ def _callout(kind: str, title: str, paragraphs: Sequence[str]) -> str:
 def _figure(chart: Mapping[str, Any], config: ReportConfig) -> str:
     """Figura por ruta relativa al SVG que ``write`` materializa junto al ``.qmd``."""
     path = f"{config.basename}{FIGURES_SUFFIX}/{chart['html_id']}.svg"
-    return f"![{_escape_cell(chart['title'])}]({path})"
+    anchor = f" {{#{chart['html_id']}}}" if chart.get("documentary") else ""
+    return f"![{_escape_cell(chart['title'])}]({path}){anchor}"
 
 
 def _table(table: Mapping[str, Any]) -> str:
     """Tabla en *pipe table* de Markdown, con su título legible y el aviso de truncamiento."""
-    lines = [f"**{table['title']}**", ""]
-    lines.append(_pipe_table(tuple(table["columns"]), [tuple(row) for row in table["rows"]]))
+    documentary = bool(table.get("support") or table.get("links"))
+    lines = [
+        f"#### {_texto_inline_literal(table['title'])} {{#{table['html_id']}}}"
+        if documentary
+        else f"**{table['title']}**",
+        "",
+    ]
+    lines.append(
+        _pipe_table(
+            tuple(table["columns"]), [tuple(row) for row in table["rows"]], literal=documentary
+        )
+    )
     if table["truncated"]:
         lines.extend(
             [
@@ -454,6 +499,7 @@ def _table(table: Mapping[str, Any]) -> str:
                 f"_… (mostrando {table['shown_rows_label']} de {table['total_rows_label']} filas)_",
             ]
         )
+    lines.extend(["", _links(table.get("links", ()))])
     return "\n".join(lines)
 
 
@@ -543,13 +589,22 @@ def _narration(narration: Mapping[str, Any]) -> str:
 # ─────────────────────────── primitivas Markdown ───────────────────────────
 
 
-def _pipe_table(columns: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
+def _pipe_table(
+    columns: Sequence[str], rows: Sequence[Sequence[str]], *, literal: bool = False
+) -> str:
     """Compone una *pipe table* de Markdown válida, con las celdas escapadas."""
-    header = " | ".join(_escape_cell(column) for column in columns)
+    escape = _literal_table_cell if literal else _escape_cell
+    header = " | ".join(escape(column) for column in columns)
     separator = " | ".join("---" for _ in columns)
     lines = [f"| {header} |", f"| {separator} |"]
-    lines.extend(f"| {' | '.join(_escape_cell(cell) for cell in row)} |" for row in rows)
+    lines.extend(f"| {' | '.join(escape(str(cell)) for cell in row)} |" for row in rows)
     return "\n".join(lines)
+
+
+def _literal_table_cell(value: str) -> str:
+    """Escapa Pandoc sin colapsar espacios de categorías ni etiquetas originales."""
+    text = value.replace("\r", r"\r").replace("\n", r"\n").replace("\t", r"\t")
+    return _PUNTUACION_ASCII.sub(r"\\\1", text)
 
 
 def _escape_cell(value: object) -> str:

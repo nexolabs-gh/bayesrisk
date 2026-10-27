@@ -1765,7 +1765,7 @@ export function ResultsPanel({
       {woeVars.length > 0 && activeWoeVar && woeDetail ? (
         <ResultsSection
           title="Análisis por variable (WoE)"
-          description="Weight of Evidence por bin de la variable elegida y su tasa de default (línea, eje derecho). WoE>0 = bin protector (menor riesgo); WoE<0 = mayor riesgo."
+          description="Tasa de malos y Weight of Evidence de la variable elegida en Desarrollo, en paneles separados. La tabla conserva la definición de cada tramo."
         >
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <div className="min-w-56">
@@ -2561,7 +2561,8 @@ function WoeDetailTable({ detail }: { detail: VariableBinning }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-left text-[0.68rem] uppercase tracking-wide text-muted-foreground">
-            <th className="py-2 pr-3 font-medium">Bin</th>
+            <th className="py-2 pr-3 font-medium">Tramo</th>
+            <th className="py-2 pr-3 font-medium">Definición del tramo</th>
             <NumHead>Count</NumHead>
             <NumHead>Count (%)</NumHead>
             <NumHead>Event rate</NumHead>
@@ -2571,8 +2572,9 @@ function WoeDetailTable({ detail }: { detail: VariableBinning }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.binLabel} className="border-b border-border">
+          {rows.map((r, index) => (
+            <tr key={`${index}-${r.binLabel}`} className="border-b border-border">
+              <td className="py-2 pr-3">T{index + 1}</td>
               <td className="py-2 pr-3 font-mono text-foreground">
                 {r.binLabel}
               </td>
@@ -2588,7 +2590,7 @@ function WoeDetailTable({ detail }: { detail: VariableBinning }) {
         {total ? (
           <tfoot>
             <tr className="border-t border-border text-foreground">
-              <td className="py-2 pr-3 font-medium">Total</td>
+              <td colSpan={2} className="py-2 pr-3 font-medium">Total</td>
               <NumCell>{formatCount(total.totalCount)}</NumCell>
               <NumCell>{formatPercent(total.countPct)}</NumCell>
               <NumCell>{formatPercent(total.baseEventRate)}</NumCell>

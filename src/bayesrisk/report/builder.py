@@ -148,6 +148,7 @@ _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     ("eda", "univariate"),
     ("eda", "quality"),
     ("binning", "tables"),
+    ("binning", "bin_edges"),
     ("binning", "summary"),
     ("binning", "event_rate_by_partition"),
     ("binning", "unseen_categories"),
@@ -275,6 +276,11 @@ class ReportBuilder:
 
         raw_interpretation, interpretation = study_interpretation(study)
         if interpretation is not None:
+            if study.artifacts.has("validation", "calibration_tie_groups"):
+                # study_interpretation ya cotejó valores, índices y esquema contra el DTO.
+                tables["validation.calibration_tie_groups"] = study.artifacts.get(
+                    "validation", "calibration_tie_groups"
+                ).copy(deep=True)
             tables.update(
                 {
                     f"validation.calibration_tie_groups.{partition}": frame
@@ -809,6 +815,44 @@ class ReportBuilder:
             ):
                 continue
             tables.update(_extract_dataframes(artefacto, f"{domain}.{key}"))
+            if (domain, key) in {("calibration", "parameters"), ("eda", "stability")}:
+                raw = (
+                    artefacto.model_dump(mode="python")
+                    if hasattr(artefacto, "model_dump")
+                    else artefacto
+                )
+                if isinstance(raw, Mapping):
+                    pd = importlib.import_module("pandas")
+                    tables[f"{domain}.{key}"] = pd.DataFrame(
+                        [(str(k), v) for k, v in raw.items()],
+                        columns=("Campo", "Valor"),
+                        dtype=object,
+                    )
+        if study.artifacts.has("stability", "result"):
+            temporal = getattr(study.artifacts.get("stability", "result"), "temporal_records", ())
+            records = [
+                r.model_dump(mode="python") if hasattr(r, "model_dump") else dict(r)
+                for r in temporal
+            ]
+            if records:
+                pd = importlib.import_module("pandas")
+                tables["stability.temporal_records"] = pd.DataFrame(records)
+        edges = tables.get("binning.bin_edges")
+        if edges is not None and {"variable", "bin_index", "lower", "upper"} <= set(edges.columns):
+            from bayesrisk.core.tramos import rotulo_de_rango
+
+            pd = importlib.import_module("pandas")
+            tables["binning.cut_dictionary"] = pd.DataFrame(
+                [
+                    {
+                        "Variable": r["variable"],
+                        "Tramo": f"T{int(r['bin_index']) + 1}",
+                        "Regla exacta": rotulo_de_rango(float(r["lower"]), float(r["upper"])),
+                    }
+                    for r in edges.to_dict("records")
+                ],
+                columns=("Variable", "Tramo", "Regla exacta"),
+            )
         return tables
 
     def _collect_figures(self, study: Study) -> dict[str, Any]:
@@ -1333,6 +1377,8 @@ def _hl_group_tables(study: Study, results: Mapping[str, Any]) -> dict[str, Data
         tablas[f"{HL_GROUP_TABLE_PREFIX}{nombre}"] = _frame_from_records(
             registros, _HL_GROUP_REPORT_COLUMNS
         )
+    # Sólo después del cotejo atómico anterior: soporte original, sin los redondeos de lectura.
+    tablas["validation.hosmer_lemeshow_groups"] = grupos.copy(deep=True)
     return tablas
 
 

@@ -12,7 +12,9 @@
   {% endfor %}
 
   {% for chart in section.charts %}
-  <figure class="chart-slot" id="{{ chart.html_id }}">{{ chart.svg|safe }}</figure>
+  <figure class="chart-slot" id="{{ chart.html_id }}">{{ chart.svg|safe }}{% if documentary %}<figcaption>{{ chart.title }}</figcaption>{% endif %}</figure>
+  {% if chart.links | default([]) %}<nav class="evidence-links" aria-label="Evidencia del gráfico">{% for link in chart.links %}<a href="{{ link.href }}">{{ link.label }}</a>{% endfor %}</nav>{% endif %}
+  {% if chart.local_tables | default([]) %}{% with section={"tables": chart.local_tables} %}{% include "_tables.html.j2" %}{% endwith %}{% endif %}
   {% endfor %}
 
   {% include "_tables.html.j2" %}
@@ -20,4 +22,5 @@
   {% if section.narration %}
   {% include "_narration.html.j2" %}
   {% endif %}
+  {% include "_evidence_links.html.j2" %}
 </section>

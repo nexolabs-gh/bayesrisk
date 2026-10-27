@@ -413,9 +413,64 @@ def test_el_pdf_incrusta_roboto_y_lleva_la_pagina_ejecutiva(tmp_path: Path) -> N
             fuentes.add(str(fuente.get_object().get("/BaseFont")))
     assert any("Roboto" in nombre for nombre in fuentes), fuentes
     texto = "".join(page.extract_text() for page in reader.pages)
-    assert "Resumen de la corrida" in texto
-    assert "Resumen ejecutivo" in texto
-    assert texto.index("Resumen de la corrida") < texto.index("Resumen ejecutivo")
+    assert "Resultados del scorecard" in texto
+    assert "Resumen ejecutivo" not in texto
+    assert texto.index("Resultados del scorecard") < texto.index("Introducción")
+
+
+@pytest.mark.skipif(not _HAS_WEASYPRINT, reason="WeasyPrint nativo se verifica en CI PDF")
+def test_documental_pdf_final_conserva_1001_filas_indices_fuentes_y_enlaces(tmp_path: Path) -> None:
+    """Artefacto publicable del gate B: lectura compacta más soporte íntegro, sin demo."""
+    import json
+    import os
+
+    from pypdf import PdfReader
+    from test_documentary_layout import bundle_documental
+    from weasyprint import HTML
+
+    bundle, config, _ = bundle_documental(1001)
+    html = HtmlReportRenderer(config).render(bundle)
+    rendered = HTML(string=html).render()
+    # El árbol de páginas permite medir el ancho efectivo, no sólo el CSS declarado.
+    cells = []
+    for page in rendered.pages:
+        for box in page._page_box.descendants():
+            if box.element_tag == "td" and type(box).__name__ == "TextBox":
+                assert box.style["font_size"] >= 10 * 96 / 72 - 0.01
+                assert box.position_x >= 0 and box.position_x + box.width <= page.width + 1
+                cells.append(box)
+    assert cells
+    destination = Path(os.environ.get("BAYESRISK_DOCUMENTARY_PDF_EVIDENCE", str(tmp_path)))
+    destination.mkdir(parents=True, exist_ok=True)
+    payload = rendered.write_pdf()
+    (destination / "scorecard-integridad.pdf").write_bytes(payload)
+    (destination / "scorecard-integridad.html").write_text(html, encoding="utf-8")
+    reader = PdfReader(BytesIO(payload))
+    text = "\n".join(p.extract_text() for p in reader.pages)
+    for i in range(1001):
+        assert f"fuente_{i}" in text and f"variable_{i}" in text
+    assert "0.12345678901234566" in text
+    links = sum(len(p.get("/Annots", ())) for p in reader.pages)
+    assert links > 0
+    fonts = {
+        str(f.get_object().get("/BaseFont"))
+        for page in reader.pages
+        for f in (page.get("/Resources", {}).get("/Font", {})).values()
+    }
+    assert any("Roboto" in f for f in fonts)
+    (destination / "medicion.json").write_text(
+        json.dumps(
+            {
+                "pages": len(reader.pages),
+                "rows": 1001,
+                "links": links,
+                "fonts": sorted(fonts),
+                "table_text_boxes": len(cells),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
 
 # ─────────────────────── (c) fallback SIN weasyprint (corre SIEMPRE) ───────────────────────

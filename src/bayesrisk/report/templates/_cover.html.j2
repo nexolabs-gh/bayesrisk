@@ -2,7 +2,7 @@
    emite como campo en blanco para completar a mano. El lineage identifica la corrida. #}
 <section class="cover">
   <div class="cover-brand">bayesrisk</div>
-  <p class="cover-kicker">{{ cover_kicker }}</p>
+  {% if not documentary %}<p class="cover-kicker">{{ cover_kicker }}</p>{% endif %}
   <h1 class="cover-title">{{ document_title }}</h1>
   <p class="confidential">USO INTERNO — CONFIDENCIAL</p>
 
@@ -19,6 +19,7 @@
     </div>
   </dl>
 
+  {% if not documentary %}
   <div class="lineage-box">
     <p class="lineage-caption">Trazabilidad de la corrida (lineage)</p>
     <div class="lineage-line"><code>config_hash={{ lineage.config_hash }}</code></div>
@@ -44,4 +45,5 @@
       <p class="role-hint">Nombre y fecha</p>
     </div>
   </div>
+  {% endif %}
 </section>

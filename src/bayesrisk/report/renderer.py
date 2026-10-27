@@ -76,6 +76,7 @@ from bayesrisk.report.document import (
 from bayesrisk.report.exceptions import (
     ReportDependencyError,
     ReportExportError,
+    ReportInputError,
     ReportRenderError,
 )
 from bayesrisk.report.exports import data_export_refs
@@ -187,7 +188,13 @@ class HtmlReportRenderer:
         try:
             document = build_document_view(bundle, config=self.config, ai_blocks=ai_blocks)
             rendered = _load_template(environment).render(
-                css=_css_for_theme(self.config.html.theme),
+                css=_css_for_theme(self.config.html.theme)
+                + (
+                    (_font_faces() if self.config.html.theme == "plain" else "")
+                    + _documentary_css()
+                    if document["documentary"]
+                    else ""
+                ),
                 theme=self.config.html.theme,
                 **document,
             )
@@ -385,7 +392,7 @@ def build_document_view(
     from bayesrisk.report.prose import internal_report_family, lgd_report
 
     section_views = _section_views(bundle, ai_blocks, config, chart_format)
-    return {
+    document = {
         "brand_subtitle": (
             "Entrenamiento LGD"
             if lgd_report(bundle)
@@ -407,6 +414,9 @@ def build_document_view(
         "toc": _toc_entries(section_views),
         "sections": section_views,
     }
+    from bayesrisk.report._documentary_layout import compose_scorecard
+
+    return compose_scorecard(document, bundle, config)
 
 
 def _section_views(
@@ -820,6 +830,12 @@ def _tables_for_section(
     se entregan completas como adjuntos (:func:`_data_exports_view`).
     """
     if section.id == APPENDIX_TABLES_ID:
+        from bayesrisk.report._documentary_layout import scorecard_document
+
+        if scorecard_document(bundle):
+            # D-DOC-SC compone después el soporte original por posición. No pasarlo antes por
+            # dicts de lectura: columnas homónimas perderían identidad y se recortaría dos veces.
+            return []
         keys: tuple[str, ...] = tuple(
             key
             for key in sorted(bundle.tables, key=str)
@@ -1499,6 +1515,8 @@ def _charts_for_section(
     if not config.html.render_charts or section.kind != "data" or section.status != "included":
         return []
     domain = section.source_domain
+    if domain == "binning":
+        return _binning_charts(bundle, chart_format)
     builders = _CHART_BUILDERS.get(domain) if domain is not None else None
     if builders is None:
         return []
@@ -1526,6 +1544,36 @@ def _charts_for_section(
             }
         )
     return results
+
+
+def _binning_charts(bundle: ReportInputBundle, fmt: ChartFormat) -> list[dict[str, Any]]:
+    from bayesrisk.report import charts
+    from bayesrisk.report._documentary_layout import support_id
+
+    result: list[dict[str, Any]] = []
+    for key, table in sorted(bundle.tables.items()):
+        if not key.startswith("binning.tables.") or not {"Bin", "Event rate", "WoE"} <= set(
+            table.columns
+        ):
+            continue
+        variable = key.removeprefix("binning.tables.")
+        for measure, label in (("Event rate", "Tasa de malos"), ("WoE", "WoE")):
+            title = f"{variable} · {label} por tramo · Desarrollo"
+            try:
+                picture = charts._binning_panel(table, measure, title, fmt)
+            except (ReportDependencyError, ReportInputError) as exc:
+                _LOGGER.warning("report: gráfico de binning omitido: %s", exc)
+                continue
+            result.append(
+                {
+                    "html_id": support_id(key + measure) + "-chart",
+                    "title": title,
+                    "source_key": key,
+                    "measure": measure,
+                    fmt: picture,
+                }
+            )
+    return result
 
 
 def _display_value(value: Any, *, key_path: tuple[str, ...]) -> str:
@@ -1774,6 +1822,12 @@ def _element_id(kind: str, raw_id: str) -> str:
 def _load_template(environment: Any) -> Any:
     """Carga la plantilla editorial del paquete; aislada para poder simular fallos en tests."""
     return environment.get_template(_TEMPLATE_NAME)
+
+
+def _documentary_css() -> str:
+    return (
+        resources.files(_TEMPLATE_PACKAGE).joinpath("scorecard_documentary.css").read_text("utf-8")
+    )
 
 
 def _css_for_theme(theme: Literal["bayesrisk", "plain"]) -> str:

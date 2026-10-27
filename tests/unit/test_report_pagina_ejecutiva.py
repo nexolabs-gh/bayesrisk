@@ -131,16 +131,15 @@ def test_el_informe_abre_con_la_pagina_tras_la_portada(corrida: Scorecard) -> No
     assert portada < pagina < resumen_ejecutivo < indice
     seccion = _pagina(corrida)
     assert 'data-kind="summary"' in seccion
-    assert "Resumen de la corrida" in seccion
-    assert "<h2>Resumen de la corrida</h2>" in seccion  # sin número: es materia preliminar
+    assert "<h2>Resultados del scorecard</h2>" in seccion
+    assert "<h2>Resumen ejecutivo</h2>" not in html
 
 
 def test_el_indice_lista_la_pagina_antes_del_resumen_ejecutivo(corrida: Scorecard) -> None:
     html = _html(corrida)
     indice = _seccion(html, "toc")
-    assert indice.index("#section-executive_summary") < indice.index("#exec-summary")
-    # Y el sidebar de pantalla también la enumera en su lugar.
-    assert html.index('href="#section-executive_summary"') < html.index('href="#exec-summary"')
+    assert "#section-executive_summary" in indice and "#exec-summary" not in indice
+    assert html.count('id="exec-summary"') == 1  # alias compatible de la misma entrada
 
 
 # ─────────────────────────── la misma fuente que summary() y la pantalla ───────────────────────
@@ -160,7 +159,7 @@ def test_la_pagina_reproduce_el_resumen_final_de_la_puerta_guiada(corrida: Score
     for rotulo in ("Ejecución", "Validación técnica", "Cifras clave", "Qué revisar"):
         assert rotulo in seccion, rotulo
     assert "Decisiones humanas registradas" in seccion
-    assert "Dónde quedó cada archivo" in seccion
+    assert "Identidad, archivos y trazabilidad de la corrida" in seccion
 
 
 def test_la_ejecucion_nombra_las_etapas_que_corrieron_antes_del_informe(corrida: Scorecard) -> None:
@@ -197,7 +196,7 @@ def test_la_pagina_dice_donde_queda_cada_archivo_sin_inventar_rutas(corrida: Sco
     auditoría y la ficha, por su nombre en la carpeta de evidencia (el informe se escribe antes de
     que la corrida se consolide y no conoce esa carpeta)."""
     resultado = corrida.study.artifacts.get("report", "result")
-    seccion = _pagina(corrida)
+    seccion = _seccion(_html(corrida), "appendix_lineage")
     assert html_module.escape(str(resultado.html_path)) in seccion
     assert html_module.escape(str(resultado.md_path)) in seccion
     assert "audit_trail.jsonl" in seccion
@@ -330,7 +329,7 @@ def test_el_registro_de_auditoria_se_nombra_sin_su_ruta_absoluta(tmp_path: Path)
     study = bayesrisk.run(config, run_dir=tmp_path / "corrida")
     assert study.run_context.status == "done", study.run_context.error
     html = Path(study.artifacts.get("report", "result").html_path).read_text(encoding="utf-8")
-    seccion = _pagina_de(html)
+    seccion = _seccion(html, "appendix_lineage")
     assert str(provisional) not in seccion and "0123456789abcdef" not in seccion
     assert "Registro de auditoría" in seccion
     assert "en la ruta que fija la sección audit del config" in html_module.unescape(seccion)
@@ -361,8 +360,8 @@ def test_regenerar_un_informe_no_mezcla_las_rutas_del_anterior(corrida: Scorecar
 def test_la_pagina_advierte_que_las_rutas_son_las_de_escritura(corrida: Scorecard) -> None:
     """Pasada 2 de Codex sobre C1: la interfaz copia el informe a `runs/<run_id>/` y una corrida
     posterior reescribe la ruta compartida; la página dice que sus rutas son las de escritura."""
-    seccion = _pagina(corrida)
-    assert "Las rutas son las que el informe escribió al generarse" in seccion
+    seccion = _seccion(_html(corrida), "appendix_lineage")
+    assert "Las rutas son las registradas al emitir el informe" in seccion
 
 
 def test_con_pasos_despues_del_informe_la_pagina_no_afirma_lo_que_no_corrio(
@@ -409,7 +408,8 @@ def test_con_pasos_despues_del_informe_la_pagina_no_afirma_lo_que_no_corrio(
 def test_el_qmd_lleva_la_pagina_antes_del_resumen_ejecutivo(corrida: Scorecard) -> None:
     resultado = corrida.study.artifacts.get("report", "result")
     qmd = Path(resultado.md_path).read_text(encoding="utf-8")
-    assert qmd.index("## Resumen de la corrida") < qmd.index("## Resumen ejecutivo")
+    assert qmd.index("## Resultados del scorecard") < qmd.index("## Índice")
+    assert "## Resumen ejecutivo" not in qmd
     # Todo valor dinámico va como texto literal de pandoc (puntuación ASCII con barra): se compara
     # sin las barras.
     literal = qmd.replace("\\", "")
@@ -440,7 +440,7 @@ def test_el_qmd_neutraliza_texto_hostil_en_la_pagina(
     study = step_tests._study_with_report_artifacts(config=cfg)
     result = ReportStep.from_config(cfg).execute(study, np.random.default_rng(1))
     qmd = Path(result.md_path).read_text(encoding="utf-8")
-    inicio = qmd.index("## Resumen de la corrida")
+    inicio = qmd.index("## Resultados del scorecard")
     pagina = qmd[inicio : qmd.index("\n## ", inicio + 1)]
     assert hostil not in pagina
     # Toda la puntuación va con barra: ninguna etiqueta, enlace ni énfasis queda sin escapar.
@@ -457,13 +457,17 @@ def test_el_word_lleva_la_pagina_antes_del_resumen_ejecutivo(corrida: Scorecard)
     resultado = corrida.study.artifacts.get("report", "result")
     word = docx.Document(str(resultado.docx_path))
     titulos = [p.text for p in word.paragraphs if p.style.name.startswith("Heading 1")]
-    assert titulos.index("Resumen de la corrida") < titulos.index("Resumen ejecutivo")
+    assert titulos.index("Resultados del scorecard") < titulos.index("Índice")
+    assert "Resumen ejecutivo" not in titulos
     texto = "\n".join(p.text for p in word.paragraphs)
     for linea in corrida.summary().decisions:
         assert linea in texto, linea
     celdas = {celda.text for tabla in word.tables for fila in tabla.rows for celda in fila.cells}
-    for rotulo, valor in corrida.summary().figures:
-        assert rotulo in celdas and valor in celdas, (rotulo, valor)
+    for index, (rotulo, valor) in enumerate(corrida.summary().figures):
+        if index < 3:
+            assert rotulo in celdas and valor in celdas, (rotulo, valor)
+        else:
+            assert rotulo + "\n" + valor in texto, (rotulo, valor)
 
 
 # ─────────────────────────── condicionalidad y degradación ───────────────────────────
@@ -488,9 +492,8 @@ def _lineage() -> Any:
     )
 
 
-def test_un_bundle_armado_a_mano_no_tiene_capitulo(tmp_path: Path) -> None:
-    """Sin corrida no hay resumen que reproducir: el bundle no lo trae y el capítulo no se emite,
-    así que los goldens del renderer sobre bundles sintéticos no se mueven."""
+def test_un_bundle_armado_a_mano_declara_el_limite_del_snapshot(tmp_path: Path) -> None:
+    """D-DOC-SC: una entrada conservadora; no atribuye ejecución a un bundle sin corrida."""
     cfg = ReportConfig(sections={"missing_policy": "skip"})
     bundle = ReportInputBundle(
         lineage=_lineage(),
@@ -503,7 +506,8 @@ def test_un_bundle_armado_a_mano_no_tiene_capitulo(tmp_path: Path) -> None:
     secciones = ReportBuilder(cfg).build_sections(bundle)
     assert EXECUTIVE_SUMMARY_ID not in [s.id for s in secciones]
     html = HtmlReportRenderer(cfg).render(bundle.model_copy(update={"sections": secciones}))
-    assert 'data-kind="summary"' not in html
+    assert html.count('data-kind="summary"') == 1
+    assert "Estado de ejecución no disponible en este snapshot" in html
 
 
 def test_una_corrida_ifrs9_sin_scorecard_no_recibe_el_molde_del_scorecard() -> None:

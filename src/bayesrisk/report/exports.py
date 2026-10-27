@@ -333,6 +333,8 @@ def write_workbook(
             for sheet, table in sheets.items():
                 con_indice = index if isinstance(index, bool) else index.get(sheet, True)
                 exportable_table(table).to_excel(writer, sheet_name=sheet, index=con_indice)
+                if table.attrs.get("_documentary"):
+                    _documentary_sheet(writer.sheets[sheet], table, con_indice, sheets)
         temp_path.replace(path)
     except ImportError as exc:
         temp_path.unlink(missing_ok=True)
@@ -345,6 +347,75 @@ def write_workbook(
             "acción='verifique permisos y espacio disponible'."
         ) from exc
     return path
+
+
+def _documentary_sheet(
+    worksheet: Any, table: DataFrameLike, index: bool, sheets: Mapping[str, Any]
+) -> None:
+    """Presentación del libro F1 sin insertar celdas ni convertir magnitudes en cadenas."""
+    comments = importlib.import_module("openpyxl.comments")
+    styles = importlib.import_module("openpyxl.styles")
+    get_column_letter = importlib.import_module("openpyxl.utils").get_column_letter
+    hyperlinks = importlib.import_module("openpyxl.worksheet.hyperlink")
+
+    offset = table.index.nlevels if index else 0
+    formats = table.attrs.get("_documentary_formats", {})
+    excel_formats = {
+        "int": "#,##0",
+        "pct": "0.00%",
+        "num2": "0.00",
+        "num3": "0.000",
+        "num": "0.0000###########",
+        "pvalor": "0.0000###########",
+    }
+    worksheet.freeze_panes = f"{get_column_letter(offset + 1)}2"
+    worksheet.auto_filter.ref = worksheet.dimensions
+    worksheet.print_title_rows = "1:1"
+    worksheet.sheet_view.showGridLines = False
+    for row in worksheet:
+        for cell in row:
+            cell.font = styles.Font(name="Roboto", size=10, color="172B4D")
+            cell.alignment = styles.Alignment(vertical="top", wrap_text=True)
+            if cell.row == 1:
+                cell.font = styles.Font(name="Roboto", size=10, bold=True, color="FFFFFF")
+                cell.fill = styles.PatternFill("solid", fgColor="17365D")
+            elif cell.column > offset and cell.column - offset <= len(table.columns):
+                kind = formats.get(str(table.columns[cell.column - offset - 1]))
+                if cell.data_type == "n" and kind in excel_formats:
+                    cell.number_format = excel_formats[kind]
+                elif cell.data_type == "n" and isinstance(cell.value, float):
+                    cell.number_format = "0.0000###########"
+                if cell.row % 2 == 0:
+                    cell.fill = styles.PatternFill("solid", fgColor="F3F6FA")
+    for column in worksheet.columns:
+        # Una ruta o literal largo no ensancha toda la hoja; el texto sigue íntegro y ajustado.
+        width = max((len(str(cell.value or "")) for cell in column[:100]), default=12)
+        worksheet.column_dimensions[column[0].column_letter].width = min(52, max(16, width + 2))
+
+    def link(cell: Any, destination: str, tooltip: str) -> None:
+        location = "'" + destination.replace("'", "''") + "'!A1"
+        cell.hyperlink = hyperlinks.Hyperlink(
+            ref=cell.coordinate, location=location, tooltip=tooltip
+        )
+        cell.font = styles.Font(
+            name="Roboto",
+            size=10,
+            color="FFFFFF" if cell.row == 1 else "175D8D",
+            underline="single",
+        )
+
+    if "Índice" in sheets:
+        if worksheet.title == "Índice":
+            for row in worksheet.iter_rows(min_row=2, min_col=1, max_col=1):
+                if row[0].value in sheets:
+                    link(row[0], row[0].value, "Abrir la hoja de evidencia")
+            if "Resumen" in sheets:
+                link(worksheet["A1"], "Resumen", "Volver al resumen")
+        else:
+            link(worksheet["A1"], "Índice", "Volver al índice del libro")
+            worksheet["A1"].comment = comments.Comment(
+                "Este encabezado vuelve al Índice del libro.", "Bayes Advisory"
+            )
 
 
 def exportable_table(table: DataFrameLike) -> DataFrameLike:

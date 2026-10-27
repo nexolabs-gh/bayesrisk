@@ -231,9 +231,10 @@ def test_qmd_incluye_validacion_formal_tabla_y_veredicto_humano() -> None:
     assert "Validación formal — calibración" in markdown
     # La celda pinta la palabra pública (rótulos autorizados el 2026-09-15); el encabezado
     # `test` sigue literal y el identificador ya no llega a la tabla.
-    assert "Hosmer-Lemeshow" in markdown and "0,480" in markdown  # p-valor: tres decimales
+    literal = markdown.replace("\\", "")
+    assert "Hosmer-Lemeshow" in literal and "0,480" in literal
     assert "| hosmer_lemeshow |" not in markdown
-    assert "POR COMPLETAR — Veredicto de validación formal" in markdown
+    assert "Veredicto de validación formal" in markdown
 
 
 def test_qmd_espeja_los_capitulos_del_html_desde_la_misma_fuente() -> None:
@@ -250,8 +251,8 @@ def test_qmd_espeja_los_capitulos_del_html_desde_la_misma_fuente() -> None:
 
     assert "## 1 Introducción" in markdown
     assert "### 4.3 Modelo PD" in markdown
-    assert "## Anexo B — Tablas detalladas" in markdown
-    for titulo in ("Introducción", "Modelo PD", "Tablas detalladas"):
+    assert "## Anexo B — Evidencia íntegra" in markdown
+    for titulo in ("Introducción", "Modelo PD", "Evidencia íntegra"):
         assert titulo in html and titulo in markdown
 
     # Los ids de capítulo del documento son los mismos que declara `report.document`.
@@ -262,7 +263,8 @@ def test_placeholders_son_callouts_accionables_de_quarto() -> None:
     """El POR COMPLETAR es un *callout* visible con su guía, no un comentario que se pierde."""
     markdown = MarkdownReportRenderer.from_config(_config()).render(_bundle())
 
-    assert '::: {.callout-important title="POR COMPLETAR — Introducción"}' in markdown
+    title = "POR COMPLETAR — Decisión y campos institucionales pendientes"
+    assert f'::: {{.callout-important title="{title}"}}' in markdown
     assert "Declara el propósito | y el alcance." in markdown
     assert "Identifica la audiencia." in markdown
     assert markdown.count(":::") >= 2  # apertura y cierre
@@ -286,9 +288,9 @@ def test_tablas_en_pipe_table_valido_con_celdas_escapadas() -> None:
     """Las tablas son *pipe tables* de Markdown y una celda con ``|`` no rompe la tabla."""
     markdown = MarkdownReportRenderer.from_config(_config()).render(_bundle())
 
-    assert "**Coeficientes del modelo PD**" in markdown
-    assert "| feature | beta |" in markdown
-    assert "| --- | --- |" in markdown
+    assert "#### Coeficientes del modelo PD" in markdown
+    assert "| Fila de lectura | feature | beta |" in markdown
+    assert "| --- | --- | --- |" in markdown
     assert r"sal\|do" in markdown  # el pipe del dato va escapado, no parte la columna
 
     # Toda fila de tabla tiene el mismo número de columnas que su encabezado.
@@ -431,7 +433,9 @@ def test_las_declaraciones_de_gobernanza_no_son_codigo_en_el_qmd_ni_html_crudo()
     assert "\\<script\\>" in qmd
     # Pasada 3: nada de la declaración queda como marcado activo en el QMD —ni imagen local, ni
     # enlace, ni énfasis, ni TeX crudo—: toda su puntuación va escapada y pandoc la emite literal.
-    ficha = qmd[qmd.index("Ficha del modelo") :]
+    encabezado = re.search(r"^## .*Ficha del modelo.*$", qmd, re.MULTILINE)
+    assert encabezado is not None
+    ficha = qmd[encabezado.start() :]
     ficha = ficha[: ficha.index("\n## ") if "\n## " in ficha else len(ficha)]
     assert "![x](" not in ficha and "](http" not in ficha and "**énfasis**" not in ficha
     assert "\\input{" not in ficha and "\\\\input\\{" in ficha

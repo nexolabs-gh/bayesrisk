@@ -190,6 +190,39 @@ def _render(figure: Any, title: str, fmt: ChartFormat) -> str | bytes:
     return _deterministic_svg(figure, title)
 
 
+def _binning_panel(table: Any, measure: str, title: str, fmt: ChartFormat) -> str | bytes:
+    """Una sola magnitud; los identificadores T remiten al diccionario local del documento."""
+    from matplotlib.ticker import FuncFormatter
+
+    from bayesrisk.report._documentary_layout import binning_rows
+    from bayesrisk.report.cifras import porcentaje
+
+    rows = [row for _position, row in binning_rows(table)]
+    figure = _new_figure((7.0, 3.0), dpi=120)
+    axes = figure.subplots()
+    values = [None if row.get("Count") == 0 else _optional_float(row.get(measure)) for row in rows]
+    axes.plot(
+        range(len(rows)),
+        [float("nan") if v is None else v for v in values],
+        marker="o",
+        color="#1859E0",
+        linewidth=1.5,
+    )
+    axes.set_xticks(range(len(rows)), [f"T{i + 1}" for i in range(len(rows))])
+    axes.set_xlabel("Tramo (definición exacta en la tabla contigua)", fontsize=10)
+    axes.set_ylabel("Tasa de malos" if measure == "Event rate" else "WoE", fontsize=10)
+    axes.tick_params(labelsize=10)
+    axes.grid(axis="y", alpha=0.2)
+    if measure == "Event rate":
+        axes.set_ylim(bottom=0)
+        axes.yaxis.set_major_formatter(FuncFormatter(lambda v, _pos: porcentaje(v)))
+    else:
+        axes.axhline(0, color="#9aa0a6", linewidth=0.7)
+        axes.yaxis.set_major_formatter(_numeric_formatter(2))
+    figure.tight_layout()
+    return _render(figure, title, fmt)
+
+
 def _deterministic_svg(figure: Any, title: str) -> str:
     """Serializa ``figure`` a un SVG string determinista y sanitizado.
 

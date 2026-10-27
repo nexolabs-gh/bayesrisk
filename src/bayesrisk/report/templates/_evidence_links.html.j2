@@ -1,0 +1,5 @@
+{% if section.links | default([]) %}
+<nav class="evidence-links" aria-label="Referencias de {{ section.title }}">
+  {% for link in section.links %}<a href="{{ link.href }}">{{ link.label }}</a>{% endfor %}
+</nav>
+{% endif %}

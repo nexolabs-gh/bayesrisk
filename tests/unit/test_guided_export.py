@@ -227,7 +227,12 @@ def test_las_celdas_activas_de_planilla_salen_protegidas_tambien_en_las_decision
     autores = {fila[columnas.index("Autor")] for fila in humanas[1:]}
     assert autores == {"usuario"}
     hojas = _hojas(ruta)
-    assert hojas == ["Decisiones humanas", "Inferencias de la puerta", "Decisiones del motor"]
+    assert hojas == [
+        "Decisiones humanas",
+        "Inferencias de la puerta",
+        "Decisiones del motor",
+        "Índice",
+    ]
     puerta = _filas(ruta, "Inferencias de la puerta")
     assert {fila[columnas.index("Autor")] for fila in puerta[1:]} == {"puerta_guiada"}
 

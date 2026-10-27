@@ -249,6 +249,7 @@ jobs:
       - name: PDF tests reales (WeasyPrint)
         env:
           BAYESRISK_H3_PDF_EVIDENCE: ${{ runner.temp }}/h3-pdf
+          BAYESRISK_DOCUMENTARY_PDF_EVIDENCE: ${{ runner.temp }}/documentary-pdf
         run: uv run --no-sync python -m pytest tests/unit/test_report_pdf.py -q
 
       - name: Evidencia final de provisión interna H3
@@ -260,6 +261,14 @@ jobs:
             ${{ runner.temp }}/h3-pdf/provision/reports/
             ${{ runner.temp }}/h3-pdf/lgd/reports/
             ${{ runner.temp }}/h3-pdf/aplicacion_lgd/reports/
+          if-no-files-found: error
+
+      - name: Evidencia documental del scorecard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentary-scorecard-pdf
+          path: ${{ runner.temp }}/documentary-pdf/
           if-no-files-found: error
 
   coverage-regulatory:

@@ -129,10 +129,16 @@ def test_la_pagina_ejecutiva_anuncia_la_ficha_condicionada_a_run_dir(corrida: Sc
     archivo que puede no existir."""
     pagina = _capitulo(corrida, "executive_summary")
     assert "Ficha del modelo" in pagina
-    assert "model_card.json y model_card.md, en la carpeta de evidencia de la corrida si se" in (
-        html_module.unescape(pagina)
+    assert "declaraciones institucionales" in pagina
+    assert "se emite al cierre" in pagina and "si se solicita" in pagina
+    assert 'href="#section-model_card"' in pagina
+    assert "incluye la ficha consolidada" not in pagina
+    # Las rutas conservan su condición original en el soporte de trazabilidad.
+    full_html = Path(corrida.study.artifacts.get("report", "result").html_path).read_text(
+        encoding="utf8"
     )
-    assert "si se pidió una (run_dir)" in pagina
+    assert "model_card.json y model_card.md" in full_html
+    assert "si se pidió una (run_dir)" in full_html
 
 
 def test_el_capitulo_no_filtra_identificadores_del_motor(corrida: Scorecard) -> None:
@@ -143,7 +149,7 @@ def test_el_capitulo_no_filtra_identificadores_del_motor(corrida: Scorecard) -> 
 def test_el_qmd_escribe_la_decision_como_texto_literal(corrida: Scorecard) -> None:
     """El motivo lo escribió una persona: en la fuente editable va escapado, nunca como marcado."""
     qmd = Path(corrida.study.artifacts.get("report", "result").md_path).read_text(encoding="utf-8")
-    encabezado = re.search(r"^## \d+ Ficha del modelo$", qmd, re.M)
+    encabezado = re.search(r"^## \d+ Ficha del modelo \{#section-model_card\}$", qmd, re.M)
     assert encabezado is not None
     capitulo = qmd[encabezado.start() : qmd.index("\n## ", encabezado.end())]
     assert MOTIVO in capitulo.replace("\\", "")

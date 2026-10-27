@@ -5,6 +5,7 @@
    celdas llegan escritas como las lee una persona. Con `summary.error` el capítulo dice por qué
    no hay resumen, en vez de esconder el hueco. #}
 <section id="{{ section.html_id }}" data-section-id="{{ section.id }}" data-kind="summary" data-level="{{ section.level }}" class="report-section chapter run-summary">
+  {% if documentary %}<span id="exec-summary" tabindex="-1"></span>{% endif %}
   <h2>{{ section.title }}</h2>
 
   {% for paragraph in section.body %}
@@ -38,6 +39,11 @@
 
   <h4>{{ labels.figures }}</h4>
   {% if final.figures %}
+  {% if documentary %}
+  <dl class="summary-metrics">
+    {% for rotulo, valor in final.figures %}<div{% if loop.index > 3 %} class="metric-context"{% endif %}><dt>{{ rotulo }}</dt><dd>{{ valor }}</dd></div>{% endfor %}
+  </dl>
+  {% else %}
   <table class="summary-figures">
     <tbody>
       {% for rotulo, valor in final.figures %}
@@ -45,6 +51,7 @@
       {% endfor %}
     </tbody>
   </table>
+  {% endif %}
   {% elif section.summary.assumptions is not none %}
   <p class="muted">Las cifras clave no están disponibles: esta corrida no publicó la provisión.</p>
   {% else %}
@@ -55,7 +62,7 @@
   {% if final.review %}
   <ul class="summary-review">
     {% for alerta in final.review %}
-    <li>⚠ {{ alerta }}</li>
+    <li>{% if not documentary %}⚠ {% endif %}{{ alerta }}</li>
     {% endfor %}
   </ul>
   {% else %}
@@ -73,11 +80,14 @@
   <p class="muted">{{ section.summary.sin_decisiones }}</p>
   {% endif %}
 
-  <h4>{{ labels.files }}</h4>
+  {% if final.files or not documentary %}<h4>{{ labels.files }}</h4>
   <dl class="summary-files">
     {% for rotulo, ruta in final.files %}
     <dt>{{ rotulo }}</dt><dd>{{ ruta }}</dd>
     {% endfor %}
   </dl>
   {% endif %}
+  {% endif %}
+  {% if section.placeholder %}{% include "_placeholder.html.j2" %}{% endif %}
+  {% include "_evidence_links.html.j2" %}
 </section>

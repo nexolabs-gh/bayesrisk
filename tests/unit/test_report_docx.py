@@ -283,7 +283,7 @@ def test_docx_abre_sin_reparar_y_usa_estilos_nativos_de_word(tmp_path: Path) -> 
 
     # (3) Tablas nativas y editables, con su encabezado.
     assert len(word.tables) >= 2
-    encabezados = [tabla.rows[0].cells[0].text for tabla in word.tables]
+    encabezados = [celda.text for tabla in word.tables for celda in tabla.rows[0].cells]
     assert "feature" in encabezados
 
     # (4) Metadatos del archivo (los que Word muestra en Propiedades).
@@ -331,11 +331,12 @@ def test_docx_incluye_validacion_formal_tabla_y_veredicto_humano() -> None:
 
     assert "5 Validación formal" in headings
     assert "5.1 Calibración" in headings
-    assert "POR COMPLETAR — Veredicto de validación formal" in text
+    assert "Veredicto de validación formal" in text
     # La celda pinta la palabra pública, no el identificador del DTO (rótulos autorizados el
     # 2026-09-15); el valor del frame sigue siendo `hosmer_lemeshow`.
-    assert any(table.rows[1].cells[0].text == "Hosmer-Lemeshow" for table in word.tables)
-    assert not any(table.rows[1].cells[0].text == "hosmer_lemeshow" for table in word.tables)
+    cells = [cell.text for table in word.tables for row in table.rows[1:] for cell in row.cells]
+    assert "Hosmer-Lemeshow" in cells
+    assert '"hosmer_lemeshow"' in cells  # identificador original sólo en el soporte
 
 
 @_SKIP_DOCX
@@ -347,7 +348,6 @@ def test_docx_dice_las_filas_que_trae_de_verdad_si_su_cinturon_corta_bajo_la_vis
     import docx
 
     from bayesrisk.report.config import SectionPolicyConfig
-    from bayesrisk.report.docx import _MAX_DOCX_TABLE_ROWS
 
     n = 1_500
     bundle = _bundle().model_copy(
@@ -383,11 +383,11 @@ def test_docx_dice_las_filas_que_trae_de_verdad_si_su_cinturon_corta_bajo_la_vis
         _config(sections=SectionPolicyConfig(max_table_rows=1_000))
     ).render(bundle)
     word = docx.Document(io.BytesIO(payload))
-    tabla = next(t for t in word.tables if t.rows[0].cells[0].text == "period")
-    assert len(tabla.rows) == _MAX_DOCX_TABLE_ROWS + 1  # cabecera + el cinturón de Word
+    tablas = [t for t in word.tables if "period" in [c.text for c in t.rows[0].cells]]
+    assert sorted(len(t.rows) - 1 for t in tablas) == [1000, 1000, 1500]  # dos bloques de lectura
     texto = "\n".join(p.text for p in word.paragraphs)
-    assert f"(mostrando {_MAX_DOCX_TABLE_ROWS} de {n:,} filas)".replace(",", ".") in texto
-    assert "mostrando 1000 de" not in texto
+    assert "mostrando 1.000 de 1.500" in texto
+    assert '"ID-01499"' in zipfile.ZipFile(io.BytesIO(payload)).read("word/document.xml").decode()
 
 
 @_SKIP_DOCX
@@ -397,7 +397,7 @@ def test_docx_marca_los_por_completar_e_inserta_el_indice_de_word() -> None:
     xml = zipfile.ZipFile(io.BytesIO(payload)).read("word/document.xml").decode("utf-8")
 
     assert 'w:fill="FFF3CD"' in xml  # sombreado del bloque POR COMPLETAR: salta a la vista
-    assert "POR COMPLETAR — Introducción" in xml
+    assert "POR COMPLETAR — Decisión y campos institucionales pendientes" in xml
     assert "Declara el propósito y el alcance." in xml
     assert 'TOC \\o "1-3"' in xml  # campo TOC de Word: se actualiza solo desde los headings
     assert 'w:tblStyle w:val="TableGrid"' in xml  # tablas con bordes reales
