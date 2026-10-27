@@ -376,3 +376,26 @@ def test_rotulos_de_tendencia_del_front_espejan_la_fuente_python() -> None:
     )
     block = source.split("export const TREND_LABELS:", 1)[1].split("\n}", 1)[0]
     assert dict(re.findall(r'\s+(\w+): "([^"]+)"', block)) == _MONOTONIC_LABELS
+
+
+def test_psi_con_cortes_proximos_preserva_ambas_comparaciones_a_la_vez() -> None:
+    from types import SimpleNamespace
+
+    from bayesrisk.guided.summaries import _cinco_cifras
+    from bayesrisk.report.prose import executive_view
+
+    card = {
+        "comparisons": ["dev_vs_holdout"],
+        "stable_threshold": 0.123453,
+        "review_threshold": 0.123455,
+        "max_psi_by_comparison": {"dev_vs_holdout": 0.123454},
+        "psi_metric_by_comparison": {"dev_vs_holdout": "pd_psi"},
+        "bands_by_comparison": {"dev_vs_holdout": "review"},
+    }
+    text = build_reading(EditorialSnapshot(cards={"stability": card})).review[0]
+    assert "0,123454," in text
+    bundle = SimpleNamespace(cards={"stability": card}, results={})
+    metric = executive_view(bundle).metrics[0]
+    assert metric.value == "0,123454" and metric.band == "Revisar"
+    store = SimpleNamespace(has=lambda d, k: d == "stability", get=lambda d, k: card)
+    assert "0,123454," in _cinco_cifras(SimpleNamespace(artifacts=store))[-1][1]

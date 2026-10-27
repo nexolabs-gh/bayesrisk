@@ -487,11 +487,16 @@ def psi_number(card: Mapping[str, Any], comparison: str) -> str:
     if value is None:
         return "No evaluable"
     number = cifra(value, decimales=4)
-    for key in ("stable_threshold", "review_threshold"):
-        threshold = _number(card.get(key))
-        if threshold is not None:
-            number = frente_al_corte(number, value, threshold)
-    return number
+    thresholds = tuple(_number(card.get(key)) for key in ("stable_threshold", "review_threshold"))
+    # Un refinamiento puede cambiar el lado del otro corte. Se acepta sólo el punto fijo:
+    # cada cambio añade decimales, hasta la representación exacta que satisface ambos.
+    while True:
+        previous = number
+        for threshold in thresholds:
+            if threshold is not None:
+                number = frente_al_corte(number, value, threshold)
+        if number == previous:
+            return number
 
 
 def psi_reading(card: Mapping[str, Any]) -> list[EditorialFact]:
