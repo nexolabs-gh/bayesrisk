@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 
 from bayesrisk.audit import EnvironmentSnapshot, capture_environment, read_trail
 from bayesrisk.core.audit import AuditEvent
@@ -53,6 +53,7 @@ class ModelCard(BaseModel):
     """Ficha auditable del modelo, serializable a JSON canónico y markdown."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
+    _documentary_lines: tuple[str, ...] = PrivateAttr(default=())
 
     run_id: str
     config_hash: str
@@ -107,6 +108,19 @@ class ModelCard(BaseModel):
             "",
             "## Métricas",
         ]
+        if self._documentary_lines:
+            lines.extend(["", "## Lectura de la corrida", ""])
+            lines.extend(f"- {_texto_markdown_literal(line)}" for line in self._documentary_lines)
+            lines.extend(["", "## Soporte numérico", ""])
+        else:
+            lines.extend(
+                [
+                    "",
+                    "Lectura histórica: esta ficha no conserva la proyección editorial "
+                    "de la corrida; las métricas siguientes mantienen su alcance original.",
+                    "",
+                ]
+            )
         lines.extend(_markdown_mapping(self.metrics))
         if self.metric_sections:
             lines.extend(["", "## Secciones Métricas"])
@@ -189,7 +203,7 @@ class ModelCardBuilder:
             trail_missing=trail_missing,
         )
 
-        return ModelCard(
+        card = ModelCard(
             run_id=study.run_context.run_id,
             config_hash=bundle.config_hash,
             data_hash=bundle.data_hash,
@@ -210,6 +224,15 @@ class ModelCardBuilder:
             next_review_date=_add_months(review_date, self.config.review_period_months),
             environment=self._environment_provider(),
         )
+        from bayesrisk.report._documentary import build_reading, snapshot_from_study
+
+        card._documentary_lines = build_reading(
+            snapshot_from_study(
+                study,
+                trail_path=Path(trail_path) if trail_path is not None else None,
+            )
+        ).review
+        return card
 
 
 def _read_decisions(trail_path: str | Path | None) -> tuple[list[DecisionRecord], bool]:

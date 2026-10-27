@@ -59,6 +59,10 @@ _GOLDEN_MARKDOWN = """# Model Card: run-001
 Scorecard comportamiento consumo
 
 ## Métricas
+
+Lectura histórica: esta ficha no conserva la proyección editorial de la corrida; \
+las métricas siguientes mantienen su alcance original.
+
 - auc: `0.81`
 - ks: `0.42`
 

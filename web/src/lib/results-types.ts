@@ -1388,6 +1388,28 @@ export interface StageSummaryView {
  * cifra supone— en lugar de un veredicto técnico que no tiene.
  */
 export interface FinalSummaryView {
+  /** Proyección aditiva D-DOC-SC; una versión desconocida no se interpreta como v1. */
+  documentary_reading?: {
+    schema_version: number
+    emission_scope: "stage" | "report" | "run_end"
+    pending_stages: string[]
+    facts: {
+      id: string
+      source: { domain: string; key: string; selector: string }
+      moment: string
+      population: string | null
+      value: string | number | boolean | null
+      unit: string | null
+      availability: "available" | "not_applicable" | "unavailable"
+      reason: string | null
+    }[]
+    evidence_index: {
+      fact_id: string
+      artifact_key: string
+      section_id: string | null
+      local_path: string | null
+    }[]
+  }
   execution: string
   validation: string
   figures: [string, string][]

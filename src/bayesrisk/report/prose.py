@@ -228,6 +228,11 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
             partition_id = str(partition)
             values = _mapping(max_metrics.get(partition_id))
             band = _DISCRIMINANT_BANDS.get(str(bands.get(partition_id, "")), _NOT_AVAILABLE)
+            if str(bands.get(partition_id)) == "ok" and not any(
+                _float(_mapping(performance.get("thresholds")).get(f"{m}_min")) is not None
+                for m in ("auc", "gini", "ks")
+            ):
+                band = "Sin umbrales de alerta configurados"
             for key, label in _DISCRIMINANT_METRIC_LABELS:
                 metrics.append(
                     ExecutiveMetric(
@@ -883,13 +888,15 @@ def _methodology_binning(bundle: ReportInputBundle) -> tuple[str, ...]:
     trend = _text(params.get("monotonic_trend"))
     if trend is not None:
         paragraphs.append(
-            f"La tendencia monótona exigida al WoE es {_MONOTONIC_LABELS.get(trend, trend)}: el "
+            "La tendencia de la tasa de malos en Desarrollo es "
+            f"{_MONOTONIC_LABELS.get(trend, trend)}: el "
             "riesgo debe comportarse de forma coherente entre tramos contiguos, sin quiebres "
             "que un analista no pueda defender."
         )
     elif params:
         paragraphs.append(
-            "No se exigió tendencia monótona al WoE: los bins pueden no ordenar el riesgo de "
+            "No se exigió tendencia monótona a la tasa de malos: los bins pueden no ordenar "
+            "el riesgo de "
             "forma monótona y esa decisión debe justificarse."
         )
 
@@ -1224,7 +1231,10 @@ def _results_data(bundle: ReportInputBundle) -> tuple[str, ...]:
         # D-ECL-2: una corrida de cartera no publica tablas de estados ni de particiones, y el
         # contexto ya dice por qué; anunciar «las tablas siguientes» sería falso.
         return ()
+    from bayesrisk.report._documentary import reading_from_bundle
+
     return (
+        *reading_from_bundle(bundle).lines("data"),
         "Las tablas siguientes reproducen lo que dejó la preparación de datos de esta corrida. "
         "Estados, tamaños y tasas por partición, y exclusiones se copian literalmente; el informe "
         "no recalcula ni completa valores ausentes.",
@@ -1870,7 +1880,9 @@ def _results_eda(bundle: ReportInputBundle) -> tuple[str, ...]:
         piezas.append(f"el perfil por tramo de {columns} {descritas}")
     if "quality" not in fallos:
         piezas.append("la calidad de datos por columna")
-    frases: list[str] = []
+    from bayesrisk.report._documentary import reading_from_bundle
+
+    frases = list(reading_from_bundle(bundle).lines("eda"))
     if piezas:
         frases.append(f"A continuación se reproducen {_enumerar(tuple(piezas))}.")
     # Lo que cayó y el documento reproduciría. Las recetas de figura no cuentan: los gráficos del
@@ -1917,7 +1929,7 @@ def _eda_failed_labels() -> Mapping[str, str]:
 
 
 def _results_binning(bundle: ReportInputBundle) -> tuple[str, ...]:
-    """Poder predictivo: IV por variable y monotonía efectiva del WoE."""
+    """Poder predictivo: IV por variable y tendencia de la tasa de malos en Desarrollo."""
     card = _card(bundle, "binning")
     if card is None:
         return ()
@@ -1940,25 +1952,9 @@ def _results_binning(bundle: ReportInputBundle) -> tuple[str, ...]:
             "siguiente y su binning completo, bin a bin, en el Anexo B."
         )
 
-    monotonicity = _mapping(card.get("monotonicity_by_variable"))
-    tendencias: dict[str, int] = {}
-    sin_tendencia = 0
-    for value in monotonicity.values():
-        trend = _text(value)
-        if trend is None:
-            sin_tendencia += 1
-            continue
-        tendencias[trend] = tendencias.get(trend, 0) + 1
-    if tendencias:
-        detalle = tuple(
-            f"{count} {_plural(count, 'variable', 'variables')} con tendencia "
-            f"{_MONOTONIC_LABELS.get(trend, trend)}"
-            for trend, count in sorted(tendencias.items())
-        )
-        frase = f"La monotonía efectiva del WoE resultó en {_enumerar(detalle)}"
-        if sin_tendencia:
-            frase += f", y {sin_tendencia} sin tendencia monótona resuelta, lo que debe revisarse"
-        paragraphs.append(f"{frase}.")
+    from bayesrisk.report._documentary import reading_from_bundle
+
+    paragraphs.extend(reading_from_bundle(bundle).lines("binning"))
     return tuple(paragraphs)
 
 
@@ -2054,18 +2050,15 @@ def _results_model(bundle: ReportInputBundle) -> tuple[str, ...]:
             )
 
     sign_flags = _sequence(card.get("sign_flags"))
-    iv_flags = _sequence(card.get("iv_contribution_flags"))
     if sign_flags:
         nombres = _enumerar(tuple(f"«{feature}»" for feature in sign_flags))
         paragraphs.append(
             f"Con el signo del coeficiente invertido respecto de lo esperado: {nombres}. Cada "
             "caso contradice la relación de riesgo declarada por su binning y debe justificarse."
         )
-    if iv_flags:
-        nombres = _enumerar(tuple(f"«{feature}»" for feature in iv_flags))
-        paragraphs.append(
-            f"Marcadas por concentrar una contribución excesiva al IV del modelo: {nombres}."
-        )
+    from bayesrisk.report._documentary import reading_from_bundle
+
+    paragraphs.extend(reading_from_bundle(bundle).lines("model"))
     return tuple(paragraphs)
 
 
@@ -2136,7 +2129,9 @@ def _results_performance(bundle: ReportInputBundle) -> tuple[str, ...]:
     card = _card(bundle, "performance")
     if card is None:
         return ()
-    paragraphs: list[str] = []
+    from bayesrisk.report._documentary import reading_from_bundle
+
+    paragraphs = list(reading_from_bundle(bundle).lines("performance"))
 
     source = _text(card.get("evaluation_source"))
     if source is not None:
@@ -2205,42 +2200,10 @@ def _results_stability(bundle: ReportInputBundle) -> tuple[str, ...]:
         return ()
     paragraphs: list[str] = []
 
-    max_psi = _mapping(card.get("max_psi_by_comparison"))
-    psi_metrics = _mapping(card.get("psi_metric_by_comparison"))
-    bands = _mapping(card.get("bands_by_comparison"))
-    psi_bins = _int(card.get("psi_bins"))
-    for comparison in _sequence(card.get("comparisons")):
-        comparison_id = str(comparison)
-        value = _float(max_psi.get(comparison_id))
-        metric_name = str(psi_metrics.get(comparison_id, ""))
-        referent = _PSI_METRIC_REFERENTS.get(metric_name)
-        band = str(bands.get(comparison_id, ""))
-        if band == "not_evaluable" or value is None:
-            paragraphs.append(
-                f"El peor PSI entre score y PD de {_comparison_label(comparison_id)} no es "
-                "evaluable con los datos disponibles."
-            )
-            continue
-        lectura = {
-            "stable": (
-                "La distribución de la magnitud ganadora se mantiene, de modo que no hay "
-                "desplazamiento poblacional."
-            ),
-            "review": (
-                "La magnitud ganadora se desplazó lo suficiente para exigir una revisión "
-                "antes de seguir usando el modelo."
-            ),
-            "redevelop": (
-                "El desplazamiento de la distribución es severo: el motor lo clasifica en banda "
-                "de redesarrollo."
-            ),
-        }.get(band, "La banda resultante no tiene una lectura definida.")
-        identity = f"; corresponde {referent}" if referent is not None else ""
-        paragraphs.append(
-            f"El peor PSI entre score y PD en {_comparison_label(comparison_id)} es "
-            f"{_cifra(value)} (banda «{BAND_LABELS.get(band, band)}»){identity}. {lectura}"
-        )
+    from bayesrisk.report._documentary import reading_from_bundle
 
+    paragraphs.extend(reading_from_bundle(bundle).lines("stability"))
+    psi_bins = _int(card.get("psi_bins"))
     worst_feature = _text(card.get("worst_csi_feature"))
     worst_value = _float(card.get("worst_csi_value"))
     if worst_feature is not None and worst_value is not None:
@@ -3273,6 +3236,35 @@ def conclusions_body(bundle: ReportInputBundle) -> tuple[str, ...]:
             "juicio de la institución y no se deriva automáticamente de ellos.",
         )
 
+    from bayesrisk.report._documentary import reading_from_bundle
+
+    # A igual snapshot, entrada y cierre comparten todos los hallazgos. Las otras familias
+    # mantienen su cierre; la presencia real de dominios scorecard decide esta proyección.
+    if any(d in bundle.cards for d in ("model", "binning", "scorecard", "performance")):
+        final = _mapping(_mapping(bundle.summary).get("final"))
+        findings = (
+            tuple(str(v) for v in _sequence(final.get("review")))
+            or reading_from_bundle(bundle).review
+        )
+        if findings:
+            extras: list[str] = []
+            if bundle.missing_sections:
+                extras.append(
+                    "El informe es parcial: faltan las secciones "
+                    f"{_enumerar(tuple(bundle.missing_sections))}."
+                )
+            if "lgd_training" in bundle.cards:
+                extras.append(
+                    "La evaluación LGD es descriptiva; no acredita calidad, transportabilidad "
+                    "ni independencia del pipeline completo."
+                )
+            return (
+                *findings,
+                *extras,
+                "La decisión institucional sobre el uso del modelo sigue pendiente; "
+                "estos resultados no constituyen aprobación humana.",
+            )
+
     performance = _card(bundle, "performance")
     if performance is not None:
         bands = _mapping(performance.get("bands_by_partition"))
@@ -3431,7 +3423,7 @@ def model_card_body(bundle: ReportInputBundle) -> tuple[str, ...]:
     paragraphs.extend(_decisiones_humanas_de_la_ficha(bundle))
     paragraphs.append(
         "Las métricas, las decisiones del motor y las fechas de emisión y de la siguiente "
-        "revisión no forman parte de este informe: quedan en la ficha del modelo, que el motor "
+        "revisión no forman parte de este capítulo: quedan en la ficha del modelo, que el motor "
         "emite al cierre de la corrida cuando se le pide un directorio de corrida o la "
         "publicación al inventario."
     )

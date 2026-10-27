@@ -343,7 +343,7 @@ def test_documento_tiene_indice_metricas_ejecutivas_y_titulos_legibles() -> None
     assert '<div class="exec-metrics-slot"></div>' not in html
     assert '<table class="exec-metrics">' in html
     assert "0,7432" in html  # AUC de la card de performance
-    assert "Sin alertas" in html
+    assert "Sin umbrales de alerta configurados" in html
     assert "No se configuraron umbrales de discriminación" in html
 
     # Títulos de tabla legibles, con la clave interna degradada a atributo de trazabilidad.

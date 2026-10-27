@@ -474,7 +474,7 @@ export function ResultsPanel({
           corrida sin `governance` —los tres fixtures de la demo entre ellos— y cuando la corrida
           quedó demasiado parcial para una ficha válida; entonces no hay bloque, ni vacío ni
           fabricado, porque un bloque vacío aparentaría un control que no corrió. */}
-      {results.model_card ? <ModelCardSection card={results.model_card} validation={val} /> : null}
+      {results.model_card ? <ModelCardSection card={results.model_card} validation={val} summaries={results.summaries} /> : null}
 
       {/* RESUMEN DE LA CORRIDA (D-FLU-8): lo mismo que cuenta la puerta guiada —cada etapa en
           palabras con su tabla de decisión y el resumen final con sus dos estados—, leído de
@@ -2099,6 +2099,7 @@ export function ContextualValidationPanel({ validation, showTables = true }: { v
 
 function RunSummarySection({ summaries, validation }: { summaries: RunSummaries; validation: ValidationResult | null }) {
   const { final, stages, error } = summaries
+  const editorial = final?.documentary_reading?.schema_version === 1
   const isPortfolio = ["cartera", "provision_interna", "pd_provision", "lgd"].includes(final?.family ?? "")
   const historicalNotice = validation
     ? validation.interpretation?.policy_id === "hl_context_v1" ? null
@@ -2109,6 +2110,7 @@ function RunSummarySection({ summaries, validation }: { summaries: RunSummaries;
       title="Resumen de la corrida"
       description="Lo que cuenta cada etapa, en palabras y con su tabla de decisión: la misma fuente que el resumen de la puerta guiada."
     >
+      {!editorial && !isPortfolio ? <p role="status" className="text-sm text-muted-foreground">Lectura histórica: este resumen no conserva una proyección editorial compatible. Sus cifras mantienen el alcance declarado por la corrida original.</p> : null}
       {historicalNotice ? <p role="status" className="text-sm text-amber-200/90">{historicalNotice}. Los estados de validación de este resumen son históricos.</p> : null}
       {error ? (
         <p role="status" className="text-xs text-amber-200/90">
@@ -2159,11 +2161,11 @@ function RunSummarySection({ summaries, validation }: { summaries: RunSummaries;
               </table>
             </Subchart>
           ) : null}
-          <Subchart title="Qué revisar">
+          <Subchart title={editorial ? "Lectura y asuntos que revisar" : "Qué revisar"}>
             {final.review.length > 0 ? (
-              <ul className="space-y-1 text-sm text-amber-200/90">
+              <ul className="space-y-1 text-sm text-foreground/90">
                 {final.review.map((alerta) => (
-                  <li key={alerta}>⚠ {alerta}</li>
+                  <li key={alerta}>{editorial ? "•" : "⚠"} {alerta}</li>
                 ))}
               </ul>
             ) : (
@@ -2289,7 +2291,7 @@ function SummaryTableView({
   )
 }
 
-function ModelCardSection({ card, validation }: { card: ModelCard; validation: ValidationResult | null }) {
+function ModelCardSection({ card, validation, summaries }: { card: ModelCard; validation: ValidationResult | null; summaries?: RunSummaries | null }) {
   const domains = modelCardDomains(card)
   const decisions = modelCardDecisionRows(card)
   const hayAvisos = modelCardTieneAvisosDeclarados(domains, decisions)
@@ -2298,6 +2300,9 @@ function ModelCardSection({ card, validation }: { card: ModelCard; validation: V
       title="Ficha del modelo"
       description="Lo que tu institución declaró al encender la gobernanza y lo que la corrida registró: propósito, supuestos y límites de uso, las fechas de emisión y de próxima revisión, las métricas por dominio y las decisiones que el motor dejó en el registro de auditoría."
     >
+      {summaries?.final?.documentary_reading?.schema_version === 1 ? (
+        <ModelCardList title="Lectura de la corrida" items={summaries.final.review} empty="Sin hechos editoriales disponibles." />
+      ) : <p role="status" className="text-sm text-muted-foreground">Lectura histórica: esta ficha conserva las métricas y decisiones originales; no acredita una lectura editorial posterior.</p>}
       {domains.some((d) => d.domain === "validation") ? (
         <div className="space-y-2">
           {validation ? <ContextualValidationPanel validation={validation} showTables={false} /> : <p role="status">{HISTORICAL_READING_TEXT}</p>}

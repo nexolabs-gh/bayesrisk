@@ -149,12 +149,15 @@ _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     ("eda", "quality"),
     ("binning", "tables"),
     ("binning", "summary"),
+    ("binning", "event_rate_by_partition"),
+    ("binning", "unseen_categories"),
     ("binning", "woe_frame"),
     ("selection", "selected_woe_frame"),
     ("selection", "selection_table"),
     ("selection", "correlation_matrix"),
     ("selection", "vif_table"),
     ("selection", "stability_table"),
+    ("selection", "iv_by_partition"),
     ("model", "coefficients"),
     ("model", "stepwise_trace"),
     ("model", "fit_statistics"),
@@ -169,6 +172,7 @@ _TABLE_ARTIFACTS: Final[tuple[tuple[str, str], ...]] = (
     ("performance", "discriminant_metrics"),
     ("stability", "psi_table"),
     ("stability", "stability_metrics"),
+    ("stability", "out_of_model_psi"),
     # Provisiones: solo los frames AGREGADOS (SDD-28 §6.4). NUNCA ``detail`` (6.000 filas por
     # operación): no cabe en el cuerpo de un informe ni en el anexo.
     ("provisioning", "comparison"),
@@ -1017,6 +1021,7 @@ def _run_summary(study: Study, config: ReportConfig) -> dict[str, Any]:
             decision_lines=decision_lines_from_preamble(getattr(study, "preamble", ())),
             extra_files=_archivos_que_el_informe_conoce(study, config),
             pending_stages=_etapas_despues_del_informe(study),
+            emission_scope="report",
         )
         etapas = build_stage_summaries(study, contexto)
         final = build_final_summary(study, etapas, contexto)
@@ -1660,6 +1665,15 @@ def _referencias_no_vistas(study: Study) -> dict[str, int]:
 
 
 def _extract_dataframes(value: Any, prefix: str) -> dict[str, DataFrameLike]:
+    if prefix == "model.stepwise_trace" and isinstance(value, tuple | list) and value:
+        import pandas as pd
+
+        records = [
+            item.model_dump(mode="python") if isinstance(item, BaseModel) else dict(item)
+            for item in value
+            if isinstance(item, BaseModel | Mapping)
+        ]
+        return {prefix: pd.DataFrame(records)} if records else {}
     if _is_dataframe_like(value):
         return {prefix: cast(DataFrameLike, _copy_value(value))}
     if isinstance(value, BaseModel):

@@ -58,7 +58,6 @@ from bayesrisk.report.prose import (
     _DECLARED_WARNING_PROSE,
     _DISCRIMINANT_BANDS,
     _IFRS9_PIT_MODE_LABELS,
-    _MONOTONIC_LABELS,
     _PARTITION_LABELS,
     _STEPWISE_DIRECTIONS,
     _cifra,
@@ -352,6 +351,7 @@ class SummaryContext:
     #: La familia de resúmenes cuando todavía no hay ``Study`` del que leerla (un resumen pedido
     #: antes de correr). Con corrida, la decide su config (:func:`family_of`).
     family: str = "scorecard"
+    emission_scope: Literal["stage", "report", "run_end"] = "run_end"
 
 
 class TablaDeEtapa(pd.DataFrame):
@@ -509,6 +509,7 @@ class FinalSummary:
     #: de cartera reemplaza a la validación técnica, que una provisión no tiene (§3.8).
     assumptions: tuple[str, ...] = field(default=(), repr=False)
     family: str = field(default="scorecard", repr=False)
+    documentary_reading: Mapping[str, Any] | None = field(default=None, repr=False)
 
     @property
     def _de_cartera(self) -> bool:
@@ -633,6 +634,8 @@ class FinalSummary:
         elif self.family in {"monitoreo", "comparacion"}:
             salida["title"] = self.title
             salida["family"] = self.family
+        if self.documentary_reading is not None:
+            salida["documentary_reading"] = dict(self.documentary_reading)
         return salida
 
 
@@ -940,22 +943,17 @@ def _resumen_data(study: Study, context: SummaryContext) -> StageSummary:
             f"{_miles(_int(card.get('n_features')) or 0)} columnas"
         )
     elif card is not None:
-        n_rows = _int(card.get("n_rows")) or 0
         class_counts = _mapping(card.get("class_counts"))
-        n_bad = _int(class_counts.get("malo")) or 0
-        lines.append(
-            f"{_miles(n_rows)} filas · {_miles(n_bad)} malos "
-            f"({_pct(card.get('bad_rate'))}) · {_miles(_int(card.get('n_features')) or 0)} columnas"
-        )
+        from bayesrisk.report._documentary import EditorialSnapshot, build_reading
+
+        populations = build_reading(EditorialSnapshot(cards={"data": card})).lines("data")
+        if populations:
+            lines.append(populations[0])
+        if len(populations) > 1:
+            lines.append(" ".join(populations[1:]))
+        lines.append(f"{_miles(_int(card.get('n_features')) or 0)} columnas")
         sizes = _mapping(card.get("partition_sizes"))
-        rates = _mapping(card.get("partition_bad_rates"))
-        muestras = tuple(
-            f"{_partition_label(str(p))} {_miles(_int(n) or 0)} ({_pct(rates.get(p))})"
-            for p, n in sizes.items()
-            if str(p) != "fuera_de_modelo" and (_int(n) or 0) > 0
-        )
-        if muestras:
-            lines.append(f"Muestras: {' · '.join(muestras)} — {context.partition_label}")
+        lines.append(f"División de muestras: {context.partition_label}")
         fuera = _int(sizes.get("fuera_de_modelo")) or 0
         indeterminados = _int(class_counts.get("indeterminado")) or 0
         excluidos = _int(class_counts.get("excluido")) or 0
@@ -1229,9 +1227,10 @@ def _tabla_muestras(study: Study) -> pd.DataFrame | None:
 
 
 def _resumen_eda(study: Study, context: SummaryContext) -> StageSummary:
-    del context
+    from bayesrisk.report._documentary import build_reading, snapshot_from_study
+
     card = _card(study, "eda", "eda_card")
-    lines: list[str] = []
+    lines = list(build_reading(snapshot_from_study(study)).lines("eda"))
     alerts: list[str] = []
     table: pd.DataFrame | None = None
     formats: dict[str, _Kind] = {}
@@ -1470,13 +1469,19 @@ def _resumen_binning(study: Study, context: SummaryContext) -> StageSummary:
             }
             table = summary[[c for c in columnas if c in summary.columns]].rename(columns=columnas)
             table["Banda de IV"] = table["Banda de IV"].map(lambda v: IV_BAND_LABELS.get(str(v), v))
-            table["Tendencia"] = table["Tendencia"].map(
-                lambda v: _MONOTONIC_LABELS.get(str(v), v) if v is not None else "—"
-            )
+            from bayesrisk.report._documentary import trend_label
+
+            table["Tendencia"] = [
+                trend_label(v, dtype)
+                for v, dtype in zip(table["Tendencia"], table["Tipo"], strict=True)
+            ]
             table["Tipo"] = table["Tipo"].map(
                 lambda v: {"numerical": "numérica", "categorical": "categórica"}.get(str(v), v)
             )
         alerts.extend(_alertas_de_inversion(study))
+        lines.append(
+            "La tendencia describe la tasa de malos en Desarrollo; el WoE es otra magnitud."
+        )
         alerts.extend(_alertas_categorias_no_vistas(study))
         alerts.extend(_alertas_cambio_de_dominio(study))
         alerts.extend(
@@ -1501,17 +1506,11 @@ def _alertas_de_inversion(study: Study) -> tuple[str, ...]:
     tasas = _artifact(study, "binning", "event_rate_by_partition")
     if not isinstance(tasas, pd.DataFrame) or tasas.empty or "inverts" not in tasas.columns:
         return ()
-    invierte = tasas[tasas["inverts"].fillna(False).astype(bool)]
-    if invierte.empty:
-        return ()
-    alertas: list[str] = []
-    for variable, filas in invierte.groupby("feature", sort=True):
-        muestras = sorted({str(p) for p in filas["partition"]}, key=_orden_particion)
-        alertas.append(
-            f"{variable}: la tasa de malos invierte la tendencia en "
-            f"{_enumerar(tuple(_partition_label(p) for p in muestras))}"
-        )
-    return tuple(alertas)
+    from bayesrisk.report._documentary import EditorialSnapshot, build_reading
+
+    return build_reading(
+        EditorialSnapshot(tables={"binning.event_rate_by_partition": tasas})
+    ).review
 
 
 def _resumen_selection(study: Study, context: SummaryContext) -> StageSummary:
@@ -1621,7 +1620,6 @@ def _alertas_iv_por_muestra(study: Study) -> tuple[str, ...]:
 
 
 def _resumen_model(study: Study, context: SummaryContext) -> StageSummary:
-    del context
     card = _card(study, "model", "model_card")
     lines: list[str] = []
     alerts: list[str] = []
@@ -1656,12 +1654,17 @@ def _resumen_model(study: Study, context: SummaryContext) -> StageSummary:
                 "Coeficiente con el signo invertido respecto del riesgo esperado: "
                 f"{', '.join(signos)}"
             )
-        concentran = tuple(str(c) for c in _sequence(card.get("iv_contribution_flags")))
-        if concentran:
-            umbral = umbrales.get("iv_contribution.threshold")
-            alerts.append(
-                f"Concentra más del {_corte_pct(umbral)} del IV del modelo: {', '.join(concentran)}"
+        from bayesrisk.report._documentary import iv_reading, study_events
+
+        alerts.extend(
+            f.text
+            for f in iv_reading(
+                card,
+                _artifact(study, "model", "coefficients"),
+                study_events(study, context.trail_path),
             )
+            if f.text
+        )
         coeficientes = _artifact(study, "model", "coefficients")
         if isinstance(coeficientes, pd.DataFrame) and not coeficientes.empty:
             columnas = {
@@ -2108,7 +2111,6 @@ def _resumen_performance(study: Study, context: SummaryContext) -> StageSummary:
         bandas = _mapping(card.get("bands_by_partition"))
         for particion in _sequence(card.get("partitions")):
             pid = str(particion)
-            valores = _mapping(maximos.get(pid))
             banda = str(bandas.get(pid, ""))
             if banda == "not_evaluable":
                 alerts.append(
@@ -2116,15 +2118,15 @@ def _resumen_performance(study: Study, context: SummaryContext) -> StageSummary:
                     + _causa_no_evaluable(card, pid)
                 )
                 continue
-            lines.append(
-                f"{_partition_label(pid)}: AUC {_cifra(valores.get('auc'), decimales=3)} · "
-                f"Gini {_cifra(valores.get('gini'), decimales=3)} · "
-                f"KS {_cifra(valores.get('ks'), decimales=3)}"
-            )
             if banda == "threshold_flag":
                 alerts.append(
                     f"{_partition_label(pid)}: {_DISCRIMINANT_BANDS['threshold_flag'].lower()}"
                 )
+        from bayesrisk.report._documentary import EditorialSnapshot, build_reading
+
+        lines.extend(
+            build_reading(EditorialSnapshot(cards={"performance": card})).lines("performance")
+        )
         caida = _caida_dev_oot(maximos)
         if caida is not None:
             lines.append(caida)
@@ -2203,26 +2205,19 @@ def _resumen_stability(study: Study, context: SummaryContext) -> StageSummary:
     alerts: list[str] = []
     table: pd.DataFrame | None = None
     if card is not None:
-        maximos = _mapping(card.get("max_psi_by_comparison"))
-        metricas = _mapping(card.get("psi_metric_by_comparison"))
         bandas = _mapping(card.get("bands_by_comparison"))
+        from bayesrisk.report._documentary import EditorialSnapshot, build_reading
+
+        psi_lines = build_reading(EditorialSnapshot(cards={"stability": card})).lines("stability")
+        lines.extend(psi_lines)
         for comparacion in _sequence(card.get("comparisons")):
             cid = str(comparacion)
             banda = str(bandas.get(cid, ""))
-            rotulo_banda = BAND_LABELS.get(banda, banda)
-            valor = maximos.get(cid)
-            magnitud = PSI_METRIC_LABELS.get(str(metricas.get(cid)), "")
-            if banda == "not_evaluable" or valor is None:
-                lines.append(f"{_COMPARISON_LABELS.get(cid, cid)}: PSI no evaluable")
-                continue
-            frase = (
-                f"{_COMPARISON_LABELS.get(cid, cid)}: peor PSI {_cifra(valor)} "
-                f"({magnitud}) → {rotulo_banda}"
-            )
-            lines.append(frase)
             if banda in {"review", "redevelop"}:
-                alerts.append(
-                    f"Estabilidad {_COMPARISON_LABELS.get(cid, cid)}: banda «{rotulo_banda}»"
+                alerts.extend(
+                    f.text
+                    for f in build_reading(EditorialSnapshot(cards={"stability": card})).facts
+                    if f.id == f"psi.{cid}"
                 )
         peor = card.get("worst_csi_feature")
         if peor is not None:
@@ -2407,7 +2402,7 @@ def _resumen_validation(study: Study, context: SummaryContext) -> StageSummary:
                 "y el estado histórico.",
             ),
             alerts=(
-                (interpretation_lines(interpretation)[0],)
+                (" ".join(interpretation_lines(interpretation)),)
                 if interpretation.overall_status != "pass"
                 else ()
             )
@@ -4139,7 +4134,7 @@ def _resumen_master_scale(study: Study, context: SummaryContext) -> StageSummary
         stage="master_scale",
         label=STAGE_LABELS["master_scale"],
         lines=tuple(lines),
-        alerts=tuple(_alertas_de_la_escala(card)),
+        alerts=tuple(_alertas_de_la_escala(card, grade_table=grade_table)),
         table=table,
         formats=formatos,
         extra_tables=tuple(extra),
@@ -4159,11 +4154,14 @@ def _lineas_fuera_de_desarrollo(diagnosticos: Mapping[str, Any], k: int) -> list
     if evaluadas:
         nombres = _enumerar([_muestra(m) for m in evaluadas])
         en_orden = all(diagnosticos[m]["monotonic"] for m in evaluadas)
-        sin_rojos = not any(diagnosticos[m]["red_grades"] for m in evaluadas)
-        if en_orden and sin_rojos:
+        sin_senales = not any(
+            diagnosticos[m].get("red_grades") or diagnosticos[m].get("amber_grades")
+            for m in evaluadas
+        )
+        if en_orden and sin_senales:
             lineas.append(
                 f"En {nombres} la tasa de malos sigue el orden de los tramos con contraste y "
-                "ninguno subestima su PD."
+                "no hay señales rojas ni ámbar en el contraste de PD."
             )
         else:
             lineas.append(f"En {nombres} hay tramos que revisar (ver «Qué revisar»).")
@@ -4201,9 +4199,17 @@ def _linea_del_corte(
     )
 
 
-def _alertas_de_la_escala(card: Mapping[str, Any]) -> list[str]:
+def _alertas_de_la_escala(card: Mapping[str, Any], *, grade_table: Any = None) -> list[str]:
     """«Qué revisar» de la escala: rojos, inversiones, igualaciones, vecinos y el corte (§13)."""
-    alertas: list[str] = []
+    from bayesrisk.report._documentary import EditorialSnapshot, build_reading
+
+    alertas = list(
+        build_reading(
+            EditorialSnapshot(
+                tables={"master_scale.grade_table": grade_table},
+            )
+        ).review
+    )
     if int(card["n_grades"]) == 1:
         causa = card.get("formation_cause")
         alertas.append(
@@ -4232,12 +4238,12 @@ def _alertas_de_la_escala(card: Mapping[str, Any]) -> list[str]:
     for muestra, diag in diagnosticos.items():
         nombre = _muestra(muestra)
         rojos = list(diag.get("red_grades") or ())
-        if rojos and muestra == "desarrollo":
+        if rojos and muestra == "desarrollo" and grade_table is None:
             alertas.append(
                 f"La PD final subestima {_tramos_en_texto(rojos)} en Desarrollo: lo causa la "
                 "igualación o el ancla."
             )
-        elif rojos:
+        elif rojos and grade_table is None:
             verbo = "subestima" if len(rojos) == 1 else "subestiman"
             alertas.append(f"En {nombre}, {_tramos_en_texto(rojos)} {verbo} su PD (rojo).")
         for a, b in diag.get("inversions") or ():
@@ -5248,7 +5254,30 @@ def build_final_summary(
     if familia == "lgd":
         return _resumen_final_lgd(study, stages, context)
     if familia in {"provision_interna", "pd_provision"}:
-        return _resumen_final_interna(study, stages, context, familia)
+        result = _resumen_final_interna(study, stages, context, familia)
+        if familia == "pd_provision" and study is not None:
+            from dataclasses import replace
+
+            from bayesrisk.report._documentary import build_reading, snapshot_from_study
+
+            pd_reading = build_reading(
+                snapshot_from_study(
+                    study,
+                    scope=context.emission_scope,
+                    pending_stages=context.pending_stages,
+                    trail_path=context.trail_path,
+                )
+            )
+            pd_common = pd_reading.review
+            return replace(
+                result,
+                documentary_reading=pd_reading.to_dict(),
+                review=(
+                    *pd_common,
+                    *(line for line in result.review if line.split(": ", 1)[-1] not in pd_common),
+                ),
+            )
+        return result
     if familia == "cartera":
         return _resumen_final_cartera(study, stages, context)
     if familia == "monitoreo":
@@ -5258,8 +5287,24 @@ def build_final_summary(
     execution = _estado_de_ejecucion(study, stages, context)
     validation = _estado_de_validacion(study, context)
     figures = _cinco_cifras(study) if study is not None else ()
+    from bayesrisk.report._documentary import build_reading, snapshot_from_study
+
+    reading = (
+        build_reading(
+            snapshot_from_study(
+                study,
+                scope=context.emission_scope,
+                pending_stages=context.pending_stages,
+                trail_path=context.trail_path,
+            )
+        )
+        if study is not None
+        else None
+    )
+    common = reading.review if reading is not None else ()
     review = (
-        *(f"{s.label}: {a}" for s in stages for a in s.alerts),
+        *common,
+        *(f"{s.label}: {a}" for s in stages for a in s.alerts if a not in common),
         *(f"{_ROTULO_DECISIONES}: {a}" for a in _decisiones_sin_efecto(study)),
     )
     files = _archivos(study, context)
@@ -5271,6 +5316,7 @@ def build_final_summary(
         decisions=tuple(context.decision_lines),
         files=files,
         stages=tuple(stages),
+        documentary_reading=reading.to_dict() if reading is not None else None,
     )
 
 
@@ -5532,10 +5578,18 @@ def _cinco_cifras(study: Study) -> tuple[tuple[str, str], ...]:
                 peor = (str(cid), v)
         if peor is not None:
             banda = BAND_LABELS.get(str(bandas.get(peor[0], "")), str(bandas.get(peor[0], "")))
+            magnitud = PSI_METRIC_LABELS.get(
+                str(_mapping(stability.get("psi_metric_by_comparison")).get(peor[0])),
+                "magnitud no acreditada",
+            )
             cifras.append(
                 (
                     "Peor PSI entre score y PD",
-                    f"{_cifra(peor[1])} ({_COMPARISON_LABELS.get(peor[0], peor[0])}) → {banda}",
+                    f"{_cifra(peor[1])}, "
+                    f"{magnitud} "
+                    f"({_COMPARISON_LABELS.get(peor[0], peor[0])}) → {banda}; "
+                    f"cortes {_cut(stability.get('stable_threshold'))} y "
+                    f"{_cut(stability.get('review_threshold'))}",
                 )
             )
     return tuple(cifras)

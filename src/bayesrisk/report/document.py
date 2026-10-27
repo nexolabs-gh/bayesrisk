@@ -438,6 +438,10 @@ ATTACHMENT_ONLY_TABLES: Final = PER_OBSERVATION_TABLES | {"lgd_training.model_ta
 # Títulos legibles por artefacto tabular: el informe habla de "Coeficientes del modelo PD", no de
 # `model.coefficients`. Las claves dinámicas (una tabla por variable) se resuelven en `table_title`.
 _TABLE_TITLES: Final[dict[str, str]] = {
+    "binning.event_rate_by_partition": "Tasa de malos por tramo y muestra: soporte íntegro",
+    "binning.unseen_categories": "Categorías no vistas por variable y muestra",
+    "selection.iv_by_partition": "IV por variable y muestra: soporte íntegro",
+    "stability.out_of_model_psi": "PSI de la población fuera del ajuste",
     "lgd_training.model_table": "Modelo LGD reutilizable (tabla de transporte)",
     "lgd_training.coefficients": "Coeficientes del modelo LGD",
     "lgd_training.predictions": "LGD observada y predicha por operación elegible",

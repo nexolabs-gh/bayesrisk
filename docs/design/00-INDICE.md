@@ -33,6 +33,11 @@ contractual nuevo requiere un SDD nuevo o una revisión explícita.
 
 ## Cómo se produce (proceso)
 
+Calidad documental del scorecard, diseño aprobado y capas A+B autorizadas el 2026-10-27:
+[`_ENMIENDA-CALIDAD-DOCUMENTAL-SCORECARD.md`](_ENMIENDA-CALIDAD-DOCUMENTAL-SCORECARD.md).
+El alcance y el estado vigente se registran en `DECISIONES-VIGENTES.md`; la capa C no está
+autorizada por este encargo.
+
 Enmienda H3 **aprobada por Cami para implementar A+B; implementación en curso** (S61):
 [`_ENMIENDA-H3-PD-LGD-Y-PROVISION-INTERNA.md`](_ENMIENDA-H3-PD-LGD-Y-PROVISION-INTERNA.md).
 Mide las brechas de las tres puertas y propone historia LGD separada de su aplicación, conservando
