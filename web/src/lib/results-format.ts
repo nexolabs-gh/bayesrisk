@@ -673,8 +673,8 @@ export interface BinTotal {
   js: number
 }
 
-/** Monotonicidad de un binning numérico; `null` = categórica / no aplicable. */
-export type BinMonotonicity = "ascending" | "descending" | null
+/** Tendencia de la tasa de malos; `null` por sí solo no acredita el tipo. */
+export type BinMonotonicity = string | null
 
 /** Detalle de binning de UNA variable: filas graficables + agregado + metadatos. */
 export interface VariableBinning {
@@ -743,8 +743,7 @@ export function variableBinning(
       : (total?.ivTotal ?? null)
 
   const rawMono = binning?.monotonicity_by_variable?.[variable]
-  const monotonicity: BinMonotonicity =
-    rawMono === "ascending" || rawMono === "descending" ? rawMono : null
+  const monotonicity: BinMonotonicity = typeof rawMono === "string" ? rawMono : null
 
   return { variable, rows, total, ivTotal, monotonicity }
 }
@@ -778,15 +777,35 @@ export function binnedVariables(
 }
 
 /** Etiqueta humana de la monotonicidad (chip del header). Presentación pura. */
-export function monotonicityLabel(m: BinMonotonicity): string {
-  switch (m) {
-    case "ascending":
-      return "Monótona ascendente"
-    case "descending":
-      return "Monótona descendente"
-    default:
-      return "Categórica"
-  }
+export const TREND_LABELS: Record<string, string> = {
+  auto: "automática",
+  auto_heuristic: "automática (heurística)",
+  auto_asc_desc: "automática (ascendente o descendente)",
+  ascending: "ascendente",
+  descending: "descendente",
+  concave: "cóncava",
+  convex: "convexa",
+  peak: "con máximo interior",
+  peak_heuristic: "con máximo interior (heurística)",
+  valley: "con mínimo interior",
+  valley_heuristic: "con mínimo interior (heurística)",
+}
+
+export function monotonicityLabel(m: BinMonotonicity, availability?: string): string {
+  if (availability === "not_applicable") return "No aplica el diagnóstico de tendencia numérica"
+  const label = m == null ? null : TREND_LABELS[m]
+  return label && availability !== "unavailable"
+    ? `Tendencia de la tasa de malos en Desarrollo: ${label} (tramos regulares)`
+    : "No disponible"
+}
+
+/** Neutralidad desde los cortes efectivos de discriminación; psi_max/csi_max son reservados. */
+export function performanceThresholdNote(performance?: PerformanceResult): string | null {
+  if (!performance?.thresholds) return "Umbrales no disponibles en este resultado"
+  const thresholds = performance.thresholds
+  return ["auc_min", "gini_min", "ks_min"].some((key) =>
+    typeof thresholds[key] === "number" && Number.isFinite(thresholds[key]),
+  ) ? null : "Sin umbrales de alerta configurados"
 }
 
 // --- calibración: curva de confiabilidad (reliability diagram) ---------------

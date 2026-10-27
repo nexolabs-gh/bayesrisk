@@ -251,7 +251,8 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
 
     stability = _card(bundle, "stability")
     if stability is not None:
-        max_psi = _mapping(stability.get("max_psi_by_comparison"))
+        from bayesrisk.report._documentary import psi_number
+
         psi_metrics = _mapping(stability.get("psi_metric_by_comparison"))
         bands = _mapping(stability.get("bands_by_comparison"))
         for comparison in _sequence(stability.get("comparisons")):
@@ -261,12 +262,18 @@ def executive_view(bundle: ReportInputBundle) -> ExecutiveView:
             label = "Peor PSI entre score y PD"
             if metric_label is not None:
                 label += f" · {metric_label}"
+            else:
+                label = "Máximo PSI registrado · lectura histórica"
             metrics.append(
                 ExecutiveMetric(
                     label=label,
                     scope=_comparison_label(comparison_id),
-                    value=_cifra(max_psi.get(comparison_id)),
-                    band=BAND_LABELS.get(str(bands.get(comparison_id, "")), _NOT_AVAILABLE),
+                    value=psi_number(stability, comparison_id),
+                    band=(
+                        BAND_LABELS.get(str(bands.get(comparison_id, "")), _NOT_AVAILABLE)
+                        if metric_label is not None
+                        else "Banda sin atribución acreditada"
+                    ),
                 )
             )
         stable = _float(stability.get("stable_threshold"))
@@ -3240,8 +3247,10 @@ def conclusions_body(bundle: ReportInputBundle) -> tuple[str, ...]:
 
     # A igual snapshot, entrada y cierre comparten todos los hallazgos. Las otras familias
     # mantienen su cierre; la presencia real de dominios scorecard decide esta proyección.
-    if any(d in bundle.cards for d in ("model", "binning", "scorecard", "performance")):
-        final = _mapping(_mapping(bundle.summary).get("final"))
+    if any(
+        d in bundle.cards for d in ("model", "binning", "scorecard", "performance", "stability")
+    ):
+        final = _mapping(_mapping(getattr(bundle, "summary", None)).get("final"))
         findings = (
             tuple(str(v) for v in _sequence(final.get("review")))
             or reading_from_bundle(bundle).review

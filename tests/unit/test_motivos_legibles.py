@@ -313,3 +313,16 @@ def test_el_ruido_del_intercepto_se_escribe_cero_en_cualquier_plataforma() -> No
     assert _cifra(_sin_ruido(0.0123), decimales=4) == "0,0123"
     # Sobre el umbral de ruido, la cifra se escribe con la regla de siempre.
     assert _cifra(_sin_ruido(2e-9), decimales=4) == _cifra(2e-9, decimales=4)
+
+
+def test_contribucion_iv_prioriza_valor_estructurado_sobre_detail_redondeado() -> None:
+    fila = {
+        "criterion": "iv_contribution",
+        "detail": "iv_contribution=0.9",
+        "iv_contribution": 0.9000004,
+        "threshold": 0.9,
+    }
+    assert motivo_legible_stepwise(fila) == "contribución al IV 0,9000004 > máximo 0,90"
+    assert motivo_legible_stepwise(
+        {**fila, "detail": "sin prosa numérica"}
+    ) == motivo_legible_stepwise(fila)

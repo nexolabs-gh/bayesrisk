@@ -423,8 +423,8 @@ def motivo_legible_stepwise(fila: Mapping[str, object]) -> str | None:
 
     ``fila`` trae ``criterion``, ``detail``, ``p_value``, ``lr_stat`` y ``threshold`` (una fila de
     ``stepwise_trace`` o el ``valor`` de la decisión en la ficha, con su umbral). La contribución de
-    IV es una observación y el motor la publica sólo en su ``detail``: se lee de ahí, con sus seis
-    cifras significativas; el umbral, en cambio, viene siempre del campo estructurado.
+    IV se lee del valor estructurado; sólo las trazas históricas sin ese campo recurren a
+    ``detail``, con sus seis cifras significativas. El umbral viene del campo estructurado.
     """
     criterio = fila.get("criterion")
     detalle = fila.get("detail")
@@ -448,16 +448,20 @@ def motivo_legible_stepwise(fila: Mapping[str, object]) -> str | None:
         if estadistico is not None:
             texto += f"; estadístico LR {cifra(estadistico)}"
         return texto
-    if criterio == "iv_contribution" and isinstance(detalle, str):
-        if not detalle.startswith(PREFIJO_CONTRIBUCION_IV) or umbral is None:
+    if criterio == "iv_contribution":
+        if umbral is None:
             return None
-        try:
-            contribucion = float(detalle.removeprefix(PREFIJO_CONTRIBUCION_IV))
-        except ValueError:
+        contribucion = _numero(fila.get("iv_contribution"))
+        if "iv_contribution" not in fila:
+            if not isinstance(detalle, str) or not detalle.startswith(PREFIJO_CONTRIBUCION_IV):
+                return None
+            try:
+                contribucion = _numero(float(detalle.removeprefix(PREFIJO_CONTRIBUCION_IV)))
+            except ValueError:
+                return None
+        if contribucion is None:
             return None
-        # El motor sólo registra la contribución que SUPERA el corte, pero su valor exacto no
-        # viaja: si las seis cifras del `detail` no lo dicen, no se afirma una comparación (pasada
-        # 1 de Codex sobre el código) y queda el texto del motor.
+        # La evidencia histórica redondeada no permite afirmar una comparación si no la supera.
         if not contribucion > umbral:
             return None
         escrita = frente_al_corte(cifra(contribucion), contribucion, umbral)

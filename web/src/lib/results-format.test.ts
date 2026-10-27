@@ -48,6 +48,7 @@ import {
   internalProvisioningSectionCopy,
   liftByDecile,
   monotonicityLabel,
+  performanceThresholdNote,
   normalizeBinLabel,
   partitionLabel,
   pValorFrenteALosCortes,
@@ -1026,9 +1027,22 @@ describe("normalizeBinLabel", () => {
 
 describe("monotonicityLabel", () => {
   it("mapea asc/desc/categórica", () => {
-    expect(monotonicityLabel("ascending")).toBe("Monótona ascendente")
-    expect(monotonicityLabel("descending")).toBe("Monótona descendente")
-    expect(monotonicityLabel(null)).toBe("Categórica")
+    expect(monotonicityLabel("ascending")).toContain("tasa de malos en Desarrollo")
+    expect(monotonicityLabel("descending")).toContain("descendente")
+    expect(monotonicityLabel(null)).toBe("No disponible")
+    expect(monotonicityLabel(null, "not_applicable")).toBe("No aplica el diagnóstico de tendencia numérica")
+    expect(monotonicityLabel("peak")).toContain("máximo interior")
+    expect(monotonicityLabel("auto", "unavailable")).toBe("No disponible")
+  })
+})
+
+describe("performanceThresholdNote", () => {
+  it("distingue ausencia de configuración, histórico y cortes reservados", () => {
+    const performance = demoF1.performance
+    expect(performanceThresholdNote(performance)).toBe("Sin umbrales de alerta configurados")
+    expect(performanceThresholdNote({ ...performance, thresholds: { psi_max: 0.2 } })).toBe("Sin umbrales de alerta configurados")
+    expect(performanceThresholdNote({ ...performance, thresholds: { auc_min: 0.6 } })).toBeNull()
+    expect(performanceThresholdNote()).toBe("Umbrales no disponibles en este resultado")
   })
 })
 

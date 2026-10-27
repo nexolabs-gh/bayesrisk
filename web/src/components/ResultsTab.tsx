@@ -91,6 +91,7 @@ import {
   internalProvisioningSectionCopy,
   liftByDecile,
   monotonicityLabel,
+  performanceThresholdNote,
   panelConfigHash,
   partitionLabel,
   primaryPartition,
@@ -278,6 +279,11 @@ export function ResultsPanel({
   const woeDetail = activeWoeVar
     ? variableBinning(results.binning, activeWoeVar)
     : null
+  const documentary = results.summaries?.final?.documentary_reading
+  const trendAvailability = documentary?.schema_version === 1
+    ? documentary.facts.find((fact) => fact.id === `trend.${activeWoeVar}`)?.availability
+    : undefined
+  const performanceNote = performanceThresholdNote(results.performance)
   const fit = results.model?.fit_statistics
   const coefs = results.model?.coefficients ?? []
   const finalFeatures = results.model?.final_features ?? []
@@ -474,7 +480,7 @@ export function ResultsPanel({
           corrida sin `governance` —los tres fixtures de la demo entre ellos— y cuando la corrida
           quedó demasiado parcial para una ficha válida; entonces no hay bloque, ni vacío ni
           fabricado, porque un bloque vacío aparentaría un control que no corrió. */}
-      {results.model_card ? <ModelCardSection card={results.model_card} validation={val} summaries={results.summaries} /> : null}
+      {results.model_card ? <ModelCardSection card={results.model_card} validation={val} summaries={results.summaries} performanceNote={performanceNote} /> : null}
 
       {/* RESUMEN DE LA CORRIDA (D-FLU-8): lo mismo que cuenta la puerta guiada —cada etapa en
           palabras con su tabla de decisión y el resumen final con sus dos estados—, leído de
@@ -943,6 +949,7 @@ export function ResultsPanel({
           description="Poder de ordenamiento por partición (máximos de la evaluación, escala 0–1)."
         >
           <DiscriminationChart rows={rows} />
+          {performanceNote ? <p className="mt-2 text-sm text-muted-foreground">{performanceNote}</p> : null}
           <details className="group mt-2">
             <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-eyebrow">
               <span className="text-muted-foreground transition-transform group-open:rotate-90">
@@ -1778,7 +1785,7 @@ export function ResultsPanel({
                 </SelectContent>
               </Select>
             </div>
-            <WoeHeaderChips detail={woeDetail} />
+            <WoeHeaderChips detail={woeDetail} availability={trendAvailability} />
           </div>
 
           <WoeByBinChart rows={woeDetail.rows} />
@@ -2291,7 +2298,7 @@ function SummaryTableView({
   )
 }
 
-function ModelCardSection({ card, validation, summaries }: { card: ModelCard; validation: ValidationResult | null; summaries?: RunSummaries | null }) {
+function ModelCardSection({ card, validation, summaries, performanceNote }: { card: ModelCard; validation: ValidationResult | null; summaries?: RunSummaries | null; performanceNote: string | null }) {
   const domains = modelCardDomains(card)
   const decisions = modelCardDecisionRows(card)
   const hayAvisos = modelCardTieneAvisosDeclarados(domains, decisions)
@@ -2346,6 +2353,7 @@ function ModelCardSection({ card, validation, summaries }: { card: ModelCard; va
             {domains.map((d) => (
               <div key={d.domain} className="space-y-1.5">
                 <p className="text-xs font-medium text-foreground">{d.domain === "validation" ? "Validación histórica" : d.label}</p>
+                {d.domain === "performance" && performanceNote ? <p className="text-sm text-muted-foreground">{performanceNote}</p> : null}
                 {d.metrics.length > 0 ? (
                   <dl className="flex flex-wrap gap-1.5">
                     {d.metrics.map((m) => (
@@ -2522,7 +2530,7 @@ function NumCell({ children }: { children: ReactNode }) {
 }
 
 /** Chips del header del visor WoE: IV total + monotonicidad + nº de bins. Solo presenta. */
-function WoeHeaderChips({ detail }: { detail: VariableBinning }) {
+function WoeHeaderChips({ detail, availability }: { detail: VariableBinning; availability?: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
       <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-accent-dark/30 bg-brand-accent/10 px-2.5 py-0.5">
@@ -2532,7 +2540,7 @@ function WoeHeaderChips({ detail }: { detail: VariableBinning }) {
         </span>
       </span>
       <span className="rounded-full border border-border bg-foreground/[0.03] px-2.5 py-0.5 text-muted-foreground">
-        {monotonicityLabel(detail.monotonicity)}
+        {monotonicityLabel(detail.monotonicity, availability)}
       </span>
       <span className="rounded-full border border-border bg-foreground/[0.03] px-2.5 py-0.5 text-muted-foreground">
         {detail.rows.length} {detail.rows.length === 1 ? "bin" : "bins"}

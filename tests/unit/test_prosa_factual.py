@@ -182,8 +182,8 @@ def test_resumen_psi_publica_magnitud_identidad_banda_y_fronteras_coherentes() -
     vista_ejecutiva = executive_view(bundle)
     metrica_psi = next(metric for metric in vista_ejecutiva.metrics if "PSI" in metric.label)
 
-    assert "El peor PSI entre score y PD" in texto_resultados
-    assert "corresponde a la PD calibrada" in texto_resultados
+    assert "Peor PSI entre score y PD" in texto_resultados
+    assert "PD calibrada" in texto_resultados
     assert "0,1200" in texto_resultados
     # D-SC-11: la palabra es la de la fuente única, la misma que pinta la interfaz. Antes de la
     # capa 1 el informe decía «Requiere revisión» y la pantalla «Revisar» para este mismo dato.
@@ -200,7 +200,7 @@ def test_resumen_psi_publica_magnitud_identidad_banda_y_fronteras_coherentes() -
     assert _band_class(BAND_LABELS["redevelop"]) == "band-alert"
     assert _band_class(BAND_LABELS["stable"]) == "band-ok"
     assert _band_class(BAND_LABELS["not_evaluable"]) == "band-none"
-    assert "Estabilidad (peor PSI entre score y PD)" in texto_conclusiones
+    assert "Peor PSI entre score y PD" in texto_conclusiones
     assert "PD calibrada" in texto_conclusiones
     assert "redesarrollo desde 0,25" in " ".join(vista_ejecutiva.notes)
 
@@ -245,10 +245,11 @@ def test_resumen_psi_score_y_card_legacy_no_inventan_identidad() -> None:
     score_text = " ".join(results_body(_bundle(cards={"stability": score}), "stability"))
     legacy_text = " ".join(results_body(_bundle(cards={"stability": legacy}), "stability"))
 
-    assert "corresponde al score" in score_text
-    assert "corresponde a la PD calibrada" not in score_text
-    assert "corresponde al score" not in legacy_text
-    assert "corresponde a la PD calibrada" not in legacy_text
+    assert ", score," in score_text
+    assert "PD calibrada" not in score_text
+    assert "lectura histórica" in legacy_text.lower()
+    assert "PD calibrada" not in legacy_text
+    assert "Banda Revisar" not in legacy_text
 
 
 # ──────── D-SC-5: la prosa de contexto lee la card de EDA y dice lo mismo que el panel ────────

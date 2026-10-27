@@ -19,7 +19,7 @@ import math
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -71,7 +71,6 @@ from bayesrisk.report.prose import (
 from bayesrisk.selection.results import REASON_LABELS
 from bayesrisk.stability.results import (
     BAND_LABELS,
-    PSI_METRIC_LABELS,
     STABILITY_METRIC_LABELS,
     TEMPORAL_AXIS_LABELS,
 )
@@ -1644,18 +1643,9 @@ def _resumen_model(study: Study, context: SummaryContext) -> StageSummary:
                 )
             partes.append("convergió" if fit.get("converged") else "NO convergió")
             lines.append(f"Ajuste en Desarrollo: {' · '.join(partes)}")
-            if fit.get("converged") is False:
-                alerts.append(
-                    "El ajuste no convergió: la inferencia sobre los coeficientes no es válida"
-                )
-        signos = tuple(str(c) for c in _sequence(card.get("sign_flags")))
-        if signos:
-            alerts.append(
-                "Coeficiente con el signo invertido respecto del riesgo esperado: "
-                f"{', '.join(signos)}"
-            )
-        from bayesrisk.report._documentary import iv_reading, study_events
+        from bayesrisk.report._documentary import iv_reading, model_warnings, study_events
 
+        alerts.extend(f.text for f in model_warnings(card))
         alerts.extend(
             f.text
             for f in iv_reading(
@@ -5569,29 +5559,12 @@ def _cinco_cifras(study: Study) -> tuple[tuple[str, str], ...]:
                 )
     stability = _card(study, "stability", "card")
     if stability is not None:
-        maximos_psi = _mapping(stability.get("max_psi_by_comparison"))
-        bandas = _mapping(stability.get("bands_by_comparison"))
-        peor: tuple[str, float] | None = None
-        for cid, valor in maximos_psi.items():
-            v = _float(valor)
-            if v is not None and (peor is None or v > peor[1]):
-                peor = (str(cid), v)
-        if peor is not None:
-            banda = BAND_LABELS.get(str(bandas.get(peor[0], "")), str(bandas.get(peor[0], "")))
-            magnitud = PSI_METRIC_LABELS.get(
-                str(_mapping(stability.get("psi_metric_by_comparison")).get(peor[0])),
-                "magnitud no acreditada",
-            )
-            cifras.append(
-                (
-                    "Peor PSI entre score y PD",
-                    f"{_cifra(peor[1])}, "
-                    f"{magnitud} "
-                    f"({_COMPARISON_LABELS.get(peor[0], peor[0])}) → {banda}; "
-                    f"cortes {_cut(stability.get('stable_threshold'))} y "
-                    f"{_cut(stability.get('review_threshold'))}",
-                )
-            )
+        from bayesrisk.report._documentary import psi_reading
+
+        hechos = [f for f in psi_reading(stability) if isinstance(f.value, float)]
+        if hechos:
+            peor = max(hechos, key=lambda f: cast(float, f.value))
+            cifras.append(("Peor PSI entre score y PD", peor.text))
     return tuple(cifras)
 
 

@@ -404,7 +404,7 @@ def _trends(snapshot: EditorialSnapshot) -> list[EditorialFact]:
                 str(row["monotonic_trend"])
                 if label != "No disponible" and row.get("monotonic_trend") is not None
                 else None,
-                f"{name}: tendencia de la tasa de malos en Desarrollo: {label}. "
+                f"{name}: tendencia de la tasa de malos en Desarrollo (tramos regulares): {label}. "
                 "El WoE es otra magnitud.",
                 population="Desarrollo",
                 availability="not_applicable"
@@ -481,30 +481,52 @@ def _performance(snapshot: EditorialSnapshot) -> list[EditorialFact]:
     return facts
 
 
-def _psi(snapshot: EditorialSnapshot) -> list[EditorialFact]:
+def psi_number(card: Mapping[str, Any], comparison: str) -> str:
+    """Cifra del PSI que conserva el lado de ambas fronteras efectivas."""
+    value = _number(_mapping(card.get("max_psi_by_comparison")).get(comparison))
+    if value is None:
+        return "No evaluable"
+    number = cifra(value, decimales=4)
+    for key in ("stable_threshold", "review_threshold"):
+        threshold = _number(card.get(key))
+        if threshold is not None:
+            number = frente_al_corte(number, value, threshold)
+    return number
+
+
+def psi_reading(card: Mapping[str, Any]) -> list[EditorialFact]:
+    """Una lectura del PSI para la cifra final y todos sus consumidores."""
     from bayesrisk.report.prose import _COMPARISON_LABELS
     from bayesrisk.stability.results import BAND_LABELS, PSI_METRIC_LABELS
 
-    card = _mapping(snapshot.cards.get("stability"))
     facts: list[EditorialFact] = []
     for comparison, raw in sorted(_mapping(card.get("max_psi_by_comparison")).items()):
         value = _number(raw)
         magnitude = PSI_METRIC_LABELS.get(
-            str(_mapping(card.get("psi_metric_by_comparison")).get(comparison)),
-            "magnitud no acreditada",
+            str(_mapping(card.get("psi_metric_by_comparison")).get(comparison))
         )
         band = str(_mapping(card.get("bands_by_comparison")).get(comparison, "not_evaluable"))
         samples = _COMPARISON_LABELS.get(str(comparison), str(comparison))
-        number = cifra(value, decimales=4) if value is not None else "No evaluable"
-        text = (
-            f"Peor PSI entre score y PD: {number}, {magnitude}, {samples}. "
-            f"Banda {BAND_LABELS.get(band, 'No evaluable')}"
-        )
+        number = psi_number(card, str(comparison))
         cuts = [
             (name, _number(card.get(key)))
             for name, key in (("Estable", "stable_threshold"), ("Revisar", "review_threshold"))
         ]
         stable, review = cuts[0][1], cuts[1][1]
+        reason = None
+        if magnitude is None:
+            reason = "la identidad de la magnitud y su relación con la banda no están acreditadas"
+            text = (
+                f"Lectura histórica: máximo PSI registrado {number}, {samples}; "
+                "magnitud no acreditada. La banda histórica no se atribuye a este máximo"
+            )
+        else:
+            text = (
+                f"Peor PSI entre score y PD: {number}, {magnitude}, {samples}. "
+                f"Banda {BAND_LABELS.get(band, 'No evaluable')}"
+            )
+        if value is None:
+            reason = "el PSI no tiene un valor finito disponible"
         if stable is not None and review is not None:
             text += f"; cortes efectivos {corte(stable)} y {corte(review)}"
         else:
@@ -522,11 +544,42 @@ def _psi(snapshot: EditorialSnapshot) -> list[EditorialFact]:
                 value,
                 text,
                 population=samples,
-                availability="unavailable" if value is None else "available",
+                availability="unavailable" if reason is not None else "available",
+                reason=reason,
                 highlight=True,
             )
         )
     return facts
+
+
+def model_warnings(card: Mapping[str, Any]) -> tuple[EditorialFact, ...]:
+    """Bloqueos del ajuste conservados también sin resumen serializado."""
+    facts: list[EditorialFact] = []
+    if _mapping(card.get("fit_statistics")).get("converged") is False:
+        facts.append(
+            EditorialFact(
+                "model.not_converged",
+                "model",
+                "card",
+                "fit_statistics.converged",
+                False,
+                "El ajuste no convergió: la inferencia sobre los coeficientes no es válida",
+                highlight=True,
+            )
+        )
+    for feature in sorted(str(f) for f in card.get("sign_flags", ())):
+        facts.append(
+            EditorialFact(
+                f"model.sign.{feature}",
+                "model",
+                "card",
+                f"sign_flags.{feature}",
+                feature,
+                f"Coeficiente con el signo invertido respecto del riesgo esperado: {feature}",
+                highlight=True,
+            )
+        )
+    return tuple(facts)
 
 
 def _validation(snapshot: EditorialSnapshot) -> list[EditorialFact]:
@@ -649,7 +702,8 @@ def build_reading(snapshot: EditorialSnapshot) -> DocumentaryReading:
         *_scale(current),
         *_trends(current),
         *_performance(current),
-        *_psi(current),
+        *psi_reading(_mapping(current.cards.get("stability"))),
+        *model_warnings(_mapping(current.cards.get("model"))),
         *iv_reading(
             _mapping(current.cards.get("model")),
             current.tables.get("model.coefficients"),
@@ -665,18 +719,28 @@ def study_events(study: Any, trail_path: Path | None = None) -> tuple[Mapping[st
     from bayesrisk.core.audit import FanOutSink, InMemoryAuditSink
 
     candidates = [getattr(study, "_audit", None)]
-    events: list[Any] = []
-    if trail_path is not None and trail_path.is_file():
-        events = list(read_trail(trail_path))
-    while candidates and not events:
+    run_id = getattr(getattr(study, "run_context", None), "run_id", None)
+    # Durante resume el trail canónico todavía pertenece a la corrida anterior. Se busca
+    # primero el sink vivo y se acepta una fuente sólo si contiene el run_id actual.
+    while candidates:
         sink = candidates.pop(0)
         if isinstance(sink, FanOutSink):
             candidates.extend(sink.sinks)
+            continue
         elif isinstance(sink, InMemoryAuditSink):
             events = list(sink.events)
         elif isinstance(sink, JsonlAuditSink) and sink.path.is_file():
             events = list(read_trail(sink.path))
-    run_id = getattr(getattr(study, "run_context", None), "run_id", None)
+        else:
+            continue
+        if any(e.kind == "run_start" and e.payload.get("run_id") == run_id for e in events):
+            return _decisions_for_run(events, run_id)
+    if trail_path is not None and trail_path.is_file():
+        return _decisions_for_run(read_trail(trail_path), run_id)
+    return ()
+
+
+def _decisions_for_run(events: Any, run_id: str | None) -> tuple[Mapping[str, Any], ...]:
     selected: list[Mapping[str, Any]] = []
     belongs = False
     for event in events:
@@ -763,13 +827,14 @@ def reading_from_bundle(bundle: Any) -> DocumentaryReading:
                         "iteration": selector.get("iteration"),
                         "iv_contribution": fact.get("value"),
                     },
+                    "run_id": selector.get("run_id"),
                 }
             )
     return build_reading(
         EditorialSnapshot(
             cards=bundle.cards,
-            tables=bundle.tables,
-            params=bundle.pipeline_params,
+            tables=getattr(bundle, "tables", {}),
+            params=getattr(bundle, "pipeline_params", {}),
             interpretation=getattr(bundle, "validation_interpretation", None),
             scope="report",
             events=events,

@@ -277,3 +277,102 @@ def test_eda_sin_denominador_lo_declara_no_disponible() -> None:
     fact = build_reading(snap).facts[0]
     assert fact.availability == "unavailable" and fact.value is None
     assert fact.reason == "denominador temporal no disponible"
+
+
+def test_cierre_sin_resumen_conserva_bloqueos_y_ficha_los_comparte() -> None:
+    from types import SimpleNamespace
+
+    from bayesrisk.report.prose import conclusions_body
+
+    snap = _snapshot()
+    snap.cards["model"].update(fit_statistics={"converged": False}, sign_flags=["ingreso"])
+    bundle = SimpleNamespace(
+        cards=snap.cards,
+        tables=snap.tables,
+        pipeline_params={},
+        summary=None,
+        validation_interpretation=None,
+        missing_sections=(),
+        monitoring_body=(),
+    )
+    closure = " ".join(conclusions_body(bundle))
+    common = " ".join(build_reading(snap).review)
+    for text in (closure, common):
+        assert "no convergió" in text
+        assert "signo invertido" in text and "ingreso" in text
+
+
+def test_psi_legacy_no_atribuye_banda_al_maximo_sin_identidad() -> None:
+    snap = _snapshot()
+    snap.cards["stability"].update(
+        max_psi_by_comparison={"dev_vs_holdout": 0.12},
+        psi_metric_by_comparison=None,
+    )
+    fact = next(f for f in build_reading(snap).facts if f.id.startswith("psi."))
+    assert "histórica" in fact.text
+    assert "Banda Estable" not in fact.text
+    assert fact.availability == "unavailable" and fact.reason
+    assert fact.value == 0.12
+
+
+@pytest.mark.parametrize("boundary", [0.12346, 0.23456])
+@pytest.mark.parametrize("offset", [-0.000001, 0, 0.000001])
+def test_psi_y_cifra_final_conservan_el_lado_de_ambos_cortes(boundary, offset) -> None:
+    from types import SimpleNamespace
+
+    from bayesrisk.guided.summaries import _cinco_cifras
+
+    snap = _snapshot()
+    value = boundary + offset
+    card = snap.cards["stability"]
+    card.update(stable_threshold=0.12346, review_threshold=0.23456)
+    card["max_psi_by_comparison"]["dev_vs_holdout"] = value
+    card["bands_by_comparison"]["dev_vs_holdout"] = (
+        "stable" if value < 0.12346 else "review" if value < 0.23456 else "redevelop"
+    )
+    text = build_reading(snap).lines("stability")[0]
+    observed = float(text.split(": ", 1)[1].split(", PD", 1)[0].replace(",", "."))
+    assert (observed > boundary) - (observed < boundary) == (value > boundary) - (value < boundary)
+    store = SimpleNamespace(has=lambda d, k: d == "stability", get=lambda d, k: card)
+    final = _cinco_cifras(SimpleNamespace(artifacts=store))[-1][1]
+    assert text.removesuffix(".") in final
+
+
+def test_trail_anterior_no_oculta_historia_en_sink_de_corrida_actual(tmp_path) -> None:
+    from datetime import UTC, datetime
+    from types import SimpleNamespace
+
+    from bayesrisk.core.audit import AuditEvent, InMemoryAuditSink
+    from bayesrisk.report._documentary import study_events
+
+    def events(run_id):
+        return [
+            AuditEvent(
+                kind="run_start", step=None, payload={"run_id": run_id}, ts=datetime.now(UTC)
+            ),
+            AuditEvent(kind="decision", step="model", payload=_event(), ts=datetime.now(UTC)),
+        ]
+
+    old = tmp_path / "trail.jsonl"
+    old.write_text(
+        "\n".join(e.model_dump_json() for e in events("anterior")) + "\n", encoding="utf-8"
+    )
+    sink = InMemoryAuditSink()
+    sink.events.extend(events("actual"))
+    study = SimpleNamespace(_audit=sink, run_context=SimpleNamespace(run_id="actual"))
+    selected = study_events(study, old)
+    assert len(selected) == 1 and selected[0]["run_id"] == "actual"
+    assert selected[0]["valor"]["iteration"] == 2
+
+
+def test_rotulos_de_tendencia_del_front_espejan_la_fuente_python() -> None:
+    import re
+    from pathlib import Path
+
+    from bayesrisk.report.prose import _MONOTONIC_LABELS
+
+    source = (Path(__file__).resolve().parents[2] / "web/src/lib/results-format.ts").read_text(
+        encoding="utf-8"
+    )
+    block = source.split("export const TREND_LABELS:", 1)[1].split("\n}", 1)[0]
+    assert dict(re.findall(r'\s+(\w+): "([^"]+)"', block)) == _MONOTONIC_LABELS

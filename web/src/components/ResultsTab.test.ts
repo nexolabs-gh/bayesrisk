@@ -390,7 +390,7 @@ describe("avisos declarados en la ficha (revisión adversarial de S4)", () => {
 describe("guardrails del cableado (fuente)", () => {
   it("el guard es por presencia y nunca `!`", () => {
     expect(resultsTabSource).toContain(
-      "{results.model_card ? <ModelCardSection card={results.model_card} validation={val} summaries={results.summaries} /> : null}",
+      "{results.model_card ? <ModelCardSection card={results.model_card} validation={val} summaries={results.summaries} performanceNote={performanceNote} /> : null}",
     )
     expect(resultsTabSource).not.toMatch(/model_card!/)
   })
