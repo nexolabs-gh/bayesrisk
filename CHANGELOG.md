@@ -17,6 +17,8 @@ entradas anteriores conservan el nombre con el que se publicaron.
   las tablas agregadas. Los gráficos separan tasa de malos y WoE con definiciones de tramos.
   Los libros Excel por etapa conservan números, formatos, filtros y enlaces; los valores muy
   pequeños se muestran en notación científica. No cambian cálculos, defaults ni hashes.
+- Las tres cifras clave mantienen su ancho y orden al imprimir; los SVG conservan su proporción
+  original en el PDF. La verificación incluye geometría y lectura del archivo renderizado.
 
 ### Sabido
 

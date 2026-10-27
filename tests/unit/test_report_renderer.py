@@ -88,7 +88,8 @@ from bayesrisk.validation.results import VALIDATION_STATUS_LABELS
 # y encabezados anchos. El CSS anterior recupera da887982…; fuera del CSS no cambia el digest.
 # D-DOC-SC A+B (2026-10-27): una entrada, soporte sin recortes y enlaces estables;
 # significado verificado por tests de fuentes y precisión, layout inspeccionado por artefacto.
-GOLDEN_HTML_SHA256 = "034b2571ab9b6178e19a959f60323b82b1a0f2660b94c5faeb0e8eea0deb993d"
+# 2026-10-27: geometría PDF medida; métricas imprimibles y SVG con proporción del viewBox.
+GOLDEN_HTML_SHA256 = "dff44e91b74caf59270d71cbd9ca70ecc87fedef4c405883ad3f08f4bde88241"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 

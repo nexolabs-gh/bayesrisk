@@ -271,7 +271,7 @@ def _sanitize_svg(raw: str, title: str) -> str:
 
     Deja desde ``<svg`` hasta ``</svg>`` inclusive (descarta ``<?xml ...?>``, ``<!DOCTYPE ...>`` y
     el comentario de matplotlib, que quedan antes del tag raíz), añade ``role="img"`` y
-    ``style="max-width:100%;height:auto"`` al tag raíz e inserta como primer hijo un ``<title>``
+    un ancho relativo y altura automática al tag raíz e inserta como primer hijo un ``<title>``
     accesible con ``title`` escapado.
     """
     text = _normalize_newlines(raw)
@@ -286,7 +286,9 @@ def _sanitize_svg(raw: str, title: str) -> str:
         raise ReportRenderError("El tag raíz <svg> del gráfico está mal formado.")
     opening_tag = body[:close]
     remainder = body[close + 1 :]
-    inject = ' role="img" style="max-width:100%;height:auto"'
+    # WeasyPrint 69 interpreta height:auto como altura intrínseca cero cuando width es
+    # absoluto. Con ancho relativo obtiene la proporción del viewBox, también al imprimir.
+    inject = ' role="img" style="width:100%;max-width:100%;height:auto"'
     title_element = f"<title>{html.escape(title)}</title>"
     body = f"{opening_tag}{inject}>{title_element}{remainder}"
     return _normalize_newlines(body)

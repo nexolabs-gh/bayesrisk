@@ -54,6 +54,10 @@
 }
 @media print {
   .documentary { font-size: 11pt; line-height: 1.4; }
+  /* El grid con celdas que abarcan columnas se fragmenta mal en WeasyPrint 69. */
+  .documentary .summary-metrics { display: block; break-inside: avoid; }
+  .documentary .summary-metrics > div { display: inline-block; box-sizing: border-box; width: 32%; margin-right: 1%; vertical-align: top; break-inside: avoid; }
+  .documentary .summary-metrics .metric-context { display: block; width: auto; margin: .7rem 0 0; }
   .documentary table, .documentary th, .documentary td, .documentary .table-block--wide table { font-size: 10pt; }
   .documentary .table-block, .documentary .table-block--wide, .documentary .support-table { page: auto; overflow: visible; break-inside: auto; }
   .documentary .support-table table { min-width: 0; }

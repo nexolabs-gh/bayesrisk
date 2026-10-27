@@ -292,7 +292,7 @@ def test_svg_estructura_y_accesibilidad(name: str) -> None:
     svg = _all_charts()[name]
     assert "<svg" in svg and "viewBox=" in svg
     assert 'role="img"' in svg
-    assert 'style="max-width:100%' in svg
+    assert 'style="width:100%;max-width:100%;height:auto"' in svg
     assert svg.endswith("</svg>\n")
 
 

@@ -16,6 +16,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from io import BytesIO
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -504,6 +505,65 @@ def test_documental_pdf_corrida_completa_del_dataset_del_paquete(tmp_path: Path)
     for expected in ("Resultados del scorecard", "Evidencia íntegra", "calibración pendiente"):
         assert expected in text
     assert study.artifacts.get("master_scale", "grade_table") is not None
+
+
+@pytest.mark.skipif(not _HAS_WEASYPRINT, reason="WeasyPrint nativo se verifica en CI PDF")
+def test_documental_pdf_metricas_legibles_y_figuras_proporcionadas(tmp_path: Path) -> None:
+    """La presencia de cifras no basta: medir ancho, altura y orden del artefacto renderizado."""
+    import json
+    import os
+
+    from test_documentary_regressions import _bundle_with_binning
+    from weasyprint import HTML
+
+    from bayesrisk.report.builder import ReportBuilder
+
+    bundle, config = _bundle_with_binning()
+    summary = bundle.summary
+    summary["final"]["figures"] = [
+        ("AUC en Fuera de tiempo (OOT)", "0,656"),
+        ("Gini en Fuera de tiempo (OOT)", "0,312"),
+        ("KS en Fuera de tiempo (OOT)", "0,252"),
+        ("Caída del AUC Desarrollo → Fuera de tiempo (OOT)", "-0,056 (-7,9 %)"),
+        ("Peor PSI entre score y PD", "0,0132; Desarrollo vs. Holdout; cortes 0,10 y 0,25."),
+    ]
+    bundle = bundle.model_copy(update={"summary": summary})
+    bundle = bundle.model_copy(update={"sections": ReportBuilder(config).build_sections(bundle)})
+    html = HtmlReportRenderer(config).render(bundle)
+    rendered = HTML(string=html).render()
+    boxes = [(i, b) for i, p in enumerate(rendered.pages) for b in p._page_box.descendants()]
+    primaries = {
+        element
+        for _, box in boxes
+        if box.element_tag == "dl" and box.element.get("class") == "summary-metrics"
+        for element in list(box.element)[:3]
+    }
+    metrics = [
+        {"page": i, "x": b.position_x, "y": b.position_y, "width": b.width, "height": b.height}
+        for i, b in boxes
+        if b.element in primaries and type(b).__name__ in ("BlockBox", "InlineBlockBox")
+    ]
+    figures = [
+        {"width": b.width, "height": b.height, "viewbox": b.element.get("viewBox")}
+        for _, b in boxes
+        if b.element_tag and b.element_tag.endswith("}svg") and "ReplacedBox" in type(b).__name__
+    ]
+    destination = Path(os.environ.get("BAYESRISK_DOCUMENTARY_PDF_EVIDENCE", str(tmp_path)))
+    destination.mkdir(parents=True, exist_ok=True)
+    (destination / "lectura-geometria.pdf").write_bytes(rendered.write_pdf())
+    (destination / "lectura-geometria.json").write_text(
+        json.dumps({"metrics": metrics, "figures": figures}, indent=2), encoding="utf-8"
+    )
+    assert len(metrics) == 3 and len({m["page"] for m in metrics}) == 1, metrics
+    assert all(m["width"] >= 120 and m["height"] <= 170 for m in metrics), metrics
+    assert [m["x"] for m in metrics] == sorted(m["x"] for m in metrics), metrics
+    assert max(m["y"] for m in metrics) - min(m["y"] for m in metrics) < 1, metrics
+    assert max(m["width"] for m in metrics) - min(m["width"] for m in metrics) < 1, metrics
+    assert all(a["x"] + a["width"] < b["x"] for a, b in pairwise(metrics)), metrics
+    assert figures
+    for figure in figures:
+        _, _, width, height = map(float, figure["viewbox"].split())
+        assert figure["height"] / figure["width"] == pytest.approx(height / width, rel=0.01)
 
 
 # ─────────────────────── (c) fallback SIN weasyprint (corre SIEMPRE) ───────────────────────
