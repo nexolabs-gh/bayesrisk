@@ -192,13 +192,14 @@ def _render(figure: Any, title: str, fmt: ChartFormat) -> str | bytes:
 
 def _binning_panel(table: Any, measure: str, title: str, fmt: ChartFormat) -> str | bytes:
     """Una sola magnitud; los identificadores T remiten al diccionario local del documento."""
-    from matplotlib.ticker import FuncFormatter
-
     from bayesrisk.report._documentary_layout import binning_rows
     from bayesrisk.report.cifras import porcentaje
 
     rows = [row for _position, row in binning_rows(table)]
     figure = _new_figure((7.0, 3.0), dpi=120)
+    # _new_figure traduce primero la ausencia del extra opcional.
+    from matplotlib.ticker import FuncFormatter
+
     axes = figure.subplots()
     values = [None if row.get("Count") == 0 else _optional_float(row.get(measure)) for row in rows]
     axes.plot(

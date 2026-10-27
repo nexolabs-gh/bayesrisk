@@ -473,6 +473,39 @@ def test_documental_pdf_final_conserva_1001_filas_indices_fuentes_y_enlaces(tmp_
     )
 
 
+@pytest.mark.skipif(not _HAS_WEASYPRINT, reason="WeasyPrint nativo se verifica en CI PDF")
+def test_documental_pdf_corrida_completa_del_dataset_del_paquete(tmp_path: Path) -> None:
+    """Conserva el entregable real de F1 con escala, además del caso adversarial de 1001 filas."""
+    import os
+
+    from pypdf import PdfReader
+
+    import bayesrisk
+    from bayesrisk.core.config import BayesRiskConfig
+    from bayesrisk.ui.datasets import materialize
+    from bayesrisk.ui.presets import standard_preset
+
+    destination = Path(os.environ.get("BAYESRISK_DOCUMENTARY_PDF_EVIDENCE", str(tmp_path)))
+    preset = standard_preset()
+    source = materialize(preset["dataset_id"], workdir=tmp_path / "data")
+    raw = preset["config"]
+    raw["data"]["load"]["source"] = str(source)
+    raw["master_scale"] = {}
+    steps = raw["run"].get("steps")
+    if steps and "master_scale" not in steps:
+        steps.insert(steps.index("report"), "master_scale")
+    raw["report"]["output_dir"] = str(destination / "corrida-completa")
+    raw["report"]["formats"] = ["html", "pdf"]
+    config = BayesRiskConfig.model_validate(raw)
+    study = bayesrisk.run(config, run_dir=tmp_path / "run")
+    assert study.run_context.status == "done", study.run_context.error
+    pdf = destination / "corrida-completa" / f"{config.report.basename}.pdf"
+    text = "\n".join(page.extract_text() for page in PdfReader(pdf).pages)
+    for expected in ("Resultados del scorecard", "Evidencia íntegra", "calibración pendiente"):
+        assert expected in text
+    assert study.artifacts.get("master_scale", "grade_table") is not None
+
+
 # ─────────────────────── (c) fallback SIN weasyprint (corre SIEMPRE) ───────────────────────
 
 

@@ -385,6 +385,15 @@ def _documentary_sheet(
                     cell.number_format = excel_formats[kind]
                 elif cell.data_type == "n" and isinstance(cell.value, float):
                     cell.number_format = "0.0000###########"
+                if (
+                    cell.data_type == "n"
+                    and isinstance(cell.value, float)
+                    and kind in (None, "num", "pvalor")
+                    and 0 < abs(cell.value) < 0.0001
+                ):
+                    # El decimal fijo puede mostrar cero aunque la celda conserve un p-valor.
+                    # Quince cifras significativas: límite numérico nativo de Excel.
+                    cell.number_format = "0.##############E+00"
                 if cell.row % 2 == 0:
                     cell.fill = styles.PatternFill("solid", fgColor="F3F6FA")
     for column in worksheet.columns:

@@ -475,7 +475,7 @@ def _figure(chart: Mapping[str, Any], config: ReportConfig) -> str:
     """Figura por ruta relativa al SVG que ``write`` materializa junto al ``.qmd``."""
     path = f"{config.basename}{FIGURES_SUFFIX}/{chart['html_id']}.svg"
     anchor = f" {{#{chart['html_id']}}}" if chart.get("documentary") else ""
-    return f"![{_escape_cell(chart['title'])}]({path}){anchor}"
+    return f"![{_texto_inline_literal(chart['title'])}]({path}){anchor}"
 
 
 def _table(table: Mapping[str, Any]) -> str:

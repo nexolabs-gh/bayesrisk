@@ -76,7 +76,6 @@ from bayesrisk.report.document import (
 from bayesrisk.report.exceptions import (
     ReportDependencyError,
     ReportExportError,
-    ReportInputError,
     ReportRenderError,
 )
 from bayesrisk.report.exports import data_export_refs
@@ -1561,7 +1560,7 @@ def _binning_charts(bundle: ReportInputBundle, fmt: ChartFormat) -> list[dict[st
             title = f"{variable} · {label} por tramo · Desarrollo"
             try:
                 picture = charts._binning_panel(table, measure, title, fmt)
-            except (ReportDependencyError, ReportInputError) as exc:
+            except Exception as exc:  # Un gráfico opcional nunca debe eliminar las tablas.
                 _LOGGER.warning("report: gráfico de binning omitido: %s", exc)
                 continue
             result.append(
