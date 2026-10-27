@@ -495,7 +495,7 @@ def test_documental_pdf_corrida_completa_del_dataset_del_paquete(tmp_path: Path)
     if steps and "master_scale" not in steps:
         steps.insert(steps.index("report"), "master_scale")
     raw["report"]["output_dir"] = str(destination / "corrida-completa")
-    raw["report"]["formats"] = ["html", "pdf"]
+    raw["report"]["formats"] = ["pdf"]  # HTML es base always-on, no un formato adicional.
     config = BayesRiskConfig.model_validate(raw)
     study = bayesrisk.run(config, run_dir=tmp_path / "run")
     assert study.run_context.status == "done", study.run_context.error
