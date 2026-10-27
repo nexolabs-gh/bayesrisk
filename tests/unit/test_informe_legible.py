@@ -1,9 +1,10 @@
 """D-INF-1…4 (`docs/design/_ENMIENDA-INFORME-LEGIBLE.md`): el informe se lee en es-CL.
 
-Cada número que el informe imprime —tablas, listas, anexo de parámetros, linaje, gráficos y la
+Cada número de lectura —tablas, listas, anexo de parámetros, linaje, gráficos y la
 página ejecutiva— pasa por :mod:`bayesrisk.report.cifras`: coma decimal, cuatro decimales, miles con
 punto en los conteos, «sí»/«no», y la regla del cero final, que impide que un redondeo se haga pasar
 por un corte (un PSI ``0.24996`` no se escribe ``0,2500`` junto a su corte de ``0,25``).
+El soporte íntegro D-DOC-SC conserva la representación original, sin redondearla ni localizarla.
 """
 
 from __future__ import annotations
@@ -163,18 +164,36 @@ def test_el_linaje_no_agrupa_la_semilla_y_el_json_conserva_su_sintaxis() -> None
     ) == {"alpha": "0,05004", "enabled": True, "n_bins": 5}
 
 
-def test_el_informe_no_tiene_celdas_con_punto_decimal_ni_true_false() -> None:
-    """El HTML del bundle sintético completo, contado celda por celda.
+def test_las_celdas_de_lectura_son_es_cl_y_el_soporte_conserva_originales() -> None:
+    """Lectura en es-CL y soporte exacto, ambos contados celda por celda.
 
     El extractor se prueba aparte (abajo) para que este test no nazca verde por un regex que no
     encuentra celdas.
     """
     html = _renderer().render(_bundle())
-    celdas = _celdas(html)
+    celdas = _celdas(_sin_tablas_de_soporte(html))
     assert len(celdas) > 30  # 36 en el bundle sintético
     assert [c for c in celdas if re.fullmatch(r"-?\d+\.\d+", c)] == []
     assert [c for c in celdas if c in {"true", "false"}] == []
     assert 'class="num"' in html
+    assert "-0.0" in _celdas(html) and "0.04" in _celdas(html)
+
+
+def _sin_tablas_de_soporte(html: str) -> str:
+    """Excluir sólo figuras con la clase exacta; no esconder otras tablas de lectura."""
+    return re.sub(
+        r'<figure\b[^>]*class="([^"]*)"[^>]*>.*?</figure>',
+        lambda match: "" if "support-table" in match[1].split() else match[0],
+        html,
+        flags=re.S,
+    )
+
+
+def test_la_exclusion_de_soporte_no_oculta_cifras_de_lectura() -> None:
+    cuerpo = '<figure class="table-block"><td>0.042677</td><td>true</td></figure>'
+    soporte = '<figure class="table-block support-table"><td>0.12345678901234567</td></figure>'
+    assert _celdas(_sin_tablas_de_soporte(cuerpo + soporte)) == ["0.042677", "true"]
+    assert _sin_tablas_de_soporte(soporte.replace("support-table", "non-support-table"))
 
 
 def _celdas(html: str) -> list[str]:
@@ -374,4 +393,4 @@ def test_un_identificador_se_corta_en_sus_guiones_bajos_y_una_cifra_no() -> None
     html = _renderer().render(bundle)
     assert "antiguedad_<wbr>de_<wbr>la_<wbr>empresa" in html
     assert "n_<wbr>total" in html  # el encabezado también
-    assert '<td class="num">30.316</td>' in html  # la cifra, entera y sin cortes
+    assert re.search(r'<td class="num"(?:\s[^>]*)?>30\.316</td>', html)

@@ -20,6 +20,7 @@ Contrato: ``docs/design/_ENMIENDA-HL-Y-DECISIONES-EN-EL-YAML.md`` §1.2 y §6.
 
 from __future__ import annotations
 
+import html as html_module
 import importlib.util
 import io
 import math
@@ -345,12 +346,6 @@ def test_la_corrida_publica_los_grupos_de_cada_muestra_con_veredicto(corrida: An
         assert math.isclose(suma, float(estadistico), rel_tol=1e-12)
 
 
-def _tabla_html(html: str, key: str) -> str | None:
-    patron = rf'<table[^>]*data-table-key="{re.escape(key)}"[^>]*>(.*?)</table>'
-    encontrada = re.search(patron, html, re.S)
-    return None if encontrada is None else encontrada.group(1)
-
-
 def test_el_informe_html_trae_una_tabla_por_muestra_en_calibracion(corrida: Any) -> None:
     cfg = ReportConfig(sections={"missing_policy": "skip"})
     bundle = ReportBuilder(cfg).collect(corrida.study)
@@ -363,14 +358,31 @@ def test_el_informe_html_trae_una_tabla_por_muestra_en_calibracion(corrida: Any)
     assert 'data-table-key="validation.calibration"' in subseccion
     for muestra in _muestras_con_veredicto(corrida.study):
         clave = f"validation.hosmer_lemeshow_groups.{muestra}"
-        tabla = _tabla_html(html, clave)
-        assert tabla is not None, clave
-        encabezados = re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla)
-        assert encabezados[:2] == ["Grupo", "Observaciones"]
+        # D-DOC-SC reparte columnas en bloques con fila de lectura y grupo repetidos.
+        tablas = re.findall(
+            rf'<table[^>]*data-table-key="{re.escape(clave)}"[^>]*>(.*?)</table>',
+            subseccion,
+            re.S,
+        )
+        assert tablas, clave
+        encabezados = []
+        for tabla in tablas:
+            columnas = re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla)
+            assert columnas[:2] == ["Fila de lectura", "Grupo"]
+            encabezados.extend(columnas)
+        assert "Observaciones" in encabezados
         assert "Diferencia (pp)" in encabezados and "O/E" in encabezados
-        # En el cuerpo, junto a la tabla de calibración, y no en el anexo de tablas.
+        # Lectura junto a calibración; el soporte conserva además las columnas originales.
         assert f'data-table-key="{clave}"' in subseccion
-        assert html.count(f'data-table-key="{clave}"') == 1
+        soporte = re.findall(
+            rf'<figure[^>]*class="[^"]*support-table[^"]*"[^>]*>\s*'
+            rf"<figcaption[^>]*>[^<]*</figcaption>\s*"
+            rf'<table[^>]*data-table-key="{re.escape(clave)}"[^>]*>',
+            html,
+            re.S,
+        )
+        assert soporte
+        assert html.count(f'data-table-key="{clave}"') == len(tablas) + len(soporte)
 
 
 @pytest.mark.skipif(not _HAS_DOCX, reason="requiere python-docx (extra docx)")
@@ -388,7 +400,7 @@ def test_el_informe_word_trae_las_mismas_tablas(corrida: Any) -> None:
     encabezados = {
         tuple(c.text for c in tabla.rows[0].cells) for tabla in documento.tables if tabla.rows
     }
-    assert any(fila[:2] == ("Grupo", "Observaciones") for fila in encabezados)
+    assert any(fila[:3] == ("Fila de lectura", "Grupo", "Observaciones") for fila in encabezados)
 
 
 def test_la_pantalla_recibe_los_grupos(corrida: Any) -> None:
@@ -431,8 +443,19 @@ def test_hlc_api_resumen_documento_y_adjuntos_comparten_artefactos(
     for partition, frame in diagnostic_tables(value).items():
         key = f"validation.calibration_tie_groups.{partition}"
         pd.testing.assert_frame_equal(bundle.tables[key], frame)
-        assert html.count(f'data-table-key="{key}"') == 1
-        assert "Contribución" not in (_tabla_html(html, key) or "")
+        tablas = re.findall(
+            rf'<table[^>]*data-table-key="{re.escape(key)}"[^>]*>(.*?)</table>', html, re.S
+        )
+        assert tablas and all("Contribución" not in tabla for tabla in tablas)
+        columnas = {
+            html_module.unescape(re.sub(r"<[^>]+>", "", column))
+            for tabla in tablas
+            for column in re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla, re.S)
+        }
+        assert set(frame.columns) <= columnas
+        for tabla in tablas:
+            assert len(re.findall(r"<th(?:\s[^>]*)?>", tabla)) <= 6
+            assert tabla.split("<tbody>", 1)[1].count("<tr>") == len(frame)
     exports = write_data_exports(bundle.tables, config=cfg, output_dir=str(tmp_path))
     refs = [
         r
@@ -462,6 +485,7 @@ def test_hlc_word_conserva_columnas_en_hoja_horizontal_y_restaura_formato(corrid
     from docx import Document
 
     from bayesrisk.report.docx import DocxReportRenderer
+    from bayesrisk.validation.interpretation import diagnostic_tables
 
     cfg = ReportConfig(sections={"missing_policy": "skip"})
     bundle = ReportBuilder(cfg).collect(corrida.study)
@@ -471,17 +495,29 @@ def test_hlc_word_conserva_columnas_en_hoja_horizontal_y_restaura_formato(corrid
     assert document.sections[-1].page_height == document.sections[0].page_height
     assert document.sections[-1].left_margin == document.sections[0].left_margin
     assert document.sections[-1].right_margin == document.sections[0].right_margin
-    tables = [t for t in document.tables if "PD mínima" in [c.text for c in t.rows[0].cells]]
-    assert len(tables) == len(corrida.study.artifacts.get("validation", "interpretation").hl)
-    for table in tables:
-        assert len(table.columns) == 13
-        assert all(
-            run.font.size.pt == 9
-            for row in table.rows
-            for cell in row.cells
-            for paragraph in cell.paragraphs
-            for run in paragraph.runs
-        )
+    value = corrida.study.artifacts.get("validation", "interpretation")
+    for partition, frame in diagnostic_tables(value).items():
+        title = f"Diagnóstico descriptivo de calibración · {_PARTITION_LABELS[partition]}"
+        tables = [
+            table
+            for table in document.tables
+            if "".join(
+                node.text or "" for node in table._tbl.getprevious().xpath(".//w:t")
+            ).startswith(title)
+        ]
+        assert tables, partition
+        columns = {cell.text for table in tables for cell in table.rows[0].cells}
+        assert columns == set(frame.columns) | {"Fila de lectura"}
+        for table in tables:
+            assert [c.text for c in table.rows[0].cells[:2]] == ["Fila de lectura", "Grupo"]
+            assert len(table.columns) <= 6 and len(table.rows) == len(frame) + 1
+            assert all(
+                run.font.size.pt == 10
+                for row in table.rows
+                for cell in row.cells
+                for paragraph in cell.paragraphs
+                for run in paragraph.runs
+            )
 
 
 def test_sdd22_ya_no_dice_bilateral_para_hosmer_lemeshow() -> None:

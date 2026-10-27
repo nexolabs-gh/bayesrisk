@@ -183,12 +183,31 @@ def test_el_informe_trae_la_escala_con_las_lineas_y_tablas_del_resumen(
     # conteos y contrastes) y la sección del config en los parámetros.
     documento = _informe_guiado(tmp_path).read_text(encoding="utf-8")
     assert 'data-section-id="appendix_parameters.master_scale"' in documento
-    for titulo in (
-        "Tramos de la escala maestra",
-        "Tramos de la escala por muestra",
-        "Puntos de corte por muestra",
+    for clave, titulo in (
+        ("grades", "Tramos de la escala maestra"),
+        ("grade_table", "Tramos de la escala por muestra"),
+        ("cutoff_table", "Puntos de corte por muestra"),
     ):
-        assert documento.count(titulo) == 1, titulo
+        # D-DOC-SC: una fuente puede ocupar varios bloques de columnas y aparecer en enlaces.
+        bloques = re.findall(
+            rf'<figure[^>]*class="[^"]*support-table[^"]*"[^>]*>\s*'
+            rf"<figcaption[^>]*>([^<]*)</figcaption>\s*"
+            rf'<table id="([^"]+)" data-table-key="master_scale\.{clave}">(.*?)</table>',
+            documento,
+            re.S,
+        )
+        assert bloques and all(titulo in caption for caption, _, _ in bloques), titulo
+        assert len({table_id for _, table_id, _ in bloques}) == len(bloques)
+        fuente_original = sc.study.artifacts.get("master_scale", clave)
+        encabezados = {
+            html_lib.unescape(re.sub(r"<[^>]+>", "", value))
+            for _, _, tabla in bloques
+            for value in re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla, re.S)
+        }
+        assert set(fuente_original.columns) <= encabezados
+        for _, _, tabla in bloques:
+            cuerpo = tabla.split("<tbody>", 1)[1]
+            assert cuerpo.count("<tr>") == len(fuente_original)
 
 
 def test_sin_la_escala_el_informe_no_la_menciona(fuente: Path, tmp_path: Path) -> None:

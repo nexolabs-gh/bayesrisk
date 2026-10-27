@@ -412,7 +412,7 @@ def test_el_pipeline_f1_completo_termina_done_sin_eje_temporal(tmp_path: Path) -
 
 
 def test_el_resumen_de_la_etapa_dice_la_tasa_y_su_causa(tmp_path: Path) -> None:
-    """Dos líneas, sin denominador inventado y sin decir «0 períodos»."""
+    """Tasa y causa, con población explícita, sin denominador inventado ni «0 períodos»."""
     study = _corrida_f1_sin_eje(tmp_path)
 
     resumen = build_stage_summary(
@@ -426,11 +426,16 @@ def test_el_resumen_de_la_etapa_dice_la_tasa_y_su_causa(tmp_path: Path) -> None:
         ),
     )
     lineas = list(resumen.lines)
-    assert lineas[0].startswith("Tasa de malos: ")
-    assert lineas[1] == (
+    assert "Desarrollo" in lineas[0] and "denominador temporal no disponible" in lineas[0]
+    tasas = [linea for linea in lineas if linea.startswith("Tasa de malos: ")]
+    assert len(tasas) == 1
+    rate = study.artifacts.get("eda", "default_rate").overall_rate
+    assert tasas[0] == f"Tasa de malos: {rate * 100:.2f} %".replace(".", ",")
+    causa = (
         "Tasa de malos en el tiempo: no evaluable "
         "(el archivo no trae columna de fecha ni cohorte declarada)"
     )
+    assert lineas.count(causa) == 1 and lineas.index(tasas[0]) < lineas.index(causa)
     assert resumen.table is None
     texto = "\n".join(lineas)
     for prohibida in ("0 períodos", "por fecha de observación", "sin_eje_temporal"):

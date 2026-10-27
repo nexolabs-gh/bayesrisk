@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import builtins
 import hashlib
+import html as html_module
 import importlib.util
 import json
 import re
@@ -155,10 +156,9 @@ def test_html_golden_deterministico_y_orden_canonico() -> None:
         flags=re.IGNORECASE,
     )
     assert "/Users/" not in first
-    from lxml import html as html_parser
-
-    lineage = (
-        html_parser.fromstring(first).get_element_by_id("section-appendix_lineage").text_content()
+    # El job mínimo no instala lxml: la comprobación no necesita un parser externo.
+    lineage = html_module.unescape(
+        re.sub(r"<[^>]+>", "", _section_fragment(first, "appendix_lineage"))
     )
     for key, value in (
         ("config_hash", "cfg123456789abcdef"),
@@ -173,11 +173,15 @@ def test_html_golden_deterministico_y_orden_canonico() -> None:
     assert positions == sorted(positions)
 
     performance_table = _table_fragment(first, "table-performance-performance_table")
-    parsed_table = html_parser.fromstring(performance_table)
-    headings = [th.text_content() for th in parsed_table.xpath(".//thead/tr/th")]
+    headings = [
+        html_module.unescape(re.sub(r"<[^>]+>", "", value))
+        for value in re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", performance_table, re.S)
+    ]
     column = headings.index("decile")
     deciles = [
-        row.xpath("./td")[column].text_content() for row in parsed_table.xpath(".//tbody/tr")
+        html_module.unescape(re.sub(r"<[^>]+>", "", cells[column]))
+        for row in re.findall(r"<tr>(.*?)</tr>", performance_table, re.S)
+        if (cells := re.findall(r"<td(?:\s[^>]*)?>(.*?)</td>", row, re.S))
     ]
     assert deciles == [str(decile) for decile in range(12, 2, -1)]
 

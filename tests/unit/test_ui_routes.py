@@ -9,8 +9,10 @@ no reimplementa fórmulas de riesgo.
 from __future__ import annotations
 
 import ast
+import html as html_module
 import importlib.util
 import io
+import json
 import re
 import subprocess
 import sys
@@ -939,6 +941,88 @@ def _sin_sellos_de_reloj(html: str) -> str:
     return _FECHA_DE_EMISION.sub(r"\1TS\2", _SELLO_ISO.sub("TS", html))
 
 
+def _sin_metadatos_de_corrida(html: str, run_id: str) -> str:
+    """Normaliza sólo reloj y el ID acreditado del selector de auditoría D-DOC-SC.
+
+    Dos ejecuciones tienen snapshots distintos. Sus hashes, cifras y selectores de negocio
+    deben coincidir; el ID de procedencia debe corresponder a cada ejecución antes de ignorarlo.
+    """
+    matched = 0
+
+    def selector(cell: re.Match[str]) -> str:
+        nonlocal matched
+        payload = cell[2]
+        plain = html_module.unescape(payload.replace("<wbr>", ""))
+        try:
+            source = json.loads(json.loads(plain))
+        except (ValueError, TypeError):
+            return cell[0]
+        if not isinstance(source, dict) or "run_id" not in source:
+            return cell[0]
+        assert source["run_id"] == run_id, "Selector atribuido a otra corrida"
+        pattern = re.compile(r"(\\&#34;run_(?:<wbr>)?id\\&#34;:\s*\\&#34;)([0-9a-f]{32})(\\&#34;)")
+        fields = list(pattern.finditer(payload))
+        assert len(fields) == 1 and fields[0][2] == run_id
+        matched += 1
+        field = fields[0]
+        return cell[1] + payload[: field.start(2)] + "RUN" + payload[field.end(2) :] + cell[3]
+
+    def table(match: re.Match[str]) -> str:
+        return re.sub(
+            r'(<td\b[^>]*data-label="Selector"[^>]*>)(.*?)(</td>)',
+            selector,
+            match[0],
+            flags=re.S,
+        )
+
+    normalized = re.sub(
+        r'<table\b[^>]*data-table-key="documentary\.facts"[^>]*>.*?</table>',
+        table,
+        html,
+        flags=re.S,
+    )
+    assert matched > 0, "Falta el selector que acredita la corrida"
+    return _sin_sellos_de_reloj(normalized)
+
+
+def test_la_comparacion_de_corridas_solo_ignora_su_identidad_acreditada() -> None:
+    from markupsafe import escape
+
+    def document(run_id: str) -> str:
+        selector = {"run_id": run_id, "feature": "ingreso_mensual", "iteration": 2}
+        payload = str(escape(json.dumps(json.dumps(selector, sort_keys=True))))
+        payload = payload.replace("run_id", "run_<wbr>id")
+        return (
+            '<table data-table-key="documentary.facts"><tr>'
+            f'<td data-label="Selector">{payload}</td></tr></table>'
+            '<td data-label="Valor">0.1234</td><td>2024-01-01</td>'
+            "<td>config_hash=cccccccccccccccccccccccccccccccc</td>"
+            "<td>data_hash=dddddddddddddddddddddddddddddddd</td>"
+            "<td>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</td>"
+        )
+
+    first, second = document("a" * 32), document("b" * 32)
+    assert first != second
+    normalize_first = _sin_metadatos_de_corrida(first, "a" * 32)
+    assert normalize_first == _sin_metadatos_de_corrida(second, "b" * 32)
+    for old, new in (
+        ("0.1234", "0.1235"),
+        ("2024-01-01", "2024-01-02"),
+        ("c" * 32, "e" * 32),
+        ("d" * 32, "e" * 32),
+        ("ingreso_mensual", "deuda"),
+        ("iteration\\&#34;: 2", "iteration\\&#34;: 3"),
+        ("<td>" + "a" * 32, "<td>" + "b" * 32),
+    ):
+        altered = second.replace(old, new)
+        assert altered != second, old
+        assert normalize_first != _sin_metadatos_de_corrida(altered, "b" * 32), old
+    with pytest.raises(AssertionError, match="otra corrida"):
+        _sin_metadatos_de_corrida(second, "a" * 32)
+    with pytest.raises(AssertionError, match="Falta el selector"):
+        _sin_metadatos_de_corrida(second.replace("documentary.facts", "otra.tabla"), "b" * 32)
+
+
 def test_la_comparacion_del_html_ignora_la_fecha_del_informe_y_el_sello() -> None:
     """🔴 Dos informes que sólo difieren en el reloj —el sello ISO y la «Fecha de emisión» de la
     portada— son el mismo; cualquier otra diferencia sigue contando, incluida una fecha de
@@ -971,29 +1055,35 @@ def test_run_pipeline_preset_genera_reporte_html_determinista(tmp_path: Path) ->
     Ejercita el escaparate completo: ``run_pipeline`` corre el preset real (binning MIP, modelo,
     scorecard, calibración, performance, stability, report), persiste la corrida y sirve el HTML.
     Determinismo robusto: dos corridas (mismo ``workdir`` → mismo ``config_hash``) dan un HTML
-    byte-idéntico salvo lo que escribe el reloj —el sello ``created_at`` del lineage y la fecha del
-    informe, que cambia si la comparación cruza la medianoche UTC—; con ``ai.enabled=False`` el
-    cuerpo del reporte no tiene otra fuente de azar. Requiere el extra ``scoring`` (binning MIP
+    byte-idéntico salvo reloj e identidad de la corrida acreditada en su selector de auditoría.
+    D-DOC-SC conserva ese run_id; el mismo snapshot sigue siendo byte-idéntico sin enmascararlo.
+    Requiere el extra ``scoring`` (binning MIP
     real): el job de dependencias mínimas lo salta.
     """
     pytest.importorskip("optbinning")
     from bayesrisk.ui import runs
     from bayesrisk.ui.presets import STANDARD_DATASET_ID, standard_preset
 
-    def _run_and_load() -> tuple[str, str | None]:
+    def _run_and_load() -> tuple[str, str, str | None]:
         result = routes.run_pipeline(
             standard_preset()["config"], STANDARD_DATASET_ID, workdir=tmp_path
         )
-        return result["status"], runs.load_report(result["run_id"], workdir=tmp_path)
+        return (
+            result["status"],
+            result["run_id"],
+            runs.load_report(result["run_id"], workdir=tmp_path),
+        )
 
-    status_1, html_1 = _run_and_load()
-    status_2, html_2 = _run_and_load()
+    status_1, run_id_1, html_1 = _run_and_load()
+    status_2, run_id_2, html_2 = _run_and_load()
 
     assert status_1 == status_2 == "done"
     for html in (html_1, html_2):
         assert html is not None and html.strip(), "load_report debe devolver HTML no vacío"
         assert "<html" in html.lower()
-    assert _sin_sellos_de_reloj(html_1) == _sin_sellos_de_reloj(html_2)
+    assert _sin_metadatos_de_corrida(html_1, run_id_1) == _sin_metadatos_de_corrida(
+        html_2, run_id_2
+    )
 
 
 def test_run_pipeline_preset_provisiones_estandar_muerde(tmp_path: Path) -> None:
