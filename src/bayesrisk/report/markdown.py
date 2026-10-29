@@ -492,6 +492,7 @@ def _table(table: Mapping[str, Any]) -> str:
             tuple(table["columns"]), [tuple(row) for row in table["rows"]], literal=documentary
         )
     )
+    lines[0:0] = [f"[]{{#{alias}}}\n" for alias in table.get("aliases", ())]
     if table["truncated"]:
         lines.extend(
             [

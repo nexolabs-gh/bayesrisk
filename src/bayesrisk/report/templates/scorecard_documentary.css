@@ -38,6 +38,28 @@
 .skip-link:focus { top: 1rem; }
 .documentary .summary-review li { margin-bottom: .55rem; }
 .documentary pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* La lectura en pantalla usa el viewport; las medidas de impresión se conservan. */
+@media screen {
+  .documentary { background: var(--paper, white); font-size: 16px; line-height: 1.6; }
+  .documentary .doc-shell { max-width: none; width: 100%; margin: 0; box-shadow: none; }
+  .documentary main { padding: 2rem clamp(1.25rem, 3vw, 3.5rem) 4rem; }
+  .documentary main p { max-width: none; }
+  .documentary .doc-nav { min-height: 100vh; }
+  .documentary .subsection-title { margin-top: 1.75rem; }
+  .documentary .evidence-links { margin: .65rem 0 1rem; line-height: 1.5; }
+  .documentary .chart-slot { display: block; min-height: 0; max-width: 60rem; padding: 1.25rem; margin: 1.25rem 0; }
+  .documentary .chart-slot svg { display: block; width: 100%; max-height: 34rem; height: auto; margin: 0 auto; }
+  .documentary .chart-slot figcaption { margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--line); font: inherit; font-size: .875rem; }
+  .documentary .table-title { text-transform: none; letter-spacing: normal; color: var(--navy); line-height: 1.4; }
+  .documentary .table-block { margin: 1.25rem 0 1.75rem; }
+  .documentary table { margin-top: .6rem; }
+  .documentary thead th { background: var(--rail, #f5f7fb); border-bottom: 2px solid #b9c9dc; padding: .65rem .75rem; }
+  .documentary td { padding: .6rem .75rem; }
+  .documentary tbody tr:nth-child(even) { background: #f8fafc; }
+  .documentary .support-table { border-top: 1px solid var(--line); padding-top: 1.25rem; }
+  .documentary .support-table td.num { white-space: nowrap; overflow-wrap: normal; }
+  .documentary .table-anchor { display: block; scroll-margin-top: 1rem; }
+}
 @media screen and (max-width: 640px) {
   .documentary main { padding: 1rem; }
   .documentary .doc-shell { display: block; }

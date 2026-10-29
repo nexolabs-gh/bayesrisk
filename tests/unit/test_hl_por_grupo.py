@@ -358,17 +358,18 @@ def test_el_informe_html_trae_una_tabla_por_muestra_en_calibracion(corrida: Any)
     assert 'data-table-key="validation.calibration"' in subseccion
     for muestra in _muestras_con_veredicto(corrida.study):
         clave = f"validation.hosmer_lemeshow_groups.{muestra}"
-        # D-DOC-SC reparte columnas en bloques con fila de lectura y grupo repetidos.
+        # La proyección D-DOC-SC conserva cada grupo junto al veredicto sin repetir filas.
         tablas = re.findall(
             rf'<table[^>]*data-table-key="{re.escape(clave)}"[^>]*>(.*?)</table>',
             subseccion,
             re.S,
         )
-        assert tablas, clave
+        assert len(tablas) == 1, clave
         encabezados = []
         for tabla in tablas:
             columnas = re.findall(r"<th(?:\s[^>]*)?>(.*?)</th>", tabla)
-            assert columnas[:2] == ["Fila de lectura", "Grupo"]
+            assert columnas[:2] == ["Grupo", "Observaciones"]
+            assert len(columnas) == 7
             encabezados.extend(columnas)
         assert "Observaciones" in encabezados
         assert "Diferencia (pp)" in encabezados and "O/E" in encabezados
@@ -400,7 +401,7 @@ def test_el_informe_word_trae_las_mismas_tablas(corrida: Any) -> None:
     encabezados = {
         tuple(c.text for c in tabla.rows[0].cells) for tabla in documento.tables if tabla.rows
     }
-    assert any(fila[:3] == ("Fila de lectura", "Grupo", "Observaciones") for fila in encabezados)
+    assert any(fila[:3] == ("Grupo", "Observaciones", "Tasa observada (%)") for fila in encabezados)
 
 
 def test_la_pantalla_recibe_los_grupos(corrida: Any) -> None:
@@ -454,7 +455,7 @@ def test_hlc_api_resumen_documento_y_adjuntos_comparten_artefactos(
         }
         assert set(frame.columns) <= columnas
         for tabla in tablas:
-            assert len(re.findall(r"<th(?:\s[^>]*)?>", tabla)) <= 6
+            assert len(re.findall(r"<th(?:\s[^>]*)?>", tabla)) <= 7
             assert tabla.split("<tbody>", 1)[1].count("<tr>") == len(frame)
     exports = write_data_exports(bundle.tables, config=cfg, output_dir=str(tmp_path))
     refs = [
@@ -507,10 +508,20 @@ def test_hlc_word_conserva_columnas_en_hoja_horizontal_y_restaura_formato(corrid
         ]
         assert tables, partition
         columns = {cell.text for table in tables for cell in table.rows[0].cells}
-        assert columns == set(frame.columns) | {"Fila de lectura"}
+        assert columns == {
+            "Grupo",
+            "Observaciones",
+            "Tasa observada (%)",
+            "PD media (%)",
+            "Diferencia (pp)",
+            "O/E",
+            "Bajo mínimo histórico",
+        }
+        all_columns = {cell.text for table in document.tables for cell in table.rows[0].cells}
+        assert set(frame.columns) <= all_columns  # El soporte íntegro conserva las demás.
         for table in tables:
-            assert [c.text for c in table.rows[0].cells[:2]] == ["Fila de lectura", "Grupo"]
-            assert len(table.columns) <= 6 and len(table.rows) == len(frame) + 1
+            assert [c.text for c in table.rows[0].cells[:2]] == ["Grupo", "Observaciones"]
+            assert len(table.columns) <= 7 and len(table.rows) == len(frame) + 1
             assert all(
                 run.font.size.pt == 10
                 for row in table.rows

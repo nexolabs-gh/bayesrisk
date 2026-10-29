@@ -506,6 +506,8 @@ def _section(
         caption = _caption(word, table["title"], points=points, bold=True)
         if section.get("documentary"):
             _bookmark(caption, table["html_id"])
+            for alias in table.get("aliases", ()):
+                _bookmark(caption, alias)
         escritas = _table(
             word,
             tuple(table["columns"]),

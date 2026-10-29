@@ -90,7 +90,7 @@ from bayesrisk.validation.results import VALIDATION_STATUS_LABELS
 # D-DOC-SC A+B (2026-10-27): una entrada, soporte sin recortes y enlaces estables;
 # significado verificado por tests de fuentes y precisión, layout inspeccionado por artefacto.
 # 2026-10-27: geometría PDF medida; métricas imprimibles y SVG con proporción del viewBox.
-GOLDEN_HTML_SHA256 = "dff44e91b74caf59270d71cbd9ca70ecc87fedef4c405883ad3f08f4bde88241"
+GOLDEN_HTML_SHA256 = "7603178fb7b7b17078a62bc6feffb3de8ac8b1bbc0bb054ba2f0450e92fef9b0"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
@@ -191,9 +191,9 @@ def test_html_golden_deterministico_y_orden_canonico() -> None:
     column_positions = [
         coefficients_table.index(marca)
         for marca in (
-            "<th>feature</th>",
-            '<th class="num">beta</th>',
-            '<th class="num">p_<wbr>value</th>',  # el guion bajo es un punto de corte (D-INF-3)
+            "<th>Variable</th>",
+            '<th class="num">Coeficiente</th>',
+            '<th class="num">p-valor</th>',
         )
     ]
     assert column_positions == sorted(column_positions)

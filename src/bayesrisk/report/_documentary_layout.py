@@ -9,7 +9,7 @@ import math
 from collections.abc import Mapping
 from typing import Any
 
-from bayesrisk.report.cifras import conteo
+from bayesrisk.report.cifras import cifra, conteo, porcentaje
 from bayesrisk.report.document import APPENDIX_TABLES_ID, ATTACHMENT_ONLY_TABLES, table_title
 
 
@@ -104,9 +104,10 @@ def support_tables(key: str, frame: Any, ordinal: int) -> list[dict[str, Any]]:
         *([False] * len(index_names)),
         *[bool(frame.iloc[:, i].dtype.kind in "iuf") for i in range(len(frame.columns))],
     ]
+    title = table_title(key).removesuffix(": soporte íntegro")
     table = {
         "key": key,
-        "title": f"E{ordinal:03d} · {table_title(key)} — soporte íntegro",
+        "title": f"E{ordinal:03d} · {title} — soporte íntegro",
         "html_id": support_id(key),
         "columns": columns,
         "source_columns": source_columns,
@@ -129,6 +130,7 @@ def compose_scorecard(document: dict[str, Any], bundle: Any, config: Any) -> dic
     """Una entrada, soporte íntegro y referencias compatibles para todos los renderers."""
     from bayesrisk.guided.summaries import RESUMEN_FINAL_ROTULOS
     from bayesrisk.report._documentary import reading_from_bundle
+    from bayesrisk.report._documentary_tables import DETAIL_SUMMARIES, reading_projection
 
     document["documentary"] = scorecard_document(bundle)
     if not document["documentary"]:
@@ -349,7 +351,7 @@ def compose_scorecard(document: dict[str, Any], bundle: Any, config: Any) -> dic
                                 *(
                                     "No observable (0 casos)"
                                     if c in {"Event rate", "WoE"} and row.get("Count") == 0
-                                    else exact_cell(row.get(c))
+                                    else _reading_bin_cell(c, row.get(c))
                                     for c in ("Count", "Event", "Event rate", "WoE")
                                 ),
                             )
@@ -380,11 +382,34 @@ def compose_scorecard(document: dict[str, Any], bundle: Any, config: Any) -> dic
                 table["links"] = [
                     {"href": "#" + support_id(key), "label": supports[key][0]["title"]}
                 ]
-            # Una tabla de lectura puede truncarse; cada bloque conserva el vínculo al original.
-            table["columns"] = ["Fila de lectura", *table["columns"]]
-            table["numeric"] = [True, *table["numeric"]]
-            table["rows"] = [(str(i + 1), *row) for i, row in enumerate(table["rows"])]
-            tables.extend(_split_columns(table))
+            # Mantener también los destinos de los bloques anteriores al compactar o trasladar.
+            previous = _split_columns(
+                {
+                    **table,
+                    "columns": ["Fila de lectura", *table["columns"]],
+                    "numeric": [True, *table["numeric"]],
+                    "rows": [(str(i + 1), *row) for i, row in enumerate(table["rows"])],
+                }
+            )
+            if (
+                key in DETAIL_SUMMARIES
+                and key in supports
+                and DETAIL_SUMMARIES[key] in source_tables
+            ):
+                supports[key][0].setdefault("aliases", []).extend(t["html_id"] for t in previous)
+                supports[key][0]["links"].append(
+                    {"href": "#" + section["html_id"], "label": "Volver a " + section["title"]}
+                )
+                section["links"].extend(table["links"])
+                continue
+            projection = reading_projection(table, bundle.tables[key]) if key in supports else None
+            if projection is not None:
+                projection["aliases"] = [
+                    t["html_id"] for t in previous if t["html_id"] != projection["html_id"]
+                ]
+                tables.append(projection)
+            else:
+                tables.extend(previous)
         section["tables"] = tables
     lineage = next((s for s in views if s["id"] == "appendix_lineage"), None)
     if lineage is None:
@@ -462,6 +487,8 @@ def compose_scorecard(document: dict[str, Any], bundle: Any, config: Any) -> dic
     for e in document["toc"]:
         if e["href"] == "#section-executive_summary":
             e["title"] = entry["title"]
+        elif e["href"] == "#" + appendix["html_id"]:
+            e["title"] = appendix["title"]
     if not any(e["href"] == "#section-executive_summary" for e in document["toc"]):
         document["toc"].insert(
             0,
@@ -473,6 +500,16 @@ def compose_scorecard(document: dict[str, Any], bundle: Any, config: Any) -> dic
             },
         )
     return document
+
+
+def _reading_bin_cell(column: str, value: Any) -> str:
+    import pandas as pd
+
+    if value is None or pd.isna(value):
+        return "—"
+    if column in {"Count", "Event"}:
+        return conteo(int(value)) if math.isfinite(value) else "—"
+    return porcentaje(value) if column == "Event rate" else cifra(value)
 
 
 def _scalar_rows(value: Any, prefix: str = "") -> list[tuple[str, Any]]:

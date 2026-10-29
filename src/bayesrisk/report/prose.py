@@ -1039,7 +1039,12 @@ def _methodology_model(bundle: ReportInputBundle) -> tuple[str, ...]:
             exit_value = _float(stepwise.get("exit_p_value"))
             detalle: list[str] = []
             if criterion is not None:
-                detalle.append(f"criterio «{criterion}»")
+                criterio_legible = {
+                    "wald_pvalue": "p-valor de Wald",
+                    "lr_test": "prueba de razón de verosimilitud",
+                    "both": "p-valor de Wald y prueba de razón de verosimilitud",
+                }.get(criterion, criterion)
+                detalle.append(f"criterio «{criterio_legible}»")
             if entry is not None and exit_value is not None:
                 detalle.append(f"p-valor de entrada {_cut(entry)} y de salida {_cut(exit_value)}")
             if detalle:
