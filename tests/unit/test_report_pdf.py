@@ -566,6 +566,64 @@ def test_documental_pdf_metricas_legibles_y_figuras_proporcionadas(tmp_path: Pat
         assert figure["height"] / figure["width"] == pytest.approx(height / width, rel=0.01)
 
 
+@pytest.mark.skipif(not _HAS_WEASYPRINT, reason="WeasyPrint nativo se verifica en CI PDF")
+def test_documental_pdf_no_parte_cifras_en_proyeccion_de_siete_columnas() -> None:
+    """Regresión de aceptación: 0,06103 se partía en «0,0610» y «3» al imprimir."""
+    import pandas as pd
+    from test_documentary_layout import bundle_documental
+    from weasyprint import HTML
+
+    from bayesrisk.report.builder import ReportBuilder
+
+    bundle, config, _ = bundle_documental(2)
+    frame = pd.DataFrame(
+        {
+            "name": [
+                "ingreso_mensual",
+                "deuda_ingreso",
+                "utilizacion_linea",
+                "mora_max_12m",
+                "antiguedad_meses",
+                "segmento",
+            ],
+            "selected": [True] * 6,
+            "n_bins": [6, 6, 5, 5, 5, 3],
+            "iv": [0.3048, 0.1635, 0.06103, 0.0219, 0.0414, 0.0029],
+            "iv_band": ["strong", "medium", "weak", "weak", "weak", "none"],
+            "monotonic_trend": ["descending"] * 6,
+            "skipped_reason": [None] * 6,
+        }
+    )
+    bundle = bundle.model_copy(
+        update={"cards": {"binning": {}}, "tables": {"binning.summary": frame}}
+    )
+    bundle = bundle.model_copy(update={"sections": ReportBuilder(config).build_sections(bundle)})
+    rendered = HTML(string=HtmlReportRenderer(config).render(bundle)).render()
+    cells = []
+    for page in rendered.pages:
+        for table in page._page_box.descendants():
+            if (
+                type(table).__name__ != "TableBox"
+                or table.element.get("id") != "table-binning-summary"
+            ):
+                continue
+            assert (
+                table.position_x + table.width
+                <= page._page_box.content_box_x() + page._page_box.width + 1
+            )
+            cells.extend(
+                b
+                for b in table.descendants()
+                if type(b).__name__ == "TableCellBox"
+                and b.element_tag == "td"
+                and b.element.get("class") == "num"
+            )
+    assert cells
+    for cell in cells:
+        lines = [b for b in cell.descendants() if type(b).__name__ == "LineBox"]
+        assert len(lines) == 1, "Una cifra de lectura quedó partida en varias líneas"
+
+
 # ─────────────────────── (c) fallback SIN weasyprint (corre SIEMPRE) ───────────────────────
 
 

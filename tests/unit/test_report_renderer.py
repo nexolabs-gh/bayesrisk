@@ -90,7 +90,7 @@ from bayesrisk.validation.results import VALIDATION_STATUS_LABELS
 # D-DOC-SC A+B (2026-10-27): una entrada, soporte sin recortes y enlaces estables;
 # significado verificado por tests de fuentes y precisión, layout inspeccionado por artefacto.
 # 2026-10-27: geometría PDF medida; métricas imprimibles y SVG con proporción del viewBox.
-GOLDEN_HTML_SHA256 = "7603178fb7b7b17078a62bc6feffb3de8ac8b1bbc0bb054ba2f0450e92fef9b0"
+GOLDEN_HTML_SHA256 = "6f926608bedffcac0fef0ce64d350df19e0aaa06dc50e424f0dd7898668fa7c0"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 

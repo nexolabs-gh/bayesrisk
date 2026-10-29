@@ -84,6 +84,8 @@
   .documentary .table-block, .documentary .table-block--wide, .documentary .support-table { page: auto; overflow: visible; break-inside: auto; }
   .documentary .support-table table { min-width: 0; }
   .documentary th, .documentary td { overflow-wrap: anywhere; }
+  .documentary .table-block:not(.support-table) td.num { white-space: nowrap; overflow-wrap: normal; }
+  .documentary .table-block:not(.support-table) th { overflow-wrap: normal; }
   .documentary thead { display: table-header-group; }
   .documentary tr { break-inside: auto; }
   .documentary figure.chart-slot { break-inside: avoid; }
