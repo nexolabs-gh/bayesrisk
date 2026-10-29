@@ -114,7 +114,10 @@ ROOT_SEED = 20_240_629
 # Con el CSS anterior se recupera `ed189a99…`; el HTML fuera de `<style>` es idéntico.
 # D-DOC-SC A+B: entrada única, soporte íntegro y navegación común; datos y hashes sin cambio.
 # 2026-10-27: mismo contenido; composición PDF y proporción SVG verificadas con WeasyPrint.
-GOLDEN_STEP_HTML_SHA256 = "33aac4b5c1543eef77ef4ed6065e62aae9b45da04949b6fa4997f81963bdcc94"
+# 2026-10-29: pulcritud A+B. Restituir compositor, prosa, CSS y plantilla anteriores en
+# memoria recupera 33aac4b5…; el diff sólo cambia CSS, rótulo del anexo y lectura de coeficientes.
+# Las cifras y el soporte exacto de este bundle quedan intactos.
+GOLDEN_STEP_HTML_SHA256 = "be2d7c118e25ff69eecc2afa6589e4db73113cc96eb1b05ee212686524904603"
 
 _HAS_MATPLOTLIB = importlib.util.find_spec("matplotlib") is not None
 
