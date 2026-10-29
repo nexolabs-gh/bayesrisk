@@ -1002,8 +1002,9 @@ def _public_labels_by_table() -> Mapping[str, Mapping[str, Mapping[str, str]]]:
     prosa ya usa— **sólo** en las cuatro tablas ``validation.*`` y por clave de tabla, como el
     filtro de columnas de auditoría: una tabla ajena con una columna llamada ``test`` o
     ``decision`` se sigue pintando cruda, porque su vocabulario no es éste. Los encabezados no se
-    tocan (los gates de las capas A y B exigen las trece columnas literales) y el valor del JSON,
-    del CSV y de la card sigue siendo el identificador.
+    tocan en esta vista (los gates de las capas A y B exigen las trece columnas literales).
+    El compositor documental posterior D-DOC-SC rotula la lectura, con fuente íntegra en anexo;
+    el valor del JSON, del CSV y de la card sigue siendo el identificador.
 
     Es una función y no una constante de módulo porque ``_partition_label``/``_comparison_label``
     viven en la prosa, que se importa perezosamente aquí.

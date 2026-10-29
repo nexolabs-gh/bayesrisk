@@ -289,7 +289,7 @@ def test_tablas_en_pipe_table_valido_con_celdas_escapadas() -> None:
     markdown = MarkdownReportRenderer.from_config(_config()).render(_bundle())
 
     assert "#### Coeficientes del modelo PD" in markdown
-    assert "| Fila de lectura | feature | beta |" in markdown
+    assert "| Variable | Coeficiente |" in markdown
     assert "| --- | --- | --- |" in markdown
     assert r"sal\|do" in markdown  # el pipe del dato va escapado, no parte la columna
 

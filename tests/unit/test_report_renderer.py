@@ -302,7 +302,7 @@ def test_document_view_renderiza_validacion_formal_y_control_negativo() -> None:
         for table in section["tables"]
         for i, column in enumerate(table["columns"])
     }
-    assert (by_column["auc"], by_column["gini"], by_column["ks"]) == ("0,8100", "0,6200", "0,4800")
+    assert (by_column["AUC"], by_column["Gini"], by_column["KS"]) == ("0,8100", "0,6200", "0,4800")
     assert section["placeholder"] is None
 
     negative = renderer_module.build_document_view(base, config=ReportConfig())

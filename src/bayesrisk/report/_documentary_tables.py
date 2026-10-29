@@ -3,7 +3,14 @@
 from typing import Any
 
 from bayesrisk.binning.results import IV_BAND_LABELS
-from bayesrisk.report.prose import _COMPARISON_LABELS, _MONOTONIC_LABELS, _PARTITION_LABELS
+from bayesrisk.report.prose import (
+    _ANCHOR_KINDS,
+    _ANCHOR_SOURCES,
+    _CALIBRATION_METHODS,
+    _COMPARISON_LABELS,
+    _MONOTONIC_LABELS,
+    _PARTITION_LABELS,
+)
 from bayesrisk.selection.results import REASON_LABELS
 from bayesrisk.stability.results import BAND_LABELS, STABILITY_METRIC_LABELS, TEMPORAL_AXIS_LABELS
 
@@ -89,6 +96,115 @@ _LABELS = {
     "review_threshold": "Corte Revisar",
     "band": "Banda",
 }
+
+_READING_HEADERS = {
+    "eda.default_rate.by_period": {
+        "period": "Período o cohorte",
+        "n_total": "Observaciones",
+        "n_eligible": "Observaciones elegibles",
+        "n_bad": "Incumplimientos",
+        "default_rate": "Tasa de incumplimiento",
+        "low_confidence": "Baja confianza",
+    },
+    "eda.quality.by_column": {
+        "col": "Variable",
+        "dtype": "Tipo de dato",
+        "missing_rate": "Proporción de ausentes",
+        "cardinality": "Valores distintos",
+        "near_constant": "Casi constante",
+        "near_unique": "Casi única",
+        "high_cardinality": "Alta cardinalidad",
+    },
+    "validation.discrimination": {
+        "partition": "Muestra",
+        "n_total": "Observaciones",
+        "n_bad": "Incumplimientos",
+        "auc": "AUC",
+        "gini": "Gini",
+        "ks": "KS",
+        "source": "Procedencia",
+        "status": "Estado",
+    },
+    "validation.calibration": {
+        "partition": "Muestra",
+        "test": "Prueba",
+        "grade": "Grado",
+        "n": "Observaciones",
+        "observed_defaults": "Incumplimientos observados",
+        "expected_pd": "PD esperada",
+        "observed_dr": "Tasa observada",
+        "statistic": "Estadístico o puntaje",
+        "degrees_of_freedom": "Grados de libertad",
+        "p_value": "p-valor",
+        "alpha": "Nivel de significación",
+        "decision": "Resultado",
+        "traffic_light": "Semáforo",
+    },
+    "validation.stability": {
+        "metric": "Medida",
+        "comparison": "Comparación",
+        "feature": "Variable",
+        "value": "Valor",
+        "stable_threshold": "Corte Estable",
+        "review_threshold": "Corte Revisar",
+        "band": "Banda",
+        "action": "Acción",
+        "source": "Procedencia",
+        "status": "Estado",
+        "decision": "Resultado",
+    },
+}
+_CALIBRATION_FIELDS = {
+    "method": "Método",
+    "target_pd": "PD del ancla",
+    "anchor_kind": "Tipo de ancla",
+    "anchor_source": "Origen del ancla",
+    "fit_partition": "Muestra de ajuste",
+    "offset": "Desplazamiento del intercepto",
+    "slope": "Pendiente",
+    "intercept": "Intercepto",
+    "isotonic_knots": "Nodos de la calibración isotónica",
+    "post_offset": "Desplazamiento posterior",
+    "target_tolerance": "Tolerancia del ajuste al ancla",
+    "achieved_mean_pd_dev": "PD media calibrada en Desarrollo",
+    "raw_mean_pd_dev": "PD media antes de calibrar en Desarrollo",
+    "observed_default_rate_dev": "Tasa de incumplimiento observada en Desarrollo",
+    "n_fit": "Observaciones del ajuste",
+}
+
+
+def label_reading_table(table: dict[str, Any]) -> dict[str, Any]:
+    """Rótulos por esquema: no traducir identificadores de datos ni tablas de extensiones."""
+    columns = table["columns"]
+    key = table["key"]
+    headers = _READING_HEADERS.get(key, {})
+    rows = [list(row) for row in table["rows"]]
+    if key == "eda.quality.by_column" and "dtype" in columns:
+        position = columns.index("dtype")
+        types = {
+            "float64": "Número decimal (64 bits)",
+            "int64": "Número entero (64 bits)",
+            "object": "Objeto",
+        }
+        for row in rows:
+            row[position] = types.get(row[position], row[position])
+    if key == "calibration.parameters" and "Campo" in columns and "Valor" in columns:
+        field_position, value_position = columns.index("Campo"), columns.index("Valor")
+        enums = {
+            "method": _CALIBRATION_METHODS,
+            "anchor_kind": _ANCHOR_KINDS,
+            "anchor_source": _ANCHOR_SOURCES,
+            "fit_partition": _PARTITION_LABELS,
+        }
+        for row in rows:
+            field = row[field_position]
+            row[value_position] = enums.get(field, {}).get(row[value_position], row[value_position])
+            row[field_position] = _CALIBRATION_FIELDS.get(field, field)
+    return {
+        **table,
+        "columns": [headers.get(c, c) for c in columns],
+        "rows": [tuple(row) for row in rows],
+    }
 
 
 def reading_projection(table: dict[str, Any], source: Any) -> dict[str, Any] | None:

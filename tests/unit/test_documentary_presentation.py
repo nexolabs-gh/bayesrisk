@@ -125,3 +125,43 @@ def test_aliases_trasladados_existen_en_word_y_markdown():
     if importlib.util.find_spec("docx") is not None:
         with zipfile.ZipFile(io.BytesIO(DocxReportRenderer(config).render(bundle))) as archive:
             assert _bookmark_name(anchor) in archive.read("word/document.xml").decode()
+
+
+def test_rotulos_del_cuerpo_no_cambian_identificadores_ni_soporte():
+    bundle, config, _ = bundle_documental(2)
+    tables = {
+        "eda.quality.by_column": pd.DataFrame(
+            {"col": ["object"], "dtype": ["object"], "missing_rate": [0.05]}
+        ),
+        "calibration.parameters": pd.DataFrame(
+            {
+                "Campo": ["method", "anchor_source", "muestra_de_negocio"],
+                "Valor": ["intercept_offset", "development_observed", "through_the_cycle"],
+            }
+        ),
+    }
+    bundle = bundle.model_copy(update={"tables": tables, "cards": {"eda": {}, "calibration": {}}})
+    bundle = bundle.model_copy(update={"sections": ReportBuilder(config).build_sections(bundle)})
+    view = build_document_view(bundle, config=config)
+    body = {t["key"]: t for s in view["sections"] if s["kind"] != "appendix" for t in s["tables"]}
+    quality = body["eda.quality.by_column"]
+    assert quality["columns"] == [
+        "Fila de lectura",
+        "Variable",
+        "Tipo de dato",
+        "Proporción de ausentes",
+    ], "Encabezados crudos en el cuerpo"
+    assert quality["rows"][0][1:] == ("object", "Objeto", "0,0500")
+    parameters = body["calibration.parameters"]
+    assert parameters["rows"][0][1:] == (
+        "Método",
+        "desplazamiento del intercepto (intercept offset)",
+    )
+    assert parameters["rows"][1][1:] == (
+        "Origen del ancla",
+        "la tasa de incumplimiento observada en Desarrollo",
+    )
+    assert parameters["rows"][2][1:] == ("muestra_de_negocio", "through_the_cycle")
+    support = [t for s in view["sections"] for t in s["tables"] if t.get("support")]
+    assert any('"intercept_offset"' in str(t["rows"]) for t in support)
+    assert tables["calibration.parameters"].iloc[0, 0] == "method"

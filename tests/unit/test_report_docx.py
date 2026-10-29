@@ -383,7 +383,11 @@ def test_docx_dice_las_filas_que_trae_de_verdad_si_su_cinturon_corta_bajo_la_vis
         _config(sections=SectionPolicyConfig(max_table_rows=1_000))
     ).render(bundle)
     word = docx.Document(io.BytesIO(payload))
-    tablas = [t for t in word.tables if "period" in [c.text for c in t.rows[0].cells]]
+    tablas = [
+        t
+        for t in word.tables
+        if {"period", "Período o cohorte"} & {c.text for c in t.rows[0].cells}
+    ]
     assert sorted(len(t.rows) - 1 for t in tablas) == [1000, 1000, 1500]  # dos bloques de lectura
     texto = "\n".join(p.text for p in word.paragraphs)
     assert "mostrando 1.000 de 1.500" in texto

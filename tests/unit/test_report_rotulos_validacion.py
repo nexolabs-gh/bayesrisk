@@ -6,8 +6,8 @@ propio): la tabla «Validación formal · calibración» del HTML, del Word y de
 guía ya los traducían con los mapas de fuente única de ``bayesrisk.validation.results``. Aquí se
 exige que el renderer aplique esos mismos mapas —ninguna palabra nueva— **sólo** en esas cuatro
 claves de tabla y por clave de tabla (mismo patrón que el filtro de columnas de auditoría), sin
-mover los encabezados: las trece columnas literales que los gates de las capas A y B exigen siguen
-ahí.
+mover los encabezados de la vista fuente: las trece columnas literales siguen ahí. El compositor
+documental posterior D-DOC-SC rotula la lectura y conserva la fuente íntegra en el anexo.
 
 Control negativo preespecificado: aplicar el mapa a una tabla ajena con una columna ``test`` →
 rojo (``test_una_tabla_ajena_con_una_columna_test_se_pinta_cruda``).

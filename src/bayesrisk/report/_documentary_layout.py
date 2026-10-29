@@ -130,7 +130,11 @@ def compose_scorecard(document: dict[str, Any], bundle: Any, config: Any) -> dic
     """Una entrada, soporte íntegro y referencias compatibles para todos los renderers."""
     from bayesrisk.guided.summaries import RESUMEN_FINAL_ROTULOS
     from bayesrisk.report._documentary import reading_from_bundle
-    from bayesrisk.report._documentary_tables import DETAIL_SUMMARIES, reading_projection
+    from bayesrisk.report._documentary_tables import (
+        DETAIL_SUMMARIES,
+        label_reading_table,
+        reading_projection,
+    )
 
     document["documentary"] = scorecard_document(bundle)
     if not document["documentary"]:
@@ -410,7 +414,7 @@ def compose_scorecard(document: dict[str, Any], bundle: Any, config: Any) -> dic
                 tables.append(projection)
             else:
                 tables.extend(previous)
-        section["tables"] = tables
+        section["tables"] = [label_reading_table(table) for table in tables]
     lineage = next((s for s in views if s["id"] == "appendix_lineage"), None)
     if lineage is None:
         lineage = {
